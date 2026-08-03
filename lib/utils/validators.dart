@@ -19,7 +19,7 @@ class ValidationException implements Exception {
 class Validators {
   Validators._();
 
-  static final RegExp _email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  static final RegExp _email = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
   static bool isValidEmail(String? value) {
     if (value == null) return false;

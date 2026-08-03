@@ -225,10 +225,16 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  Future<void> _cleanupIncompleteSignup(User? user) async {
-    if (user == null) return;
+  /// Attempts to delete an incomplete (orphaned) Firebase Auth account.
+  /// Returns `true` only when the auth account was successfully removed.
+  /// Returns `false` when deletion failed (e.g. network/permission) so the
+  /// caller can trigger a profile-recovery flow instead of silently leaving
+  /// an unusable orphan account that blocks re-signup and login.
+  Future<bool> _cleanupIncompleteSignup(User? user) async {
+    if (user == null) return false;
     try {
       await user.delete();
+      return true;
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupAuthCleanup');
       try {
@@ -240,6 +246,7 @@ class _SignupScreenState extends State<SignupScreen> {
           context: 'signupAuthCleanupSignOut',
         );
       }
+      return false;
     }
   }
 
@@ -296,6 +303,10 @@ class _SignupScreenState extends State<SignupScreen> {
         ErrorReporter.report(e, st, context: 'signupDisplayName');
       }
 
+      // Profile creation failure: attempt to delete the orphaned Firebase
+      // Auth account. If deletion also fails, we must not leave the user in
+      // a state where they can neither sign up (email-already-in-use) nor log
+      // in (missing profile). Force them through the recovery flow.
       try {
         await _firestoreService.createUserProfile(
           username: emailLocalPart,
@@ -304,7 +315,14 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'signupCreateProfile');
-        await _cleanupIncompleteSignup(credential.user);
+        final deleted = await _cleanupIncompleteSignup(credential.user);
+        if (!deleted) {
+          final message = 'signup_recovery_required'.tr();
+          if (mounted) {
+            FlashySnackBar.show(context, message: message, isError: true);
+          }
+          return;
+        }
         rethrow;
       }
 
@@ -321,12 +339,19 @@ class _SignupScreenState extends State<SignupScreen> {
         ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
       }
 
+      // Biometric offer is best-effort: the account is already fully created
+      // (Auth + Firestore profile). A biometric helper failure must never
+      // surface as a signup failure.
       if (mounted) {
-        await offerBiometricLogin(
-          context: context,
-          email: email,
-          password: _passwordController.text,
-        );
+        try {
+          await offerBiometricLogin(
+            context: context,
+            email: email,
+            password: _passwordController.text,
+          );
+        } catch (e, st) {
+          ErrorReporter.report(e, st, context: 'signupBiometricOffer');
+        }
       }
 
       if (mounted) {

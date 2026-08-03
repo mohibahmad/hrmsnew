@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 
@@ -126,8 +127,9 @@ class LeaveBalanceHelper {
         final totalBalance = annual;
         return (totalBalance - usedLeaves).clamp(0, totalBalance);
       }
-    } catch (e) {
-      return 999;
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'getAvailableLeaveBalance');
+      rethrow;
     }
   }
 }

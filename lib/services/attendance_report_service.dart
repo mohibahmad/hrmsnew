@@ -24,11 +24,18 @@ class WorkerAttendanceSnapshot {
   const WorkerAttendanceSnapshot(this.records);
 
   int get totalWorkingDays => records.length;
-  int get presents => records.where((d) => d['status'] == 'Present').length;
-  int get absents => records.where((d) => d['status'] == 'Absent').length;
-  int get leaves => records.where((d) => d['status'] == 'Leave').length;
+  int get presents =>
+      records.where((d) => _normalizedStatus(d) == 'present').length;
+  int get absents =>
+      records.where((d) => _normalizedStatus(d) == 'absent').length;
+  int get leaves =>
+      records.where((d) => _normalizedStatus(d) == 'leave').length;
   double get percentage =>
       totalWorkingDays == 0 ? 0 : (presents / totalWorkingDays) * 100;
+
+  static String _normalizedStatus(Map<String, dynamic> record) {
+    return (record['status'] ?? '').toString().trim().toLowerCase();
+  }
 }
 
 class AttendanceReportService {
@@ -52,7 +59,7 @@ class AttendanceReportService {
       'Today' => today,
       'Week' => today.subtract(Duration(days: today.weekday - 1)),
       'Month' => DateTime(today.year, today.month, 1),
-      '6 Month' => DateTime(today.year, today.month - 6, 1),
+      '6 Month' => DateTime(today.year, today.month - 5, 1),
       'Yearly' => DateTime(today.year, 1, 1),
       _ => today,
     };
@@ -153,6 +160,16 @@ class AttendanceReportService {
       timeOffRecords,
     );
 
+    final leaveIndex = <String, Map<String, dynamic>>{};
+    for (final leave in timeOffRecords) {
+      if (!TimeOffService.isActiveRecord(leave)) continue;
+      if (!_belongsLeaveToWorker(leave, worker)) continue;
+      for (final date in TimeOffService.selectedDatesForRecord(leave)) {
+        final key = _dateKey(date);
+        leaveIndex[key] ??= leave;
+      }
+    }
+
     for (final leaveDate in leaveDates) {
       if (!range.contains(leaveDate)) continue;
 
@@ -163,11 +180,7 @@ class AttendanceReportService {
       );
       final key = _dateKey(normalizedLeaveDate);
       final existing = recordsByDay[key] ?? const <String, dynamic>{};
-      final leave = TimeOffService.activeLeaveForWorker(
-        worker,
-        timeOffRecords,
-        onDate: normalizedLeaveDate,
-      );
+      final leave = leaveIndex[key];
       final leaveReason = leave == null ? '' : TimeOffService.leaveType(leave);
 
       recordsByDay[key] = {
@@ -205,6 +218,30 @@ class AttendanceReportService {
       return bDate.compareTo(aDate);
     });
     return records;
+  }
+
+  static bool _belongsLeaveToWorker(
+    Map<String, dynamic> leave,
+    Map<String, dynamic> worker,
+  ) {
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+        .toString()
+        .trim();
+    final leaveWorkerId = (leave['workerId'] ?? '').toString().trim();
+    if (workerId.isNotEmpty && leaveWorkerId.isNotEmpty) {
+      return workerId == leaveWorkerId;
+    }
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final leaveEmail = (leave['email'] ?? '').toString().trim().toLowerCase();
+    if (workerEmail.isNotEmpty && leaveEmail.isNotEmpty) {
+      return workerEmail == leaveEmail;
+    }
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+    final leaveName = (leave['name'] ?? leave['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return workerName.isNotEmpty && workerName == leaveName;
   }
 
   static WorkerAttendanceSnapshot snapshotForWorker({

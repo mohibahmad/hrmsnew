@@ -262,7 +262,8 @@ class LeavePolicyService {
           ..._leaveRows(policy).map((row) => _bullet(row.$1, '')),
           _body(
             'These leave types are used for categorization and reporting. '
-            'They do not have separate balances unless configured by HR.',
+            "All paid leave types are deducted from the worker's total "
+            'annual leave balance.',
           ),
           pw.SizedBox(height: 14),
 
@@ -278,8 +279,8 @@ class LeavePolicyService {
             'defined process.',
           ),
           _body(
-            'HR records the leave request in the system, reviews the '
-            'available balance, and updates the leave status.',
+            "HR records the worker's leave directly in the system after "
+            'checking the available leave balance.',
           ),
           pw.SizedBox(height: 14),
 
@@ -459,7 +460,6 @@ class LeavePolicyService {
     return [
       _bullet('', 'Leave is counted on working days only.'),
       _bullet('', 'Company holidays and weekly off days are excluded.'),
-      _bullet('', 'Half-day leave may be recorded where applicable.'),
       _bullet(
         '',
         'Leave exceeding the available annual balance may be treated as '

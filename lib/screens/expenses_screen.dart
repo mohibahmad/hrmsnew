@@ -206,8 +206,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
     if (isSalary && payrollKey.isNotEmpty) {
-      final payrollAmount = _payrollAmountsByKey[payrollKey];
-      if (payrollAmount != null && payrollAmount > 0) return payrollAmount;
+      // A payroll-linked salary expense must only be counted while the
+      // linked payroll record is active. If the payroll was cancelled (or is
+      // otherwise missing from the active payroll map), the expense amount
+      // must NOT fall back to the raw stored amount — otherwise a cancelled
+      // salary would still appear in the expense ledger.
+      return _payrollAmountsByKey[payrollKey] ?? 0.0;
     }
 
     final rawAmount = expense['amount'];
@@ -313,6 +317,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
+    // Payroll-generated salary expenses must never be deleted directly.
+    // They are managed through the payroll record (cancel/update).
+    if (_isPayrollExpense(doc)) return;
     final docId = (doc['id'] ?? '').toString().trim();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (docId.isEmpty) return;
@@ -347,6 +354,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _editExpense(Map<String, dynamic> doc) async {
+    // Payroll-generated salary expenses must never be edited directly.
+    // They are managed through the payroll record (cancel/update).
+    if (_isPayrollExpense(doc)) return;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final categoryController = TextEditingController(
       text: doc['category']?.toString() ?? '',
@@ -424,7 +434,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   setModalState(() => isSaving = true);
                                   final category = categoryController.text
                                       .trim();
-                                  final amountText = amountController.text.trim();
+                                  final amountText = amountController.text
+                                      .trim();
                                   final description = descriptionController.text
                                       .trim();
 
@@ -485,10 +496,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'name': descriptionController.text.trim(),
                                     'description': descriptionController.text
                                         .trim(),
-                                    
-                                    
-                                    
-                                    
+
                                     if (_isPayrollExpense(doc))
                                       'payrollKey': '',
                                   };
@@ -746,7 +754,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   setModalState(() => isSaving = true);
                                   final category = categoryController.text
                                       .trim();
-                                  final amountText = amountController.text.trim();
+                                  final amountText = amountController.text
+                                      .trim();
                                   final description = descriptionController.text
                                       .trim();
 
@@ -1718,6 +1727,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           showGuestRestrictionDialog(context);
           return;
         }
+        // Payroll-generated salary expenses must not be edited directly.
+        // They are managed through the payroll record (cancel/update).
+        if (_isPayrollExpense(doc)) return;
         _editExpense(doc);
       },
       child: Container(
@@ -1801,6 +1813,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
+    // Payroll-generated salary expenses are managed through the payroll
+    // record. Direct edit/delete would desync the expense ledger from the
+    // payroll Paid status, so no action menu is shown for them.
+    if (_isPayrollExpense(doc)) {
+      return const SizedBox(width: 48);
+    }
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(

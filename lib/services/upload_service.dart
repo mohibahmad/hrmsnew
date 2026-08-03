@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import 'error_reporter.dart';
+
 class CancellationToken {
   bool _cancelled = false;
   final Completer<void> _cancelCompleter = Completer<void>();
@@ -543,6 +545,31 @@ class UploadService {
     }
 
     return false;
+  }
+
+  /// Best-effort deletion of a file previously uploaded to Firebase
+  /// Storage. URLs that do not point at Firebase Storage (e.g. external
+  /// links pasted by the user) are ignored.
+  static Future<void> deleteByUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        !uri.host.contains('firebasestorage.googleapis.com')) {
+      return;
+    }
+    final segments = uri.pathSegments;
+    final oIndex = segments.indexOf('o');
+    if (oIndex == -1 || oIndex + 1 >= segments.length) return;
+    final path = Uri.decodeComponent(segments[oIndex + 1]);
+    if (path.trim().isEmpty) return;
+    try {
+      await FirebaseStorage.instance.ref(path).delete();
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'UploadService.deleteByUrl',
+      );
+    }
   }
 
   static String base64EncodeFallback(Uint8List bytes, String mime) {

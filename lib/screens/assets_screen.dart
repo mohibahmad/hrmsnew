@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter/cupertino.dart'
-    show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/snackbar_utils.dart';
@@ -82,11 +80,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
   String _searchQuery = '';
   List<AssetData> _assets = [];
   bool _isLoading = false;
-  StreamSubscription? _assetsSub;
-  StreamSubscription? _workersSub;
   List<String> _workerNames = [];
   Map<String, Map<String, dynamic>> _workersMap = {};
   bool _initialized = false;
+  Timer? _debounce;
 
   String _workerOption(Map<String, dynamic> worker) {
     final name = (worker['name'] ?? '').toString().trim();
@@ -96,9 +93,33 @@ class _AssetsScreenState extends State<AssetsScreen> {
     return qualifier.isEmpty ? name : '$name — $qualifier';
   }
 
+  bool _isAssetEligibleWorker(Map<String, dynamic> worker) {
+    final status =
+        (worker['employmentStatus'] ??
+                worker['workerStatus'] ??
+                worker['status'] ??
+                'Active')
+            .toString()
+            .trim()
+            .toLowerCase();
+    return !const {
+      'inactive',
+      'terminated',
+      'deleted',
+      'archived',
+    }.contains(status);
+  }
+
   void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
+    // Only eligible (active) workers may be assigned new assets. Historical
+    // asset records for former workers remain visible, but new assignments
+    // must be blocked.
     final validWorkers = workers
-        .where((worker) => (worker['name'] ?? '').toString().trim().isNotEmpty)
+        .where(
+          (worker) =>
+              (worker['name'] ?? '').toString().trim().isNotEmpty &&
+              _isAssetEligibleWorker(worker),
+        )
         .toList();
     _workerNames = validWorkers.map(_workerOption).toList();
     _workersMap = {
@@ -133,7 +154,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   void dispose() {
     _assetsSub?.cancel();
-    _workersSub?.cancel();
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -170,89 +191,71 @@ class _AssetsScreenState extends State<AssetsScreen> {
       }).toList();
       _setWorkerOptions(DummyData.workers.map(Map<String, dynamic>.from));
     } else {
-      _isLoading = true;
-      _assetsSub = _firestore.assetsStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              final sortedDocs = snapshot.docs.toList();
-              sortedDocs.sort((a, b) {
-                final aData = a.data() as Map<String, dynamic>;
-                final bData = b.data() as Map<String, dynamic>;
-                final aTime = aData['createdAt'];
-                final bTime = bData['createdAt'];
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
-              });
-              _assets = sortedDocs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return AssetData(
-                  (data['name'] ?? '').toString(),
-                  (data['position'] ?? '').toString(),
-                  (data['type'] ?? '').toString(),
-                  _adts(data['dateLoaned']),
-                  _adts(data['dateReturned']),
-                  _assetReturned(data),
-                  id: doc.id,
-                  profileImage: data['profileImage']?.toString(),
-                  workerId: data['workerId']?.toString(),
-                  email: data['email']?.toString(),
-                  phone: data['phone']?.toString(),
-                  cnic: data['cnic']?.toString(),
-                  dateOfJoining: _adts(
-                    data['joiningDate'] ?? data['dateOfJoining'],
-                  ),
-                );
-              }).toList();
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (_) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-          }
-        },
-      );
-      _workersSub = _firestore.workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _setWorkerOptions(
-              snapshot.docs.map(
-                (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-              ),
-            );
-          });
-        }
-      });
+      _loadAssets();
+      _loadWorkers();
     }
   }
 
-  Stream<List<String>> get _workerNamesStream {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      final names = DummyData.workers
-          .map((worker) => _workerOption(worker))
-          .toList();
-      return Stream.value(names);
-    } else {
-      return _firestore.workersStream.map((snapshot) {
-        final list = snapshot.docs
-            .map((doc) {
-              final data = doc.data() as Map<String, dynamic>?;
-              if (data == null) return '';
-              return _workerOption({...data, 'id': doc.id});
-            })
-            .where((n) => n.isNotEmpty)
-            .toList();
-        return list;
-      });
-    }
+  StreamSubscription? _assetsSub;
+
+  Future<void> _loadAssets() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    // Use the complete assets stream so search/edit/return/delete work on the
+    // full company asset list, not just the first 50 records.
+    _assetsSub?.cancel();
+    _assetsSub = _firestore.assetsStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        final sortedDocs = snapshot.docs.toList();
+        sortedDocs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = aData['createdAt'];
+          final bTime = bData['createdAt'];
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return -1;
+          if (bTime == null) return 1;
+          if (aTime is Timestamp && bTime is Timestamp) {
+            return bTime.compareTo(aTime);
+          }
+          return 0;
+        });
+        setState(() {
+          _assets = sortedDocs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return AssetData(
+              (data['name'] ?? '').toString(),
+              (data['position'] ?? '').toString(),
+              (data['type'] ?? '').toString(),
+              _adts(data['dateLoaned']),
+              _adts(data['dateReturned']),
+              _assetReturned(data),
+              id: doc.id,
+              workerId: data['workerId']?.toString(),
+            );
+          }).toList();
+          _isLoading = false;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
+  }
+
+  Future<void> _loadWorkers() async {
+    try {
+      final snapshot = await _firestore.getWorkersOnce();
+      if (!mounted) return;
+      _setWorkerOptions(
+        snapshot.docs.map(
+          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        ),
+      );
+      if (mounted) setState(() {});
+    } catch (_) {}
   }
 
   List<AssetData> get _filteredAssets {
@@ -554,29 +557,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    StreamBuilder<List<String>>(
-                      stream: _workerNamesStream,
-                      initialData: _workerNames,
-                      builder: (context, snapshot) {
-                        final items = snapshot.data ?? [];
-                        return _buildModalDropdown(
-                          'worker_name'.tr(),
-                          selectedWorkerName,
-                          items,
-                          'worker_name_hint'.tr(),
-                          (val) {
-                            setModalState(() {
-                              selectedWorkerName = val;
-                              if (val != null && _workersMap.containsKey(val)) {
-                                final workerData = _workersMap[val]!;
-                                positionController.text =
-                                    (workerData['position'] ?? '').toString();
-                              } else {
-                                positionController.text = '';
-                              }
-                            });
-                          },
-                        );
+                    _buildModalDropdown(
+                      'worker_name'.tr(),
+                      selectedWorkerName,
+                      _workerNames,
+                      'worker_name_hint'.tr(),
+                      (val) {
+                        setModalState(() {
+                          selectedWorkerName = val;
+                          if (val != null && _workersMap.containsKey(val)) {
+                            final workerData = _workersMap[val]!;
+                            positionController.text =
+                                (workerData['position'] ?? '').toString();
+                          } else {
+                            positionController.text = '';
+                          }
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -600,97 +596,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'date_loaned'.tr(),
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
-                      () {
-                        showDialog(
+                      () async {
+                        final picked = await showDatePicker(
                           context: context,
-                          barrierColor: Colors.black.withValues(alpha: 0.3),
-                          builder: (BuildContext context) {
-                            DateTime tempDate = loanedDate;
-                            return Dialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              backgroundColor: Colors.white,
-                              child: Container(
-                                width: 320,
-                                height: 320,
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'select_date'.tr(),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child: CupertinoDatePicker(
-                                        mode: CupertinoDatePickerMode.date,
-                                        initialDateTime: tempDate,
-                                        minimumDate: DateTime(1900, 1, 1),
-                                        maximumDate: DateTime.now(),
-                                        onDateTimeChanged: (DateTime picked) {
-                                          tempDate = picked;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        TextButton(
-                                          child: Text(
-                                            'cancel'.tr(),
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFF0247C4,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'ok'.tr(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          onPressed: () {
-                                            setModalState(() {
-                                              loanedDate = tempDate;
-                                              if (returnedDate.isBefore(
-                                                loanedDate,
-                                              )) {
-                                                returnedDate = loanedDate;
-                                              }
-                                            });
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                          initialDate: loanedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
+                        if (picked != null) {
+                          setModalState(() {
+                            loanedDate = picked;
+                            if (returnedDate.isBefore(loanedDate)) {
+                              returnedDate = loanedDate;
+                            }
+                          });
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -732,93 +654,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         'returned_date'.tr(),
                         formatDate(returnedDate),
                         Colors.red,
-                        () {
-                          showDialog(
+                        () async {
+                          final picked = await showDatePicker(
                             context: context,
-                            barrierColor: Colors.black.withValues(alpha: 0.3),
-                            builder: (BuildContext context) {
-                              DateTime tempDate = returnedDate;
-                              return Dialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                backgroundColor: Colors.white,
-                                child: Container(
-                                  width: 320,
-                                  height: 320,
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        'select_date'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Expanded(
-                                        child: CupertinoDatePicker(
-                                          mode: CupertinoDatePickerMode.date,
-                                          initialDateTime: tempDate,
-                                          minimumDate: loanedDate,
-                                          maximumDate: DateTime.now(),
-                                          onDateTimeChanged: (DateTime picked) {
-                                            tempDate = picked;
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          TextButton(
-                                            child: Text(
-                                              'cancel'.tr(),
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                            onPressed: () =>
-                                                Navigator.of(context).pop(),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF0247C4,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'ok'.tr(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              setModalState(() {
-                                                returnedDate = tempDate;
-                                              });
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                            initialDate: returnedDate,
+                            firstDate: loanedDate,
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
+                          if (picked != null) {
+                            setModalState(() {
+                              returnedDate = picked;
+                            });
+                          }
                         },
                       ),
                     ],
@@ -1135,8 +984,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
+                      _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        }
                       });
                     },
                     decoration: InputDecoration(
@@ -1181,16 +1035,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
               showGuestRestrictionDialog(context);
               return;
             }
+            if (!mounted) return;
             final isPremium = await PreferencesService.isPremium();
             if (!PremiumGate.canAddEntry(
               currentEntryCount: _assets.length,
               isPremium: isPremium,
               isGuest: isGuest,
             )) {
+              if (!mounted) return;
               final upgraded = await PremiumGate.shouldShowUpgradeDialog(
                 context,
               );
-              if (upgraded == true && mounted) {
+              if (!mounted) return;
+              if (upgraded == true) {
                 _showAddAssetModal(context);
               }
               return;
@@ -1558,8 +1415,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
     if (dateStr == null ||
         dateStr.isEmpty ||
         dateStr == _inUseKey ||
-        dateStr == '__IN_USE__')
+        dateStr == '__IN_USE__') {
       return null;
+    }
     try {
       final parts = dateStr.split('/');
       if (parts.length == 3) {
@@ -1807,8 +1665,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                         asset['type'] ==
                                                             data.type,
                                             );
-                                        if (dummyIdx != -1)
+                                        if (dummyIdx != -1) {
                                           DummyData.assets[dummyIdx] = assetMap;
+                                        }
                                       });
                                       await DummyData.saveToPrefs();
                                     } else {
@@ -1891,29 +1750,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    StreamBuilder<List<String>>(
-                      stream: _workerNamesStream,
-                      initialData: _workerNames,
-                      builder: (context, snapshot) {
-                        final items = snapshot.data ?? [];
-                        return _buildModalDropdown(
-                          'worker_name'.tr(),
-                          selectedWorkerName,
-                          items,
-                          'worker_name_hint'.tr(),
-                          (val) {
-                            setModalState(() {
-                              selectedWorkerName = val;
-                              if (val != null && _workersMap.containsKey(val)) {
-                                final workerData = _workersMap[val]!;
-                                positionController.text =
-                                    (workerData['position'] ?? '').toString();
-                              } else {
-                                positionController.text = '';
-                              }
-                            });
-                          },
-                        );
+                    _buildModalDropdown(
+                      'worker_name'.tr(),
+                      selectedWorkerName,
+                      _workerNames,
+                      'worker_name_hint'.tr(),
+                      (val) {
+                        setModalState(() {
+                          selectedWorkerName = val;
+                          if (val != null && _workersMap.containsKey(val)) {
+                            final workerData = _workersMap[val]!;
+                            positionController.text =
+                                (workerData['position'] ?? '').toString();
+                          } else {
+                            positionController.text = '';
+                          }
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -1936,97 +1788,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'date_loaned'.tr(),
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
-                      () {
-                        showDialog(
+                      () async {
+                        final picked = await showDatePicker(
                           context: context,
-                          barrierColor: Colors.black.withValues(alpha: 0.3),
-                          builder: (BuildContext context) {
-                            DateTime tempDate = loanedDate;
-                            return Dialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              backgroundColor: Colors.white,
-                              child: Container(
-                                width: 320,
-                                height: 320,
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'select_date'.tr(),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child: CupertinoDatePicker(
-                                        mode: CupertinoDatePickerMode.date,
-                                        initialDateTime: tempDate,
-                                        minimumDate: DateTime(1900, 1, 1),
-                                        maximumDate: DateTime.now(),
-                                        onDateTimeChanged: (DateTime picked) {
-                                          tempDate = picked;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        TextButton(
-                                          child: Text(
-                                            'cancel'.tr(),
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFF0247C4,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'ok'.tr(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          onPressed: () {
-                                            setModalState(() {
-                                              loanedDate = tempDate;
-                                              if (returnedDate.isBefore(
-                                                loanedDate,
-                                              )) {
-                                                returnedDate = loanedDate;
-                                              }
-                                            });
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                          initialDate: loanedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
+                        if (picked != null) {
+                          setModalState(() {
+                            loanedDate = picked;
+                            if (returnedDate.isBefore(loanedDate)) {
+                              returnedDate = loanedDate;
+                            }
+                          });
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -2066,93 +1844,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         'returned_date'.tr(),
                         formatDate(returnedDate),
                         Colors.red,
-                        () {
-                          showDialog(
+                        () async {
+                          final picked = await showDatePicker(
                             context: context,
-                            barrierColor: Colors.black.withValues(alpha: 0.3),
-                            builder: (BuildContext context) {
-                              DateTime tempDate = returnedDate;
-                              return Dialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                backgroundColor: Colors.white,
-                                child: Container(
-                                  width: 320,
-                                  height: 320,
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        'select_date'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Expanded(
-                                        child: CupertinoDatePicker(
-                                          mode: CupertinoDatePickerMode.date,
-                                          initialDateTime: tempDate,
-                                          minimumDate: loanedDate,
-                                          maximumDate: DateTime.now(),
-                                          onDateTimeChanged: (DateTime picked) {
-                                            tempDate = picked;
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          TextButton(
-                                            child: Text(
-                                              'cancel'.tr(),
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                            onPressed: () =>
-                                                Navigator.of(context).pop(),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF0247C4,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'ok'.tr(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              setModalState(() {
-                                                returnedDate = tempDate;
-                                              });
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                            initialDate: returnedDate,
+                            firstDate: loanedDate,
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
+                          if (picked != null) {
+                            setModalState(() {
+                              returnedDate = picked;
+                            });
+                          }
                         },
                       ),
                     ],

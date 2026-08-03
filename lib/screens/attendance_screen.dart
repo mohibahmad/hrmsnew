@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:csv/csv.dart';
@@ -30,6 +31,10 @@ const Color lightBlueBg = Color(0xFFE8F0FE);
 const Color bgGray = Color(0xFFF8FAFC);
 const Color textDark = Color(0xFF000000);
 const Color textMuted = Color(0xFF64748B);
+
+String _generateCsvString(List<List<dynamic>> rows) {
+  return '\ufeff${const CsvEncoder().convert(rows)}';
+}
 
 const Color greenPresent = Color(0xFF00FF2A);
 const Color greenPresentBg = Color(0x3300FF2A);
@@ -123,7 +128,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _absentCount = 0;
   int _leaveCount = 0;
   bool _initialized = false;
-  StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
   StreamSubscription? _timeOffSub;
   Timer? _searchDebounce;
@@ -168,53 +172,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate = DateTime.now();
     final selectedDates = <DateTime>{};
     DateTime? rangeStart;
-    DateTime? dragStartDate;
-    final dragPreviewDates = <DateTime>{};
-    final gridKey = GlobalKey();
-
-    DateTime? _getDateFromPosition(Offset globalPosition) {
-      final RenderBox? gridBox =
-          gridKey.currentContext?.findRenderObject() as RenderBox?;
-      if (gridBox == null) return null;
-
-      final localPosition = gridBox.globalToLocal(globalPosition);
-
-      final gridWidth = gridBox.size.width;
-      final cellWidth = (gridWidth - 6 * 8) / 7;
-      final cellHeight = cellWidth;
-
-      final col = (localPosition.dx / (cellWidth + 8)).floor();
-      final row = (localPosition.dy / (cellHeight + 8)).floor();
-
-      if (col < 0 || col > 6 || row < 0 || row > 5) return null;
-
-      final cellIndex = row * 7 + col;
-      int firstWeekday = DateTime(
-        calendarDate.year,
-        calendarDate.month,
-        1,
-      ).weekday;
-      int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
-      int day = cellIndex - startOffset + 1;
-      int daysInMonth = DateTime(
-        calendarDate.year,
-        calendarDate.month + 1,
-        0,
-      ).day;
-
-      if (day < 1 || day > daysInMonth) return null;
-      return DateTime(calendarDate.year, calendarDate.month, day);
-    }
-
-    void updateDragPreview(DateTime endDate) {
-      if (dragStartDate == null) return;
-      dragPreviewDates.clear();
-      final start = dragStartDate!.isBefore(endDate) ? dragStartDate! : endDate;
-      final end = dragStartDate!.isAfter(endDate) ? dragStartDate! : endDate;
-      for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
-        dragPreviewDates.add(d);
-      }
-    }
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
@@ -255,7 +212,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                           Center(
                             child: Text(
-                              'Select Dates',
+                              'select_dates'.tr(),
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -287,7 +244,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       Navigator.of(context).pop(sortedDates);
                                     },
                               child: Text(
-                                'Generate (${selectedDates.length})',
+                                'generate'.tr(
+                                  namedArgs: {
+                                    'count': selectedDates.length.toString(),
+                                  },
+                                ),
                                 style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
@@ -301,91 +262,53 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    GestureDetector(
-                      onPanStart: (details) {
-                        final date = _getDateFromPosition(
-                          details.globalPosition,
-                        );
-                        if (date != null) {
-                          setModalState(() {
-                            dragStartDate = date;
-                            dragPreviewDates.clear();
-                            dragPreviewDates.add(date);
-                          });
-                        }
-                      },
-                      onPanUpdate: (details) {
-                        if (dragStartDate != null) {
-                          final date = _getDateFromPosition(
-                            details.globalPosition,
+                    _buildCalendarWithWeekdays(
+                      calendarDate,
+                      selectedDates,
+                      (DateTime date) {
+                        setModalState(() {
+                          final isAlreadySelected = selectedDates.any(
+                            (d) =>
+                                d.year == date.year &&
+                                d.month == date.month &&
+                                d.day == date.day,
                           );
-                          if (date != null) {
-                            setModalState(() {
-                              updateDragPreview(date);
-                            });
-                          }
-                        }
-                      },
-                      onPanEnd: (details) {
-                        if (dragStartDate != null &&
-                            dragPreviewDates.isNotEmpty) {
-                          setModalState(() {
-                            selectedDates.addAll(dragPreviewDates);
-                            dragStartDate = null;
-                            dragPreviewDates.clear();
-                          });
-                        }
-                      },
-                      child: _buildCalendarWithWeekdays(
-                        calendarDate,
-                        selectedDates,
-                        (DateTime date) {
-                          setModalState(() {
-                            final isAlreadySelected = selectedDates.any(
+                          if (isAlreadySelected) {
+                            selectedDates.removeWhere(
                               (d) =>
                                   d.year == date.year &&
                                   d.month == date.month &&
                                   d.day == date.day,
                             );
-                            if (isAlreadySelected) {
-                              selectedDates.removeWhere(
-                                (d) =>
-                                    d.year == date.year &&
-                                    d.month == date.month &&
-                                    d.day == date.day,
-                              );
-                              rangeStart = null;
+                            rangeStart = null;
+                          } else {
+                            if (rangeStart == null) {
+                              rangeStart = date;
+                              selectedDates.add(date);
                             } else {
-                              if (rangeStart == null) {
-                                rangeStart = date;
-                                selectedDates.add(date);
-                              } else {
-                                final start = rangeStart!.isBefore(date)
-                                    ? rangeStart!
-                                    : date;
-                                final end = rangeStart!.isAfter(date)
-                                    ? rangeStart!
-                                    : date;
-                                for (
-                                  var d = start;
-                                  !d.isAfter(end);
-                                  d = d.add(const Duration(days: 1))
-                                ) {
-                                  selectedDates.add(d);
-                                }
-                                rangeStart = null;
+                              final start = rangeStart!.isBefore(date)
+                                  ? rangeStart!
+                                  : date;
+                              final end = rangeStart!.isAfter(date)
+                                  ? rangeStart!
+                                  : date;
+                              for (
+                                var d = start;
+                                !d.isAfter(end);
+                                d = d.add(const Duration(days: 1))
+                              ) {
+                                selectedDates.add(d);
                               }
+                              rangeStart = null;
                             }
-                          });
-                        },
-                        (DateTime newDate) {
-                          setModalState(() {
-                            calendarDate = newDate;
-                          });
-                        },
-                        gridKey: gridKey,
-                        dragPreviewDates: dragPreviewDates,
-                      ),
+                          }
+                        });
+                      },
+                      (DateTime newDate) {
+                        setModalState(() {
+                          calendarDate = newDate;
+                        });
+                      },
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -540,10 +463,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate,
     Set<DateTime> selectedDates,
     ValueChanged<DateTime> onDaySelected,
-    ValueChanged<DateTime> onMonthChanged, {
-    GlobalKey? gridKey,
-    Set<DateTime>? dragPreviewDates,
-  }) {
+    ValueChanged<DateTime> onMonthChanged,
+  ) {
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
@@ -603,13 +524,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildDaysGridForRange(
-          calendarDate,
-          selectedDates,
-          onDaySelected,
-          gridKey: gridKey,
-          dragPreviewDates: dragPreviewDates,
-        ),
+        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected),
       ],
     );
   }
@@ -640,10 +555,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildDaysGridForRange(
     DateTime calendarDate,
     Set<DateTime> selectedDates,
-    ValueChanged<DateTime> onDaySelected, {
-    GlobalKey? gridKey,
-    Set<DateTime>? dragPreviewDates,
-  }) {
+    ValueChanged<DateTime> onDaySelected,
+  ) {
     int daysInMonth = DateTime(
       calendarDate.year,
       calendarDate.month + 1,
@@ -668,24 +581,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
           final date = DateTime(calendarDate.year, calendarDate.month, tapDay);
-          final isDragPreview =
-              dragPreviewDates != null &&
-              dragPreviewDates.any(
-                (d) =>
-                    d.year == date.year &&
-                    d.month == date.month &&
-                    d.day == date.day,
-              );
-          final isSelected =
-              !isDragPreview &&
-              selectedDates.any(
-                (d) =>
-                    d.year == date.year &&
-                    d.month == date.month &&
-                    d.day == date.day,
-              );
+          final isSelected = selectedDates.any(
+            (d) =>
+                d.year == date.year &&
+                d.month == date.month &&
+                d.day == date.day,
+          );
           rowChildren.add(
-            _buildDayCell('$currentDay', isSelected, isDragPreview, () {
+            _buildDayCell('$currentDay', isSelected, false, () {
               onDaySelected(date);
             }, date),
           );
@@ -699,7 +602,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (currentDay > daysInMonth && i >= 4) break;
       if (i < 5) rows.add(const SizedBox(height: 8));
     }
-    return Column(key: gridKey, children: rows);
+    return Column(children: rows);
   }
 
   Widget _buildDayCell(
@@ -812,9 +715,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
-      
-      
-      
       final rows = <List<dynamic>>[];
 
       final periodLabel = _localizeSharePeriod(period);
@@ -885,14 +785,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         rows.add(['Total Present', snapshot.presents]);
         rows.add(['Total Absent', snapshot.absents]);
         rows.add(['Total Leave', snapshot.leaves]);
-        rows.add([
-          'Attendance %',
-          snapshot.percentage.toStringAsFixed(1),
-        ]);
+        rows.add(['Attendance %', snapshot.percentage.toStringAsFixed(1)]);
         rows.add([]);
       }
 
-      final csvString = '\ufeff${const CsvEncoder().convert(rows)}';
+      final csvString = await compute(_generateCsvString, rows);
       final csvBytes = Uint8List.fromList(utf8.encode(csvString));
 
       final fileName =
@@ -931,7 +828,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   void deactivate() {
-    
     _removeShareDropdownOverlay();
     _isShareDropdownOpen = false;
     super.deactivate();
@@ -940,7 +836,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void dispose() {
     _removeShareDropdownOverlay();
-    _attendanceSub?.cancel();
     _workersSub?.cancel();
     _timeOffSub?.cancel();
     _searchDebounce?.cancel();
@@ -976,10 +871,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           workersList: _workersList,
           rawAttendanceDocs: periodAttendance,
         ).map((record) {
-          final isOnLeave = TimeOffService.isWorkerOnLeave(
-            record,
-            _timeOffRecords,
-          );
+          // Pass the record's own date so a historical record is NOT marked
+          // Leave just because the worker is on Time Off today. Only the
+          // record's actual date is checked against the Time Off schedule.
+          final recordDate = AppDateUtils.attendanceRecordDate(record);
+          final isOnLeave =
+              recordDate != null &&
+              TimeOffService.isWorkerOnLeave(
+                record,
+                _timeOffRecords,
+                onDate: recordDate,
+              );
           if (isOnLeave) {
             return {...record, 'status': 'Leave'};
           }
@@ -990,39 +892,103 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     }
 
+    // Summary counters are computed from the canonical merged records
+    // (_attendanceDocs), which already include Time Off leaves. This keeps
+    // the Week/Month/Year cards consistent with the worker rows/preview.
     int present = 0;
     int absent = 0;
     int leave = 0;
 
-    if (_selectedTimeframe == 'Today') {
-      
-      for (final record in _attendanceDocs) {
-        final status = record['status'];
-        if (status == 'Present') {
-          present++;
-        } else if (status == 'Absent') {
-          absent++;
-        } else if (status == 'Leave') {
-          leave++;
-        }
-      }
-    } else {
-      
-      for (final record in periodAttendance) {
-        final status = (record['status'] ?? '').toString();
-        if (status == 'Present') {
-          present++;
-        } else if (status == 'Absent') {
-          absent++;
-        } else if (status == 'Leave') {
-          leave++;
-        }
+    for (final record in _attendanceDocs) {
+      final status = (record['status'] ?? '').toString();
+      if (status == 'Present') {
+        present++;
+      } else if (status == 'Absent') {
+        absent++;
+      } else if (status == 'Leave') {
+        leave++;
       }
     }
 
     _presentCount = present;
     _absentCount = absent;
     _leaveCount = leave;
+  }
+
+  int _attendanceRequestId = 0;
+
+  void _loadAttendanceForTimeframe() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime start;
+    DateTime end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    switch (_selectedTimeframe) {
+      case 'Today':
+        start = today;
+        break;
+      case 'Week':
+        final weekday = today.weekday;
+        start = today.subtract(Duration(days: weekday - 1));
+        break;
+      case 'Month':
+        start = DateTime(now.year, now.month, 1);
+        break;
+      case '6 Month':
+        start = DateTime(now.year, now.month - 5, 1);
+        break;
+      case 'Yearly':
+        start = DateTime(now.year, 1, 1);
+        break;
+      default:
+        start = today;
+    }
+
+    // Request token: a slow earlier request must never overwrite the result
+    // of a newer timeframe selection (e.g. Yearly completing after Today).
+    final requestId = ++_attendanceRequestId;
+    final requestedPeriod = _selectedTimeframe;
+
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      _rawAttendanceDocs = List<Map<String, dynamic>>.from(
+        DummyData.attendance,
+      );
+      _attendanceLoaded = true;
+      _combineAttendance();
+      return;
+    }
+
+    _firestore
+        .getAttendanceForPeriod(start, end)
+        .then((snapshot) {
+          if (!mounted ||
+              requestId != _attendanceRequestId ||
+              requestedPeriod != _selectedTimeframe) {
+            return;
+          }
+          setState(() {
+            _rawAttendanceDocs = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _attendanceLoaded = true;
+            _combineAttendance();
+          });
+          _refreshAttendancePreview();
+        })
+        .catchError((_) {
+          if (!mounted ||
+              requestId != _attendanceRequestId ||
+              requestedPeriod != _selectedTimeframe) {
+            return;
+          }
+          if (mounted) {
+            setState(() {
+              _attendanceLoaded = true;
+              _isLoading = false;
+            });
+          }
+        });
   }
 
   @override
@@ -1055,6 +1021,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _workersLoaded = true;
               _combineAttendance();
             });
+            _loadAttendanceForTimeframe();
           }
         },
         onError: (e) {
@@ -1066,28 +1033,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
       );
-      _attendanceSub = _firestore.attendanceStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              _rawAttendanceDocs = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              _attendanceLoaded = true;
-              _combineAttendance();
-            });
-            _refreshAttendancePreview();
-          }
-        },
-        onError: (e) {
-          if (mounted) {
-            setState(() {
-              _attendanceLoaded = true;
-              _isLoading = false;
-            });
-          }
-        },
-      );
+      _loadAttendanceForTimeframe();
       _timeOffSub = _firestore.timeoffStream.listen((snapshot) {
         if (!mounted) return;
         setState(() {
@@ -1209,8 +1155,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       _selectedTimeframe = value;
                                       _cachedFiltered = null;
                                       _filterCacheKey = '';
-                                      _combineAttendance();
                                     });
+                                    _loadAttendanceForTimeframe();
                                     _refreshAttendancePreview();
                                   },
                                 ),
@@ -1408,56 +1354,59 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
         CompositedTransformTarget(
           link: _shareDropdownLink,
-          child: GestureDetector(
-            key: _shareButtonKey,
-            onTap: () {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                showGuestRestrictionDialog(context);
-                return;
-              }
-              if (_isShareDropdownOpen) {
-                _dismissShareDropdown();
-              } else {
-                _showShareDropdown();
-              }
-            },
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-              decoration: BoxDecoration(
-                color: primaryBlue,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(6),
-                  topRight: const Radius.circular(6),
-                  bottomLeft: Radius.circular(_isShareDropdownOpen ? 0 : 6),
-                  bottomRight: Radius.circular(_isShareDropdownOpen ? 0 : 6),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              key: _shareButtonKey,
+              onTap: () {
+                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  showGuestRestrictionDialog(context);
+                  return;
+                }
+                if (_isShareDropdownOpen) {
+                  _dismissShareDropdown();
+                } else {
+                  _showShareDropdown();
+                }
+              },
+              child: Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                decoration: BoxDecoration(
+                  color: primaryBlue,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(6),
+                    topRight: const Radius.circular(6),
+                    bottomLeft: Radius.circular(_isShareDropdownOpen ? 0 : 6),
+                    bottomRight: Radius.circular(_isShareDropdownOpen ? 0 : 6),
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 2),
-                    child: Text(
-                      'share_attendance'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.0,
-                        fontFamily: 'SF Pro Display',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Text(
+                        'share_attendance'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.0,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.arrow_drop_down,
-                    color: Color(0xFFFFFFFF),
-                    size: 30,
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: Color(0xFFFFFFFF),
+                      size: 30,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1467,7 +1416,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildSummaryCardsRow() {
-    
     final bool isToday = _selectedTimeframe == 'Today';
     return Row(
       children: [
@@ -1686,9 +1634,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
-    
-    
     final previewPeriod = _selectedTimeframe;
+    _attendancePreviewNotifier?.dispose();
     final filteredRecordsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
       _filterWorkerRecords(
         doc,
@@ -1958,7 +1905,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildStatusText(Map<String, dynamic> worker) {
     final status = (worker['status'] ?? '').toString();
 
-    
     if (_selectedTimeframe == 'Today') {
       Color textColor;
       if (status == 'Present') {
@@ -1984,7 +1930,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
-    
     return const Text(
       '*****',
       style: TextStyle(
@@ -2502,7 +2447,6 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-    
     rows.add(['Worker Attendance Preview']);
     rows.add(['Worker: ${widget.record.name}']);
     rows.add(['Email: ${widget.record.email}']);
@@ -2515,7 +2459,6 @@ class _WorkerAttendancePreviewCardState
     rows.add(['Attendance %', _percentage.toStringAsFixed(1)]);
     rows.add([]);
 
-    
     rows.add([
       'Date',
       'Status',
@@ -2542,16 +2485,10 @@ class _WorkerAttendancePreviewCardState
       final model = att['workType'] ?? widget.record.workType;
       final type = att['attendanceType'] ?? widget.record.attendanceType;
       final notes = att['desc'] ?? att['reason'] ?? '';
-      rows.add([
-        dateStr,
-        status,
-        model,
-        type,
-        notes,
-      ]);
+      rows.add([dateStr, status, model, type, notes]);
     }
 
-    final csvString = '\ufeff${const CsvEncoder().convert(rows)}';
+    final csvString = await compute(_generateCsvString, rows);
 
     try {
       final fileName =

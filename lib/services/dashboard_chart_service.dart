@@ -1,6 +1,7 @@
 import 'payroll_service.dart';
 import 'time_off_service.dart';
 import '../utils/worker_identity.dart';
+import '../utils/date_utils.dart';
 
 class DashboardChartPoint {
   final DateTime date;
@@ -57,6 +58,7 @@ class DashboardChartService {
 
       final date = (dateOf ?? salaryRecordDate)(record);
       if (date != null) {
+        if (date.isAfter(current)) continue;
         datedValues.add((date: date, value: value));
       } else if (placeUndatedInCurrentPeriod) {
         datedValues.add((date: current, value: value));
@@ -140,16 +142,8 @@ class DashboardChartService {
     final target = _dateOnly(date);
     if (target.isAfter(current)) return false;
 
-    final normalizedPeriod = _normalizePeriod(period);
-    final start = switch (normalizedPeriod) {
-      'Today' => current,
-      'Week' => current.subtract(const Duration(days: 6)),
-      'Month' => DateTime(current.year, current.month, 1),
-      '6 Month' => DateTime(current.year, current.month - 5, 1),
-      'Yearly' => DateTime(current.year, 1, 1),
-      _ => DateTime(current.year, 1, 1),
-    };
-    return !target.isBefore(start);
+    final start = AppDateUtils.periodStart(period, currentValue);
+    return !target.isBefore(_dateOnly(start));
   }
 
   static List<Map<String, dynamic>> leaveDaysForPeriod({
@@ -403,6 +397,18 @@ class DashboardChartService {
     );
   }
 
+  static double _salaryValue(Map<String, dynamic> record) {
+    final raw =
+        record['netSalaryAmount'] ??
+        record['amount'] ??
+        record['netSalary'] ??
+        record['salary'];
+
+    if (raw is num) return raw.toDouble();
+
+    return PayrollService.extractSalary(raw?.toString() ?? '');
+  }
+
   static DashboardChartSeries buildGuestSalarySeries({
     required List<Map<String, dynamic>> salaryRecords,
     required List<Map<String, dynamic>> expenses,
@@ -410,18 +416,9 @@ class DashboardChartService {
     required String period,
     DateTime? now,
   }) {
-    if (period == 'Yearly') {
-      return buildDummySalarySeries(
-        expenses: expenses,
-        totalSalary: totalSalary,
-        period: period,
-        now: now,
-      );
-    }
-
     return buildSeries(
       records: salaryRecords,
-      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+      valueOf: _salaryValue,
       period: period,
       dateOf: salaryRecordDate,
       now: now,

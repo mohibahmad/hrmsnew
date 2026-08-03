@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+import 'date_utils.dart';
+
 class ChartData {
   final List<String> labels;
   final List<double> values;
@@ -96,21 +98,22 @@ ChartData getChartData(
 ) {
   final now = DateTime.now();
 
-  if (isGuest || docs.isEmpty) {
+  if (isGuest) {
     switch (period) {
-    case 'Today':
-      final labels = <String>[];
-      for (int i = 6; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
-        labels.add(DateFormat('E', locale).format(date).toUpperCase());
-      }
-      return ChartData(labels, [0, 0, 0, 0, 0, 0, 0]);
+      case 'Today':
+        final labels = <String>[];
+        for (int i = 6; i >= 0; i--) {
+          final date = now.subtract(Duration(days: i));
+          labels.add(DateFormat('E', locale).format(date).toUpperCase());
+        }
+        return ChartData(labels, [0, 0, 0, 0, 0, 0, 0]);
 
       case 'Week':
         final labels = <String>[];
         final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
+        final startOfWeek = AppDateUtils.periodStart('Week', now);
         for (int i = 6; i >= 0; i--) {
-          final date = now.subtract(Duration(days: i));
+          final date = startOfWeek.add(Duration(days: i));
           labels.add(DateFormat('E', locale).format(date).toUpperCase());
         }
         return ChartData(labels, values);
@@ -161,6 +164,55 @@ ChartData getChartData(
     }
   }
 
+  if (docs.isEmpty) {
+    switch (period) {
+      case 'Today':
+        final labels = <String>[];
+        for (int i = 6; i >= 0; i--) {
+          final date = now.subtract(Duration(days: i));
+          labels.add(DateFormat('E', locale).format(date).toUpperCase());
+        }
+        return ChartData(labels, List.filled(7, 0.0));
+
+      case 'Week':
+        final labels = <String>[];
+        final startOfWeek = AppDateUtils.periodStart('Week', now);
+        for (int i = 6; i >= 0; i--) {
+          final date = startOfWeek.add(Duration(days: i));
+          labels.add(DateFormat('E', locale).format(date).toUpperCase());
+        }
+        return ChartData(labels, List.filled(7, 0.0));
+
+      case 'Month':
+        return ChartData(
+          [
+            'week_label_1'.tr(),
+            'week_label_2'.tr(),
+            'week_label_3'.tr(),
+            'week_label_4'.tr(),
+          ],
+          List.filled(4, 0.0),
+        );
+
+      case '6 Month':
+        final labels = <String>[];
+        for (int i = 5; i >= 0; i--) {
+          final date = DateTime(now.year, now.month - i, 1);
+          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
+        }
+        return ChartData(labels, List.filled(6, 0.0));
+
+      case 'Yearly':
+      default:
+        final labels = <String>[];
+        for (int i = 0; i < now.month; i++) {
+          final date = DateTime(now.year, i + 1, 1);
+          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
+        }
+        return ChartData(labels, List.filled(now.month, 0.0));
+    }
+  }
+
   final parsedRecords = <DateTime>[];
   for (final doc in docs) {
     final createdAt = doc['createdAt'];
@@ -174,6 +226,9 @@ ChartData getChartData(
       parsedRecords.add(dt);
     }
   }
+
+  final start = AppDateUtils.periodStart(period, now);
+  final end = AppDateUtils.periodEnd(period, now);
 
   switch (period) {
     case 'Today':
@@ -195,19 +250,14 @@ ChartData getChartData(
     case 'Week':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
-      final startOfWeek = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 6));
 
       for (int i = 6; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
+        final date = start.add(Duration(days: i));
         labels.add(DateFormat('E', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
-        final difference = dt.difference(startOfWeek).inDays;
+        final difference = dt.difference(start).inDays;
         if (difference >= 0 && difference < 7) {
           values[difference] += 1.0;
         }
@@ -222,16 +272,12 @@ ChartData getChartData(
         'week_label_4'.tr(),
       ];
       final values = List.filled(4, 0.0);
-      final startOfPeriod = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 27));
+      final totalDays = end.difference(start).inDays + 1;
 
       for (final dt in parsedRecords) {
-        final difference = dt.difference(startOfPeriod).inDays;
-        if (difference >= 0 && difference < 28) {
-          final weekIdx = difference ~/ 7;
+        final difference = dt.difference(start).inDays;
+        if (difference >= 0 && difference < totalDays) {
+          final weekIdx = difference * 4 ~/ totalDays;
           if (weekIdx >= 0 && weekIdx < 4) {
             values[weekIdx] += 1.0;
           }

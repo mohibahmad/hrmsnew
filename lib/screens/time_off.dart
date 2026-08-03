@@ -108,10 +108,30 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return matches == 1;
   }
 
-  int _remainingPaidLeaveForWorker(Map<String, dynamic> worker) {
+  int _remainingPaidLeaveForWorker(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> workerRecords,
+  ) {
     final total = TimeOffService.configuredPaidLeaveAllowance(worker);
-    final used = TimeOffService.paidDaysUsedForWorker(worker, _rawTimeoffDocs);
+    final used = TimeOffService.paidDaysUsedForWorker(worker, workerRecords);
     return (total - used).clamp(0, total).toInt();
+  }
+
+  bool _canAssignTimeOff(Map<String, dynamic> worker) {
+    final status =
+        (worker['employmentStatus'] ??
+                worker['workerStatus'] ??
+                worker['status'] ??
+                'Active')
+            .toString()
+            .trim()
+            .toLowerCase();
+    return !const {
+      'inactive',
+      'terminated',
+      'deleted',
+      'archived',
+    }.contains(status);
   }
 
   int _compareTimeOffRows(
@@ -247,6 +267,25 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return;
     }
 
+    // Index active records once per combine pass. This avoids the O(workers ×
+    // records) nested scan for large companies (e.g. 500 workers × 5,000
+    // historical records = millions of identity comparisons per snapshot).
+    final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
+    final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
+
+    for (final record in _rawTimeoffDocs) {
+      if (!TimeOffService.isActiveRecord(record)) continue;
+
+      final workerId = (record['workerId'] ?? '').toString().trim();
+      final email = _normalizedValue(record['email']);
+
+      if (workerId.isNotEmpty) {
+        recordsByWorkerId.putIfAbsent(workerId, () => []).add(record);
+      } else if (email.isNotEmpty) {
+        legacyRecordsByEmail.putIfAbsent(email, () => []).add(record);
+      }
+    }
+
     final combined = <Map<String, dynamic>>[];
     for (final worker in _workersList) {
       final workerId = (worker['id'] ?? '').toString().trim();
@@ -254,28 +293,26 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       final name = _normalizedValue(worker['name']);
       final canUseNameFallback = email.isEmpty && _hasUniqueWorkerName(name);
 
-      final matchingRecords = _rawTimeoffDocs.where((record) {
-        if (!TimeOffService.isActiveRecord(record)) return false;
+      List<Map<String, dynamic>> matchingRecords;
+      if (workerId.isNotEmpty) {
+        matchingRecords = recordsByWorkerId[workerId] ?? const [];
+      } else if (email.isNotEmpty) {
+        matchingRecords = legacyRecordsByEmail[email] ?? const [];
+      } else {
+        matchingRecords = _rawTimeoffDocs.where((record) {
+          if (!TimeOffService.isActiveRecord(record)) return false;
+          final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+          if (recordWorkerId.isNotEmpty) return false;
+          final recordEmail = _normalizedValue(record['email']);
+          if (recordEmail.isNotEmpty) return false;
+          final recordName = _normalizedValue(
+            record['name'] ?? record['workerName'],
+          );
+          return canUseNameFallback && name.isNotEmpty && recordName == name;
+        }).toList();
+      }
 
-        final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-        if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
-          return workerId == recordWorkerId;
-        }
-        if (recordWorkerId.isNotEmpty) return false;
-
-        final recordEmail = _normalizedValue(record['email']);
-        if (email.isNotEmpty && recordEmail.isNotEmpty) {
-          return email == recordEmail;
-        }
-        if (recordEmail.isNotEmpty) return false;
-
-        final recordName = _normalizedValue(
-          record['name'] ?? record['workerName'],
-        );
-        return canUseNameFallback && name.isNotEmpty && recordName == name;
-      }).toList();
-
-      final remaining = _remainingPaidLeaveForWorker(worker);
+      final remaining = _remainingPaidLeaveForWorker(worker, matchingRecords);
 
       if (matchingRecords.isEmpty) {
         combined.add({
@@ -288,6 +325,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'annualLeaves': worker['annualLeaves'],
           'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
+          // Reserved so the UI can visibly mark ineligible former workers.
+          'canAssignTimeOff': _canAssignTimeOff(worker),
         });
         continue;
       }
@@ -326,6 +365,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'annualLeaves': worker['annualLeaves'],
           'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
+          'canAssignTimeOff': _canAssignTimeOff(worker),
         });
       }
     }
@@ -835,6 +875,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     }
                     if (hasTimeOff) {
                       _showTimeOffDataDialog(context, doc, index);
+                    } else if (doc['canAssignTimeOff'] == false) {
+                      // Former worker (terminated/inactive/deleted/archived):
+                      // historical records may still be viewed, but no new
+                      // Time Off may be assigned.
+                      _showTimeOffDataDialog(context, doc, index);
                     } else {
                       if (widget.onAssignTimeOff != null) {
                         widget.onAssignTimeOff!(doc);
@@ -965,6 +1010,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   return;
                                 }
                                 if (hasTimeOff) {
+                                  _showTimeOffDataDialog(context, doc, index);
+                                  return;
+                                }
+                                if (doc['canAssignTimeOff'] == false) {
+                                  // Former worker (terminated/inactive/deleted/
+                                  // archived): no new Time Off may be assigned.
                                   _showTimeOffDataDialog(context, doc, index);
                                   return;
                                 }
@@ -1439,14 +1490,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               'no_time_off_records'.tr(),

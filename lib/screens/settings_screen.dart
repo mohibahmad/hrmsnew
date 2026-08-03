@@ -13,6 +13,7 @@ import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/leave_policy_service.dart';
+import '../services/upload_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
@@ -70,8 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final policies = await _firestore.getLeavePolicies();
       if (mounted) {
         setState(() {
-          _currentLeavePolicy =
-              policies.isNotEmpty ? policies.first : null;
+          _currentLeavePolicy = policies.isNotEmpty ? policies.first : null;
           _isLoadingPolicy = false;
         });
       }
@@ -443,8 +443,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierLabel: 'AddLeavePolicyDialog',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          const SizedBox(),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return Stack(
           children: [
@@ -801,8 +800,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: disabled
                             ? const Color(0xFFAAAAAA)
                             : buttonColor != null
-                                ? Colors.white
-                                : const Color(0xFF000000),
+                            ? Colors.white
+                            : const Color(0xFF000000),
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -813,8 +812,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: disabled
                             ? const Color(0xFFAAAAAA)
                             : buttonColor != null
-                                ? Colors.white
-                                : const Color(0xFF000000),
+                            ? Colors.white
+                            : const Color(0xFF000000),
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                         height: 1.0,
@@ -930,8 +929,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierLabel: 'SharePolicyDialog',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          const SizedBox(),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return Stack(
           children: [
@@ -966,7 +964,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF000000).withValues(alpha: 0.05),
+                          color: const Color(
+                            0xFF000000,
+                          ).withValues(alpha: 0.05),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -1019,22 +1019,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Expanded(
                               child: _buildShareOptionCard(
                                 iconAsset: 'assets/whatsapp.png',
-                                 label: 'share_whatsapp'.tr(),
-                                 onTap: () async {
-                                   Navigator.pop(context);
-                                   await _sharePolicyToWhatsApp(text);
-                                 },
+                                label: 'share_whatsapp'.tr(),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _sharePolicyToWhatsApp(policy, text);
+                                },
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildShareOptionCard(
                                 iconAsset: 'assets/email_icon.png',
-                                 label: 'share_email'.tr(),
-                                 onTap: () async {
-                                   Navigator.pop(context);
-                                   await _sharePolicyToEmail(text);
-                                 },
+                                label: 'share_email'.tr(),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _sharePolicyToEmail(policy, text);
+                                },
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -1055,7 +1055,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 label: 'copy_link'.tr(),
                                 onTap: () {
                                   Navigator.pop(context);
-                                  _copyPolicyText(text);
+                                  _copyPolicyLink(policy);
                                 },
                               ),
                             ),
@@ -1064,7 +1064,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 24),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: bgLight,
                             borderRadius: BorderRadius.circular(8),
@@ -1099,9 +1101,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onPressed: () => Navigator.pop(context),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 20),
+                                    horizontal: 20,
+                                  ),
                                   side: BorderSide(
-                                      color: borderLight, width: 1),
+                                    color: borderLight,
+                                    width: 1,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -1128,7 +1133,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   backgroundColor: primaryBlue,
                                   elevation: 0,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 24),
+                                    horizontal: 24,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -1209,13 +1215,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<Uint8List> _generatePolicyPdf(Map<String, dynamic> policy) async {
-    String? companyName;
-    String? companyId;
-    try {
-      final profile = await _firestore.getUserProfile();
-      companyName = profile?['businessName']?.toString();
-      companyId = profile?['companyId']?.toString();
-    } catch (_) {}
+    // Official PDFs must never be generated with a fake/generic company name.
+    // If the company profile cannot be loaded (network/permission) or the
+    // business name is missing, abort PDF generation and surface the error.
+    final profile = await _firestore.getUserProfileOrThrow();
+    final companyName = (profile?['businessName'] ?? '').toString().trim();
+    final companyId = (profile?['companyId'] ?? '').toString().trim();
+
+    if (companyName.isEmpty) {
+      throw StateError('Company profile is required');
+    }
+
     return LeavePolicyService.generatePdf(
       policy,
       companyName: companyName,
@@ -1227,7 +1237,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final bytes = await _generatePolicyPdf(policy);
       final name = LeavePolicyService.safeFileName(
-          (policy['policyName'] ?? 'leave_policy').toString());
+        (policy['policyName'] ?? 'leave_policy').toString(),
+      );
       final saved = await LeavePolicyService.downloadPdf(bytes, name);
       if (saved && mounted) {
         FlashySnackBar.show(context, message: 'policy_pdf_saved'.tr());
@@ -1244,13 +1255,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final bytes = await _generatePolicyPdf(policy);
       final dir = await getTemporaryDirectory();
       final name = LeavePolicyService.safeFileName(
-          (policy['policyName'] ?? 'leave_policy').toString());
+        (policy['policyName'] ?? 'leave_policy').toString(),
+      );
       final file = File('${dir.path}/$name');
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'application/pdf')],
-        ),
+        ShareParams(files: [XFile(file.path, mimeType: 'application/pdf')]),
       );
     } catch (e) {
       if (mounted) {
@@ -1259,15 +1269,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _sharePolicyToWhatsApp(String text) async {
+  /// Generates the policy PDF and uploads it to Firebase Storage, returning
+  /// the public HTTPS download URL. Only this URL is shared (WhatsApp, email,
+  /// copy link) so recipients open the real PDF in their browser — never a
+  /// local device path.
+  Future<String> _uploadPolicyPdfToStorage(Map<String, dynamic> policy) async {
+    final bytes = await _generatePolicyPdf(policy);
+    final name = LeavePolicyService.safeFileName(
+      (policy['policyName'] ?? 'leave_policy').toString(),
+    );
+    final results = await UploadService.uploadFiles(
+      files: [
+        UploadFile(
+          folder: 'leave_policy',
+          fileName: name,
+          bytes: bytes,
+          mimeType: 'application/pdf',
+        ),
+      ],
+    );
+    final result = results.isNotEmpty ? results.first : null;
+    if (result == null || !result.isSuccess || result.url == null) {
+      throw StateError(result?.error ?? 'Failed to upload leave policy PDF');
+    }
+    return result.url!;
+  }
+
+  /// Uploads the policy PDF while showing a brief progress dialog and returns
+  /// its public HTTPS link.
+  Future<String> _preparePolicyPdfLink(Map<String, dynamic> policy) async {
+    if (!mounted) throw StateError('Screen is no longer mounted');
+    final navigator = Navigator.of(context);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'PreparingPolicyPdf',
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Card(
+            elevation: 8,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'preparing_policy_pdf'.tr(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
     try {
+      final url = await _uploadPolicyPdfToStorage(policy);
+      if (mounted) navigator.pop();
+      return url;
+    } catch (_) {
+      if (mounted) navigator.pop();
+      rethrow;
+    }
+  }
+
+  Future<void> _sharePolicyToWhatsApp(
+    Map<String, dynamic> policy,
+    String text,
+  ) async {
+    try {
+      final url = await _preparePolicyPdfLink(policy);
+      final message = '$text\n\n$url';
       final uri = Uri.parse(
-          'whatsapp://send?text=${Uri.encodeComponent(text)}');
+        'whatsapp://send?text=${Uri.encodeComponent(message)}',
+      );
       final launched = await canLaunchUrl(uri);
       if (launched) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        await SharePlus.instance.share(ShareParams(text: text));
+        await SharePlus.instance.share(ShareParams(text: message));
       }
     } catch (e) {
       if (mounted) {
@@ -1276,17 +1373,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _sharePolicyToEmail(String text) async {
+  Future<void> _sharePolicyToEmail(
+    Map<String, dynamic> policy,
+    String text,
+  ) async {
     try {
+      final url = await _preparePolicyPdfLink(policy);
+      final body = '$text\n\n$url';
       final subject = Uri.encodeComponent('Leave Policy');
       final uri = Uri.parse(
-          'mailto:?subject=$subject&body=${Uri.encodeComponent(text)}');
+        'mailto:?subject=$subject&body=${Uri.encodeComponent(body)}',
+      );
       final launched = await canLaunchUrl(uri);
       if (launched) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         await SharePlus.instance.share(
-          ShareParams(text: text, subject: 'Leave Policy'),
+          ShareParams(text: body, subject: 'Leave Policy'),
         );
       }
     } catch (e) {
@@ -1296,9 +1399,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _copyPolicyText(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    FlashySnackBar.show(context, message: 'policy_copied'.tr());
+  /// Uploads the policy PDF to Firebase Storage and copies the public HTTPS
+  /// download link (never a local file path) to the clipboard.
+  Future<void> _copyPolicyLink(Map<String, dynamic> policy) async {
+    try {
+      final url = await _preparePolicyPdfLink(policy);
+      if (!mounted) return;
+      await Clipboard.setData(ClipboardData(text: url));
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'policy_link_copied'.tr());
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.toString(), isError: true);
+      }
+    }
   }
 
   Widget _buildLeavePolicySettingItem() {
@@ -1347,11 +1462,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: widget.isGuest
                     ? null
                     : () => _showLeavePolicyListDialog(
-                        editPolicy: _currentLeavePolicy),
+                        editPolicy: _currentLeavePolicy,
+                      ),
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
@@ -1361,8 +1479,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.visibility,
-                          size: 18, color: Colors.white),
+                      const Icon(
+                        Icons.visibility,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'view_policy'.tr(),
@@ -1389,8 +1510,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : () => _sharePolicy(_currentLeavePolicy!),
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
@@ -1406,11 +1529,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.share_outlined,
-                          size: 18,
-                          color: widget.isGuest
-                              ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF3B82F6)),
+                      Icon(
+                        Icons.share_outlined,
+                        size: 18,
+                        color: widget.isGuest
+                            ? const Color(0xFFAAAAAA)
+                            : const Color(0xFF3B82F6),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'share_policy'.tr(),
@@ -1437,8 +1562,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: widget.isGuest ? null : _showDeletePolicyDialog,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
@@ -1493,9 +1620,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? null
                     : () => _showLeavePolicyListDialog(),
                 behavior: HitTestBehavior.opaque,
-                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
@@ -1505,11 +1634,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add,
-                          size: 18,
-                          color: widget.isGuest
-                              ? const Color(0xFFAAAAAA)
-                              : Colors.white),
+                      Icon(
+                        Icons.add,
+                        size: 18,
+                        color: widget.isGuest
+                            ? const Color(0xFFAAAAAA)
+                            : Colors.white,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'add_policy'.tr(),
@@ -1541,8 +1672,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierLabel: 'DeletePolicyDialog',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          const SizedBox(),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         final curve = CurvedAnimation(
           parent: animation,
@@ -1578,8 +1708,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF000000)
-                              .withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF000000,
+                          ).withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -1671,8 +1802,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       borderRadius: BorderRadius.circular(6),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFFEF4444)
-                                              .withValues(alpha: 0.2),
+                                          color: const Color(
+                                            0xFFEF4444,
+                                          ).withValues(alpha: 0.2),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -1710,10 +1842,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _firestore.deleteLeavePolicy(_currentLeavePolicy?['id']);
       if (!mounted) return;
       setState(() => _currentLeavePolicy = null);
-      FlashySnackBar.show(
-        context,
-        message: 'policy_deleted_success'.tr(),
-      );
+      FlashySnackBar.show(context, message: 'policy_deleted_success'.tr());
     } catch (e) {
       if (!mounted) return;
       FlashySnackBar.show(
@@ -1815,24 +1944,30 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
     super.initState();
     if (_isEditing) {
       final p = widget.editPolicy!;
-      _policyNameController =
-          TextEditingController(text: (p['policyName'] ?? '').toString());
-      _sickLeaveController =
-          TextEditingController(text: (p['sickLeaves'] ?? '0').toString());
-      _casualLeaveController =
-          TextEditingController(text: (p['casualLeaves'] ?? '0').toString());
-      _medicalLeaveController =
-          TextEditingController(text: (p['medicalLeaves'] ?? '0').toString());
-      _notesController =
-          TextEditingController(text: (p['description'] ?? '').toString());
+      _policyNameController = TextEditingController(
+        text: (p['policyName'] ?? '').toString(),
+      );
+      _sickLeaveController = TextEditingController(
+        text: (p['sickLeaves'] ?? '0').toString(),
+      );
+      _casualLeaveController = TextEditingController(
+        text: (p['casualLeaves'] ?? '0').toString(),
+      );
+      _medicalLeaveController = TextEditingController(
+        text: (p['medicalLeaves'] ?? '0').toString(),
+      );
+      _notesController = TextEditingController(
+        text: (p['description'] ?? '').toString(),
+      );
       if (p['startDate'] != null) {
         try {
           _effectiveFromDate = DateTime.parse(p['startDate'].toString());
         } catch (_) {}
       }
     } else {
-      _policyNameController =
-          TextEditingController(text: 'Standard Leave Policy 2026');
+      _policyNameController = TextEditingController(
+        text: 'Standard Leave Policy 2026',
+      );
       _sickLeaveController = TextEditingController(text: '8');
       _casualLeaveController = TextEditingController(text: '10');
       _medicalLeaveController = TextEditingController(text: '7');
@@ -1862,16 +1997,36 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   String _formatYearRange(DateTime date) {
     final monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${monthNames[date.month - 1]} - Dec ${date.year}';
   }
@@ -1912,8 +2067,9 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0247C4)
-                                .withValues(alpha: 0.18),
+                            color: const Color(
+                              0xFF0247C4,
+                            ).withValues(alpha: 0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
@@ -1928,8 +2084,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                             child: Row(
                               children: [
                                 const Icon(
@@ -1966,8 +2121,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                             ),
                           ),
                           Container(
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                             child: Row(
                               children: [
                                 Expanded(
@@ -1979,8 +2133,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -2009,8 +2162,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: _primaryBlue,
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -2094,24 +2246,31 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
         'description': _notesController.text.trim(),
       };
 
+      // Fetch all workers and their active time-off records BEFORE saving the
+      // policy so we can compute each worker's already-used paid days. This
+      // prevents a policy edit from silently restoring used leave.
+      final workersSnapshot = await firestore.getWorkersOnce();
+      final workers = workersSnapshot.docs
+          .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+          .toList();
+      final timeOffRecords = await firestore.getTimeoffOnce();
+
+      // Apply the policy to all workers in controlled Firestore batches
+      // (450 writes per batch). This avoids a partially applied policy when a
+      // network failure occurs mid-way through a large company.
+      final updatedCount = await firestore.applyLeavePolicyToWorkers(
+        workers: workers,
+        annualLeaveDays: annualLeaveDays,
+        policyName: policyName,
+        timeOffRecords: timeOffRecords,
+      );
+
+      // Only persist the policy document after all worker batches succeeded.
+      // This keeps the policy and worker allowances consistent.
       if (_isEditing) {
         await firestore.updateLeavePolicy(widget.editPolicy!['id'], policyData);
       } else {
         await firestore.addLeavePolicy(policyData);
-      }
-
-      final workersSnapshot = await firestore.getWorkersOnce();
-      final workers = workersSnapshot.docs;
-
-      for (final doc in workers) {
-        await firestore.updateWorkerLeaves(
-          doc.id,
-          {
-            'annualLeaves': annualLeaveDays.toString(),
-            'availableAnnualLeaves': annualLeaveDays.toString(),
-            'leavePolicy': policyName,
-          },
-        );
       }
 
       if (mounted) {
@@ -2119,12 +2278,11 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
         widget.onSaved?.call();
         FlashySnackBar.show(
           context,
-          message: (_isEditing
-                  ? 'policy_updated_applied'
-                  : 'leave_policy_saved_applied')
-              .tr(
-            namedArgs: {'count': workers.length.toString()},
-          ),
+          message:
+              (_isEditing
+                      ? 'policy_updated_applied'
+                      : 'leave_policy_saved_applied')
+                  .tr(namedArgs: {'count': updatedCount.toString()}),
           title: 'Success',
         );
       }
@@ -2178,8 +2336,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                       const SizedBox(height: 24),
                       _buildSectionTitle('policy_name'.tr()),
                       const SizedBox(height: 8),
-                      _buildTextField(_policyNameController,
-                          enabled: !_isEditing || _isFullyEditable),
+                      _buildTextField(
+                        _policyNameController,
+                        enabled: !_isEditing || _isFullyEditable,
+                      ),
                       const SizedBox(height: 20),
                       Row(
                         children: [
@@ -2192,12 +2352,12 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                                 _buildDateField(
                                   _formatDate(_effectiveFromDate),
                                   prefixIcon: Icons.calendar_month_rounded,
-                                  enabled:
-                                      !_isEditing || _isFullyEditable,
+                                  enabled: !_isEditing || _isFullyEditable,
                                   onTap: () => _showCupertinoDatePicker(
                                     initialDate: _effectiveFromDate,
                                     onDateSelected: (date) => setState(
-                                        () => _effectiveFromDate = date),
+                                      () => _effectiveFromDate = date,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -2212,8 +2372,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                                 const SizedBox(height: 8),
                                 _buildDateField(
                                   _formatYearRange(_leaveYearDate),
-                                  enabled:
-                                      !_isEditing || _isFullyEditable,
+                                  enabled: !_isEditing || _isFullyEditable,
                                   onTap: () => _showCupertinoDatePicker(
                                     initialDate: _leaveYearDate,
                                     onDateSelected: (date) =>
@@ -2295,8 +2454,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                       const SizedBox(height: 24),
                       _buildSectionTitle('policy_notes_optional'.tr()),
                       const SizedBox(height: 8),
-                      _buildLargeTextField(_notesController,
-                          enabled: !_isEditing || _isFullyEditable),
+                      _buildLargeTextField(
+                        _notesController,
+                        enabled: !_isEditing || _isFullyEditable,
+                      ),
                     ],
                   ),
                 ),
@@ -2326,8 +2487,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
           ),
           if (!_isFullyEditable)
             GestureDetector(
-              onTap: () =>
-                  setState(() => _isFullyEditable = true),
+              onTap: () => setState(() => _isFullyEditable = true),
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -2385,7 +2545,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, {bool enabled = true}) {
+  Widget _buildTextField(
+    TextEditingController controller, {
+    bool enabled = true,
+  }) {
     return TextField(
       controller: controller,
       enabled: enabled,
@@ -2395,8 +2558,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
         fontFamily: 'SF Pro Display',
       ),
       decoration: InputDecoration(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: _borderLight),
@@ -2415,7 +2580,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
     );
   }
 
-  Widget _buildLargeTextField(TextEditingController controller, {bool enabled = true}) {
+  Widget _buildLargeTextField(
+    TextEditingController controller, {
+    bool enabled = true,
+  }) {
     return TextField(
       controller: controller,
       maxLines: 5,
@@ -2453,9 +2621,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
     bool enabled = true,
   }) {
     return MouseRegion(
-      cursor: enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: enabled ? onTap : null,
         behavior: HitTestBehavior.opaque,
@@ -2469,9 +2635,11 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
           child: Row(
             children: [
               if (prefixIcon != null) ...[
-                Icon(prefixIcon,
-                    size: 18,
-                    color: enabled ? _textGrey : const Color(0xFF9CA3AF)),
+                Icon(
+                  prefixIcon,
+                  size: 18,
+                  color: enabled ? _textGrey : const Color(0xFF9CA3AF),
+                ),
                 const SizedBox(width: 8),
               ],
               Expanded(
@@ -2484,9 +2652,11 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                   ),
                 ),
               ),
-              Icon(Icons.keyboard_arrow_down,
-                  size: 20,
-                  color: enabled ? _textGrey : const Color(0xFF9CA3AF)),
+              Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: enabled ? _textGrey : const Color(0xFF9CA3AF),
+              ),
             ],
           ),
         ),
@@ -2539,9 +2709,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
             color: const Color(0xFFE5EEFC),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Center(
-            child: Icon(icon, size: 20, color: _primaryBlue),
-          ),
+          child: Center(child: Icon(icon, size: 20, color: _primaryBlue)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -2567,8 +2735,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
               fontFamily: 'SF Pro Display',
             ),
             decoration: InputDecoration(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: _borderLight),
@@ -2667,9 +2837,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: _borderLight, width: 1),
-        ),
+        border: Border(top: BorderSide(color: _borderLight, width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -2702,7 +2870,9 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
             child: ElevatedButton(
               onPressed: _isSaving || !canSave ? null : _savePolicy,
               style: ElevatedButton.styleFrom(
-                backgroundColor: canSave ? _primaryBlue : const Color(0xFFD1D5DB),
+                backgroundColor: canSave
+                    ? _primaryBlue
+                    : const Color(0xFFD1D5DB),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

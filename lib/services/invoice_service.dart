@@ -41,6 +41,7 @@ class InvoiceService {
     String? companyStampImageUrl,
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
+    String workerId = '',
   }) async {
     final detectedCurrency = currency.isEmpty
         ? _detectCurrency(salary)
@@ -84,11 +85,15 @@ class InvoiceService {
 
     final now = DateTime.now();
 
+    final safeWorkerId = workerId
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')
+        .toUpperCase();
     final invoiceNumber =
         'PAY-${now.year}'
         '${_twoDigits(now.month)}'
         '${_twoDigits(now.day)}-'
-        '${payPeriod.replaceAll(RegExp(r'[^0-9]'), '')}';
+        '${payPeriod.replaceAll(RegExp(r'[^0-9]'), '')}'
+        '${safeWorkerId.isNotEmpty ? '-$safeWorkerId' : ''}';
 
     final hasOvertime = _parseValue(overtimePay) > 0;
     final hasAbsentDeduction = _parseValue(absentDeduction) > 0;

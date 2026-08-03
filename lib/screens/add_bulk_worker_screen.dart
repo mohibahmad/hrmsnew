@@ -22,7 +22,21 @@ import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/worker_identity.dart';
 import '../utils/validators.dart';
+import '../utils/delete_dialog.dart';
+import '../models/worker.dart';
+import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+
+List<List<String>> _parseCsvInBackground(Uint8List bytes) {
+  var csvString = utf8.decode(bytes, allowMalformed: true);
+  if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
+    csvString = csvString.substring(1);
+  }
+  csvString = csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final rows = Csv(dynamicTyping: false).decode(csvString);
+  return rows.map((row) => row.map((e) => e.toString()).toList()).toList();
+}
 
 class UploadProgress {
   final String phase;
@@ -142,7 +156,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'currency': 'currency',
   };
 
-  static const double _tableContentWidth = 3522;
+  static const double _tableContentWidth = 3562;
   static const double _rowHeight = 65.0;
 
   late AuthService _authService;
@@ -163,22 +177,40 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Set<String> _cachedEmails = {};
   Set<String> _cachedNationalIds = {};
+  List<String> _missingColumns = [];
+  List<String> _uploadedMediaUrls = [];
+
+  /// Maps a client row id to the media URLs uploaded for that row, so that
+  /// media for rows skipped by the server-side re-check can be cleaned up.
+  final Map<String, List<String>> _uploadedMediaByRowId = {};
 
   ScrollController? _hScrollController;
   StreamSubscription? _workersSubscription;
+  StreamSubscription? _authSubscription;
 
   @override
   void initState() {
     super.initState();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+    // Invalidate cached identities whenever the auth state changes (e.g.
+    // guest -> real user) so duplicate validation never uses stale data.
+    _authSubscription = _authService.authStateChanges.listen((_) {
+      _clearIdentityCache();
+    });
   }
 
   @override
   void dispose() {
     _hScrollController?.dispose();
     _workersSubscription?.cancel();
+    _authSubscription?.cancel();
     super.dispose();
+  }
+
+  void _clearIdentityCache() {
+    _cachedEmails = {};
+    _cachedNationalIds = {};
   }
 
   bool get hasUnsavedChanges => _hasUnsavedChanges;
@@ -365,12 +397,33 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return errors is Map && errors.isNotEmpty;
   }
 
+  Map<String, dynamic> _preNormalizeForWorker(Map<String, dynamic> w) {
+    final normalized = Map<String, dynamic>.from(w);
+    for (final key in ['dob', 'joiningDate']) {
+      final raw = normalized[key]?.toString().trim() ?? '';
+      if (raw.isNotEmpty) {
+        final parsed = AppDateUtils.parseDateString(raw);
+        normalized[key] = parsed != null
+            ? parsed.toUtc().toIso8601String()
+            : '';
+      }
+    }
+    return normalized;
+  }
+
   List<Map<String, dynamic>> get _workersReadyToSave =>
       _validWorkers.where((w) => !_hasWorkerErrors(w)).map((w) {
         final clean = Map<String, dynamic>.from(w);
         clean.remove('_fieldErrors');
         clean.remove('_rowNumber');
-        return clean;
+        final rowId = (w['clientRowId'] ?? w['client_row_id'] ?? '')
+            .toString()
+            .trim();
+        final result = Worker.fromMap(_preNormalizeForWorker(clean)).toMap();
+        if (rowId.isNotEmpty) {
+          result['clientRowId'] = rowId;
+        }
+        return result;
       }).toList();
 
   Future<List<Map<String, dynamic>>> _uploadEmbeddedWorkerMedia(
@@ -381,7 +434,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .map((worker) => Map<String, dynamic>.from(worker))
         .toList();
     const mediaFields = ['profileImage', 'frontId', 'backId', 'cv'];
-    const downloadBatchSize = 10;
     const uploadBatchSize = 8;
 
     var totalMedia = 0;
@@ -395,7 +447,17 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final embeddedFiles = <UploadFile>[];
     final embeddedTargets = <({int workerIndex, String field})>[];
     final remoteItems =
-        <int, ({int workerIndex, String field, String url, String folder, String fallbackName, String fallbackMime})>{};
+        <
+          int,
+          ({
+            int workerIndex,
+            String field,
+            String url,
+            String folder,
+            String fallbackName,
+            String fallbackMime,
+          })
+        >{};
 
     for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
       final worker = prepared[workerIndex];
@@ -476,19 +538,16 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     var completedCount = 0;
 
-    Future<List<UploadResult>> uploadBatch(
-      List<UploadFile> batchFiles,
-    ) async {
+    Future<List<UploadResult>> uploadBatch(List<UploadFile> batchFiles) async {
       if (batchFiles.isEmpty) return [];
       final batchResults = await UploadService.uploadFiles(
         files: batchFiles,
         maxConcurrent: uploadBatchSize,
         onProgress: (completed, total) {
           final idx = completed - 1;
-          final name =
-              idx >= 0 && idx < batchFiles.length
-                  ? batchFiles[idx].fileName
-                  : '';
+          final name = idx >= 0 && idx < batchFiles.length
+              ? batchFiles[idx].fileName
+              : '';
           onProgress?.call(completedCount + completed, totalMedia, name);
         },
       );
@@ -501,21 +560,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           '${_readableSaveError(batchResults[failed].error ?? 'bulk_media_upload_failed'.tr())}',
         );
       }
+      for (final result in batchResults) {
+        if (result.isSuccess && result.url != null) {
+          _uploadedMediaUrls.add(result.url!);
+        }
+      }
       completedCount += batchFiles.length;
       return batchResults;
-    }
-
-    Future<List<UploadFile>> downloadBatchRemote(List<int> keys) async {
-      final futures = keys.map((k) {
-        final item = remoteItems[k]!;
-        return UploadService.downloadRemoteFile(
-          url: item.url,
-          folder: item.folder,
-          fallbackFileName: item.fallbackName,
-          fallbackMimeType: item.fallbackMime,
-        );
-      }).toList();
-      return Future.wait(futures);
     }
 
     if (embeddedFiles.isNotEmpty) {
@@ -528,63 +579,80 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
 
     final remoteKeys = remoteItems.keys.toList();
-    final totalBatches = (remoteKeys.length / downloadBatchSize).ceil();
 
-    if (totalBatches > 0) {
-      var nextDownload = downloadBatchRemote(
-        remoteKeys.sublist(0, downloadBatchSize.clamp(0, remoteKeys.length)),
-      );
+    // Download + upload remote files with a bounded worker pool. Each worker
+    // downloads a file and immediately uploads it, so peak memory is bounded
+    // (only maxConcurrent files in flight, not entire download batches) and
+    // uploads start as soon as each file is downloaded instead of waiting for
+    // the whole batch. Broken links are skipped; hard failures abort the rest.
+    if (remoteKeys.isNotEmpty) {
+      const maxConcurrent = 4;
+      var nextIndex = 0;
+      Object? firstError;
 
-      for (var b = 0; b < totalBatches; b++) {
-        final currentDownload = nextDownload;
-
-        if (b + 1 < totalBatches) {
-          final start = (b + 1) * downloadBatchSize;
-          final end = (start + downloadBatchSize).clamp(0, remoteKeys.length);
-          nextDownload = downloadBatchRemote(remoteKeys.sublist(start, end));
+      Future<void> processItem(int key) async {
+        final item = remoteItems[key]!;
+        UploadFile? downloaded;
+        try {
+          downloaded = await UploadService.downloadRemoteFile(
+            url: item.url,
+            folder: item.folder,
+            fallbackFileName: item.fallbackName,
+            fallbackMimeType: item.fallbackMime,
+          );
+        } catch (e) {
+          debugPrint('Skipping broken link for ${item.url}: $e');
+          return;
         }
+        final file = downloaded;
+        if (!_isSupportedMediaType(item.field, file.mimeType)) {
+          final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker')
+              .toString();
+          throw StateError(
+            '$workerName — ${_mediaFieldName(item.field)} link: '
+            '${_supportedMediaMessage(item.field, file.mimeType)}',
+          );
+        }
+        final results = await uploadBatch([file]);
+        final result = results.first;
+        prepared[item.workerIndex][item.field] = result.url!;
+      }
 
-        final downloaded = await currentDownload;
-
-        final batchKeys = remoteKeys.sublist(
-          b * downloadBatchSize,
-          (b * downloadBatchSize + downloaded.length).clamp(
-            0,
-            remoteKeys.length,
-          ),
-        );
-
-        for (var j = 0; j < downloaded.length; j++) {
-          final key = batchKeys[j];
-          final item = remoteItems[key]!;
-          if (!_isSupportedMediaType(item.field, downloaded[j].mimeType)) {
-            final workerName =
-                (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
-            throw StateError(
-              '$workerName — ${_mediaFieldName(item.field)} link: '
-              '${_supportedMediaMessage(item.field, downloaded[j].mimeType)}',
-            );
+      Future<void> worker() async {
+        while (true) {
+          if (firstError != null) return;
+          final index = nextIndex++;
+          if (index >= remoteKeys.length) return;
+          try {
+            await processItem(remoteKeys[index]);
+          } catch (e) {
+            firstError ??= e;
+            return;
           }
         }
+      }
 
-        if (b + 1 < totalBatches) {
-          final uploadFuture = uploadBatch(downloaded);
-          final downloadFuture = nextDownload;
-          final results = await Future.wait([uploadFuture, downloadFuture]);
-          final batchResults = results[0] as List<UploadResult>;
-          for (var j = 0; j < batchResults.length; j++) {
-            final key = batchKeys[j];
-            final item = remoteItems[key]!;
-            prepared[item.workerIndex][item.field] = batchResults[j].url;
-          }
-        } else {
-          final batchResults = await uploadBatch(downloaded);
-          for (var j = 0; j < batchResults.length; j++) {
-            final key = batchKeys[j];
-            final item = remoteItems[key]!;
-            prepared[item.workerIndex][item.field] = batchResults[j].url;
-          }
+      await Future.wait(List.generate(maxConcurrent, (_) => worker()));
+      if (firstError != null) {
+        throw firstError!;
+      }
+    }
+
+    // Record the newly uploaded media URLs per client row id so that media for
+    // rows skipped by the server-side re-check can be cleaned up.
+    _uploadedMediaByRowId.clear();
+    for (final worker in prepared) {
+      final rowId = (worker['clientRowId'] ?? '').toString().trim();
+      if (rowId.isEmpty) continue;
+      final urls = <String>[];
+      for (final field in mediaFields) {
+        final value = (worker[field] ?? '').toString().trim();
+        if (value.isNotEmpty && value.startsWith('http')) {
+          urls.add(value);
         }
+      }
+      if (urls.isNotEmpty) {
+        _uploadedMediaByRowId[rowId] = urls;
       }
     }
 
@@ -800,13 +868,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return;
       }
 
-      var csvString = utf8.decode(bytes, allowMalformed: true);
-      if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
-        csvString = csvString.substring(1);
-      }
-      csvString = csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-
-      final rows = Csv(dynamicTyping: false).decode(csvString);
+      final rows = await compute(_parseCsvInBackground, bytes);
 
       if (!mounted) return;
       final didParse = await _processCsvData(rows);
@@ -824,9 +886,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
-  
-  
   String? _normalizeEducation(String input) {
     final normalized = input.trim().toLowerCase();
     const valid = {
@@ -1037,15 +1096,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final annualLeaves = int.tryParse(annualLeavesText);
       if (annualLeaves == null || annualLeaves < 0 || annualLeaves > 366) {
         fieldErrors['annualLeaves'] = 'invalid_number'.tr();
-        workerData['availableAnnualLeaves'] = 0;
+        workerData['availableAnnualLeaves'] = '0';
       } else {
         workerData['annualLeaves'] = annualLeaves.toString();
-        workerData['availableAnnualLeaves'] = annualLeaves;
+        workerData['availableAnnualLeaves'] = annualLeaves.toString();
       }
     } else {
-      workerData['availableAnnualLeaves'] = 0;
+      workerData['availableAnnualLeaves'] = '0';
     }
-    workerData['leavesUsed'] = 0;
+    workerData['leavesUsed'] = '0';
 
     final joiningDateText = workerData['joiningDate']?.toString().trim() ?? '';
     if (joiningDateText.isNotEmpty) {
@@ -1139,7 +1198,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return (emails: emails, nationalIds: nationalIds);
   }
 
-  Future<bool> _processCsvData(List<List<dynamic>> rows) async {
+  Future<bool> _processCsvData(List<List<String>> rows) async {
     if (rows.isEmpty) return false;
 
     if (mounted) {
@@ -1237,6 +1296,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             break;
           }
         }
+        if (workerData[matchedKey]?.toString().trim().isNotEmpty ?? false) {
+          continue;
+        }
         workerData[matchedKey] = value;
       }
 
@@ -1257,12 +1319,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       workerData['_rowNumber'] = i + 1;
       workerData['_fieldErrors'] = fieldErrors;
+      workerData['clientRowId'] = 'row_${i + 1}';
       parsedWorkers.add(workerData);
     }
 
     if (parsedWorkers.isEmpty) {
       setState(() {
         _validWorkers = [];
+        _missingColumns = [];
         _hasParsedFile = false;
         _hasUnsavedChanges = false;
       });
@@ -1278,6 +1342,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     setState(() {
       _validWorkers = parsedWorkers;
+      _missingColumns = missingColumns;
       _hasParsedFile = true;
       _hasUnsavedChanges = true;
       _missingRequiredCount = counts.missing;
@@ -1405,6 +1470,53 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return true;
   }
 
+  Future<void> _revalidateSingleWorker(int workerIndex) async {
+    if (workerIndex < 0 || workerIndex >= _validWorkers.length) return;
+
+    final ({Set<String> emails, Set<String> nationalIds}) existing;
+    try {
+      existing = await _loadExistingIdentitySets();
+    } catch (_) {
+      return;
+    }
+    final existingEmails = existing.emails;
+    final existingNationalIds = existing.nationalIds;
+
+    final csvEmails = <String>{};
+    final csvNationalIds = <String>{};
+    for (int i = 0; i < _validWorkers.length; i++) {
+      if (i == workerIndex) continue;
+      final email = WorkerIdentity.normalizeEmail(
+        _validWorkers[i]['email']?.toString() ?? '',
+      );
+      final nationalId = WorkerIdentity.normalizeNationalId(
+        _validWorkers[i]['nationalId']?.toString() ?? '',
+      );
+      if (email.isNotEmpty) csvEmails.add(email);
+      if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
+    }
+
+    final workerData = _validWorkers[workerIndex];
+    final fieldErrors = _validateWorkerData(
+      workerData,
+      existingEmails: existingEmails,
+      existingNationalIds: existingNationalIds,
+      csvEmails: csvEmails,
+      csvNationalIds: csvNationalIds,
+    );
+    workerData['_fieldErrors'] = fieldErrors;
+
+    final counts = _validationCounts(_validWorkers);
+    if (mounted) {
+      setState(() {
+        _duplicateCount = counts.duplicate;
+        _missingRequiredCount = counts.missing;
+        _invalidDobCount = counts.invalidDob;
+        _invalidGenderCount = counts.invalidGender;
+      });
+    }
+  }
+
   Future<void> _saveBulkWorkers() async {
     if (_isSaving) return;
 
@@ -1504,16 +1616,35 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     setState(() => _isSaving = true);
 
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
+    _uploadedMediaUrls = [];
     _showBulkProgressDialog();
 
     try {
       int importedCount = workersReadyToSave.length;
+      int guestSkippedDuplicates = 0;
       BulkWorkerResult? bulkResult;
 
       if (isGuest) {
-        for (int i = 0; i < workersReadyToSave.length; i++) {
+        // Re-check duplicates against the current dummy dataset before
+        // inserting so re-uploading an already imported CSV cannot create
+        // duplicate workers in guest mode.
+        final existingWorkers = DummyData.workers.toList();
+        final acceptedWorkers = <Map<String, dynamic>>[];
+        for (final worker in workersReadyToSave) {
+          final duplicateField = WorkerIdentity.duplicateField(worker, [
+            ...existingWorkers,
+            ...acceptedWorkers,
+          ]);
+          if (duplicateField != null) {
+            guestSkippedDuplicates++;
+            continue;
+          }
+          acceptedWorkers.add(worker);
+        }
+        importedCount = acceptedWorkers.length;
+        for (int i = 0; i < acceptedWorkers.length; i++) {
           final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
-          DummyData.workers.insert(0, {...workersReadyToSave[i], 'id': newId});
+          DummyData.workers.insert(0, {...acceptedWorkers[i], 'id': newId});
         }
         await DummyData.saveToPrefs();
       } else {
@@ -1522,17 +1653,47 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         );
         bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = bulkResult.imported;
+
+        // Clean up media uploaded for rows that the server-side re-check
+        // skipped (e.g. duplicate detected on another device). Their workers
+        // were never written to Firestore, so their Storage files are orphans.
+        if (bulkResult.skippedClientRowIds.isNotEmpty &&
+            _uploadedMediaByRowId.isNotEmpty) {
+          final orphanUrls = <String>[];
+          for (final rowId in bulkResult.skippedClientRowIds) {
+            final urls = _uploadedMediaByRowId[rowId];
+            if (urls != null && urls.isNotEmpty) {
+              orphanUrls.addAll(urls);
+            }
+          }
+          if (orphanUrls.isNotEmpty) {
+            try {
+              await Future.wait(orphanUrls.map(UploadService.deleteByUrl));
+            } catch (cleanupError, cleanupStack) {
+              ErrorReporter.report(
+                cleanupError,
+                cleanupStack,
+                context: 'BulkWorkerSkippedRowMediaCleanup',
+              );
+            }
+          }
+        }
       }
 
+      // New workers were imported; invalidate the identity cache so a
+      // subsequent upload validates against the freshest data.
+      _clearIdentityCache();
+
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context, rootNavigator: true).pop();
 
       final serverDuplicateCount =
           bulkResult?.skipReasons.where((reason) {
             return reason.trim().toLowerCase().startsWith('duplicate ');
           }).length ??
           0;
-      final finalSkippedDuplicates = localDuplicateCount + serverDuplicateCount;
+      final finalSkippedDuplicates =
+          localDuplicateCount + serverDuplicateCount + guestSkippedDuplicates;
 
       final summaryParts = <String>[
         'workers_added_successfully'.tr(
@@ -1575,7 +1736,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       final hasSkipped =
-          workersWithErrors.isNotEmpty || (bulkResult?.skipped ?? 0) > 0;
+          workersWithErrors.isNotEmpty ||
+          (bulkResult?.skipped ?? 0) > 0 ||
+          guestSkippedDuplicates > 0;
 
       FlashySnackBar.show(
         context,
@@ -1603,6 +1766,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           _hasUnsavedChanges = true;
         } else {
           _validWorkers = [];
+          _missingColumns = [];
           _hasParsedFile = false;
           _hasUnsavedChanges = false;
         }
@@ -1627,7 +1791,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         stackTrace,
         context: 'AddBulkWorkerScreen.save',
       );
-      if (mounted) Navigator.of(context).pop();
+      // Best-effort rollback: remove media files that were uploaded to
+      // storage but whose workers were never written to Firestore.
+      if (!isGuest && _uploadedMediaUrls.isNotEmpty) {
+        try {
+          await Future.wait(_uploadedMediaUrls.map(UploadService.deleteByUrl));
+        } catch (_) {}
+      }
+      _uploadedMediaUrls = [];
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -1640,6 +1812,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         );
       }
     } finally {
+      _uploadedMediaUrls = [];
       if (mounted) setState(() => _isSaving = false);
     }
   }
@@ -1782,15 +1955,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }) {
     final now = DateTime.now();
     final minimumDate = fieldKey == 'dob' ? DateTime(1920) : DateTime(2000);
-    
-    
-    
+
     final DateTime maximumDate;
     if (fieldKey == 'dob') {
-      final targetYear = now.year - 18;
-      final daysInMonth = DateTime(targetYear, now.month + 1, 0).day;
-      final maxDay = now.day > daysInMonth ? daysInMonth : now.day;
-      maximumDate = DateTime(targetYear, now.month, maxDay);
+      // A worker must be at least 18 years old today. DateTime normalizes
+      // invalid dates (e.g. Feb 29 in a non-leap year) to the next day.
+      maximumDate = DateTime(now.year - 18, now.month, now.day);
     } else {
       maximumDate = now;
     }
@@ -2083,9 +2253,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               Expanded(
                 child: Text(
                   currentCode.isEmpty
-                      ? 'edit_cell_enter_value'.tr(
-                          namedArgs: {'label': label},
-                        )
+                      ? 'edit_cell_enter_value'.tr(namedArgs: {'label': label})
                       : CurrencyUtils.isSupported(currentCode)
                       ? LocalizationHelper.localizeCurrency(currentCode)
                       : currentCode,
@@ -2117,9 +2285,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final currentValue = (worker[fieldKey] ?? '').toString();
     final label = _fieldLabels[fieldKey] ?? fieldKey;
 
-    
-    
-    
     final existingEmails = <String>{};
     final existingNationalIds = <String>{};
     final bool needsExistingIdentity =
@@ -2129,9 +2294,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         final existing = await _loadExistingIdentitySets();
         existingEmails.addAll(existing.emails);
         existingNationalIds.addAll(existing.nationalIds);
-      } catch (_) {
-        
-      }
+      } catch (_) {}
     }
     if (!mounted) return;
 
@@ -3139,17 +3302,45 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       },
     );
 
-    if (result != null && mounted) {
+    if (result != null && mounted && workerIndex < _validWorkers.length) {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
         if (fieldKey == 'annualLeaves') {
           final annualLeaves = int.tryParse(result) ?? 0;
-          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves;
-          _validWorkers[workerIndex]['leavesUsed'] = 0;
+          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves
+              .toString();
+          _validWorkers[workerIndex]['leavesUsed'] = '0';
         }
         _hasUnsavedChanges = true;
       });
-      await _revalidateAllWorkers();
+      await _revalidateSingleWorker(workerIndex);
+    }
+  }
+
+  Future<void> _deleteWorker(int index) async {
+    if (index < 0 || index >= _validWorkers.length) return;
+    final confirmed = await DeleteDialog.show(
+      context: context,
+      title: 'delete_worker'.tr(),
+      content: 'delete_worker_desc'.tr(),
+    );
+    if (!confirmed) return;
+    setState(() {
+      _validWorkers.removeAt(index);
+      _hasUnsavedChanges = _validWorkers.isNotEmpty;
+      if (_validWorkers.isEmpty) {
+        _hasParsedFile = false;
+        _missingColumns = [];
+      }
+    });
+    final counts = _validationCounts(_validWorkers);
+    if (mounted) {
+      setState(() {
+        _duplicateCount = counts.duplicate;
+        _missingRequiredCount = counts.missing;
+        _invalidDobCount = counts.invalidDob;
+        _invalidGenderCount = counts.invalidGender;
+      });
     }
   }
 
@@ -3214,6 +3405,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                     if (_hasParsedFile) ...[
                       _buildSummaryCard(),
                       const SizedBox(height: 0),
+                      if (_missingColumns.isNotEmpty) ...[
+                        _buildMissingColumnsBanner(),
+                        const SizedBox(height: 12),
+                      ],
                       Expanded(child: _buildWorkerTable()),
                     ],
                   ],
@@ -3449,6 +3644,45 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissingColumnsBanner() {
+    final columns = _missingColumns
+        .map((field) => _fieldLabels[field] ?? field)
+        .join(', ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Color(0xFFB45309),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'csv_missing_columns'.tr(namedArgs: {'columns': columns}),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF92400E),
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
           ),
         ],
       ),
@@ -3746,6 +3980,29 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             fieldKey: 'cv',
             workerIndex: index,
           ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _deleteWorker(index),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/delete_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFEF4444),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -3827,8 +4084,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       displayText = text;
     }
 
-    
-    
     if (displayText.contains('\n') || displayText.contains('\r')) {
       displayText = displayText.replaceAll(RegExp(r'[\r\n]+'), ' ');
     }
@@ -3910,58 +4165,49 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   Widget _buildMediaThumbnail(String value, String? fieldKey) {
-    const cvFallback = Icon(
-      Icons.description_outlined,
-      size: 18,
-      color: Color(0xFF64748B),
+    const imageFallback = SizedBox(
+      width: 24,
+      height: 24,
+      child: Center(
+        child: Icon(Icons.image_outlined, size: 18, color: Color(0xFF64748B)),
+      ),
     );
-    const fallback = Icon(
-      Icons.insert_drive_file_outlined,
-      size: 18,
-      color: Color(0xFF64748B),
+
+    const documentFallback = SizedBox(
+      width: 24,
+      height: 24,
+      child: Center(
+        child: Icon(
+          Icons.description_outlined,
+          size: 18,
+          color: Color(0xFF64748B),
+        ),
+      ),
     );
-    if (fieldKey == 'cv' && !value.startsWith('data:image/')) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: Center(child: cvFallback),
-      );
+
+    if (value.startsWith('data:')) {
+      return fieldKey == 'cv' ? documentFallback : imageFallback;
     }
 
-    ImageProvider? provider;
-    try {
-      if (value.startsWith('data:image/') && value.contains(';base64,')) {
-        provider = MemoryImage(base64Decode(value.split(';base64,').last));
-      } else {
-        final uri = Uri.tryParse(value);
-        if (uri != null &&
-            uri.hasAuthority &&
-            (uri.scheme == 'http' || uri.scheme == 'https')) {
-          provider = NetworkImage(value);
-        }
-      }
-    } catch (_) {
-      provider = null;
+    if (fieldKey == 'cv') return documentFallback;
+
+    final uri = Uri.tryParse(value);
+    if (uri == null ||
+        !uri.hasAuthority ||
+        (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return imageFallback;
     }
-    if (provider == null) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: Center(child: fallback),
-      );
-    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
-      child: Image(
-        image: provider,
+      child: Image.network(
+        value,
         width: 24,
         height: 24,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const SizedBox(
-          width: 24,
-          height: 24,
-          child: Center(child: fallback),
-        ),
+        cacheWidth: 48,
+        cacheHeight: 48,
+        errorBuilder: (_, _, _) => imageFallback,
       ),
     );
   }

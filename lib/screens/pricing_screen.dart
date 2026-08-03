@@ -43,7 +43,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       elevation: 0,
       child: Center(
         child: SizedBox(
-          width: 960,
+          width: 920,
           height: 680,
           child: Stack(
             clipBehavior: Clip.none,
@@ -51,7 +51,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
               Align(
                 alignment: Alignment.center,
                 child: Container(
-                  width: 920,
+                  width: 880,
                   height: 610,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(

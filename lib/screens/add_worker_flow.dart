@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:image/image.dart' as img;
 import 'package:pdfx/pdfx.dart';
-import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/custom_dropdown_field.dart';
@@ -14,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/validators.dart';
 import '../services/upload_service.dart';
+import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -25,6 +26,7 @@ import '../utils/worker_identity.dart';
 import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 
 const List<String> _months = [
@@ -71,6 +73,18 @@ String _localizedMonth(int month) {
     default:
       return '';
   }
+}
+
+Uint8List _compressImageTask(Map<String, dynamic> args) {
+  final bytes = args['bytes'] as Uint8List;
+  final maxWidth = args['maxWidth'] as int;
+  final quality = args['quality'] as int;
+  img.Image? image = img.decodeImage(bytes);
+  if (image == null) return bytes;
+  if (image.width > maxWidth) {
+    image = img.copyResize(image, width: maxWidth);
+  }
+  return Uint8List.fromList(img.encodeJpg(image, quality: quality));
 }
 
 class AddNewWorkerFlow extends StatefulWidget {
@@ -131,6 +145,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   String? _joiningDate;
 
   bool _isSaving = false;
+  bool _isChecking = false;
 
   bool get _hasUnsavedChanges {
     if (widget.workerToEdit != null) return _hasChanges();
@@ -533,9 +548,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _leavePolicyController.text = policyName;
         }
       });
-    } catch (_) {
-      
-    }
+    } catch (_) {}
   }
 
   void _clampAnnualLeaves() {
@@ -613,6 +626,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     };
   }
 
+  String _filePickerErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('permission') ||
+        message.contains('denied') ||
+        message.contains('access') ||
+        message.contains('sandbox')) {
+      return 'macos_file_access_permission_error'.tr();
+    }
+    return 'failed_to_pick_file'.tr();
+  }
+
   String _jpegFileName(String fileName, String fallback) {
     final cleanName = fileName.trim().isEmpty ? fallback : fileName.trim();
     final dotIndex = cleanName.lastIndexOf('.');
@@ -622,28 +646,25 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return '$baseName.jpg';
   }
 
-  UploadFile _prepareUploadFile({
+  Future<UploadFile> _prepareUploadFile({
     required String folder,
     required String? fileName,
     required String fallbackFileName,
     required Uint8List bytes,
     required bool compressImages,
-  }) {
+  }) async {
     final resolvedName = fileName?.trim().isNotEmpty == true
         ? fileName!.trim()
         : fallbackFileName;
     final mimeType = _mimeTypeForFileName(resolvedName);
 
     if (compressImages && mimeType.startsWith('image/')) {
-      final decodedImage = img.decodeImage(bytes);
-      if (decodedImage != null) {
-        return UploadFile(
-          folder: folder,
-          fileName: _jpegFileName(resolvedName, fallbackFileName),
-          bytes: _compressImage(bytes),
-          mimeType: 'image/jpeg',
-        );
-      }
+      return UploadFile(
+        folder: folder,
+        fileName: _jpegFileName(resolvedName, fallbackFileName),
+        bytes: await _compressImage(bytes),
+        mimeType: 'image/jpeg',
+      );
     }
 
     return UploadFile(
@@ -812,16 +833,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _profileImageBytes = bytes;
           _profileImageName = file.name;
         });
-        FlashySnackBar.show(
-          context,
-          message: 'file_uploaded'.tr(),
-        );
+        FlashySnackBar.show(context, message: 'file_uploaded'.tr());
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_pick_image'.tr(),
+          message: _filePickerErrorMessage(e),
           isError: true,
         );
       }
@@ -858,16 +876,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _frontIdBytes = bytes;
           _frontIdName = file.name;
         });
-        FlashySnackBar.show(
-          context,
-          message: 'file_uploaded'.tr(),
-        );
+        FlashySnackBar.show(context, message: 'file_uploaded'.tr());
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_pick_file'.tr(),
+          message: _filePickerErrorMessage(e),
           isError: true,
         );
       }
@@ -904,16 +919,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _backIdBytes = bytes;
           _backIdName = file.name;
         });
-        FlashySnackBar.show(
-          context,
-          message: 'file_uploaded'.tr(),
-        );
+        FlashySnackBar.show(context, message: 'file_uploaded'.tr());
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_pick_file'.tr(),
+          message: _filePickerErrorMessage(e),
           isError: true,
         );
       }
@@ -951,16 +963,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _cvName = file.name;
           _isCvUploaded = true;
         });
-        FlashySnackBar.show(
-          context,
-          message: 'file_uploaded'.tr(),
-        );
+        FlashySnackBar.show(context, message: 'file_uploaded'.tr());
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_pick_file'.tr(),
+          message: _filePickerErrorMessage(e),
           isError: true,
         );
       }
@@ -1133,17 +1142,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return false;
   }
 
-  Uint8List _compressImage(
+  Future<Uint8List> _compressImage(
     Uint8List bytes, {
     int maxWidth = 1200,
     int quality = 80,
-  }) {
-    img.Image? image = img.decodeImage(bytes);
-    if (image == null) return bytes;
-    if (image.width > maxWidth) {
-      image = img.copyResize(image, width: maxWidth);
-    }
-    return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+  }) async {
+    return compute(_compressImageTask, {
+      'bytes': bytes,
+      'maxWidth': maxWidth,
+      'quality': quality,
+    });
   }
 
   Future<void> _saveWorker() async {
@@ -1156,7 +1164,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final religion = _religionController.text.trim();
     final address = _addressController.text.trim();
 
-    final allFieldsEmpty = name.isEmpty &&
+    final allFieldsEmpty =
+        name.isEmpty &&
         phone.isEmpty &&
         email.isEmpty &&
         nationalId.isEmpty &&
@@ -1261,57 +1270,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final joiningDate = _parseWorkerDate(_joiningDate);
     if (joiningDate == null) return;
 
-    final hasFrontId =
-        _frontIdBytes != null ||
-        (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
-    final hasBackId =
-        _backIdBytes != null ||
-        (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty);
-    final hasCv =
-        _cvBytes != null ||
-        (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
-
-    final hasProfileImage =
-        _profileImageBytes != null ||
-        (_existingProfileImageUrl != null &&
-            _existingProfileImageUrl!.isNotEmpty);
-
-    if (!hasProfileImage) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_upload_profile_image'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (!hasFrontId) {
-      FlashySnackBar.show(
-        context,
-        message: 'upload_cnic_front_required'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (!hasBackId) {
-      FlashySnackBar.show(
-        context,
-        message: 'upload_cnic_back_required'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (!hasCv) {
-      FlashySnackBar.show(
-        context,
-        message: 'upload_cv_required'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
     setState(() {
       _isSaving = true;
     });
@@ -1320,31 +1278,39 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final isEditing = widget.workerToEdit != null;
 
     try {
-      Iterable<Map<String, dynamic>> existingWorkers;
       if (isGuest) {
         final guestWorkers = await PreferencesService.getGuestWorkers();
-        existingWorkers = guestWorkers ?? DummyData.workers;
-      } else {
-        final snapshot = await _firestore.getWorkersOnce();
-        existingWorkers = snapshot.docs.map(
-          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        final existingWorkers = guestWorkers ?? DummyData.workers;
+        final duplicateField = WorkerIdentity.duplicateField(
+          {'email': email, 'nationalId': nationalId},
+          existingWorkers,
+          excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
         );
-      }
-
-      final duplicateField = WorkerIdentity.duplicateField(
-        {'email': email, 'nationalId': nationalId},
-        existingWorkers,
-        excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
-      );
-      if (duplicateField != null && mounted) {
-        setState(() => _isSaving = false);
-        final messageKey = switch (duplicateField) {
-          DuplicateWorkerField.name => 'duplicate_name',
-          DuplicateWorkerField.email => 'duplicate_email',
-          DuplicateWorkerField.nationalId => 'duplicate_national_id',
-        };
-        FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
-        return;
+        if (duplicateField != null && mounted) {
+          setState(() => _isSaving = false);
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          };
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+          return;
+        }
+      } else {
+        final isDuplicate = await _firestore.hasDuplicateWorker(
+          email: email,
+          nationalId: nationalId,
+          excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
+        );
+        if (isDuplicate && mounted) {
+          setState(() => _isSaving = false);
+          FlashySnackBar.show(
+            context,
+            message: 'duplicate_email_or_national_id'.tr(),
+            isError: true,
+          );
+          return;
+        }
       }
     } catch (_) {}
 
@@ -1352,6 +1318,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     String? frontIdUrl = _existingFrontIdUrl;
     String? backIdUrl = _existingBackIdUrl;
     String? cvUrl = _existingCvUrl;
+    final newUploadUrls = <String>[];
+    // Old URLs captured BEFORE they are overwritten, so replaced/removed
+    // Firebase Storage files can be deleted after a successful save.
+    final oldProfileImageUrl = _existingProfileImageUrl;
+    final oldFrontIdUrl = _existingFrontIdUrl;
+    final oldBackIdUrl = _existingBackIdUrl;
+    final oldCvUrl = _existingCvUrl;
 
     try {
       if (isGuest) {
@@ -1372,7 +1345,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         final uploadFiles = <UploadFile>[];
         if (_profileImageBytes != null) {
           uploadFiles.add(
-            _prepareUploadFile(
+            await _prepareUploadFile(
               folder: 'profile_images',
               fileName: _profileImageName,
               fallbackFileName: 'profile.jpg',
@@ -1383,7 +1356,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
         if (_frontIdBytes != null) {
           uploadFiles.add(
-            _prepareUploadFile(
+            await _prepareUploadFile(
               folder: 'id_cards/front',
               fileName: _frontIdName,
               fallbackFileName: 'front.jpg',
@@ -1394,7 +1367,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
         if (_backIdBytes != null) {
           uploadFiles.add(
-            _prepareUploadFile(
+            await _prepareUploadFile(
               folder: 'id_cards/back',
               fileName: _backIdName,
               fallbackFileName: 'back.jpg',
@@ -1405,7 +1378,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
         if (_cvBytes != null) {
           uploadFiles.add(
-            _prepareUploadFile(
+            await _prepareUploadFile(
               folder: 'cvs',
               fileName: _cvName,
               fallbackFileName: 'cv.pdf',
@@ -1422,6 +1395,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           for (final result in results) {
             if (result.isSuccess) {
               final url = result.url!;
+              newUploadUrls.add(url);
               switch (result.file.folder) {
                 case 'profile_images':
                   profileImageUrl = url;
@@ -1445,6 +1419,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             }
           }
           if (uploadFailed) {
+            if (newUploadUrls.isNotEmpty) {
+              try {
+                await Future.wait(newUploadUrls.map(UploadService.deleteByUrl));
+              } catch (_) {}
+            }
             if (mounted) setState(() => _isSaving = false);
             return;
           }
@@ -1477,11 +1456,18 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'education': _educationController.text.trim(),
         'salaryType': _salaryTypeController.text.trim(),
         'currency': CurrencyUtils.normalize(_currencyController.text),
-        'salaryAmount': _salaryAmountController.text.trim(),
+        'salaryAmount':
+            double.tryParse(
+              _salaryAmountController.text.trim().replaceAll(',', ''),
+            ) ??
+            0.0,
         'leavePolicy': _leavePolicyController.text.trim(),
-        'annualLeaves': _annualLeavesController.text.trim(),
-        'sickLeaves': _sickLeavesController.text.trim(),
-        'casualLeaves': _casualLeavesController.text.trim(),
+        'annualLeaves': int.tryParse(_annualLeavesController.text.trim()) ?? 0,
+        'availableAnnualLeaves':
+            int.tryParse(_annualLeavesController.text.trim()) ?? 0,
+        'leavesUsed': 0,
+        'sickLeaves': int.tryParse(_sickLeavesController.text.trim()) ?? 0,
+        'casualLeaves': int.tryParse(_casualLeavesController.text.trim()) ?? 0,
         'joiningDate': isGuest
             ? (_joiningDate ?? '')
             : AppDateUtils.formatDate(joiningDate),
@@ -1507,34 +1493,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       if (!isEditing) {
         data.addAll({
           'leavesUsed': '0',
-          'availableAnnualLeaves': annualLeaveTotal,
+          'availableAnnualLeaves': annualLeaveTotal.toString(),
         });
       } else if (!isGuest) {
-        final previousAnnual =
-            int.tryParse(
-              widget.workerToEdit?['annualLeaves']?.toString() ?? '',
-            ) ??
-            0;
-        final previousAvailable =
-            int.tryParse(
-              widget.workerToEdit?['availableAnnualLeaves']?.toString() ?? '',
-            ) ??
-            previousAnnual;
-        final recordedUsed =
-            int.tryParse(
-              widget.workerToEdit?['leavesUsed']?.toString() ?? '',
-            ) ??
-            0;
-        final inferredUsed = previousAnnual > previousAvailable
-            ? previousAnnual - previousAvailable
-            : 0;
-        final usedLeaves = recordedUsed > inferredUsed
-            ? recordedUsed
-            : inferredUsed;
-        data['leavesUsed'] = usedLeaves.toString();
-        data['availableAnnualLeaves'] = annualLeaveTotal > usedLeaves
-            ? annualLeaveTotal - usedLeaves
-            : 0;
+        // Normal worker profile edit: do NOT send leavesUsed or
+        // availableAnnualLeaves. A cached in-memory copy must never overwrite
+        // the latest leave balance that may have been changed by another
+        // screen/device (e.g. Time Off assignment). Annual allowance changes
+        // are handled by the leave-policy service which reads the latest
+        // worker balance and current Time Off records.
+        data.remove('leavesUsed');
+        data.remove('availableAnnualLeaves');
       }
 
       if (widget.workerToEdit != null) {
@@ -1576,6 +1545,37 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       }
 
+      // Firestore save succeeded. Delete replaced/removed old files from
+      // Firebase Storage (best-effort — a failed cleanup must never roll back
+      // a successful worker save).
+      if (widget.workerToEdit != null) {
+        final currentUrls = <String>{
+          if (profileImageUrl != null) profileImageUrl,
+          if (frontIdUrl != null) frontIdUrl,
+          if (backIdUrl != null) backIdUrl,
+          if (cvUrl != null) cvUrl,
+        };
+        final oldUrls = <String>{
+          if (oldProfileImageUrl != null) oldProfileImageUrl,
+          if (oldFrontIdUrl != null) oldFrontIdUrl,
+          if (oldBackIdUrl != null) oldBackIdUrl,
+          if (oldCvUrl != null) oldCvUrl,
+        };
+        for (final oldUrl in oldUrls) {
+          if (oldUrl.isNotEmpty && !currentUrls.contains(oldUrl)) {
+            try {
+              await UploadService.deleteByUrl(oldUrl);
+            } catch (cleanupError, cleanupStack) {
+              ErrorReporter.report(
+                cleanupError,
+                cleanupStack,
+                context: 'workerEditCleanupOldFile',
+              );
+            }
+          }
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _isSaving = false;
@@ -1593,6 +1593,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         widget.onBack?.call();
       }
     } on DuplicateWorkerException catch (e) {
+      if (newUploadUrls.isNotEmpty) {
+        try {
+          await Future.wait(newUploadUrls.map(UploadService.deleteByUrl));
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -1605,6 +1610,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
       }
     } on ValidationException catch (e) {
+      if (newUploadUrls.isNotEmpty) {
+        try {
+          await Future.wait(newUploadUrls.map(UploadService.deleteByUrl));
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -1612,6 +1622,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         FlashySnackBar.show(context, message: e.message, isError: true);
       }
     } catch (e) {
+      if (newUploadUrls.isNotEmpty) {
+        try {
+          await Future.wait(newUploadUrls.map(UploadService.deleteByUrl));
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -1634,7 +1649,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final address = _addressController.text.trim();
     final dobStr = _dobController.text.trim();
 
-    final allFieldsEmpty = name.isEmpty &&
+    final allFieldsEmpty =
+        name.isEmpty &&
         phone.isEmpty &&
         email.isEmpty &&
         nationalId.isEmpty &&
@@ -1733,49 +1749,47 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final hasProfileImage =
-        _profileImageBytes != null ||
-        (_existingProfileImageUrl != null &&
-            _existingProfileImageUrl!.isNotEmpty);
-    if (!hasProfileImage) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_upload_profile_image'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
+    setState(() => _isChecking = true);
     try {
-      Iterable<Map<String, dynamic>> existingWorkers;
       if (isGuest) {
         final guestWorkers = await PreferencesService.getGuestWorkers();
-        existingWorkers = guestWorkers ?? DummyData.workers;
-      } else {
-        final snapshot = await _firestore.getWorkersOnce();
-        existingWorkers = snapshot.docs.map(
-          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        final existingWorkers = guestWorkers ?? DummyData.workers;
+        final duplicateField = WorkerIdentity.duplicateField(
+          {'email': email, 'nationalId': nationalId},
+          existingWorkers,
+          excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
         );
+        if (duplicateField != null && mounted) {
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          };
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+          return;
+        }
+      } else {
+        final isDuplicate = await _firestore.hasDuplicateWorker(
+          email: email,
+          nationalId: nationalId,
+          excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
+        );
+        if (isDuplicate && mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'duplicate_email_or_national_id'.tr(),
+            isError: true,
+          );
+          return;
+        }
       }
-
-      final duplicateField = WorkerIdentity.duplicateField(
-        {'email': email, 'nationalId': nationalId},
-        existingWorkers,
-        excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
-      );
-      if (duplicateField != null && mounted) {
-        final messageKey = switch (duplicateField) {
-          DuplicateWorkerField.name => 'duplicate_name',
-          DuplicateWorkerField.email => 'duplicate_email',
-          DuplicateWorkerField.nationalId => 'duplicate_national_id',
-        };
-        FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
-        return;
-      }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isChecking = false);
+    }
 
     setState(() => _activeTabIndex = 1);
   }
@@ -2053,6 +2067,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                           });
                         },
                         onNextStep: _validateAndGoToExperience,
+                        isChecking: _isChecking,
                       ),
                     if (_activeTabIndex == 1)
                       ExperienceFormSection(
@@ -2349,6 +2364,7 @@ class WorkerDetailFormSection extends StatelessWidget {
   final TextEditingController genderController;
   final TextEditingController addressController;
   final VoidCallback? onNextStep;
+  final bool isChecking;
   final Uint8List? profileImageBytes;
   final String? profileImageName;
   final String? existingProfileImageUrl;
@@ -2369,6 +2385,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     required this.genderController,
     required this.addressController,
     this.onNextStep,
+    this.isChecking = false,
     this.profileImageBytes,
     this.profileImageName,
     this.existingProfileImageUrl,
@@ -2384,65 +2401,31 @@ class WorkerDetailFormSection extends StatelessWidget {
     required BuildContext context,
     required DateTime initialDate,
     required ValueChanged<DateTime> onDateSelected,
-  }) {
-    DateTime tempPickedDate = initialDate;
-    showDialog(
+  }) async {
+    final now = DateTime.now();
+    final maximumDate = DateTime(now.year - 18, now.month, now.day);
+    final picked = await showDatePicker(
       context: context,
-      builder: (BuildContext builder) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            width: 320,
-            height: 300,
-            padding: const EdgeInsets.only(top: 6),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    import_cupertino.CupertinoButton(
-                      child: Text(
-                        'cancel'.tr(),
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    import_cupertino.CupertinoButton(
-                      child: Text(
-                        'done'.tr(),
-                        style: TextStyle(color: Color(0xFF0247C4)),
-                      ),
-                      onPressed: () {
-                        onDateSelected(tempPickedDate);
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: import_cupertino.CupertinoDatePicker(
-                    mode: import_cupertino.CupertinoDatePickerMode.date,
-                    initialDateTime: initialDate,
-                    minimumDate: DateTime(1950),
-                    maximumDate: DateTime(
-                      DateTime.now().year - 18,
-                      DateTime.now().month,
-                      DateTime.now().day,
-                    ),
-                    onDateTimeChanged: (DateTime newDate) {
-                      tempPickedDate = newDate;
-                    },
-                  ),
-                ),
-              ],
+      initialDate: initialDate,
+      firstDate: DateTime(1950),
+      lastDate: maximumDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0247C4),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
             ),
           ),
+          child: child!,
         );
       },
     );
+    if (picked != null) {
+      onDateSelected(picked);
+    }
   }
 
   @override
@@ -2463,7 +2446,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: onNextStep,
+              onTap: isChecking ? null : onNextStep,
               child: Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2474,21 +2457,33 @@ class WorkerDetailFormSection extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      'next_step'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFF000000),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
+                    if (isChecking) ...[
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF0247C4),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: Color(0xFF000000),
-                    ),
+                      const SizedBox(width: 8),
+                    ] else ...[
+                      Text(
+                        'next_step'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF000000),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward,
+                        size: 18,
+                        color: Color(0xFF000000),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -4130,6 +4125,15 @@ class DocumentationSection extends StatelessWidget {
                     CachedNetworkImage(
                       imageUrl: existingUrl,
                       fit: BoxFit.cover,
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: Colors.grey.shade300,
+                        highlightColor: Colors.grey.shade100,
+                        child: Container(
+                          color: Colors.grey.shade300,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
                       errorWidget: (context, url, error) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
@@ -4278,21 +4282,34 @@ class DocumentationSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               child: isImage
                   ? (cvBytes != null
-                      ? Image.memory(
-                          cvBytes!,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high,
-                        )
-                      : (existingCvUrl != null && existingCvUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: existingCvUrl!,
-                              fit: BoxFit.cover,
-                              errorWidget: (context, url, error) =>
-                                  const Center(
-                                    child: Icon(Icons.broken_image, size: 48),
-                                  ),
-                            )
-                          : const SizedBox.shrink()))
+                        ? Image.memory(
+                            cvBytes!,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                          )
+                        : (existingCvUrl != null && existingCvUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: existingCvUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) =>
+                                      Shimmer.fromColors(
+                                        baseColor: Colors.grey.shade300,
+                                        highlightColor: Colors.grey.shade100,
+                                        child: Container(
+                                          color: Colors.grey.shade300,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        ),
+                                      ),
+                                  errorWidget: (context, url, error) =>
+                                      const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 48,
+                                        ),
+                                      ),
+                                )
+                              : const SizedBox.shrink()))
                   : (isPdf || isDoc)
                   ? Stack(
                       children: [

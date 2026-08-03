@@ -1,5 +1,7 @@
+import 'dart:async' show TimeoutException;
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -16,10 +18,41 @@ import '../utils/delete_dialog.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
+import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
 import '../widgets/amount_text.dart';
 import 'package:provider/provider.dart';
+
+Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
+  return InvoiceService.generatePayrollInvoice(
+    employeeName: args['employeeName'] as String,
+    email: args['email'] as String,
+    position: args['position'] as String,
+    payPeriod: args['payPeriod'] as String,
+    totalWorkDays: args['totalWorkDays'] as String,
+    daysWorked: args['daysWorked'] as String,
+    absents: args['absents'] as String,
+    leaves: args['leaves'] as String,
+    overtimeAmount: args['overtimeAmount'] as String,
+    salary: args['salary'] as String,
+    dailyRate: args['dailyRate'] as String,
+    grossPay: args['grossPay'] as String,
+    overtimePay: args['overtimePay'] as String,
+    absentDeduction: args['absentDeduction'] as String,
+    leaveDeduction: args['leaveDeduction'] as String,
+    totalDeductions: args['totalDeductions'] as String,
+    netSalary: args['netSalary'] as String,
+    currency: args['currency'] as String,
+    companyName: args['companyName'] as String? ?? 'HRMS Company',
+    companyAddress: args['companyAddress'] as String? ?? '',
+    companyEmail: args['companyEmail'] as String? ?? '',
+    companyPhone: args['companyPhone'] as String? ?? '',
+    companyId: args['companyId'] as String? ?? '',
+    companyStampImageUrl: args['companyStampImageUrl'] as String?,
+    workerId: args['workerId'] as String? ?? '',
+  );
+}
 
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
@@ -68,6 +101,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool _isSaving = false;
   bool _isCancellingPayroll = false;
   bool _isAttendanceLoading = true;
+  bool _attendanceVerified = false;
+  Object? _attendanceLoadError;
   bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
@@ -239,6 +274,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       }
       return;
     }
+    if (widget.workerData['hasPayrollRecord'] == true &&
+        _savedValuesFingerprint.isEmpty) {
+      _captureSavedValues();
+    }
     try {
       final results = await _firestore
           .getWorkerMonthlyAttendance(
@@ -249,13 +288,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              debugPrint('⚠️ getWorkerMonthlyAttendance timed out for $_email');
-              return <String, int>{
-                'absents': 0,
-                'paidLeaves': 0,
-                'unpaidLeaves': 0,
-                'leaves': 0,
-              };
+              throw TimeoutException(
+                'Attendance request timed out. Please check your connection and retry.',
+              );
             },
           );
       final workingDays = await _firestore
@@ -263,8 +298,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              debugPrint('⚠️ getMonthlyWorkingDays timed out');
-              return 0;
+              throw TimeoutException(
+                'Working days request timed out. Please check your connection and retry.',
+              );
             },
           );
       if (!mounted) return;
@@ -279,11 +315,33 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
           _workDaysCtrl.text = workingDays.toString();
         }
+        _attendanceVerified = true;
+        _attendanceLoadError = null;
       });
       _recalc();
-      _captureSavedValues();
+      _handleEditableValueChanged();
+    } on TimeoutException catch (e) {
+      debugPrint('⚠️ _fetchMonthlyAttendance timeout for $_email: $e');
+      if (mounted) {
+        setState(() {
+          _attendanceVerified = false;
+          _attendanceLoadError = e;
+        });
+        FlashySnackBar.show(
+          context,
+          message: '${'failed_to_load_attendance'.tr()}\n${e.message ?? ''}',
+          isError: true,
+          maxLines: null,
+        );
+      }
     } catch (e) {
       debugPrint('⚠️ _fetchMonthlyAttendance error for $_email: $e');
+      if (mounted) {
+        setState(() {
+          _attendanceVerified = false;
+          _attendanceLoadError = e;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isAttendanceLoading = false);
@@ -301,14 +359,29 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       );
       return;
     }
+    // Never save payroll with stale/unverified attendance data. If the
+    // attendance/working-days fetch failed or timed out, the HR user must
+    // retry instead of saving a payroll based on old or missing values.
+    if (!_attendanceVerified) {
+      final errorDetail = _attendanceLoadError?.toString() ?? '';
+      FlashySnackBar.show(
+        context,
+        message: errorDetail.isNotEmpty
+            ? '${'failed_to_load_attendance'.tr()}\n$errorDetail'
+            : 'failed_to_load_attendance'.tr(),
+        isError: true,
+        maxLines: null,
+      );
+      return;
+    }
     final workDaysText = _workDaysCtrl.text.trim();
     final absentsText = _absentsCtrl.text.trim();
     final leavesText = _leavesCtrl.text.trim();
     final salaryText = _salaryStr.trim();
 
-    if ((workDaysText.isEmpty || workDaysText == r'$ 0') &&
-        (absentsText.isEmpty || absentsText == r'$ 0') &&
-        (leavesText.isEmpty || leavesText == r'$ 0') &&
+    if (workDaysText.isEmpty &&
+        absentsText.isEmpty &&
+        leavesText.isEmpty &&
         (salaryText.isEmpty || salaryText == r'$ 0')) {
       FlashySnackBar.show(
         context,
@@ -318,18 +391,27 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       return;
     }
 
-    final validators = <(String, String)>[
-      (workDaysText, 'please_enter_total_work_days'.tr()),
-      (absentsText, 'please_enter_absents'.tr()),
-      (leavesText, 'please_enter_leaves'.tr()),
-      (salaryText, 'please_enter_salary'.tr()),
+    final validators = <(String, String, bool)>[
+      (workDaysText, 'please_enter_total_work_days'.tr(), false),
+      (absentsText, 'please_enter_absents'.tr(), false),
+      (leavesText, 'please_enter_leaves'.tr(), false),
+      (salaryText, 'please_enter_salary'.tr(), true),
     ];
 
-    for (final (value, message) in validators) {
-      if (value.isEmpty || value == r'$ 0') {
+    for (final (value, message, isCurrency) in validators) {
+      if (value.isEmpty || (isCurrency && value == r'$ 0')) {
         FlashySnackBar.show(context, message: message, isError: true);
         return;
       }
+    }
+    final parsedWorkDays = int.tryParse(workDaysText) ?? 0;
+    if (parsedWorkDays <= 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'work_days_must_be_greater_than_zero'.tr(),
+        isError: true,
+      );
+      return;
     }
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final now = DateTime.now();
@@ -361,9 +443,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'paidLeaves': _paidLeaves,
       'unpaidLeaves': _unpaidLeaves.toString(),
       'leaves': _leavesCtrl.text.trim(),
-      'overtimeAmount': _overtimeAmountCtrl.text.trim(),
-      'absentDeduction': _absentDeductionCtrl.text.trim(),
-      'leaveDeduction': _leaveDeductionCtrl.text.trim(),
+      'overtimeAmount': PayrollService.extractSalary(_overtimeAmountCtrl.text),
+      'absentDeduction': PayrollService.extractSalary(
+        _absentDeductionCtrl.text,
+      ),
+      'leaveDeduction': PayrollService.extractSalary(_leaveDeductionCtrl.text),
       'deductionsAreTotals': false,
       'salary': _salaryStr,
       'currency': _currencyCode,
@@ -394,17 +478,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           guestPayroll.add(record);
         }
         await PreferencesService.setGuestPayroll(guestPayroll);
-      } else {
-        final hasExisting = widget.workerData['hasPayrollRecord'] == true;
-        final existingId = widget.workerData['id']?.toString() ?? '';
-        if (hasExisting && existingId.isNotEmpty) {
-          await _firestore.updatePayrollRecord(existingId, record);
-        } else {
-          await _firestore.addPayrollRecord(record);
-        }
-      }
 
-      if (netAmount > 0) {
         final expenseRecord = <String, dynamic>{
           'name': _name,
           'date': paidAt,
@@ -413,10 +487,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           'description': 'Salary payment for $_name',
           'payrollKey': payrollKey,
         };
-        if (isGuest) {
-          final existingExpenseIndex = DummyData.expenses.indexWhere(
-            (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
-          );
+        final existingExpenseIndex = DummyData.expenses.indexWhere(
+          (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+        );
+        if (netAmount > 0) {
           if (existingExpenseIndex == -1) {
             final id =
                 'dummy_e${DateTime.now().microsecondsSinceEpoch}'
@@ -428,19 +502,32 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ...expenseRecord,
             };
           }
-          await DummyData.saveToPrefs();
-          if (mounted) setState(() {});
-        } else {
-          await _firestore.upsertPayrollExpense(
-            expenseRecord,
-            payrollKey: payrollKey,
-          );
+        } else if (existingExpenseIndex != -1) {
+          DummyData.expenses.removeAt(existingExpenseIndex);
         }
+        await DummyData.saveToPrefs();
+        if (mounted) setState(() {});
+      } else {
+        final hasExisting = widget.workerData['hasPayrollRecord'] == true;
+        final existingId = widget.workerData['id']?.toString() ?? '';
+        final expenseRecord = <String, dynamic>{
+          'name': _name,
+          'date': paidAt,
+          'category': 'Salary',
+          'amount': netAmount,
+          'description': 'Salary payment for $_name',
+          'payrollKey': payrollKey,
+        };
+        await _firestore.savePayrollAndExpenseBatch(
+          record: record,
+          payrollKey: payrollKey,
+          netAmount: netAmount,
+          expenseRecord: expenseRecord,
+          existingPayrollId: hasExisting ? existingId : null,
+        );
       }
 
       if (!mounted) return;
-
-      setState(() => _isSaving = false);
 
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
     } catch (_) {
@@ -465,10 +552,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           isError: true,
         );
       }
-    } finally {
-      if (mounted) {
-        widget.onBack?.call();
-      }
+    }
+    if (mounted) setState(() => _isSaving = false);
+    if (mounted) {
+      widget.onBack?.call();
     }
   }
 
@@ -529,41 +616,42 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       companyProfile = await _firestore.getUserProfile() ?? const {};
     } catch (_) {}
 
-    final bytes = await InvoiceService.generatePayrollInvoice(
-      employeeName: _name,
-      email: _email,
-      position: _position,
-      payPeriod: payPeriod,
-      totalWorkDays: _workDaysCtrl.text.trim(),
-      daysWorked: (cr['workedDays'] ?? 0).toString(),
-      absents: _absentsCtrl.text.trim(),
-      leaves: _leavesCtrl.text.trim(),
-      overtimeAmount: _overtimeAmountCtrl.text.trim(),
-      salary: _salaryStr,
-      dailyRate: (cr['formattedDailyRate'] as String?) ?? '',
-      grossPay: (cr['formattedGross'] as String?) ?? '',
-      overtimePay: (cr['formattedOvertime'] as String?) ?? '',
-      absentDeduction: (cr['formattedAbsentDeduct'] as String?) ?? '',
-      leaveDeduction: (cr['formattedLeaveDeduct'] as String?) ?? '',
-      totalDeductions: (cr['formattedTotalDeductions'] as String?) ?? '',
-      netSalary: (cr['formattedNet'] as String?) ?? '',
-      currency: _currencyCode,
-      companyName:
+    final bytes = await compute(_generateInvoiceInIsolate, {
+      'employeeName': _name,
+      'email': _email,
+      'position': _position,
+      'payPeriod': payPeriod,
+      'totalWorkDays': _workDaysCtrl.text.trim(),
+      'daysWorked': (cr['workedDays'] ?? 0).toString(),
+      'absents': _absentsCtrl.text.trim(),
+      'leaves': _leavesCtrl.text.trim(),
+      'overtimeAmount': _overtimeAmountCtrl.text.trim(),
+      'salary': _salaryStr,
+      'dailyRate': (cr['formattedDailyRate'] as String?) ?? '',
+      'grossPay': (cr['formattedGross'] as String?) ?? '',
+      'overtimePay': (cr['formattedOvertime'] as String?) ?? '',
+      'absentDeduction': (cr['formattedAbsentDeduct'] as String?) ?? '',
+      'leaveDeduction': (cr['formattedLeaveDeduct'] as String?) ?? '',
+      'totalDeductions': (cr['formattedTotalDeductions'] as String?) ?? '',
+      'netSalary': (cr['formattedNet'] as String?) ?? '',
+      'currency': _currencyCode,
+      'companyName':
           (companyProfile['businessName'] ??
                   companyProfile['companyName'] ??
                   'HRMS Company')
               .toString(),
-      companyAddress: (companyProfile['address'] ?? '').toString(),
-      companyEmail: (companyProfile['email'] ?? '').toString(),
-      companyPhone:
+      'companyAddress': (companyProfile['address'] ?? '').toString(),
+      'companyEmail': (companyProfile['email'] ?? '').toString(),
+      'companyPhone':
           (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
               .toString(),
-      companyId:
+      'companyId':
           (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
               .toString(),
-      companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+      'companyStampImageUrl': (companyProfile['companyStampUrl'] ?? '')
           .toString(),
-    );
+      'workerId': _workerId,
+    });
 
     if (mounted) await _showInvoicePreviewDialog(bytes, fileName);
   }

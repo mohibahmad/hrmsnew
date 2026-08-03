@@ -61,8 +61,11 @@ class _SplashScreenState extends State<SplashScreen>
         const Duration(seconds: 3),
       );
     } catch (e, st) {
+      // Fail-closed: if lock status cannot be verified for an authenticated
+      // (non-guest) session, assume the session is locked. Guest mode is
+      // handled separately below.
       ErrorReporter.report(e, st, context: 'splashSessionLocked');
-      sessionLocked = false;
+      sessionLocked = true;
     }
 
     bool isGuest;
@@ -91,26 +94,26 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!isGuest && user != null && !user.isAnonymous) {
       try {
-        final profile = await _firestoreService.getUserProfile().timeout(
+        final profile = await _firestoreService.getUserProfileOrThrow().timeout(
           const Duration(seconds: 8),
         );
         final isDeleted = profile?['isDeleted'] == true;
-        if (profile == null || isDeleted) {
+        if (isDeleted) {
+          // Only sign out when the server explicitly confirmed the account
+          // is deleted. This is a legitimate, confirmed terminal state.
+          await _authService.signOut();
+          user = null;
+        } else if (profile == null) {
+          // The server successfully confirmed the document does not exist.
+          // Treat this as a genuine missing account and sign out.
           await _authService.signOut();
           user = null;
         }
       } catch (e, st) {
+        // Network/timeout/permission errors are NOT a confirmed deleted or
+        // missing account. Preserve the existing authenticated session and
+        // continue to Home so the user can retry/offline.
         ErrorReporter.report(e, st, context: 'splashProfileValidation');
-        try {
-          await _authService.signOut();
-        } catch (signOutError, signOutStack) {
-          ErrorReporter.report(
-            signOutError,
-            signOutStack,
-            context: 'splashProfileValidationSignOut',
-          );
-        }
-        user = null;
       }
     }
 
@@ -118,10 +121,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    
-    
-    final destination = (user != null || isGuest) &&
-            (!sessionLocked || isGuest)
+    final destination = (user != null || isGuest) && (!sessionLocked || isGuest)
         ? const HomeScreen()
         : const LoginScreen();
 

@@ -82,7 +82,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
   List<Map<String, dynamic>> _timeoffRecords = [];
-  StreamSubscription? _timeoffSub;
   List<Map<String, dynamic>> _holidays = [];
   Set<int> _companyWorkingDays = {
     DateTime.monday,
@@ -145,14 +144,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           widget.initialWorker!['email'] != oldWidget.initialWorker?['email']) {
         _selectedWorker = widget.initialWorker;
         _resetFormFields();
+        _loadTimeoffForSelectedWorker();
       }
       return;
     }
 
     if (!_sameInitialSelection(widget.initialWorker, oldWidget.initialWorker)) {
-      _selectedWorker =
-          widget.initialWorker ?? (_workers.isNotEmpty ? _workers.first : null);
+      _selectedWorker = widget.initialWorker;
       _resetFormFields();
+      _loadTimeoffForSelectedWorker();
     }
   }
 
@@ -235,12 +235,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           );
         } else if (_workers.isNotEmpty) {
           if (_selectedWorker == null) {
-            _selectedWorker = _workers.first;
+            _selectedWorker = null;
           } else {
-            _selectedWorker = _workers.firstWhere(
+            final idx = _workers.indexWhere(
               (worker) => _sameWorker(worker, _selectedWorker!),
-              orElse: () => _workers.first,
             );
+            _selectedWorker = idx != -1 ? _workers[idx] : null;
           }
         } else {
           _selectedWorker = null;
@@ -260,26 +260,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               );
             } else if (_workers.isNotEmpty) {
               if (_selectedWorker == null) {
-                _selectedWorker = _workers.first;
+                _selectedWorker = null;
               } else {
-                _selectedWorker = _workers.firstWhere(
+                final idx = _workers.indexWhere(
                   (worker) => _sameWorker(worker, _selectedWorker!),
-                  orElse: () => _workers.first,
                 );
+                _selectedWorker = idx != -1 ? _workers[idx] : null;
               }
             } else {
               _selectedWorker = null;
             }
           });
-        }
-      }, onError: (e) {});
-      _timeoffSub = _firestore.timeoffStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _timeoffRecords = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-          });
+          _loadTimeoffForSelectedWorker();
         }
       }, onError: (e) {});
       _holidaysSub = _firestore.holidaysStream.listen((snapshot) {
@@ -307,6 +299,40 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         });
       }, onError: (_) {});
     }
+  }
+
+  void _loadTimeoffForSelectedWorker() {
+    final worker = _selectedWorker;
+    if (worker == null) {
+      if (mounted) setState(() => _timeoffRecords = []);
+      return;
+    }
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    if (workerId.isEmpty) {
+      if (mounted) setState(() => _timeoffRecords = []);
+      return;
+    }
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      final records = DummyData.timeoff
+          .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
+          .toList();
+      if (mounted) setState(() => _timeoffRecords = records);
+      return;
+    }
+    _firestore
+        .getTimeoffForWorker(workerId)
+        .then((snapshot) {
+          if (!mounted) return;
+          setState(() {
+            _timeoffRecords = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+          });
+        })
+        .catchError((_) {});
   }
 
   String _getMonthName(int month) {
@@ -427,7 +453,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   void dispose() {
     _notesController.dispose();
     _workersSub?.cancel();
-    _timeoffSub?.cancel();
     _holidaysSub?.cancel();
     super.dispose();
   }
@@ -509,6 +534,57 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildMainCard() {
+    if (_selectedWorker == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person_off_rounded,
+                size: 64,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'no_worker_selected'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'select_worker_to_assign'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final bool isExhausted =
         _selectedWorker != null &&
         _editingId == null &&
@@ -603,14 +679,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildTopForm(),
           const SizedBox(height: 32),
-          Wrap(
-            spacing: 24,
-            runSpacing: 24,
-            children: [
-              _buildCalendar(_calendarMonth, isStartCalendar: true),
-              _buildCalendar(_calendarMonth2, isStartCalendar: false),
-            ],
-          ),
+          _buildUnifiedDaysGrid(),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -794,10 +863,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   color: Colors.black,
                 ),
                 items: _leaveTypeOptions.map((option) {
+                  final label = option['labelKey']!.tr();
+                  final remaining = _availableDays;
+                  final displayText = _selectedWorker != null
+                      ? '$label – $remaining ${'remaining_days'.tr()}'
+                      : label;
                   return DropdownMenuItem<String>(
                     value: option['value'],
                     child: Text(
-                      option['labelKey']!.tr(),
+                      displayText,
                       style: const TextStyle(
                         fontFamily: 'SF Pro Display',
                         fontSize: 14,
@@ -1007,6 +1081,63 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
+  Widget _buildUnifiedDaysGrid() {
+    const cellExtent = 54.0;
+    const calendarWidth = 7 * cellExtent;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      dragStartBehavior: DragStartBehavior.down,
+      onPanDown: (details) {
+        final pos = details.localPosition;
+        final isSecond = pos.dx > calendarWidth + 24;
+        final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
+        _dragAnchorDate = _dateAtGridPosition(monthDate, details.localPosition);
+        _lastDragDate = null;
+        _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
+        _dragExceededAvailableDays = false;
+      },
+      onPanUpdate: (details) {
+        final anchor = _dragAnchorDate;
+        final pos = details.localPosition;
+        final isSecond = pos.dx > calendarWidth + 24;
+        final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
+        final current = _dateAtGridPosition(monthDate, details.localPosition);
+        if (anchor == null || current == null || current == _lastDragDate) {
+          return;
+        }
+        _lastDragDate = current;
+
+        final candidate = Set<DateTime>.from(_selectionBeforeDrag);
+        var exceededAvailableDays = false;
+        for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
+          if (candidate.contains(date)) continue;
+          if (_isNonWorkingDate(date)) continue;
+          if (_usesPaidAllowance && candidate.length >= _availableDays) {
+            if (!_isGuest) exceededAvailableDays = true;
+            break;
+          }
+          candidate.add(date);
+        }
+
+        setState(() {
+          _selectedDates = candidate;
+          _dragExceededAvailableDays = exceededAvailableDays;
+          _syncSelectionBounds();
+        });
+      },
+      onPanEnd: (_) => _finishDateDrag(),
+      onPanCancel: _finishDateDrag,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCalendar(_calendarMonth, isStartCalendar: true),
+          const SizedBox(width: 24),
+          _buildCalendar(_calendarMonth2, isStartCalendar: false),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDaysGrid(DateTime monthDate) {
     List<Widget> rows = [];
     int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
@@ -1053,45 +1184,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         rows.add(const SizedBox(height: 4));
       }
     }
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      dragStartBehavior: DragStartBehavior.down,
-      onPanDown: (details) {
-        _dragAnchorDate = _dateAtGridPosition(monthDate, details.localPosition);
-        _lastDragDate = null;
-        _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
-        _dragExceededAvailableDays = false;
-      },
-      onPanUpdate: (details) {
-        final anchor = _dragAnchorDate;
-        final current = _dateAtGridPosition(monthDate, details.localPosition);
-        if (anchor == null || current == null || current == _lastDragDate) {
-          return;
-        }
-        _lastDragDate = current;
-
-        final candidate = Set<DateTime>.from(_selectionBeforeDrag);
-        var exceededAvailableDays = false;
-        for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
-          if (candidate.contains(date)) continue;
-          if (_isNonWorkingDate(date)) continue;
-          if (_usesPaidAllowance && candidate.length >= _availableDays) {
-            if (!_isGuest) exceededAvailableDays = true;
-            break;
-          }
-          candidate.add(date);
-        }
-
-        setState(() {
-          _selectedDates = candidate;
-          _dragExceededAvailableDays = exceededAvailableDays;
-          _syncSelectionBounds();
-        });
-      },
-      onPanEnd: (_) => _finishDateDrag(),
-      onPanCancel: _finishDateDrag,
-      child: Column(children: rows),
-    );
+    return Column(children: rows);
   }
 
   DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
@@ -1343,6 +1436,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return '';
   }
 
+  bool _isEligibleWorker(Map<String, dynamic> worker) {
+    final status =
+        (worker['employmentStatus'] ??
+                worker['workerStatus'] ??
+                worker['status'] ??
+                'Active')
+            .toString()
+            .trim()
+            .toLowerCase();
+    return !const {
+      'inactive',
+      'terminated',
+      'deleted',
+      'archived',
+    }.contains(status);
+  }
+
+  String _dateOnlyString(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
   Future<void> _handleSave() async {
     if (_isLoading) return;
 
@@ -1361,6 +1476,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       FlashySnackBar.show(
         context,
         message: 'please_select_worker_first'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    // Hard eligibility validation: never rely only on UI filtering. A stale
+    // or supplied worker object must be rejected if the worker is
+    // inactive/terminated/deleted/archived.
+    if (!_isEligibleWorker(_selectedWorker!)) {
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
         isError: true,
       );
       return;
@@ -1435,9 +1562,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'contact': _getWorkerPhone(_selectedWorker!),
         'action': _timeOffType,
         'type': _timeOffType,
-        'startDate': _startDate,
-        'endDate': _endDate,
-        'selectedDates': _sortedSelectedDates.toList(),
+        // Date-only values: never use .toUtc() on business date fields. In
+        // Pakistan (+05:00) a selected 03 Aug 00:00 local would otherwise be
+        // saved as 02 Aug 19:00Z, shifting the leave to the wrong day.
+        'startDate': _dateOnlyString(_startDate),
+        'endDate': _dateOnlyString(_endDate),
+        'selectedDates': _sortedSelectedDates.map(_dateOnlyString).toList(),
         'notes': _notesController.text.trim(),
         'requestedDays': _requestedDays,
         'status': 'Approved',
@@ -1516,6 +1646,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   .tr(),
         );
         widget.onBack();
+        return;
       }
     } catch (e) {
       if (mounted) {
@@ -1616,6 +1747,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         ),
       );
       widget.onBack();
+      return;
     } catch (_) {
       if (mounted) {
         FlashySnackBar.show(

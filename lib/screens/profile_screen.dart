@@ -11,6 +11,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
+import '../services/upload_service.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
@@ -238,6 +239,11 @@ class _ProfileBodyState extends State<ProfileBody> {
 
       if (profile != null) {
         final storedCurrency = profile['currency'];
+        // Display a normalized fallback for the dropdown, but NEVER silently
+        // write it back to Firestore. A missing/invalid stored currency must
+        // be explicitly chosen by the HR user on save — otherwise merely
+        // opening the Profile screen would relabel the company currency to
+        // USD and corrupt historical payroll/worker amounts.
         final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
         final profileImage = _profileImageText(profile['profilePic']);
         final companyStamp = _profileImageText(profile['companyStampUrl']);
@@ -259,20 +265,6 @@ class _ProfileBodyState extends State<ProfileBody> {
           AuthService.profilePicNotifier.value = profileImage;
           _isLoading = false;
         });
-        if (!CurrencyUtils.isSupported(storedCurrency) ||
-            storedCurrency.toString().trim() != normalizedCurrency) {
-          try {
-            await _firestore.updateUserProfile({
-              'currency': normalizedCurrency,
-            });
-          } catch (error, stackTrace) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'NormalizeProfileCurrency',
-            );
-          }
-        }
       } else {
         setState(() {
           _profilePicUrl = AuthService.profilePicNotifier.value;
@@ -544,6 +536,11 @@ class _ProfileBodyState extends State<ProfileBody> {
     if (!mounted) return false;
     setState(() => _isLoading = true);
 
+    // Capture the old stored URLs BEFORE we overwrite them, so we can delete
+    // the replaced/removed Firebase Storage files after a successful save.
+    final oldProfilePicUrl = _profilePicUrl;
+    final oldCompanyStampUrl = _companyStampUrl;
+
     Reference? uploadedRef;
     Reference? uploadedStampRef;
     var profileSaved = false;
@@ -685,6 +682,36 @@ class _ProfileBodyState extends State<ProfileBody> {
           _companyStampUrl = stampDownloadUrl;
           _newCompanyStampBytes = null;
           _clearCompanyStamp = false;
+        }
+
+        // Firestore save succeeded. Clean up the replaced/removed old files
+        // from Firebase Storage (best-effort — a failed cleanup must never
+        // roll back a successful profile save).
+        if (oldProfilePicUrl != null &&
+            oldProfilePicUrl.isNotEmpty &&
+            oldProfilePicUrl != downloadUrl) {
+          try {
+            await UploadService.deleteByUrl(oldProfilePicUrl);
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'CleanupOldProfilePic',
+            );
+          }
+        }
+        if (oldCompanyStampUrl != null &&
+            oldCompanyStampUrl.isNotEmpty &&
+            oldCompanyStampUrl != stampDownloadUrl) {
+          try {
+            await UploadService.deleteByUrl(oldCompanyStampUrl);
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'CleanupOldCompanyStamp',
+            );
+          }
         }
       } else {
         if (_newProfileImageBytes != null) {

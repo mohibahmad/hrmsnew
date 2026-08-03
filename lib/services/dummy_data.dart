@@ -16,6 +16,51 @@ class DummyData {
     return value;
   }
 
+  static dynamic _toJsonSafe(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value.toIso8601String();
+    if (value is int || value is double || value is bool || value is String) {
+      return value;
+    }
+    if (value is Map) {
+      return value.map(
+        (key, item) => MapEntry(key.toString(), _toJsonSafe(item)),
+      );
+    }
+    if (value is List) {
+      return value.map(_toJsonSafe).toList();
+    }
+    return value.toString();
+  }
+
+  static List<Map<String, dynamic>>? _decodeListSafely(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return null;
+    try {
+      final List<dynamic> list = json.decode(jsonStr);
+      return list.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Map<String, List<Map<String, dynamic>>>? _decodeHolidaysSafely(
+    String? jsonStr,
+  ) {
+    if (jsonStr == null || jsonStr.isEmpty) return null;
+    try {
+      final Map<String, dynamic> parsed = json.decode(jsonStr);
+      final result = <String, List<Map<String, dynamic>>>{};
+      for (final entry in parsed.entries) {
+        result[entry.key.toString()] = (entry.value as List)
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static void _captureSourceDefaults() {
     _sourceDefaults ??= {
       'workers': _clone(workers),
@@ -96,69 +141,83 @@ class DummyData {
   }
 
   static Future<void> loadFromPrefs() async {
-    
     _captureSourceDefaults();
     final prefs = await SharedPreferences.getInstance();
 
-    workers
-      ..clear()
-      ..addAll(_prefsList(prefs, 'workers'));
-    expenses
-      ..clear()
-      ..addAll(_prefsList(prefs, 'expenses'));
-    attendance
-      ..clear()
-      ..addAll(_prefsList(prefs, 'attendance'));
-    payroll
-      ..clear()
-      ..addAll(_prefsList(prefs, 'payroll'));
-    timeoff
-      ..clear()
-      ..addAll(_prefsList(prefs, 'timeoff'));
-    assets
-      ..clear()
-      ..addAll(_prefsList(prefs, 'assets'));
-    notifications
-      ..clear()
-      ..addAll(_prefsList(prefs, 'notifications'));
+    final loadedWorkers = _decodeListSafely(prefs.getString('workers'));
+    if (loadedWorkers != null) {
+      workers
+        ..clear()
+        ..addAll(loadedWorkers);
+    }
 
-    final savedHolidaysJson = prefs.getString('holidays');
-    if (savedHolidaysJson != null && savedHolidaysJson.isNotEmpty) {
-      holidays.clear();
-      final Map<String, dynamic> parsed = json.decode(savedHolidaysJson);
-      for (final entry in parsed.entries) {
-        final list = (entry.value as List)
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
-        holidays[entry.key.toString()] = list;
-      }
+    final loadedExpenses = _decodeListSafely(prefs.getString('expenses'));
+    if (loadedExpenses != null) {
+      expenses
+        ..clear()
+        ..addAll(loadedExpenses);
+    }
+
+    final loadedAttendance = _decodeListSafely(prefs.getString('attendance'));
+    if (loadedAttendance != null) {
+      attendance
+        ..clear()
+        ..addAll(loadedAttendance);
+    }
+
+    final loadedPayroll = _decodeListSafely(prefs.getString('payroll'));
+    if (loadedPayroll != null) {
+      payroll
+        ..clear()
+        ..addAll(loadedPayroll);
+    }
+
+    final loadedTimeoff = _decodeListSafely(prefs.getString('timeoff'));
+    if (loadedTimeoff != null) {
+      timeoff
+        ..clear()
+        ..addAll(loadedTimeoff);
+    }
+
+    final loadedAssets = _decodeListSafely(prefs.getString('assets'));
+    if (loadedAssets != null) {
+      assets
+        ..clear()
+        ..addAll(loadedAssets);
+    }
+
+    final loadedNotifications = _decodeListSafely(
+      prefs.getString('notifications'),
+    );
+    if (loadedNotifications != null) {
+      notifications
+        ..clear()
+        ..addAll(loadedNotifications);
+    }
+
+    final loadedHolidays = _decodeHolidaysSafely(prefs.getString('holidays'));
+    if (loadedHolidays != null) {
+      holidays
+        ..clear()
+        ..addAll(loadedHolidays);
     }
   }
 
   static Future<void> saveToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('workers', json.encode(workers));
-    await prefs.setString('expenses', json.encode(expenses));
-    await prefs.setString('attendance', json.encode(attendance));
-    await prefs.setString('payroll', json.encode(payroll));
-    await prefs.setString('timeoff', json.encode(timeoff));
-    await prefs.setString('notifications', json.encode(notifications));
-    await prefs.setString('holidays', json.encode(holidays));
-    await prefs.setString('assets', json.encode(assets));
+    await prefs.setString('workers', json.encode(_toJsonSafe(workers)));
+    await prefs.setString('expenses', json.encode(_toJsonSafe(expenses)));
+    await prefs.setString('attendance', json.encode(_toJsonSafe(attendance)));
+    await prefs.setString('payroll', json.encode(_toJsonSafe(payroll)));
+    await prefs.setString('timeoff', json.encode(_toJsonSafe(timeoff)));
+    await prefs.setString(
+      'notifications',
+      json.encode(_toJsonSafe(notifications)),
+    );
+    await prefs.setString('holidays', json.encode(_toJsonSafe(holidays)));
+    await prefs.setString('assets', json.encode(_toJsonSafe(assets)));
     await prefs.setInt(_dataVersionKey, _currentDataVersion);
-  }
-
-  static List<Map<String, dynamic>> _prefsList(
-      SharedPreferences prefs, String key) {
-    final jsonStr = prefs.getString(key);
-    if (jsonStr == null || jsonStr.isEmpty) return [];
-    try {
-      final List<dynamic> list = json.decode(jsonStr);
-      return list.map((e) => Map<String, dynamic>.from(e)).toList();
-    } catch (_) {
-      return [];
-    }
   }
 
   static final List<Map<String, dynamic>> workers = [

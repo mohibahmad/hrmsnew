@@ -10,29 +10,46 @@ class AttendanceService {
     return (data['workerId'] ?? data['id'] ?? '').toString().trim();
   }
 
-  static bool workerExistedOnDate(Map<String, dynamic> worker, DateTime date) {
-    final createdAt = AppDateUtils.dateFromValue(worker['createdAt']);
-    if (createdAt == null) return true;
+  static const Set<String> _ineligibleAttendanceStatuses = {
+    'inactive',
+    'terminated',
+    'deleted',
+    'archived',
+  };
 
-    final creationDay = DateTime(
-      createdAt.year,
-      createdAt.month,
-      createdAt.day,
-    );
-    final targetDay = DateTime(date.year, date.month, date.day);
-    return !targetDay.isBefore(creationDay);
+  /// Whether the worker may still receive new attendance marks. Inactive,
+  /// terminated, deleted, and archived workers stay in historical reports
+  /// but must not appear in the new attendance marking list.
+  static bool isEligibleForAttendance(Map<String, dynamic> worker) {
+    final status = (worker['status'] ?? 'Active')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return !_ineligibleAttendanceStatuses.contains(status);
   }
 
-  static bool recordIsOnOrAfterWorkerCreation({
+  static bool workerExistedOnDate(Map<String, dynamic> worker, DateTime date) {
+    final employmentStart = AppDateUtils.dateFromValue(
+      worker['joiningDate'] ?? worker['dateOfJoining'],
+    );
+    if (employmentStart == null) return true;
+
+    final startDay = DateTime(
+      employmentStart.year,
+      employmentStart.month,
+      employmentStart.day,
+    );
+    final targetDay = DateTime(date.year, date.month, date.day);
+    return !targetDay.isBefore(startDay);
+  }
+
+  static bool workerExistedOnRecordDate({
     required Map<String, dynamic> worker,
     required Map<String, dynamic> attendanceRecord,
   }) {
     final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
     if (attendanceDate == null) {
-      
-      
-      
-      return AppDateUtils.dateFromValue(worker['createdAt']) == null;
+      return true;
     }
     return workerExistedOnDate(worker, attendanceDate);
   }
@@ -118,7 +135,7 @@ class AttendanceService {
         continue;
       }
 
-      if (!recordIsOnOrAfterWorkerCreation(
+      if (!workerExistedOnRecordDate(
         worker: worker,
         attendanceRecord: record,
       )) {

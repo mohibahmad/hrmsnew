@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {
@@ -28,6 +30,21 @@ class PreferencesService {
 
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
+  static Directory? _guestDataDir;
+
+  static Future<Directory> _getGuestDataDir() async {
+    if (_guestDataDir != null) return _guestDataDir!;
+    final appDir = await getApplicationDocumentsDirectory();
+    _guestDataDir = await Directory('${appDir.path}/guest_data').create(
+      recursive: true,
+    );
+    return _guestDataDir!;
+  }
+
+  static Future<File> _guestFile(String name) async {
+    final dir = await _getGuestDataDir();
+    return File('${dir.path}/$name');
+  }
 
   static Future<void> initFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,6 +80,18 @@ class PreferencesService {
   static Future<bool> isPremium() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_premiumKey) ?? false;
+  }
+
+  static Future<bool> verifyAndSyncPremium() async {
+    try {
+      // TODO: Replace with actual StoreKit/App Store receipt verification.
+      // final entitlement = await SubscriptionService.verifyCurrentEntitlement();
+      // await setPremium(entitlement.isActive);
+      // return entitlement.isActive;
+      return await isPremium();
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<Set<int>> getCompanyWorkingDays() async {
@@ -146,18 +175,35 @@ class PreferencesService {
   static Future<void> setGuestWorkers(
     List<Map<String, dynamic>> workers,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_guestWorkersKey, jsonEncode(workers));
+    try {
+      final file = await _guestFile('workers.json');
+      await file.writeAsString(jsonEncode(workers));
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_guestWorkersKey, jsonEncode(workers));
+    }
   }
 
   static Future<List<Map<String, dynamic>>?> getGuestWorkers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_guestWorkersKey);
-    if (raw == null || raw.isEmpty) return null;
-    return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    try {
+      final file = await _guestFile('workers.json');
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_guestWorkersKey);
+      if (raw == null || raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    }
   }
 
   static Future<void> clearGuestWorkers() async {
+    try {
+      final file = await _guestFile('workers.json');
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_guestWorkersKey);
   }
@@ -165,18 +211,35 @@ class PreferencesService {
   static Future<void> setGuestPayroll(
     List<Map<String, dynamic>> payroll,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_guestPayrollKey, jsonEncode(payroll));
+    try {
+      final file = await _guestFile('payroll.json');
+      await file.writeAsString(jsonEncode(payroll));
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_guestPayrollKey, jsonEncode(payroll));
+    }
   }
 
   static Future<List<Map<String, dynamic>>?> getGuestPayroll() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_guestPayrollKey);
-    if (raw == null || raw.isEmpty) return null;
-    return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    try {
+      final file = await _guestFile('payroll.json');
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_guestPayrollKey);
+      if (raw == null || raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
+    }
   }
 
   static Future<void> clearGuestPayroll() async {
+    try {
+      final file = await _guestFile('payroll.json');
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_guestPayrollKey);
   }

@@ -29,6 +29,14 @@ class AppDateUtils {
     'dec': 12,
   };
 
+  static DateTime? _validatedDate(int year, int month, int day) {
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    return date;
+  }
+
   static int? parseMonth(String monthStr, {String? locale}) {
     final trimmed = monthStr.trim().toLowerCase();
     final fromMap = _monthNames[trimmed];
@@ -49,7 +57,9 @@ class AppDateUtils {
   static DateTime? parseDateString(String dateStr) {
     try {
       final parsed = DateTime.tryParse(dateStr);
-      if (parsed != null) return parsed;
+      if (parsed != null) {
+        return _validatedDate(parsed.year, parsed.month, parsed.day);
+      }
 
       final parts = dateStr.split('/');
       if (parts.length == 3) {
@@ -57,18 +67,18 @@ class AppDateUtils {
           final year = int.parse(parts[0]);
           final month = int.parse(parts[1]);
           final day = int.parse(parts[2]);
-          return DateTime(year, month, day);
+          return _validatedDate(year, month, day);
         } else if (parts[2].length == 4) {
           final year = int.parse(parts[2]);
           final val1 = int.parse(parts[0]);
           final val2 = int.parse(parts[1]);
 
           if (val1 > 12) {
-            return DateTime(year, val2, val1);
+            return _validatedDate(year, val2, val1);
           } else if (val2 > 12) {
-            return DateTime(year, val1, val2);
+            return _validatedDate(year, val1, val2);
           } else {
-            return DateTime(year, val2, val1);
+            return _validatedDate(year, val2, val1);
           }
         }
       }
@@ -79,15 +89,15 @@ class AppDateUtils {
           final year = int.parse(hyphenParts[0]);
           final month = int.parse(hyphenParts[1]);
           final day = int.parse(hyphenParts[2]);
-          return DateTime(year, month, day);
+          return _validatedDate(year, month, day);
         } else if (hyphenParts[2].length == 4) {
           final year = int.parse(hyphenParts[2]);
           final val1 = int.parse(hyphenParts[0]);
           final val2 = int.parse(hyphenParts[1]);
           if (val1 > 12) {
-            return DateTime(year, val2, val1);
+            return _validatedDate(year, val2, val1);
           } else {
-            return DateTime(year, val2, val1);
+            return _validatedDate(year, val2, val1);
           }
         }
       }
@@ -103,15 +113,14 @@ class AppDateUtils {
     return '$dayStr/$monthStr/${date.year}';
   }
 
-  static DateTime _periodStart(String period, DateTime now) {
+  static DateTime periodStart(String period, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     switch (period) {
       case 'Today':
         return today;
       case 'Week':
       case 'Weekly':
-        
-        final weekday = today.weekday; 
+        final weekday = today.weekday;
         return today.subtract(Duration(days: weekday - 1));
       case 'Month':
       case 'Monthly':
@@ -119,7 +128,7 @@ class AppDateUtils {
       case '6 Month':
       case '6 Months':
       case '6 Monthly':
-        return DateTime(today.year, today.month - 6, 1);
+        return DateTime(today.year, today.month - 5, 1);
       case 'Yearly':
         return DateTime(today.year, 1, 1);
       default:
@@ -127,27 +136,31 @@ class AppDateUtils {
     }
   }
 
+  static DateTime periodEnd(String period, DateTime now) {
+    return DateTime(now.year, now.month, now.day);
+  }
+
   static bool isDateWithinPeriod(String dateStr, String period) {
     final date = parseDateString(dateStr);
-    if (date == null) return true;
+    if (date == null) return false;
 
     final now = DateTime.now();
-    final start = _periodStart(period, now);
-    final end = DateTime(now.year, now.month, now.day);
+    final start = periodStart(period, now);
+    final end = periodEnd(period, now);
 
     final day = DateTime(date.year, date.month, date.day);
     return !day.isBefore(start) && !day.isAfter(end);
   }
 
   static bool isTimestampWithinPeriod(dynamic createdAt, String period) {
-    if (createdAt == null) return true;
+    if (createdAt == null) return false;
 
     final date = dateFromValue(createdAt);
-    if (date == null) return true;
+    if (date == null) return false;
 
     final now = DateTime.now();
-    final start = _periodStart(period, now);
-    final end = DateTime(now.year, now.month, now.day);
+    final start = periodStart(period, now);
+    final end = periodEnd(period, now);
 
     final day = DateTime(date.year, date.month, date.day);
     return !day.isBefore(start) && !day.isAfter(end);
@@ -173,6 +186,7 @@ class AppDateUtils {
     String period,
   ) {
     final date = attendanceRecordDate(record);
-    return date == null || isTimestampWithinPeriod(date, period);
+    if (date == null) return false;
+    return isTimestampWithinPeriod(date, period);
   }
 }

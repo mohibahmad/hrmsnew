@@ -76,12 +76,12 @@ void main() {
     expect(records.single['workerId'], 'worker-1');
   });
 
-  test('attendance before worker creation date is ignored', () {
+  test('attendance before worker joining date is ignored', () {
     final records = AttendanceService.recordsForWorker(
       worker: {
         'id': 'worker-1',
         'name': 'Ali',
-        'createdAt': DateTime(2026, 7, 31),
+        'joiningDate': DateTime(2026, 7, 31),
       },
       attendanceRecords: [
         {
@@ -96,12 +96,12 @@ void main() {
     expect(records, isEmpty);
   });
 
-  test('attendance on worker creation date remains valid', () {
+  test('attendance on worker joining date remains valid', () {
     final records = AttendanceService.recordsForWorker(
       worker: {
         'id': 'worker-1',
         'name': 'Ali',
-        'createdAt': DateTime(2026, 7, 30, 18),
+        'joiningDate': DateTime(2026, 7, 30, 18),
       },
       attendanceRecords: [
         {
@@ -116,10 +116,65 @@ void main() {
     expect(records, hasLength(1));
   });
 
-  test('attendance list clears status dated before worker creation', () {
+  test('attendance respects dateOfJoining fallback field', () {
+    expect(
+      AttendanceService.workerExistedOnDate(
+        {'dateOfJoining': '2026-07-31'},
+        DateTime(2026, 7, 30),
+      ),
+      isFalse,
+    );
+    expect(
+      AttendanceService.workerExistedOnDate(
+        {'dateOfJoining': '2026-07-31'},
+        DateTime(2026, 7, 31),
+      ),
+      isTrue,
+    );
+  });
+
+  test('workers without a joining date are always eligible by date', () {
+    expect(
+      AttendanceService.workerExistedOnDate(
+        {'id': 'worker-1'},
+        DateTime(2019, 1, 1),
+      ),
+      isTrue,
+    );
+  });
+
+  test('inactive and terminated workers are not eligible for attendance', () {
+    expect(
+      AttendanceService.isEligibleForAttendance({'status': 'Active'}),
+      isTrue,
+    );
+    expect(
+      AttendanceService.isEligibleForAttendance({'status': 'inactive'}),
+      isFalse,
+    );
+    expect(
+      AttendanceService.isEligibleForAttendance({'status': 'Terminated'}),
+      isFalse,
+    );
+    expect(
+      AttendanceService.isEligibleForAttendance({'status': 'Deleted'}),
+      isFalse,
+    );
+    expect(
+      AttendanceService.isEligibleForAttendance({'status': 'Archived'}),
+      isFalse,
+    );
+    expect(AttendanceService.isEligibleForAttendance({}), isTrue);
+  });
+
+  test('attendance list clears status dated before worker joining date', () {
     final combined = AttendanceService.combineAttendance(
       workersList: [
-        {'id': 'worker-1', 'name': 'Ali', 'createdAt': DateTime(2026, 7, 31)},
+        {
+          'id': 'worker-1',
+          'name': 'Ali',
+          'joiningDate': DateTime(2026, 7, 31),
+        },
       ],
       rawAttendanceDocs: const [
         {

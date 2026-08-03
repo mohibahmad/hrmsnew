@@ -99,7 +99,7 @@ class PayrollService {
     if (configuredDay == null || configuredDay < 1 || configuredDay > 31) {
       return false;
     }
-    return date.day == effectiveSalaryDay(date, configuredDay);
+    return date.day >= effectiveSalaryDay(date, configuredDay);
   }
 
   static bool isWorkerEligibleForPayroll(Map<String, dynamic> worker) {
@@ -191,17 +191,18 @@ class PayrollService {
     String? companyCurrency,
   }) {
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
+    final workerCurrency = CurrencyUtils.normalize(data['currency']);
     final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
     if (salaryAmount.isNotEmpty) {
-      final currency =
-          companyCurrencyCode ?? (data['currency'] ?? 'USD').toString();
+      final currency = companyCurrencyCode ?? workerCurrency;
       final symbol = getCurrencySymbol(currency);
       return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
     }
 
     final salary = (data['salary'] ?? '').toString().trim();
-    if (salary.isEmpty || companyCurrencyCode == null) return salary;
-    return formatAmountInCurrency(salary, companyCurrencyCode);
+    if (salary.isEmpty) return salary;
+    final effectiveCurrency = companyCurrencyCode ?? workerCurrency;
+    return formatAmountInCurrency(salary, effectiveCurrency);
   }
 
   static DateTime _recordSortDate(Map<String, dynamic> record) {
@@ -771,9 +772,6 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
-    
-    
-    
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
         : dailyRate;

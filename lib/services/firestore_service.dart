@@ -6,16 +6,34 @@ import '../utils/validators.dart';
 import '../utils/worker_identity.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
+import 'error_reporter.dart';
 import 'time_off_service.dart';
+import 'upload_service.dart';
 
 class BulkWorkerResult {
   final int imported;
   final int skipped;
   final List<String> skipReasons;
+
+  /// Client-side row identifiers (e.g. `clientRowId`) that were skipped by
+  /// the server-side duplicate/validation re-check. The caller can use these
+  /// to clean up media files that were uploaded for rows that never made it
+  /// into Firestore.
+  final List<String> skippedClientRowIds;
   BulkWorkerResult({
     required this.imported,
     required this.skipped,
     this.skipReasons = const [],
+    this.skippedClientRowIds = const [],
+  });
+}
+
+class AttendanceLeaveSyncResult {
+  final String attendanceId;
+  final String timeOffId;
+  const AttendanceLeaveSyncResult({
+    required this.attendanceId,
+    required this.timeOffId,
   });
 }
 
@@ -160,7 +178,10 @@ class FirestoreService {
       'hrms_assets',
       'hrms_holidays',
     ]) {
-      final snapshot = await doc.collection(collectionName).get();
+      final snapshot = await doc
+          .collection(collectionName)
+          .where('isDummyData', isEqualTo: true)
+          .get();
       var batch = _db.batch();
       int count = 0;
       for (final d in snapshot.docs) {
@@ -207,6 +228,18 @@ class FirestoreService {
     }
   }
 
+  /// Fetches the current user's profile and rethrows any network/permission
+  /// errors. Returns `null` only when the server successfully confirms the
+  /// document does not exist. This lets callers distinguish a real "missing
+  /// account" from a temporary Firebase/network failure.
+  Future<Map<String, dynamic>?> getUserProfileOrThrow() async {
+    if (isTesting) return {'isPremium': false, 'hasDummyData': false};
+    final doc = _userDoc;
+    if (doc == null) return null;
+    final snapshot = await doc.get();
+    return snapshot.data() as Map<String, dynamic>?;
+  }
+
   Stream<Map<String, dynamic>?> get userProfileStream {
     final doc = _userDoc;
     if (doc == null) return Stream.value(null);
@@ -234,12 +267,16 @@ class FirestoreService {
     });
     final name = (worker['name'] ?? '').toString();
     if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'worker_added',
-        'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
-        'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
-        'data': {'name': name},
-      });
+      try {
+        await addNotification({
+          'type': 'worker_added',
+          'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(error, stackTrace, context: 'WorkerNotification');
+      }
     }
     return docRef.id;
   }
@@ -259,9 +296,14 @@ class FirestoreService {
     final acceptedWorkers = <Map<String, dynamic>>[];
     final validWorkers = <Map<String, dynamic>>[];
     final skipReasons = <String>[];
+    final skippedClientRowIds = <String>[];
     int skipped = 0;
 
     for (var worker in workersList) {
+      final clientRowId =
+          (worker['clientRowId'] ?? worker['client_row_id'] ?? '')
+              .toString()
+              .trim();
       try {
         Validators.validateWorker(worker);
         final duplicateField = WorkerIdentity.duplicateField(worker, [
@@ -270,6 +312,7 @@ class FirestoreService {
         ]);
         if (duplicateField != null) {
           skipped++;
+          if (clientRowId.isNotEmpty) skippedClientRowIds.add(clientRowId);
           skipReasons.add(
             'Duplicate ${duplicateField.name}: ${worker['name'] ?? worker['email'] ?? ''}',
           );
@@ -279,6 +322,7 @@ class FirestoreService {
         validWorkers.add(worker);
       } catch (e) {
         skipped++;
+        if (clientRowId.isNotEmpty) skippedClientRowIds.add(clientRowId);
         final errorText = e.toString();
         final safeError = errorText.length <= 100
             ? errorText
@@ -304,18 +348,29 @@ class FirestoreService {
     }
 
     if (count > 0) {
-      await addNotification({
-        'type': 'worker_added',
-        'title': 'notif_title_bulk_workers'.tr(),
-        'message': 'notif_msg_bulk_workers'.tr(namedArgs: {'count': '$count'}),
-        'data': {'count': '$count'},
-      });
+      try {
+        await addNotification({
+          'type': 'worker_added',
+          'title': 'notif_title_bulk_workers'.tr(),
+          'message': 'notif_msg_bulk_workers'.tr(
+            namedArgs: {'count': '$count'},
+          ),
+          'data': {'count': '$count'},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'BulkWorkerNotification',
+        );
+      }
     }
 
     return BulkWorkerResult(
       imported: count,
       skipped: skipped,
       skipReasons: skipReasons,
+      skippedClientRowIds: skippedClientRowIds,
     );
   }
 
@@ -446,18 +501,129 @@ class FirestoreService {
     await coll.doc(id).update(leaveData);
   }
 
+  /// Updates only the provided fields on a worker document. Unlike
+  /// [updateWorker], this does NOT send the whole cached worker object, so a
+  /// stale in-memory copy can never overwrite fields that were changed by
+  /// another screen/process after this screen loaded.
+  Future<void> updateWorkerFields(
+    String id,
+    Map<String, dynamic> fields,
+  ) async {
+    final coll = _workers;
+    if (coll == null || id.isEmpty) return;
+    await coll.doc(id).update({
+      ..._withNormalizedCurrency(fields),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Applies a leave-policy allowance to many workers in Firestore batches
+  /// (450 writes per batch). This is a controlled operation so a mid-way
+  /// network failure does not leave the company with a partially applied
+  /// policy. Returns the number of workers successfully updated.
+  Future<int> applyLeavePolicyToWorkers({
+    required List<Map<String, dynamic>> workers,
+    required int annualLeaveDays,
+    required String policyName,
+    required List<Map<String, dynamic>> timeOffRecords,
+  }) async {
+    final coll = _workers;
+    if (coll == null) return 0;
+
+    // Index active time-off records once so we can compute each worker's
+    // already-used paid days without an O(workers × records) scan.
+    final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
+    final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
+    for (final record in timeOffRecords) {
+      if (!TimeOffService.isActiveRecord(record)) continue;
+      final workerId = (record['workerId'] ?? '').toString().trim();
+      final email = (record['email'] ?? '').toString().trim().toLowerCase();
+      if (workerId.isNotEmpty) {
+        recordsByWorkerId.putIfAbsent(workerId, () => []).add(record);
+      } else if (email.isNotEmpty) {
+        legacyRecordsByEmail.putIfAbsent(email, () => []).add(record);
+      }
+    }
+
+    var updated = 0;
+    var batch = _db.batch();
+    var pending = 0;
+
+    for (final worker in workers) {
+      final workerId = (worker['id'] ?? '').toString().trim();
+      final workerEmail = (worker['email'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      final workerRecords = workerId.isNotEmpty
+          ? (recordsByWorkerId[workerId] ?? const <Map<String, dynamic>>[])
+          : (legacyRecordsByEmail[workerEmail] ??
+                const <Map<String, dynamic>>[]);
+
+      final usedPaidDays = TimeOffService.paidDaysUsedForWorker(
+        worker,
+        workerRecords,
+      );
+      final remaining = (annualLeaveDays - usedPaidDays).clamp(
+        0,
+        annualLeaveDays,
+      );
+
+      batch.update(coll.doc(workerId), {
+        'annualLeaves': annualLeaveDays,
+        'availableAnnualLeaves': remaining,
+        'leavePolicy': policyName,
+      });
+      pending++;
+      updated++;
+
+      if (pending == 450) {
+        await batch.commit();
+        batch = _db.batch();
+        pending = 0;
+      }
+    }
+
+    if (pending > 0) {
+      await batch.commit();
+    }
+
+    return updated;
+  }
+
+  /// Fetches all time-off records once (for policy application / balance
+  /// recalculation). Throws on network/permission errors so callers can
+  /// abort the operation instead of applying a policy with wrong balances.
+  Future<List<Map<String, dynamic>>> getTimeoffOnce() async {
+    final coll = _timeoff;
+    if (coll == null) return const [];
+    final snapshot = await coll.get();
+    return snapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+        .toList();
+  }
+
   Future<void> deleteWorker(String id) async {
     final workersColl = _workers;
     if (workersColl == null || id.trim().isEmpty) return;
 
     final workerId = id.trim();
+
+    final workerDoc = await workersColl.doc(workerId).get();
+    final workerData = workerDoc.data() as Map<String, dynamic>?;
+    final mediaUrls = <String>{};
+    if (workerData != null) {
+      for (final key in ['profileImage', 'frontId', 'backId', 'cv']) {
+        final url = (workerData[key] ?? '').toString().trim();
+        if (url.isNotEmpty) mediaUrls.add(url);
+      }
+    }
+
     final payrollColl = _payroll;
     final expensesColl = _expenses;
     final notificationsColl = _notifications;
 
-    
-    
-    
     final payrollKeys = <String>{};
     if (payrollColl != null) {
       final payrollSnapshot = await payrollColl
@@ -504,8 +670,6 @@ class FirestoreService {
       }
     }
 
-    
-    
     final uniqueReferences = <String, DocumentReference>{};
     for (final reference in referencesToDelete) {
       uniqueReferences[reference.path] = reference;
@@ -513,6 +677,12 @@ class FirestoreService {
 
     await _deleteDocumentsInChunks(uniqueReferences.values);
     await workersColl.doc(workerId).delete();
+
+    for (final url in mediaUrls) {
+      try {
+        await UploadService.deleteByUrl(url);
+      } catch (_) {}
+    }
   }
 
   Stream<QuerySnapshot> get workersStream {
@@ -527,6 +697,45 @@ class FirestoreService {
     return await coll.get();
   }
 
+  Future<bool> hasDuplicateWorker({
+    required String? email,
+    required String? nationalId,
+    String? excludeId,
+  }) async {
+    final coll = _workers;
+    if (coll == null) throw StateError('No authenticated user');
+
+    final normalizedEmail = (email ?? '').trim().toLowerCase();
+    final normalizedNationalId = (nationalId ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s-]+'), '');
+
+    if (normalizedEmail.isNotEmpty) {
+      final emailQuery = await coll
+          .where('email', isEqualTo: normalizedEmail)
+          .limit(1)
+          .get();
+      for (final doc in emailQuery.docs) {
+        if (excludeId != null && doc.id == excludeId) continue;
+        return true;
+      }
+    }
+
+    if (normalizedNationalId.isNotEmpty) {
+      final nationalIdQuery = await coll
+          .where('nationalId', isEqualTo: normalizedNationalId)
+          .limit(1)
+          .get();
+      for (final doc in nationalIdQuery.docs) {
+        if (excludeId != null && doc.id == excludeId) continue;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Future<String> addExpense(Map<String, dynamic> expense) async {
     Validators.validateExpense(expense);
     final coll = _expenses;
@@ -537,19 +746,25 @@ class FirestoreService {
     });
     final category = (expense['category'] ?? expense['type'] ?? '').toString();
     final amount = (expense['amount'] ?? '').toString();
-    await addNotification({
-      'type': 'expense_added',
-      'title': category.isNotEmpty
-          ? 'notif_title_expense_category'.tr(namedArgs: {'category': category})
-          : 'notif_title_expense'.tr(),
-      'message': amount.isNotEmpty
-          ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$$amount'})
-          : 'notif_msg_expense'.tr(),
-      'data': {
-        'category': category,
-        'amount': amount.isNotEmpty ? '\$$amount' : '',
-      },
-    });
+    try {
+      await addNotification({
+        'type': 'expense_added',
+        'title': category.isNotEmpty
+            ? 'notif_title_expense_category'.tr(
+                namedArgs: {'category': category},
+              )
+            : 'notif_title_expense'.tr(),
+        'message': amount.isNotEmpty
+            ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$$amount'})
+            : 'notif_msg_expense'.tr(),
+        'data': {
+          'category': category,
+          'amount': amount.isNotEmpty ? '\$$amount' : '',
+        },
+      });
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'ExpenseNotification');
+    }
     return docRef.id;
   }
 
@@ -587,7 +802,6 @@ class FirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    
     for (final document in existing.docs) {
       if (document.reference.path != targetRef.path) {
         batch.delete(document.reference);
@@ -614,7 +828,10 @@ class FirestoreService {
     final coll = _attendance;
     if (coll == null) throw StateError('No authenticated user');
     final workerId = (record['workerId'] ?? '').toString().trim();
-    final now = DateTime.now();
+    final attendanceDate = AppDateUtils.dateFromValue(
+      record['attendanceDate'] ?? record['date'],
+    );
+    final now = attendanceDate ?? DateTime.now();
     final dateKey =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-'
         '${now.day.toString().padLeft(2, '0')}';
@@ -630,12 +847,20 @@ class FirestoreService {
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'attendance_marked',
-        'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
-        'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
-        'data': {'name': name},
-      });
+      try {
+        await addNotification({
+          'type': 'attendance_marked',
+          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'AttendanceNotification',
+        );
+      }
     }
     return docRef.id;
   }
@@ -647,11 +872,14 @@ class FirestoreService {
     Validators.validateAttendance(data);
     final coll = _attendance;
     if (coll == null) return;
-    final now = DateTime.now();
+    final attendanceDate = AppDateUtils.dateFromValue(
+      data['attendanceDate'] ?? data['date'],
+    );
+    final dateToUpdate = attendanceDate ?? DateTime.now();
     await coll.doc(id).update({
       ...data,
       'attendanceDate': Timestamp.fromDate(
-        DateTime(now.year, now.month, now.day),
+        DateTime(dateToUpdate.year, dateToUpdate.month, dateToUpdate.day),
       ),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -661,6 +889,127 @@ class FirestoreService {
     final coll = _attendance;
     if (coll == null) return;
     await coll.doc(id).delete();
+  }
+
+  /// Atomically saves an attendance record together with its attendance-
+  /// managed time-off record and the worker leave balance in a single
+  /// Firestore batch. Attendance, time-off, and balance therefore always
+  /// change together: either all of them persist or none of them do, so a
+  /// failure after commit can never leave the modules disagreeing.
+  ///
+  /// * [attendanceId] empty => creates a new attendance document (using the
+  ///   deterministic `{workerId}_{yyyy-MM-dd}` id when a worker id is known).
+  /// * [timeOffRecord] provided => upserts the attendance-managed time-off
+  ///   record ([timeOffId] may be empty to create a new one).
+  /// * [deleteTimeOff] with a [timeOffId] => deletes the time-off record.
+  /// * [balance] provided with a [workerId] => updates the worker leave
+  ///   balance in the same batch.
+  ///
+  /// The attendance notification is sent only after the batch commits, on a
+  /// best-effort basis, so a notification failure never fails the attendance
+  /// operation itself.
+  Future<AttendanceLeaveSyncResult> saveAttendanceWithLeaveSync({
+    required Map<String, dynamic> attendanceRecord,
+    String? attendanceId,
+    String? timeOffId,
+    Map<String, dynamic>? timeOffRecord,
+    bool deleteTimeOff = false,
+    String? workerId,
+    Map<String, dynamic>? balance,
+  }) async {
+    Validators.validateAttendance(attendanceRecord);
+    if (timeOffRecord != null) Validators.validateTimeOff(timeOffRecord);
+    final attendanceColl = _attendance;
+    final workersColl = _workers;
+    if (attendanceColl == null || workersColl == null) {
+      throw StateError('No authenticated user');
+    }
+
+    final batch = _db.batch();
+
+    final attendanceDate = AppDateUtils.dateFromValue(
+      attendanceRecord['attendanceDate'] ?? attendanceRecord['date'],
+    );
+    final now = attendanceDate ?? DateTime.now();
+    final normalizedWorkerId = (workerId ?? '').trim();
+    final dateKey =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+
+    final isNewAttendance = attendanceId == null || attendanceId.trim().isEmpty;
+    final attendanceRef = isNewAttendance
+        ? (normalizedWorkerId.isNotEmpty
+              ? attendanceColl.doc('${normalizedWorkerId}_$dateKey')
+              : attendanceColl.doc())
+        : attendanceColl.doc(attendanceId.trim());
+
+    batch.set(attendanceRef, {
+      ...attendanceRecord,
+      'attendanceDate': Timestamp.fromDate(
+        DateTime(now.year, now.month, now.day),
+      ),
+      if (isNewAttendance) 'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final timeOffColl = _timeoff;
+    final existingTimeOffId = (timeOffId ?? '').trim();
+    String savedTimeOffId = existingTimeOffId;
+    if (timeOffColl != null &&
+        (timeOffRecord != null ||
+            (deleteTimeOff && existingTimeOffId.isNotEmpty))) {
+      final isNewTimeOff = existingTimeOffId.isEmpty;
+      final timeOffRef = isNewTimeOff
+          ? timeOffColl.doc()
+          : timeOffColl.doc(existingTimeOffId);
+      if (timeOffRecord != null) {
+        batch.set(timeOffRef, {
+          ...timeOffRecord,
+          if (isNewTimeOff) 'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        savedTimeOffId = timeOffRef.id;
+      } else {
+        batch.delete(timeOffRef);
+      }
+    }
+
+    if (normalizedWorkerId.isNotEmpty &&
+        balance != null &&
+        balance.isNotEmpty) {
+      batch.set(
+        workersColl.doc(normalizedWorkerId),
+        balance,
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
+
+    final name =
+        (attendanceRecord['name'] ?? attendanceRecord['workerName'] ?? '')
+            .toString();
+    if (name.isNotEmpty) {
+      try {
+        await addNotification({
+          'type': 'attendance_marked',
+          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'attendanceLeaveNotification',
+        );
+      }
+    }
+
+    return AttendanceLeaveSyncResult(
+      attendanceId: attendanceRef.id,
+      timeOffId: savedTimeOffId,
+    );
   }
 
   Future<Map<String, int>> getWorkerMonthlyAttendance(
@@ -864,11 +1213,9 @@ class FirestoreService {
         0,
         workingDates.length,
       );
-    } catch (_) {
-      return List.generate(
-        daysInMonth,
-        (index) => DateTime(year, m, index + 1),
-      ).where((date) => companyWorkingDays.contains(date.weekday)).length;
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'GetMonthlyWorkingDays');
+      rethrow;
     }
   }
 
@@ -878,7 +1225,7 @@ class FirestoreService {
     final holidayYear = rawYear is num
         ? rawYear.toInt()
         : int.tryParse((rawYear ?? '').toString());
-    
+
     return holidayYear == null || holidayYear == year;
   }
 
@@ -941,6 +1288,40 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
+  /// Real-time attendance stream scoped to a date range on `attendanceDate`
+  /// so screens that only care about a short period (e.g. today) do not pull
+  /// the whole company history into memory.
+  Stream<QuerySnapshot> attendanceStreamForPeriod({
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final coll = _attendance;
+    if (coll == null) return const Stream.empty();
+    return coll
+        .where(
+          'attendanceDate',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+        )
+        .where('attendanceDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('attendanceDate', descending: true)
+        .snapshots();
+  }
+
+  Future<QuerySnapshot> getAttendanceForPeriod(
+    DateTime start,
+    DateTime end,
+  ) async {
+    final coll = _attendance;
+    if (coll == null) throw StateError('No authenticated user');
+    return await coll
+        .where(
+          'attendanceDate',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+        )
+        .where('attendanceDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .get();
+  }
+
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
     Validators.validatePayroll(record);
     final coll = _payroll;
@@ -961,17 +1342,21 @@ class FirestoreService {
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
     if (name.isNotEmpty) {
-      await addNotification({
-        if (payrollKey.isNotEmpty) 'notificationKey': 'payroll_$payrollKey',
-        'type': 'payroll_added',
-        'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
-        'message': amount.isNotEmpty
-            ? 'notif_msg_payroll_amount'.tr(
-                namedArgs: {'amount': amount, 'name': name},
-              )
-            : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
-        'data': {'name': name, 'amount': amount},
-      });
+      try {
+        await addNotification({
+          if (payrollKey.isNotEmpty) 'notificationKey': 'payroll_$payrollKey',
+          'type': 'payroll_added',
+          'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
+          'message': amount.isNotEmpty
+              ? 'notif_msg_payroll_amount'.tr(
+                  namedArgs: {'amount': amount, 'name': name},
+                )
+              : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
+          'data': {'name': name, 'amount': amount},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(error, stackTrace, context: 'PayrollNotification');
+      }
     }
 
     return docRef.id;
@@ -983,8 +1368,6 @@ class FirestoreService {
 
     var saved = 0;
 
-    
-    
     const chunkSize = 50;
     for (var start = 0; start < records.length; start += chunkSize) {
       final end = (start + chunkSize).clamp(0, records.length).toInt();
@@ -1043,9 +1426,7 @@ class FirestoreService {
               if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-          } catch (_) {
-            
-          }
+          } catch (_) {}
         }),
       );
     }
@@ -1096,12 +1477,66 @@ class FirestoreService {
     final merged = <String, dynamic>{...existing, ...data};
     Validators.validatePayroll(merged);
 
-    
     await docRef.update({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),
       'lastModified': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> savePayrollAndExpenseBatch({
+    required Map<String, dynamic> record,
+    required String payrollKey,
+    required double netAmount,
+    required Map<String, dynamic>? expenseRecord,
+    String? existingPayrollId,
+  }) async {
+    final coll = _payroll;
+    if (coll == null) throw StateError('No authenticated user');
+
+    final batch = _db.batch();
+
+    final docRef = existingPayrollId != null && existingPayrollId.isNotEmpty
+        ? coll.doc(existingPayrollId.trim())
+        : coll.doc(_payrollDocumentId(payrollKey));
+    final existingSnapshot = await docRef.get();
+
+    batch.set(docRef, {
+      ...record,
+      if (!existingSnapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final normalizedPayrollKey = payrollKey.trim();
+    if (_expenses != null && normalizedPayrollKey.isNotEmpty) {
+      final expenseRef = _expenses!.doc(
+        _payrollExpenseDocumentId(normalizedPayrollKey),
+      );
+      final existingExpenses = await _expenses!
+          .where('payrollKey', isEqualTo: normalizedPayrollKey)
+          .get();
+
+      if (netAmount > 0 && expenseRecord != null) {
+        final expenseSnapshot = await expenseRef.get();
+        batch.set(expenseRef, {
+          ...expenseRecord,
+          'payrollKey': normalizedPayrollKey,
+          if (!expenseSnapshot.exists)
+            'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        batch.delete(expenseRef);
+      }
+
+      for (final doc in existingExpenses.docs) {
+        if (doc.reference.path != expenseRef.path) {
+          batch.delete(doc.reference);
+        }
+      }
+    }
+
+    await batch.commit();
   }
 
   Future<void> deletePayrollRecord(String id) async {
@@ -1188,14 +1623,18 @@ class FirestoreService {
     final name = (record['workerName'] ?? record['name'] ?? '').toString();
     final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
     if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'time_off_added',
-        'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
-        'message': 'notif_msg_time_off'.tr(
-          namedArgs: {'type': type, 'name': name},
-        ),
-        'data': {'name': name, 'type': type},
-      });
+      try {
+        await addNotification({
+          'type': 'time_off_added',
+          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_time_off'.tr(
+            namedArgs: {'type': type, 'name': name},
+          ),
+          'data': {'name': name, 'type': type},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(error, stackTrace, context: 'TimeOffNotification');
+      }
     }
     return docRef.id;
   }
@@ -1264,14 +1703,22 @@ class FirestoreService {
       final type = (record['type'] ?? record['leaveType'] ?? 'Leave')
           .toString();
       if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'time_off_added',
-          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_time_off'.tr(
-            namedArgs: {'type': type, 'name': name},
-          ),
-          'data': {'name': name, 'type': type},
-        });
+        try {
+          await addNotification({
+            'type': 'time_off_added',
+            'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+            'message': 'notif_msg_time_off'.tr(
+              namedArgs: {'type': type, 'name': name},
+            ),
+            'data': {'name': name, 'type': type},
+          });
+        } catch (error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'TimeOffBalanceNotification',
+          );
+        }
       }
     }
     return timeOffRef.id;
@@ -1305,6 +1752,12 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
+  Future<QuerySnapshot> getTimeoffForWorker(String workerId) async {
+    final coll = _timeoff;
+    if (coll == null) throw StateError('No authenticated user');
+    return await coll.where('workerId', isEqualTo: workerId).get();
+  }
+
   Future<String> addAsset(Map<String, dynamic> asset) async {
     Validators.validateAsset(asset);
     final coll = _assets;
@@ -1316,18 +1769,22 @@ class FirestoreService {
     final workerName = (asset['name'] ?? asset['assetName'] ?? '').toString();
     final assetType = (asset['type'] ?? asset['assetType'] ?? '').toString();
     if (workerName.isNotEmpty) {
-      await addNotification({
-        'type': 'asset_added',
-        'title': assetType.isNotEmpty
-            ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType})
-            : 'notif_title_asset'.tr(),
-        'message': assetType.isNotEmpty
-            ? 'notif_msg_asset_type'.tr(
-                namedArgs: {'type': assetType, 'name': workerName},
-              )
-            : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
-        'data': {'name': workerName, 'type': assetType},
-      });
+      try {
+        await addNotification({
+          'type': 'asset_added',
+          'title': assetType.isNotEmpty
+              ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType})
+              : 'notif_title_asset'.tr(),
+          'message': assetType.isNotEmpty
+              ? 'notif_msg_asset_type'.tr(
+                  namedArgs: {'type': assetType, 'name': workerName},
+                )
+              : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
+          'data': {'name': workerName, 'type': assetType},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(error, stackTrace, context: 'AssetNotification');
+      }
     }
     return docRef.id;
   }
@@ -1351,6 +1808,12 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
+  Future<QuerySnapshot> getAssetsOnce({int limit = 50}) async {
+    final coll = _assets;
+    if (coll == null) throw StateError('No authenticated user');
+    return await coll.orderBy('createdAt', descending: true).limit(limit).get();
+  }
+
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
     Validators.validateHoliday(holiday);
     final coll = _holidays;
@@ -1361,12 +1824,16 @@ class FirestoreService {
     });
     final name = (holiday['name'] ?? '').toString();
     if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'holiday_added',
-        'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
-        'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
-        'data': {'name': name},
-      });
+      try {
+        await addNotification({
+          'type': 'holiday_added',
+          'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      } catch (error, stackTrace) {
+        ErrorReporter.report(error, stackTrace, context: 'HolidayNotification');
+      }
     }
     return docRef.id;
   }
@@ -1447,6 +1914,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(w)..remove('id');
       batch.set(workersColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1461,6 +1929,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(a)..remove('id');
       batch.set(attendanceColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1475,6 +1944,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(e)..remove('id');
       batch.set(expensesColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1489,6 +1959,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(p)..remove('id');
       batch.set(payrollColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1503,6 +1974,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(t)..remove('id');
       batch.set(timeoffColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1518,6 +1990,7 @@ class FirestoreService {
         final copy = Map<String, dynamic>.from(h)..remove('id');
         batch.set(holidaysColl.doc(), {
           ...copy,
+          'isDummyData': true,
           'createdAt': FieldValue.serverTimestamp(),
         });
         count++;
@@ -1533,6 +2006,7 @@ class FirestoreService {
       final copy = Map<String, dynamic>.from(a)..remove('id');
       batch.set(assetsColl.doc(), {
         ...copy,
+        'isDummyData': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -1604,11 +2078,20 @@ class FirestoreService {
     final coll = _notifications;
     if (coll == null) return;
     final unread = await coll.where('isRead', isEqualTo: false).get();
-    final batch = _db.batch();
+    if (unread.docs.isEmpty) return;
+
+    var batch = _db.batch();
+    var pending = 0;
     for (final doc in unread.docs) {
       batch.update(doc.reference, {'isRead': true});
+      pending++;
+      if (pending == 450) {
+        await batch.commit();
+        batch = _db.batch();
+        pending = 0;
+      }
     }
-    if (unread.docs.isNotEmpty) {
+    if (pending > 0) {
       await batch.commit();
     }
   }
@@ -1630,13 +2113,8 @@ class FirestoreService {
     final coll = _notifications;
     if (coll == null) return;
     final snap = await coll.get();
-    final batch = _db.batch();
-    for (final doc in snap.docs) {
-      batch.delete(doc.reference);
-    }
-    if (snap.docs.isNotEmpty) {
-      await batch.commit();
-    }
+    if (snap.docs.isEmpty) return;
+    await _deleteDocumentsInChunks(snap.docs.map((doc) => doc.reference));
   }
 
   Future<DocumentReference?> addLeavePolicy(Map<String, dynamic> data) async {

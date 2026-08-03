@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/attendance_service.dart';
+import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
@@ -120,6 +121,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   StreamSubscription? _holidaysSub;
   StreamSubscription? _timeOffSub;
   bool _leaveNoticeShown = false;
+  final Map<String, Map<String, dynamic>> _workersById = {};
+  final Map<String, Map<String, dynamic>> _workersByEmail = {};
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
@@ -173,6 +176,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           }).toList();
       setState(() {
         _workers = List<Map<String, dynamic>>.from(DummyData.workers);
+        _rebuildWorkerIndexes();
         _periodAttendanceRecords = periodAttendance;
         _todayAttendance = _latestAttendancePerWorker(periodAttendance);
         _holidays = DummyData.holidays.values
@@ -222,6 +226,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           _workers = snapshot.docs
               .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
               .toList();
+          _rebuildWorkerIndexes();
           _workersLoaded = true;
           _periodAttendanceRecords = _periodAttendanceRecords
               .where(_attendanceBelongsToCurrentWorker)
@@ -242,7 +247,24 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       },
     );
 
-    _attendanceSub = _firestore.attendanceStream.listen(
+    final attendanceNow = DateTime.now();
+    final attendancePeriodStart = app_date_utils.AppDateUtils.periodStart(
+      _selectedTimeframe,
+      attendanceNow,
+    );
+    final attendancePeriodEnd = DateTime(
+      attendanceNow.year,
+      attendanceNow.month,
+      attendanceNow.day,
+      23,
+      59,
+      59,
+      999,
+    );
+    _attendanceSub = _firestore.attendanceStreamForPeriod(
+      start: attendancePeriodStart,
+      end: attendancePeriodEnd,
+    ).listen(
       (snapshot) {
         if (!mounted) return;
         setState(() {
@@ -534,6 +556,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     required String selectedStatus,
     required String leaveType,
     required String reason,
+    required Map<String, dynamic> attendanceData,
+    String? attendanceId,
   }) async {
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
@@ -549,15 +573,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       normalizedToday,
     );
     final shouldHaveLeave = selectedStatus == 'Leave';
+    final existingId = (existing?['id'] ?? '').toString().trim();
+    final hasTimeOffChange = shouldHaveLeave || existingId.isNotEmpty;
 
-    if (!shouldHaveLeave && existing == null) return true;
     if (shouldHaveLeave &&
         existing == null &&
         _remainingPaidLeave(worker, _timeOffRecords) <= 0) {
       return false;
     }
 
-    final existingId = (existing?['id'] ?? '').toString().trim();
     final projectedRecords = _timeOffRecords
         .where(
           (record) =>
@@ -610,21 +634,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       'leavesUsed': usedLeaveDays.toString(),
     };
 
-    String savedTimeOffId = existingId;
-    if (shouldHaveLeave) {
-      savedTimeOffId = await _firestore.saveTimeOffWithWorkerBalance(
-        timeOffId: existingId.isEmpty ? null : existingId,
-        record: attendanceTimeOff!,
-        workerId: workerId,
-        balance: balanceUpdate,
-      );
-    } else if (existingId.isNotEmpty) {
-      await _firestore.deleteTimeOffWithWorkerBalance(
-        timeOffId: existingId,
-        workerId: workerId,
-        balance: balanceUpdate,
-      );
-    }
+    final result = await _firestore.saveAttendanceWithLeaveSync(
+      attendanceRecord: attendanceData,
+      attendanceId: attendanceId,
+      timeOffId: existingId.isEmpty ? null : existingId,
+      timeOffRecord: shouldHaveLeave ? attendanceTimeOff : null,
+      deleteTimeOff: !shouldHaveLeave,
+      workerId: workerId,
+      balance: hasTimeOffChange ? balanceUpdate : null,
+    );
+    final savedTimeOffId = result.timeOffId.isEmpty
+        ? existingId
+        : result.timeOffId;
 
     if (!mounted) return true;
     setState(() {
@@ -644,6 +665,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       if (workerIndex != -1) {
         _workers[workerIndex] = {..._workers[workerIndex], ...balanceUpdate};
       }
+      _rebuildWorkerIndexes();
     });
     return true;
   }
@@ -740,6 +762,55 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return null;
   }
 
+  void _rebuildWorkerIndexes() {
+    _workersById.clear();
+    _workersByEmail.clear();
+    for (final worker in _workers) {
+      for (final key in [worker['workerId'], worker['id']]) {
+        final id = (key ?? '').toString().trim();
+        if (id.isNotEmpty) _workersById.putIfAbsent(id, () => worker);
+      }
+      final email = WorkerIdentity.normalizeEmail(worker['email']);
+      if (email.isNotEmpty) _workersByEmail.putIfAbsent(email, () => worker);
+    }
+  }
+
+  /// Indexed lookup of the worker an attendance record belongs to, so the
+  /// per-record worker matching is O(1) instead of scanning all workers.
+  Map<String, dynamic>? _findWorkerForAttendanceRecord(
+    Map<String, dynamic> record,
+  ) {
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+    if (recordWorkerId.isNotEmpty) {
+      final worker = _workersById[recordWorkerId];
+      if (worker != null) return worker;
+      if (!_isGuest) return null;
+    }
+
+    final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
+    if (recordEmail.isNotEmpty) {
+      final worker = _workersByEmail[recordEmail];
+      if (worker != null) return worker;
+    }
+
+    if (_isGuest) return null;
+
+    final recordName = WorkerIdentity.normalizeName(
+      record['name'] ?? record['workerName'],
+    );
+    if (recordName.isEmpty) return null;
+    Map<String, dynamic>? match;
+    var matches = 0;
+    for (final worker in _workers) {
+      if (WorkerIdentity.normalizeName(worker['name']) == recordName) {
+        match = worker;
+        matches++;
+        if (matches > 1) return null;
+      }
+    }
+    return matches == 1 ? match : null;
+  }
+
   List<Map<String, dynamic>> _latestAttendancePerWorker(
     List<Map<String, dynamic>> records,
   ) {
@@ -749,26 +820,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final recordEmail = WorkerIdentity.normalizeEmail(attendance['email']);
       final recordName = WorkerIdentity.normalizeName(attendance['name']);
 
-      final matchingWorker = _workers.cast<Map<String, dynamic>?>().firstWhere((
-        worker,
-      ) {
-        if (worker == null) return false;
-        if (_isGuest) {
-          final knownWorkerId = (worker['id'] ?? '').toString().trim();
-          if (recordWorkerId.isNotEmpty &&
-              knownWorkerId.isNotEmpty &&
-              recordWorkerId == knownWorkerId) {
-            return true;
-          }
-          final knownEmail = WorkerIdentity.normalizeEmail(worker['email']);
-          return recordEmail.isNotEmpty &&
-              knownEmail.isNotEmpty &&
-              recordEmail == knownEmail;
-        }
-        return _authenticatedRecordBelongsToWorker(attendance, worker);
-      }, orElse: () => null);
+      final matchingWorker = _findWorkerForAttendanceRecord(attendance);
       if (matchingWorker == null) continue;
-      if (!AttendanceService.recordIsOnOrAfterWorkerCreation(
+      if (!AttendanceService.workerExistedOnRecordDate(
         worker: matchingWorker,
         attendanceRecord: attendance,
       )) {
@@ -850,6 +904,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
         return false;
       }
+      if (!AttendanceService.isEligibleForAttendance(worker)) {
+        return false;
+      }
       if (_isWorkerOnPlannedTimeOff(worker)) {
         return false;
       }
@@ -882,9 +939,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
 
     if (!_workersLoaded) return true;
-    return _workers.any(
-      (worker) => _authenticatedRecordBelongsToWorker(record, worker),
-    );
+    return _findWorkerForAttendanceRecord(record) != null;
   }
 
   List<Map<String, dynamic>> get _visibleTodayAttendance {
@@ -951,7 +1006,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 );
               },
               onBackToLogin: () async {
-                await _authService.signOut(preserveBiometricLogin: true);
+                try {
+                  await _authService.signOut(preserveBiometricLogin: true);
+                } catch (error, stackTrace) {
+                  ErrorReporter.report(
+                    error,
+                    stackTrace,
+                    context: 'workersAttendanceSignOut',
+                  );
+                }
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -1666,6 +1729,31 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     return;
                                                   }
 
+                                                  final attendanceData =
+                                                      <String, dynamic>{
+                                                        'workerId': workerId,
+                                                        'name': name,
+                                                        'email': email,
+                                                        'role':
+                                                            workerData['role'] ??
+                                                            workerData['position'] ??
+                                                            '',
+                                                        'status': selectedStatus,
+                                                        'attendanceType':
+                                                            workerData['type2'] ??
+                                                            'Remote',
+                                                        'workType':
+                                                            workerData['type1'] ??
+                                                            'Full Time',
+                                                        'type': type,
+                                                        'desc': desc,
+                                                        'profileImage':
+                                                            workerData['profileImage'],
+                                                      };
+                                                  final attendanceId =
+                                                      (todayRecord['id'] ?? '')
+                                                          .toString()
+                                                          .trim();
                                                   final leaveBalanceSynced =
                                                       await _syncAttendanceAnnualLeave(
                                                         worker: workerData,
@@ -1674,6 +1762,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         leaveType:
                                                             selectedLeaveType,
                                                         reason: reason,
+                                                        attendanceData:
+                                                            attendanceData,
+                                                        attendanceId:
+                                                            attendanceId,
                                                       );
                                                   if (!leaveBalanceSynced) {
                                                     if (context.mounted) {
@@ -1796,6 +1888,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                           >.from(
                                                             DummyData.workers,
                                                           );
+                                                      _rebuildWorkerIndexes();
                                                       _periodAttendanceRecords =
                                                           List<Map<String, dynamic>>.from(
                                                             DummyData
@@ -1813,46 +1906,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                           );
                                                     });
                                                   }
-                                                } else {
-                                                  final attendanceData = <String, dynamic>{
-                                                    'workerId': workerId,
-                                                    'name': name,
-                                                    'email': email,
-                                                    'role':
-                                                        workerData['role'] ??
-                                                        workerData['position'] ??
-                                                        '',
-                                                    'status': selectedStatus,
-                                                    'attendanceType':
-                                                        workerData['type2'] ??
-                                                        'Remote',
-                                                    'workType':
-                                                        workerData['type1'] ??
-                                                        'Full Time',
-                                                    'type': type,
-                                                    'desc': desc,
-                                                    'profileImage':
-                                                        workerData['profileImage'],
-                                                  };
-                                                  final attendanceId =
-                                                      (todayRecord['id'] ?? '')
-                                                          .toString()
-                                                          .trim();
-                                                  if (attendanceId.isNotEmpty) {
-                                                    await _firestore
-                                                        .updateAttendanceRecord(
-                                                          attendanceId,
-                                                          attendanceData,
-                                                        );
-                                                  } else {
-                                                    await _firestore
-                                                        .addAttendanceRecord(
-                                                          attendanceData,
-                                                        );
-                                                  }
-                                                }
 
-                                                if (isGuest) {
                                                   await DummyData.saveToPrefs();
                                                 }
 

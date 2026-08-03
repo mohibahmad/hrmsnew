@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
+import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
@@ -275,14 +276,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               isSearchEmpty
@@ -676,6 +677,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
     setState(() => _isUploading = true);
 
+    String? newlyUploadedUrl;
+
     try {
       String? url;
 
@@ -714,6 +717,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           }
 
           url = results.first.url;
+          newlyUploadedUrl = url;
         }
       } else {
         url = existingUrl;
@@ -760,9 +764,23 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           await DummyData.saveToPrefs();
         }
       } else {
-        final completeWorker = <String, dynamic>{...widget.worker, ...updates}
-          ..remove('id');
-        await _firestore.updateWorker(_workerId, completeWorker);
+        // Partial update: only send the document fields, never the whole
+        // cached worker object. A stale in-memory copy must not overwrite
+        // salary/status/leave-balance/contact changed by another screen.
+        await _firestore.updateWorkerFields(_workerId, updates);
+      }
+
+      // Firestore save succeeded. Delete the replaced old file (best-effort).
+      if (existingUrl != null && existingUrl.isNotEmpty && existingUrl != url) {
+        try {
+          await UploadService.deleteByUrl(existingUrl);
+        } catch (error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'documentsCleanupOldFile',
+          );
+        }
       }
 
       updates.forEach((key, value) {
@@ -780,6 +798,19 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
       );
     } catch (error) {
+      // Firestore save failed: roll back the newly uploaded file so it does
+      // not remain as an invisible orphan in Storage.
+      if (newlyUploadedUrl != null) {
+        try {
+          await UploadService.deleteByUrl(newlyUploadedUrl);
+        } catch (cleanupError, cleanupStack) {
+          ErrorReporter.report(
+            cleanupError,
+            cleanupStack,
+            context: 'documentsRollbackNewFile',
+          );
+        }
+      }
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -1597,25 +1628,29 @@ class _FullScreenPdfPreview extends StatefulWidget {
 }
 
 class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
-  List<Uint8List> _pageImages = [];
+  PdfDocument? _document;
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _renderAllPages();
+    _openDocument();
   }
 
-  Future<void> _renderAllPages() async {
+  @override
+  void dispose() {
+    _document?.close();
+    super.dispose();
+  }
+
+  Future<void> _openDocument() async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
-      _pageImages = [];
     });
 
-    PdfDocument? document;
     try {
       final source = widget.url?.trim() ?? '';
       if (source.isEmpty) {
@@ -1647,29 +1682,13 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
       }
 
-      document = await PdfDocument.openData(bytes);
-      final pages = <Uint8List>[];
-
-      for (var index = 1; index <= document.pagesCount; index++) {
-        final page = await document.getPage(index);
-        try {
-          final pageImage = await page.render(
-            width: page.width * 3,
-            height: page.height * 3,
-            format: PdfPageImageFormat.png,
-            backgroundColor: '#ffffff',
-          );
-          if (pageImage != null) {
-            pages.add(pageImage.bytes);
-          }
-        } finally {
-          await page.close();
-        }
+      final document = await PdfDocument.openData(bytes);
+      if (!mounted) {
+        await document.close();
+        return;
       }
-
-      if (!mounted) return;
       setState(() {
-        _pageImages = pages;
+        _document = document;
         _isLoading = false;
       });
     } catch (error) {
@@ -1679,8 +1698,6 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
           _isLoading = false;
         });
       }
-    } finally {
-      await document?.close();
     }
   }
 
@@ -1731,7 +1748,8 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         ),
       );
     }
-    if (_pageImages.isEmpty) {
+    final document = _document;
+    if (document == null) {
       return Center(
         child: Text(
           'No pages found'.tr(),
@@ -1742,20 +1760,100 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         ),
       );
     }
+    // Lazy render: only the visible page(s) are rendered on demand at 1.5×
+    // resolution. Off-screen pages are not held in memory, so a 50–100 page
+    // document no longer consumes hundreds of MB of rendered PNGs.
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: _pageImages.length,
+      itemCount: document.pagesCount,
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Image.memory(
-            _pageImages[index],
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            width: double.infinity,
-          ),
+          child: _LazyPdfPage(document: document, pageNumber: index + 1),
         );
       },
+    );
+  }
+}
+
+class _LazyPdfPage extends StatefulWidget {
+  final PdfDocument document;
+  final int pageNumber;
+
+  const _LazyPdfPage({required this.document, required this.pageNumber});
+
+  @override
+  State<_LazyPdfPage> createState() => _LazyPdfPageState();
+}
+
+class _LazyPdfPageState extends State<_LazyPdfPage> {
+  Uint8List? _imageBytes;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _renderPage();
+  }
+
+  Future<void> _renderPage() async {
+    if (_loading || _imageBytes != null) return;
+    setState(() => _loading = true);
+
+    PdfPage? page;
+    try {
+      page = await widget.document.getPage(widget.pageNumber);
+      // 1.5× resolution is sufficient for on-screen viewing and keeps memory
+      // usage low for long documents.
+      final pageImage = await page.render(
+        width: (page.width * 1.5).toDouble(),
+        height: (page.height * 1.5).toDouble(),
+        format: PdfPageImageFormat.png,
+        backgroundColor: '#ffffff',
+      );
+      if (!mounted) return;
+      setState(() {
+        _imageBytes = pageImage?.bytes;
+        _loading = false;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error.toString();
+          _loading = false;
+        });
+      }
+    } finally {
+      await page?.close();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_imageBytes != null) {
+      return Image.memory(
+        _imageBytes!,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        width: double.infinity,
+      );
+    }
+    if (_error != null) {
+      return Container(
+        height: 200,
+        alignment: Alignment.center,
+        child: const Icon(Icons.error_outline, color: Color(0xFFEF4444)),
+      );
+    }
+    return Container(
+      height: 200,
+      alignment: Alignment.center,
+      child: const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
     );
   }
 }
@@ -1792,7 +1890,9 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : size.width;
+    final previewWidth = size.width > 720
+        ? (size.width * 0.85).clamp(450.0, 720.0)
+        : size.width;
     final failedToLoadText = 'failed_to_load'.tr();
     final cleanTitle = _cleanDocumentFileName(widget.label);
     final cleanFileName = _cleanDocumentFileName(widget.url);

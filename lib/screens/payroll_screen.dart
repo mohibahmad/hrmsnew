@@ -1422,6 +1422,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 .toString(),
         companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
             .toString(),
+        workerId: (data['workerId'] ?? '').toString(),
       );
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),

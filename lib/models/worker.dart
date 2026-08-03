@@ -2,193 +2,211 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/currency_utils.dart';
 
 String _safeString(dynamic value) {
-  return value?.toString() ?? '';
+  return (value?.toString() ?? '').trim();
 }
 
 String? _safeNullableString(dynamic value) {
-  final text = value?.toString().trim() ?? '';
+  final text = (value?.toString() ?? '').trim();
   return text.isEmpty ? null : text;
 }
 
-String? _timestampToString(dynamic value) {
+double? _safeDouble(dynamic value) {
   if (value == null) return null;
-
-  if (value is Timestamp) {
-    return value.toDate().toIso8601String();
-  }
-
-  if (value is DateTime) {
-    return value.toIso8601String();
-  }
-
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is num) return value.toDouble();
   final text = value.toString().trim();
-
-  return text.isEmpty ? null : text;
+  if (text.isEmpty) return null;
+  return double.tryParse(text);
 }
 
-String _formatDate(DateTime date) {
-  return '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
+/// Parses a timestamp (e.g. `createdAt`) preserving the exact instant. Only
+/// used for timestamps, never for date-only business values.
+DateTime? _safeTimestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate().toUtc();
+  if (value is DateTime) return value.toUtc();
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  return DateTime.tryParse(text)?.toUtc();
 }
 
-String _dateOnly(dynamic value) {
-  if (value == null) return '';
+/// Parses a date-only business value (DOB, joining date) WITHOUT UTC shifting.
+/// A date selected as 03 Aug 2026 00:00 +05 must stay 03 Aug in every
+/// timezone, so we produce a UTC-anchored date at midnight UTC based on the
+/// *local* calendar fields. This prevents the one-day-back bug where a caller
+/// doing `date.year/month/day` would see 02 Aug after a UTC conversion.
+DateTime? _safeBusinessDate(dynamic value) {
+  DateTime? parsed;
 
   if (value is Timestamp) {
-    return _formatDate(value.toDate());
+    parsed = value.toDate();
+  } else if (value is DateTime) {
+    parsed = value;
+  } else {
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return null;
+    parsed = DateTime.tryParse(text);
   }
 
-  if (value is DateTime) {
-    return _formatDate(value);
-  }
+  if (parsed == null) return null;
 
-  final text = value.toString().trim();
+  // Normalize to a UTC-anchored midnight using the parsed calendar fields
+  // (year/month/day). This strips any local offset so callers reading
+  // `.year/.month/.day` always get the intended calendar date.
+  return DateTime.utc(parsed.year, parsed.month, parsed.day);
+}
 
-  if (text.isEmpty) return '';
-
-  final parsedDate = DateTime.tryParse(text);
-
-  if (parsedDate != null) {
-    return _formatDate(parsedDate);
-  }
-
-  return text;
+/// Serializes a date-only business value to the canonical `YYYY-MM-DD` form
+/// so it is timezone-agnostic inside Firestore.
+String _addDateOnly(DateTime value) {
+  final y = value.year.toString().padLeft(4, '0');
+  final m = value.month.toString().padLeft(2, '0');
+  final d = value.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
 }
 
 bool? _safeNullableBool(dynamic value) {
   if (value == null) return null;
-
-  if (value is bool) {
-    return value;
-  }
-
-  if (value is num) {
-    return value != 0;
-  }
-
+  if (value is bool) return value;
+  if (value is num) return value != 0;
   final text = value.toString().trim().toLowerCase();
-
-  if (text == 'true' || text == '1' || text == 'yes') {
-    return true;
-  }
-
-  if (text == 'false' || text == '0' || text == 'no') {
-    return false;
-  }
-
+  if (text == 'true' || text == '1' || text == 'yes') return true;
+  if (text == 'false' || text == '0' || text == 'no') return false;
   return null;
+}
+
+/// Canonicalizes a worker status case-insensitively. Unknown non-empty statuses
+/// (e.g. `Terminated`, `Archived`, `Deleted`) are preserved, never silently
+/// turned into `Active`, so payroll/attendance/assets eligibility rules that
+/// exclude former workers continue to work.
+String _normalizeWorkerStatus(dynamic value) {
+  final raw = value?.toString().trim() ?? '';
+  if (raw.isEmpty) return 'Active';
+
+  return switch (raw.toLowerCase()) {
+    'active' => 'Active',
+    'inactive' => 'Inactive',
+    'suspended' => 'Suspended',
+    'onleave' || 'on leave' || 'on_leave' || 'on-leave' => 'OnLeave',
+    'terminated' => 'Terminated',
+    'archived' => 'Archived',
+    'deleted' => 'Deleted',
+    _ => raw,
+  };
 }
 
 class Worker {
   final String? id;
   final String name;
-  final String fatherName;
-  final String email;
-  final String phone;
-  final String nationalId;
-  final String religion;
-  final String dob;
-  final String gender;
-  final String address;
-  final String relationshipStatus;
-  final String type1;
-  final String position;
-  final String type2;
-  final String experienceLevel;
-  final String education;
-  final String salaryType;
-  final String currency;
-  final String salaryAmount;
-  final String leavePolicy;
-  final String annualLeaves;
-  final String sickLeaves;
-  final String casualLeaves;
-  final String availableAnnualLeaves;
-  final String leavesUsed;
-  final String joiningDate;
+  final String? fatherName;
+  final String? email;
+  final String? phone;
+  final String? nationalId;
+  final String? religion;
+  final DateTime? dob;
+  final String? gender;
+  final String? address;
+  final String? relationshipStatus;
+  final String? type1;
+  final String? position;
+  final String? type2;
+  final String? experienceLevel;
+  final String? education;
+  final String? salaryType;
+  final String? currency;
+  final double? salaryAmount;
+  final String? leavePolicy;
+  final double? annualLeaves;
+  final double? sickLeaves;
+  final double? casualLeaves;
+  final double? availableAnnualLeaves;
+  final double? leavesUsed;
+  final DateTime? joiningDate;
   final String? profileImage;
   final String? frontId;
   final String? backId;
   final String? cv;
-  final String? createdAt;
+  final DateTime? createdAt;
   final bool? payrollInitialized;
-  final String status;
+  final String? status;
 
   const Worker({
     this.id,
     required this.name,
-    this.fatherName = '',
-    this.email = '',
-    this.phone = '',
-    this.nationalId = '',
-    this.religion = '',
-    this.dob = '',
-    this.gender = 'Male',
-    this.address = '',
-    this.relationshipStatus = 'Single',
-    this.type1 = 'Full-Time',
-    this.position = 'Employee',
-    this.type2 = 'On-Site',
-    this.experienceLevel = 'Mid-Level',
-    this.education = "Bachelor's",
-    this.salaryType = 'Monthly',
-    this.currency = 'USD',
-    this.salaryAmount = '',
-    this.leavePolicy = 'Standard',
-    this.annualLeaves = '',
-    this.sickLeaves = '',
-    this.casualLeaves = '',
-    this.availableAnnualLeaves = '',
-    this.leavesUsed = '',
-    this.joiningDate = '',
+    this.fatherName,
+    this.email,
+    this.phone,
+    this.nationalId,
+    this.religion,
+    this.dob,
+    this.gender,
+    this.address,
+    this.relationshipStatus,
+    this.type1,
+    this.position,
+    this.type2,
+    this.experienceLevel,
+    this.education,
+    this.salaryType,
+    this.currency,
+    this.salaryAmount,
+    this.leavePolicy,
+    this.annualLeaves,
+    this.sickLeaves,
+    this.casualLeaves,
+    this.availableAnnualLeaves,
+    this.leavesUsed,
+    this.joiningDate,
     this.profileImage,
     this.frontId,
     this.backId,
     this.cv,
     this.createdAt,
     this.payrollInitialized,
-    this.status = '',
+    this.status,
   });
 
   factory Worker.fromMap(Map<String, dynamic> data, {String? id}) {
+    final rawSalary = _safeDouble(data['salaryAmount'] ?? data['salary']);
+    final salary = (rawSalary != null && rawSalary < 0) ? null : rawSalary;
+
+    final rawCurrency = _safeNullableString(data['currency']);
+    final currency = rawCurrency != null
+        ? CurrencyUtils.normalize(rawCurrency)
+        : null;
+
+    final status = _normalizeWorkerStatus(data['status']);
+
     return Worker(
       id: _safeNullableString(id ?? data['id']),
-      name: _safeString(data['name']).trim(),
-      fatherName: _safeString(data['fatherName']).trim(),
-      email: _safeString(data['email']).trim(),
-      phone: _safeString(data['phone'] ?? data['contact']).trim(),
-      nationalId: _safeString(data['nationalId'] ?? data['cnic']).trim(),
-      religion: _safeString(data['religion']).trim(),
-      dob: _dateOnly(data['dob']),
-      gender: _safeString(data['gender'] ?? 'Male').trim(),
-      address: _safeString(data['address']).trim(),
-      relationshipStatus: _safeString(
-        data['relationshipStatus'] ?? 'Single',
-      ).trim(),
-      type1: _safeString(
-        data['type1'] ?? data['workType'] ?? 'Full-Time',
-      ).trim(),
-      position: _safeString(
-        data['position'] ?? data['role'] ?? 'Employee',
-      ).trim(),
-      type2: _safeString(
-        data['type2'] ?? data['attendanceType'] ?? 'On-Site',
-      ).trim(),
-      experienceLevel: _safeString(
-        data['experienceLevel'] ?? 'Mid-Level',
-      ).trim(),
-      education: _safeString(data['education'] ?? "Bachelor's").trim(),
-      salaryType: _safeString(data['salaryType'] ?? 'Monthly').trim(),
-      currency: CurrencyUtils.normalize(_safeString(data['currency'])),
-      salaryAmount: _safeString(data['salaryAmount'] ?? data['salary']).trim(),
-      leavePolicy: _safeString(data['leavePolicy'] ?? 'Standard').trim(),
-      annualLeaves: _safeString(data['annualLeaves']).trim(),
-      sickLeaves: _safeString(data['sickLeaves']).trim(),
-      casualLeaves: _safeString(data['casualLeaves']).trim(),
-      availableAnnualLeaves: _safeString(data['availableAnnualLeaves']).trim(),
-      leavesUsed: _safeString(data['leavesUsed']).trim(),
-      joiningDate: _dateOnly(data['joiningDate'] ?? data['dateOfJoining']),
+      name: _safeString(data['name']),
+      fatherName: _safeNullableString(data['fatherName']),
+      email: _safeNullableString(data['email']),
+      phone: _safeNullableString(data['phone'] ?? data['contact']),
+      nationalId: _safeNullableString(data['nationalId'] ?? data['cnic']),
+      religion: _safeNullableString(data['religion']),
+      dob: _safeBusinessDate(data['dob']),
+      gender: _safeNullableString(data['gender']),
+      address: _safeNullableString(data['address']),
+      relationshipStatus: _safeNullableString(data['relationshipStatus']),
+      type1: _safeNullableString(data['type1'] ?? data['workType']),
+      position: _safeNullableString(data['position'] ?? data['role']),
+      type2: _safeNullableString(data['type2'] ?? data['attendanceType']),
+      experienceLevel: _safeNullableString(data['experienceLevel']),
+      education: _safeNullableString(data['education']),
+      salaryType: _safeNullableString(data['salaryType']),
+      currency: currency,
+      salaryAmount: salary,
+      leavePolicy: _safeNullableString(data['leavePolicy']),
+      annualLeaves: _safeDouble(data['annualLeaves']),
+      sickLeaves: _safeDouble(data['sickLeaves']),
+      casualLeaves: _safeDouble(data['casualLeaves']),
+      availableAnnualLeaves: _safeDouble(data['availableAnnualLeaves']),
+      leavesUsed: _safeDouble(data['leavesUsed']),
+      joiningDate: _safeBusinessDate(
+        data['joiningDate'] ?? data['dateOfJoining'],
+      ),
       profileImage: _safeNullableString(data['profileImage']),
       frontId: _safeNullableString(
         data['frontId'] ??
@@ -200,54 +218,111 @@ class Worker {
         data['backId'] ?? data['back_id'] ?? data['idBack'] ?? data['id_back'],
       ),
       cv: _safeNullableString(data['cv']),
-      createdAt: _timestampToString(data['createdAt']),
-      payrollInitialized: _safeNullableBool(
-        data['payroll_initialized'] ?? data['payrollInitialized'],
-      ),
-      status: _safeString(data['status']).trim(),
+      createdAt: _safeTimestamp(data['createdAt']),
+      payrollInitialized:
+          _safeNullableBool(
+            data['payroll_initialized'] ?? data['payrollInitialized'],
+          ) ??
+          false,
+      status: status,
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      if (id != null && id!.trim().isNotEmpty) 'id': id!.trim(),
-      'name': name.trim(),
-      'fatherName': fatherName.trim(),
-      'email': email.trim(),
-      'phone': phone.trim(),
-      'nationalId': nationalId.trim(),
-      'religion': religion.trim(),
-      'dob': dob.trim(),
-      'gender': gender.trim(),
-      'address': address.trim(),
-      'relationshipStatus': relationshipStatus.trim(),
-      'type1': type1.trim(),
-      'position': position.trim(),
-      'type2': type2.trim(),
-      'experienceLevel': experienceLevel.trim(),
-      'education': education.trim(),
-      'salaryType': salaryType.trim(),
-      'currency': CurrencyUtils.normalize(currency),
-      'salaryAmount': salaryAmount.trim(),
-      'leavePolicy': leavePolicy.trim(),
-      'annualLeaves': annualLeaves.trim(),
-      'sickLeaves': sickLeaves.trim(),
-      'casualLeaves': casualLeaves.trim(),
-      if (availableAnnualLeaves.trim().isNotEmpty)
-        'availableAnnualLeaves': availableAnnualLeaves.trim(),
-      if (leavesUsed.trim().isNotEmpty) 'leavesUsed': leavesUsed.trim(),
-      'joiningDate': joiningDate.trim(),
-      if (profileImage != null && profileImage!.trim().isNotEmpty)
-        'profileImage': profileImage!.trim(),
-      if (frontId != null && frontId!.trim().isNotEmpty)
-        'frontId': frontId!.trim(),
-      if (backId != null && backId!.trim().isNotEmpty) 'backId': backId!.trim(),
-      if (cv != null && cv!.trim().isNotEmpty) 'cv': cv!.trim(),
-      if (createdAt != null && createdAt!.trim().isNotEmpty)
-        'createdAt': createdAt!.trim(),
-      if (payrollInitialized != null) 'payroll_initialized': payrollInitialized,
-      'status': status.trim(),
-    };
+  Map<String, dynamic> toMap({bool forUpdate = false}) {
+    final map = <String, dynamic>{'name': name.trim()};
+
+    _addStringField(map, 'fatherName', fatherName, forUpdate);
+    _addStringField(map, 'email', email, forUpdate);
+    _addStringField(map, 'phone', phone, forUpdate);
+    _addStringField(map, 'nationalId', nationalId, forUpdate);
+    _addStringField(map, 'religion', religion, forUpdate);
+    _addStringField(map, 'gender', gender, forUpdate);
+    _addStringField(map, 'address', address, forUpdate);
+    _addStringField(map, 'relationshipStatus', relationshipStatus, forUpdate);
+    _addStringField(map, 'type1', type1, forUpdate);
+    _addStringField(map, 'position', position, forUpdate);
+    _addStringField(map, 'type2', type2, forUpdate);
+    _addStringField(map, 'experienceLevel', experienceLevel, forUpdate);
+    _addStringField(map, 'education', education, forUpdate);
+    _addStringField(map, 'salaryType', salaryType, forUpdate);
+    _addStringField(map, 'leavePolicy', leavePolicy, forUpdate);
+    _addStringField(map, 'profileImage', profileImage, forUpdate);
+    _addStringField(map, 'frontId', frontId, forUpdate);
+    _addStringField(map, 'backId', backId, forUpdate);
+    _addStringField(map, 'cv', cv, forUpdate);
+    _addStringField(map, 'status', status, forUpdate);
+
+    if (currency != null) {
+      map['currency'] = CurrencyUtils.normalize(currency);
+    } else if (forUpdate) {
+      map['currency'] = FieldValue.delete();
+    }
+
+    _addNumericField(map, 'salaryAmount', salaryAmount, forUpdate);
+    _addNumericField(map, 'annualLeaves', annualLeaves, forUpdate);
+    _addNumericField(map, 'sickLeaves', sickLeaves, forUpdate);
+    _addNumericField(map, 'casualLeaves', casualLeaves, forUpdate);
+    _addNumericField(
+      map,
+      'availableAnnualLeaves',
+      availableAnnualLeaves,
+      forUpdate,
+    );
+    _addNumericField(map, 'leavesUsed', leavesUsed, forUpdate);
+
+    _addDateOnlyField(map, 'dob', dob, forUpdate);
+    _addDateOnlyField(map, 'joiningDate', joiningDate, forUpdate);
+
+    if (!forUpdate) {
+      if (createdAt != null) {
+        map['createdAt'] = Timestamp.fromDate(createdAt!);
+      } else {
+        map['createdAt'] = FieldValue.serverTimestamp();
+      }
+    }
+
+    map['payroll_initialized'] = payrollInitialized ?? false;
+
+    return map;
+  }
+
+  static void _addStringField(
+    Map<String, dynamic> map,
+    String key,
+    String? value,
+    bool forUpdate,
+  ) {
+    if (value != null && value.trim().isNotEmpty) {
+      map[key] = value.trim();
+    } else if (forUpdate) {
+      map[key] = FieldValue.delete();
+    }
+  }
+
+  static void _addNumericField(
+    Map<String, dynamic> map,
+    String key,
+    double? value,
+    bool forUpdate,
+  ) {
+    if (value != null) {
+      map[key] = value;
+    } else if (forUpdate) {
+      map[key] = FieldValue.delete();
+    }
+  }
+
+  static void _addDateOnlyField(
+    Map<String, dynamic> map,
+    String key,
+    DateTime? value,
+    bool forUpdate,
+  ) {
+    if (value != null) {
+      map[key] = _addDateOnly(value);
+    } else if (forUpdate) {
+      map[key] = FieldValue.delete();
+    }
   }
 
   Worker copyWith({
@@ -258,7 +333,7 @@ class Worker {
     String? phone,
     String? nationalId,
     String? religion,
-    String? dob,
+    DateTime? dob,
     String? gender,
     String? address,
     String? relationshipStatus,
@@ -269,19 +344,19 @@ class Worker {
     String? education,
     String? salaryType,
     String? currency,
-    String? salaryAmount,
+    double? salaryAmount,
     String? leavePolicy,
-    String? annualLeaves,
-    String? sickLeaves,
-    String? casualLeaves,
-    String? availableAnnualLeaves,
-    String? leavesUsed,
-    String? joiningDate,
+    double? annualLeaves,
+    double? sickLeaves,
+    double? casualLeaves,
+    double? availableAnnualLeaves,
+    double? leavesUsed,
+    DateTime? joiningDate,
     String? profileImage,
     String? frontId,
     String? backId,
     String? cv,
-    String? createdAt,
+    DateTime? createdAt,
     bool? payrollInitialized,
     String? status,
   }) {

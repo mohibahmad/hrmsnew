@@ -1510,12 +1510,33 @@ class _WorkerProfilePreviewDialogState
       try {
         companyProfile =
             await context.read<FirestoreService>().getUserProfile() ?? const {};
-      } catch (_) {}
+      } catch (e) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}),
+            isError: true,
+          );
+        }
+        return;
+      }
       final companyName =
           (companyProfile['businessName'] ??
                   companyProfile['companyName'] ??
-                  'HRMS Company')
-              .toString();
+                  '')
+              .toString()
+              .trim();
+      if (companyName.isEmpty) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'error_occurred'
+                .tr(namedArgs: {'error': 'Company name is required'}),
+            isError: true,
+          );
+        }
+        return;
+      }
       final companyId =
           (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
               .toString();
@@ -1573,7 +1594,7 @@ class _WorkerProfilePreviewDialogState
         if (saved && mounted) {
           FlashySnackBar.show(
             context,
-            message: 'profile_downloaded_opened'.tr(),
+            message: 'profile_shared_successfully'.tr(),
           );
         }
       } else {
@@ -1584,7 +1605,7 @@ class _WorkerProfilePreviewDialogState
         if (saved && mounted) {
           FlashySnackBar.show(
             context,
-            message: 'profile_shared_successfully'.tr(),
+            message: 'profile_downloaded_opened'.tr(),
           );
         }
       }

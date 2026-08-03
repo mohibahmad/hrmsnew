@@ -37,11 +37,18 @@ Future<void> showLogoutDialog(BuildContext context) async {
   if (confirmed == true) {
     try {
       await context.read<AuthService>().signOut(preserveBiometricLogin: true);
-    } catch (_) {}
-    if (context.mounted) {
+      if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to sign out. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

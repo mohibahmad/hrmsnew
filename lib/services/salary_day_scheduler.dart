@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/file_opener.dart';
 import 'dart:io';
@@ -218,8 +217,13 @@ class SalaryDayScheduler {
               final name = (w['name'] ?? '').toString().trim();
               final workerId = (w['id'] ?? '').toString().trim();
               final email = (w['email'] ?? '').toString().trim();
+              final status = (w['status'] ?? 'Active')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
               return name.isNotEmpty &&
-                  (workerId.isNotEmpty || email.isNotEmpty);
+                  (workerId.isNotEmpty || email.isNotEmpty) &&
+                  status == 'active';
             })
             .toList();
       } catch (e) {
@@ -351,13 +355,15 @@ class SalaryDayScheduler {
       }
       attendanceResults = await Future.wait(attendanceFutures);
     } else {
-      final attendanceFutures = <Future<Map<String, dynamic>>>[];
-      for (final worker in workers) {
-        final email = (worker['email'] ?? '').toString();
-        final workerId = (worker['id'] ?? worker['workerId'] ?? '')
-            .toString()
-            .trim();
-        attendanceFutures.add(() async {
+      attendanceResults = <Map<String, dynamic>>[];
+      const maxConcurrent = 8;
+      for (var i = 0; i < workers.length; i += maxConcurrent) {
+        final batch = workers.skip(i).take(maxConcurrent);
+        final batchFutures = batch.map((worker) async {
+          final email = (worker['email'] ?? '').toString();
+          final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+              .toString()
+              .trim();
           try {
             final attendance = await firestoreService
                 .getWorkerMonthlyAttendance(
@@ -374,9 +380,10 @@ class SalaryDayScheduler {
             );
             return <String, dynamic>{'_error': error.toString()};
           }
-        }());
+        });
+        final batchResults = await Future.wait(batchFutures);
+        attendanceResults.addAll(batchResults);
       }
-      attendanceResults = await Future.wait(attendanceFutures);
     }
 
     int autoWorkDays;
@@ -384,8 +391,31 @@ class SalaryDayScheduler {
       autoWorkDays = await firestoreService.getMonthlyWorkingDays(
         month: effectivePayrollMonth,
       );
-    } catch (_) {
-      autoWorkDays = 30;
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'SalaryDayWorkingDays',
+      );
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Unable to load working days. Payroll was not generated.',
+          isError: true,
+        );
+      }
+      return null;
+    }
+
+    if (autoWorkDays <= 0) {
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Invalid working days ($autoWorkDays). Payroll was not generated.',
+          isError: true,
+        );
+      }
+      return null;
     }
 
     final results = <AutoPayrollResult>[];
@@ -787,78 +817,88 @@ class SalaryDayScheduler {
     BuildContext context,
   ) async {
     if (isGuest) {
-      for (final r in summary.results) {
-        if (!r.success) continue;
-        final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
-        final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
-        final record = {
-          'workerId': r.workerId,
-          'name': r.workerName,
-          'email': r.email,
-          'status': 'Paid',
-          'totalWorkDays': r.totalWorkDays,
-          'absents': r.absents.toString(),
-          'paidLeaves': r.paidLeaves,
-          'unpaidLeaves': r.unpaidLeaves,
-          'leaves': r.leaves.toString(),
-          'overtimeAmount': r.overtimeAmount,
-          'absentDeduction': r.absentDeduction,
-          'leaveDeduction': r.leaveDeduction,
-          'deductionsAreTotals': r.deductionsAreTotals,
-          'salary': r.salary,
-          'currency': r.currency,
-          'salaryType': r.salaryType,
-          'netSalary': r.netSalary,
-          'netSalaryAmount': r.rawNetSalaryValue,
-          'netSalaryFormatted': r.netSalary,
-          'payrollKey': payrollKey,
-          'payPeriod': '${summary.periodLabel}-01',
-          'cancelledAt': null,
-          'lastModified': DateTime.now(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'payrollDate': summary.runDate,
-        };
-        final existingPayrollIndex = DummyData.payroll.indexWhere(
-          (payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey,
-        );
-        if (existingPayrollIndex == -1) {
-          DummyData.payroll.add({
-            ...record,
-            'id': DateTime.now().microsecondsSinceEpoch.toString(),
-          });
-        } else {
-          DummyData.payroll[existingPayrollIndex] = {
-            ...DummyData.payroll[existingPayrollIndex],
-            ...record,
-          };
-        }
-        final netAmount = r.rawNetSalaryValue;
-        if (netAmount > 0) {
-          final expenseRecord = {
+      final savedPayroll = DummyData.payroll.toList();
+      final savedExpenses = DummyData.expenses.toList();
+      try {
+        for (final r in summary.results) {
+          if (!r.success) continue;
+          final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
+          final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
+          final nowIso = DateTime.now().toIso8601String();
+          final record = {
+            'workerId': r.workerId,
             'name': r.workerName,
-            'date': summary.runDate,
-            'category': 'Salary',
-            'amount': netAmount,
-            'description':
-                'Salary payment for ${r.workerName} (${summary.periodLabel})',
+            'email': r.email,
+            'status': 'Paid',
+            'totalWorkDays': r.totalWorkDays,
+            'absents': r.absents.toString(),
+            'paidLeaves': r.paidLeaves,
+            'unpaidLeaves': r.unpaidLeaves,
+            'leaves': r.leaves.toString(),
+            'salary': r.salary,
+            'currency': r.currency,
+            'salaryType': r.salaryType,
+            'netSalary': r.netSalary,
+            'netSalaryAmount': r.rawNetSalaryValue,
+            'netSalaryFormatted': r.netSalary,
             'payrollKey': payrollKey,
+            'payPeriod': '${summary.periodLabel}-01',
+            'cancelledAt': null,
+            'lastModified': nowIso,
+            'createdAt': nowIso,
+            'payrollDate': summary.runDate.toIso8601String(),
           };
-          final expenseId =
-              'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
-          final expenseIndex = DummyData.expenses.indexWhere(
-            (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+          final existingPayrollIndex = DummyData.payroll.indexWhere(
+            (payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey,
           );
-          if (expenseIndex == -1) {
-            DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
+          if (existingPayrollIndex == -1) {
+            DummyData.payroll.add({
+              ...record,
+              'id': DateTime.now().microsecondsSinceEpoch.toString(),
+            });
           } else {
-            DummyData.expenses[expenseIndex] = {
-              ...DummyData.expenses[expenseIndex],
-              ...expenseRecord,
+            DummyData.payroll[existingPayrollIndex] = {
+              ...DummyData.payroll[existingPayrollIndex],
+              ...record,
             };
           }
+          final netAmount = r.rawNetSalaryValue;
+          if (netAmount > 0) {
+            final expenseRecord = {
+              'name': r.workerName,
+              'date': summary.runDate.toIso8601String(),
+              'category': 'Salary',
+              'amount': netAmount,
+              'description':
+                  'Salary payment for ${r.workerName} (${summary.periodLabel})',
+              'payrollKey': payrollKey,
+            };
+            final expenseId =
+                'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
+            final expenseIndex = DummyData.expenses.indexWhere(
+              (expense) =>
+                  (expense['payrollKey'] ?? '').toString() == payrollKey,
+            );
+            if (expenseIndex == -1) {
+              DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
+            } else {
+              DummyData.expenses[expenseIndex] = {
+                ...DummyData.expenses[expenseIndex],
+                ...expenseRecord,
+              };
+            }
+          }
         }
+        await DummyData.saveToPrefs();
+      } catch (_) {
+        DummyData.payroll
+          ..clear()
+          ..addAll(savedPayroll);
+        DummyData.expenses
+          ..clear()
+          ..addAll(savedExpenses);
+        rethrow;
       }
-      await DummyData.saveToPrefs();
       return summary.results.where((result) => result.success).length;
     }
 
@@ -1113,6 +1153,7 @@ class SalaryDayScheduler {
                   .toString(),
           companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
               .toString(),
+          workerId: r.workerId,
         );
 
         final sanitizedName = r.workerName

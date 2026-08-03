@@ -250,12 +250,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (user != null && !user.isAnonymous) {
       try {
-        final profile = await _firestore.getUserProfile();
+        final profile = await _firestore.getUserProfileOrThrow();
         isPremium = profile?['isPremium'] == true;
         currencyCode = CurrencyUtils.normalize(profile?['currency']);
         await PreferencesService.setPremium(isPremium);
-      } catch (_) {
-        isPremium = await PreferencesService.isPremium();
+      } catch (e, st) {
+        // Fail-closed: a Firestore/network failure must NOT fall back to the
+        // local premium boolean. Premium entitlement must come from the
+        // server-verified profile, not a local flag that could be stale or
+        // tampered with.
+        ErrorReporter.report(e, st, context: 'loadPremiumStatus');
+        isPremium = false;
       }
     }
     if (mounted) {
@@ -271,7 +276,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null || user.isAnonymous) return;
 
     try {
-      final profile = await _firestore.getUserProfile();
+      // Use the throwing variant so a temporary network/timeout/permission
+      // failure is NOT treated as a confirmed missing profile. Only a
+      // server-confirmed `null` (document does not exist) triggers logout.
+      final profile = await _firestore.getUserProfileOrThrow();
       if (profile == null) {
         await _authService.signOut();
         if (mounted) {
@@ -280,7 +288,11 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      // Temporary Firebase/network failure: preserve the authenticated
+      // session. Do NOT sign out.
+      ErrorReporter.report(e, st, context: 'checkProfileExistsOrLogout');
+    }
   }
 
   @override
@@ -351,30 +363,44 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startPremiumListener() {
     final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
-    _profileSub = _firestore.userProfileStream.listen((profile) async {
-      if (profile == null) {
-        try {
-          await _authService.signOut();
-        } catch (_) {}
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
+    _profileSub = _firestore.userProfileStream.listen(
+      (profile) async {
+        if (profile == null) {
+          // The stream only emits null when the server confirms the document
+          // does not exist (snapshot errors go to onError). This is a genuine
+          // missing account, so sign out.
+          try {
+            await _authService.signOut();
+          } catch (_) {}
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          }
+          return;
         }
-        return;
-      }
-      final isPremium = profile['isPremium'] == true;
-      final currencyCode = CurrencyUtils.normalize(profile['currency']);
-      await PreferencesService.setPremium(isPremium);
-      if (mounted &&
-          (_isPremium != isPremium || _currencyCode != currencyCode)) {
-        setState(() {
-          _isPremium = isPremium;
-          _currencyCode = currencyCode;
-        });
-      }
-    });
+        final isPremium = profile['isPremium'] == true;
+        final currencyCode = CurrencyUtils.normalize(profile['currency']);
+        await PreferencesService.setPremium(isPremium);
+        if (mounted &&
+            (_isPremium != isPremium || _currencyCode != currencyCode)) {
+          setState(() {
+            _isPremium = isPremium;
+            _currencyCode = currencyCode;
+          });
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        // Temporary Firestore/network failure: preserve the session and do
+        // NOT sign out. Premium stays at its current value (fail-closed).
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'premiumProfileStream',
+        );
+      },
+    );
   }
 
   void _loadDashboardData() {
@@ -604,16 +630,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               leaves: (data?['leaves'] ?? '').toString(),
                               overtimeAmount: (data?['overtimeAmount'] ?? '')
                                   .toString(),
-                              absentDeductionPerDay: data?[
-                                      'deductionsAreTotals'
-                                    ] ==
-                                    true
+                              absentDeductionPerDay:
+                                  data?['deductionsAreTotals'] == true
                                   ? ''
                                   : (data?['absentDeduction'] ?? '').toString(),
-                              leaveDeductionPerDay: data?[
-                                      'deductionsAreTotals'
-                                    ] ==
-                                    true
+                              leaveDeductionPerDay:
+                                  data?['deductionsAreTotals'] == true
                                   ? ''
                                   : (data?['leaveDeduction'] ?? '').toString(),
                               salaryType: (data?['salaryType'] ?? 'Monthly')
@@ -904,8 +926,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _showNotifications = opening;
     });
     if (opening) {
-      
-      
       _markNotificationsSeen();
     }
   }
