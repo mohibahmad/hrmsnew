@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart'
+    show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -592,23 +594,24 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'date_loaned'.tr(),
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
-                      () async {
-                        final picked = await showDatePicker(
+                      () {
+                        _showCupertinoDatePicker(
                           context: context,
                           initialDate: loanedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(
+                          minimumDate: DateTime(2000),
+                          maximumDate: DateTime.now().add(
                             const Duration(days: 365),
                           ),
+                          title: 'date_loaned'.tr(),
+                          onDateSelected: (picked) {
+                            setModalState(() {
+                              loanedDate = picked;
+                              if (returnedDate.isBefore(loanedDate)) {
+                                returnedDate = loanedDate;
+                              }
+                            });
+                          },
                         );
-                        if (picked != null) {
-                          setModalState(() {
-                            loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate)) {
-                              returnedDate = loanedDate;
-                            }
-                          });
-                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -650,20 +653,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         'returned_date'.tr(),
                         formatDate(returnedDate),
                         Colors.red,
-                        () async {
-                          final picked = await showDatePicker(
+                        () {
+                          _showCupertinoDatePicker(
                             context: context,
                             initialDate: returnedDate,
-                            firstDate: loanedDate,
-                            lastDate: DateTime.now().add(
+                            minimumDate: loanedDate,
+                            maximumDate: DateTime.now().add(
                               const Duration(days: 365),
                             ),
+                            title: 'returned_date'.tr(),
+                            onDateSelected: (picked) {
+                              setModalState(() {
+                                returnedDate = picked;
+                              });
+                            },
                           );
-                          if (picked != null) {
-                            setModalState(() {
-                              returnedDate = picked;
-                            });
-                          }
                         },
                       ),
                     ],
@@ -865,6 +869,173 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showCupertinoDatePicker({
+    required BuildContext context,
+    required DateTime initialDate,
+    required DateTime minimumDate,
+    required DateTime maximumDate,
+    required String title,
+    required ValueChanged<DateTime> onDateSelected,
+  }) {
+    DateTime selected = initialDate;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Date Picker',
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
+              child: Center(
+                child: StatefulBuilder(
+                  builder: (_, setPickerState) {
+                    return Container(
+                      width: 380,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF0247C4,
+                            ).withValues(alpha: 0.18),
+                            blurRadius: 40,
+                            offset: const Offset(0, 12),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.calendar,
+                                  size: 20,
+                                  color: Color(0xFF0247C4),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 200,
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: initialDate,
+                              minimumDate: minimumDate,
+                              maximumDate: maximumDate,
+                              onDateTimeChanged: (DateTime newDate) {
+                                setPickerState(() {
+                                  selected = newDate;
+                                });
+                              },
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.of(ctx).pop(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      onDateSelected(selected);
+                                      Navigator.of(ctx).pop();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0247C4),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'done'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1784,23 +1955,24 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'date_loaned'.tr(),
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
-                      () async {
-                        final picked = await showDatePicker(
+                      () {
+                        _showCupertinoDatePicker(
                           context: context,
                           initialDate: loanedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(
+                          minimumDate: DateTime(2000),
+                          maximumDate: DateTime.now().add(
                             const Duration(days: 365),
                           ),
+                          title: 'date_loaned'.tr(),
+                          onDateSelected: (picked) {
+                            setModalState(() {
+                              loanedDate = picked;
+                              if (returnedDate.isBefore(loanedDate)) {
+                                returnedDate = loanedDate;
+                              }
+                            });
+                          },
                         );
-                        if (picked != null) {
-                          setModalState(() {
-                            loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate)) {
-                              returnedDate = loanedDate;
-                            }
-                          });
-                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -1840,20 +2012,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         'returned_date'.tr(),
                         formatDate(returnedDate),
                         Colors.red,
-                        () async {
-                          final picked = await showDatePicker(
+                        () {
+                          _showCupertinoDatePicker(
                             context: context,
                             initialDate: returnedDate,
-                            firstDate: loanedDate,
-                            lastDate: DateTime.now().add(
+                            minimumDate: loanedDate,
+                            maximumDate: DateTime.now().add(
                               const Duration(days: 365),
                             ),
+                            title: 'returned_date'.tr(),
+                            onDateSelected: (picked) {
+                              setModalState(() {
+                                returnedDate = picked;
+                              });
+                            },
                           );
-                          if (picked != null) {
-                            setModalState(() {
-                              returnedDate = picked;
-                            });
-                          }
                         },
                       ),
                     ],

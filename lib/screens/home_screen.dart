@@ -1579,7 +1579,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 30.0),
+            padding: const EdgeInsets.fromLTRB(40.0, 16.0, 40.0, 30.0),
             child: ProfileBody(isActive: isActive),
           ),
         ),

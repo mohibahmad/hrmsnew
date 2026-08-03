@@ -1,13 +1,34 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/invoice_service.dart';
 import 'package:hrms/services/worker_profile_service.dart';
 
+Future<void> _pumpLocalizedApp(WidgetTester tester, Locale locale) async {
+  await tester.pumpWidget(
+    EasyLocalization(
+      key: const ValueKey('pdf-generation-test'),
+      saveLocale: false,
+      supportedLocales: const [Locale('en'), Locale('es'), Locale('fr'), Locale('pt'), Locale('ru')],
+      path: 'assets/translations',
+      startLocale: locale,
+      fallbackLocale: const Locale('en'),
+      child: const MaterialApp(
+        home: Scaffold(body: SizedBox.shrink()),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
+  testWidgets(
     'payroll PDF renders exact values with uploaded authorization',
-    () async {
+    (tester) async {
+      await _pumpLocalizedApp(tester, const Locale('en'));
+
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: 'Carlos Garcia',
         email: 'carlos@example.com',
@@ -37,7 +58,9 @@ void main() {
     },
   );
 
-  test('worker profile PDF renders the uploaded company stamp', () async {
+  testWidgets('worker profile PDF renders the uploaded company stamp', (tester) async {
+    await _pumpLocalizedApp(tester, const Locale('en'));
+
     final bytes = await WorkerProfileService.generateWorkerProfile(
       name: 'Carlos Garcia',
       email: 'carlos@example.com',
@@ -66,3 +89,4 @@ void main() {
     expect(String.fromCharCodes(bytes.take(4)), '%PDF');
   });
 }
+

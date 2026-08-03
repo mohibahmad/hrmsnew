@@ -6,7 +6,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart' show compute;
 import 'package:image/image.dart' as img;
 import 'package:pdfx/pdfx.dart';
+import 'package:flutter/cupertino.dart'
+    show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:archive/archive.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/custom_dropdown_field.dart';
 import 'package:flutter/services.dart';
@@ -833,6 +836,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _profileImageBytes = bytes;
           _profileImageName = file.name;
         });
+        if (!mounted) return;
         FlashySnackBar.show(context, message: 'file_uploaded'.tr());
       }
     } catch (e) {
@@ -1495,7 +1499,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           'availableAnnualLeaves': annualLeaveTotal.toString(),
         });
       } else if (!isGuest) {
-
         data.remove('leavesUsed');
         data.remove('availableAnnualLeaves');
       }
@@ -1735,6 +1738,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         message: 'field_is_required'.tr(
           namedArgs: {'field': 'address_title'.tr()},
         ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (_profileImageBytes == null &&
+        (_existingProfileImageUrl == null ||
+            _existingProfileImageUrl!.isEmpty)) {
+      FlashySnackBar.show(
+        context,
+        message: 'profile_image_required'.tr(),
         isError: true,
       );
       return;
@@ -2392,31 +2406,187 @@ class WorkerDetailFormSection extends StatelessWidget {
     required BuildContext context,
     required DateTime initialDate,
     required ValueChanged<DateTime> onDateSelected,
-  }) async {
+  }) {
     final now = DateTime.now();
     final maximumDate = DateTime(now.year - 18, now.month, now.day);
-    final picked = await showDatePicker(
+    DateTime selected = initialDate;
+
+    showGeneralDialog(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(1950),
-      lastDate: maximumDate,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0247C4),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
+      barrierDismissible: true,
+      barrierLabel: 'Date Picker',
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
+              child: Center(
+                child: StatefulBuilder(
+                  builder: (_, setPickerState) {
+                    return Container(
+                      width: 380,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF0247C4,
+                            ).withValues(alpha: 0.18),
+                            blurRadius: 40,
+                            offset: const Offset(0, 12),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.calendar,
+                                  size: 20,
+                                  color: Color(0xFF0247C4),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'date_of_birth'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.exclamationmark_circle,
+                                  size: 14,
+                                  color: Color(0xFF6B7280),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'worker_must_be_18'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF6B7280),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 200,
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: initialDate,
+                              minimumDate: DateTime(1950),
+                              maximumDate: maximumDate,
+                              onDateTimeChanged: (DateTime newDate) {
+                                setPickerState(() {
+                                  selected = newDate;
+                                });
+                              },
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.of(ctx).pop(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      onDateSelected(selected);
+                                      Navigator.of(ctx).pop();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0247C4),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'done'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
-          child: child!,
         );
       },
     );
-    if (picked != null) {
-      onDateSelected(picked);
-    }
   }
 
   @override
@@ -2437,7 +2607,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: isChecking ? null : onNextStep,
+              onTap: onNextStep,
               child: Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2448,33 +2618,21 @@ class WorkerDetailFormSection extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    if (isChecking) ...[
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF0247C4),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ] else ...[
-                      Text(
-                        'next_step'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.arrow_forward,
-                        size: 18,
+                    Text(
+                      'next_step'.tr(),
+                      style: const TextStyle(
                         color: Color(0xFF000000),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward,
+                      size: 18,
+                      color: Color(0xFF000000),
+                    ),
                   ],
                 ),
               ),
@@ -2658,8 +2816,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                   GestureDetector(
                     onTap: onUploadProfileTap,
                     child: Container(
-                      height: 320,
-                      width: 320,
+                      height: 360,
+                      width: 360,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFFFFF),
@@ -3838,8 +3996,8 @@ class DocumentationSection extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final h = (constraints.maxWidth * 1.8).clamp(
-                        320.0,
-                        650.0,
+                        360.0,
+                        700.0,
                       );
                       return Container(
                         height: h,
@@ -4106,7 +4264,7 @@ class DocumentationSection extends StatelessWidget {
                   else if (bytes != null && isImage)
                     Image.memory(
                       bytes,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
@@ -4115,7 +4273,7 @@ class DocumentationSection extends StatelessWidget {
                       isImage)
                     CachedNetworkImage(
                       imageUrl: existingUrl,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       placeholder: (context, url) => Shimmer.fromColors(
                         baseColor: Colors.grey.shade300,
                         highlightColor: Colors.grey.shade100,
@@ -4132,7 +4290,7 @@ class DocumentationSection extends StatelessWidget {
                       existingUrl.startsWith('data:image'))
                     Image.memory(
                       base64Decode(existingUrl.split(',').last),
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
@@ -4244,21 +4402,24 @@ class DocumentationSection extends StatelessWidget {
   }
 
   Widget _buildCvPreview(BuildContext buildContext) {
+    final lowerName = (cvName ?? '').toLowerCase();
     final isImage =
         cvName != null &&
-        (cvName!.toLowerCase().endsWith('.png') ||
-            cvName!.toLowerCase().endsWith('.jpg') ||
-            cvName!.toLowerCase().endsWith('.jpeg'));
-    final isPdf = cvName != null && cvName!.toLowerCase().endsWith('.pdf');
+        (lowerName.endsWith('.png') ||
+            lowerName.endsWith('.jpg') ||
+            lowerName.endsWith('.jpeg') ||
+            lowerName.endsWith('.gif') ||
+            lowerName.endsWith('.bmp') ||
+            lowerName.endsWith('.webp'));
+    final isPdf = cvName != null && lowerName.endsWith('.pdf');
     final isDoc =
         cvName != null &&
-        (cvName!.toLowerCase().endsWith('.doc') ||
-            cvName!.toLowerCase().endsWith('.docx'));
+        (lowerName.endsWith('.doc') || lowerName.endsWith('.docx'));
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
-        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
+        final containerHeight = (availableWidth * 1.8).clamp(360.0, 700.0);
         return Container(
           height: containerHeight,
           width: double.infinity,
@@ -4272,35 +4433,45 @@ class DocumentationSection extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: isImage
-                  ? (cvBytes != null
-                        ? Image.memory(
-                            cvBytes!,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                          )
-                        : (existingCvUrl != null && existingCvUrl!.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: existingCvUrl!,
+                  ? Center(
+                      child: AspectRatio(
+                        aspectRatio: 1 / 1.414, // A4 page ratio like PDF
+                        child: Container(
+                          color: Colors.white,
+                          child: cvBytes != null
+                              ? Image.memory(
+                                  cvBytes!,
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) =>
-                                      Shimmer.fromColors(
-                                        baseColor: Colors.grey.shade300,
-                                        highlightColor: Colors.grey.shade100,
-                                        child: Container(
-                                          color: Colors.grey.shade300,
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                        ),
-                                      ),
-                                  errorWidget: (context, url, error) =>
-                                      const Center(
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          size: 48,
-                                        ),
-                                      ),
+                                  filterQuality: FilterQuality.high,
                                 )
-                              : const SizedBox.shrink()))
+                              : (existingCvUrl != null &&
+                                        existingCvUrl!.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: existingCvUrl!,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            Shimmer.fromColors(
+                                              baseColor: Colors.grey.shade300,
+                                              highlightColor:
+                                                  Colors.grey.shade100,
+                                              child: Container(
+                                                color: Colors.grey.shade300,
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            const Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 48,
+                                              ),
+                                            ),
+                                      )
+                                    : const SizedBox.shrink()),
+                        ),
+                      ),
+                    )
                   : (isPdf || isDoc)
                   ? Stack(
                       children: [
@@ -4311,38 +4482,6 @@ class DocumentationSection extends StatelessWidget {
                             width: double.infinity,
                             color: Colors.grey.shade200,
                           ),
-                        if (isDoc &&
-                            (cvBytes != null ||
-                                (existingCvUrl != null &&
-                                    existingCvUrl!.isNotEmpty)))
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      cvName?.endsWith('.docx') ?? false
-                                          ? Icons.article_outlined
-                                          : Icons.description_outlined,
-                                      size: 64,
-                                      color: const Color(0xFF0B50C3),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      cvName ?? 'documentation'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                         if (isPdf &&
                             (cvBytes != null ||
                                 (existingCvUrl != null &&
@@ -4352,6 +4491,21 @@ class DocumentationSection extends StatelessWidget {
                               child: PdfPagePreview(
                                 cvBytes: cvBytes,
                                 existingCvUrl: existingCvUrl,
+                              ),
+                            ),
+                          ),
+                        if (isDoc &&
+                            (cvBytes != null ||
+                                (existingCvUrl != null &&
+                                    existingCvUrl!.isNotEmpty)))
+                          Center(
+                            child: AspectRatio(
+                              aspectRatio: 1 / 1.414, // A4 page ratio like PDF
+                              child: IgnorePointer(
+                                child: DocPreview(
+                                  docBytes: cvBytes,
+                                  docName: cvName,
+                                ),
                               ),
                             ),
                           ),
@@ -4390,7 +4544,7 @@ class DocumentationSection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
-        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
+        final containerHeight = (availableWidth * 1.8).clamp(360.0, 700.0);
         return Container(
           height: containerHeight,
           width: double.infinity,
@@ -4587,6 +4741,177 @@ Widget _buildDropdownField({
     onChanged: onChanged,
     itemLabelBuilder: itemLabelBuilder,
   );
+}
+
+class DocPreview extends StatefulWidget {
+  final Uint8List? docBytes;
+  final String? docName;
+
+  const DocPreview({super.key, this.docBytes, this.docName});
+
+  @override
+  State<DocPreview> createState() => _DocPreviewState();
+}
+
+class _DocPreviewState extends State<DocPreview> {
+  String _content = '';
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _extractContent();
+  }
+
+  @override
+  void didUpdateWidget(covariant DocPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.docBytes != oldWidget.docBytes) {
+      _extractContent();
+    }
+  }
+
+  Future<void> _extractContent() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _content = '';
+    });
+
+    final isDocx = (widget.docName ?? '').toLowerCase().endsWith('.docx');
+    final bytes = widget.docBytes;
+
+    if (bytes == null) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'documentation'.tr();
+        });
+      }
+      return;
+    }
+
+    try {
+      String text = '';
+      if (isDocx) {
+        try {
+          final archive = ZipDecoder().decodeBytes(bytes);
+          final docFile = archive.files.firstWhere(
+            (file) => file.name == 'word/document.xml',
+            orElse: () => throw StateError('no_document_xml'.tr()),
+          );
+          final xmlString = utf8.decode(docFile.content as List<int>);
+
+          final textRegex = RegExp(r'<w:t[^>]*>([^<]*)</w:t>');
+          final paragraphs = xmlString.split('</w:p>');
+          final lines = <String>[];
+          for (final paragraph in paragraphs) {
+            final matches = textRegex
+                .allMatches(paragraph)
+                .map((m) => m.group(1) ?? '')
+                .join();
+            if (matches.trim().isNotEmpty) lines.add(matches);
+          }
+          text = lines.join('\n');
+        } catch (e) {
+          rethrow;
+        }
+      }
+
+      if (text.trim().isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _content = '';
+        });
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _content = text;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.0),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'documentation'.tr(),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null || _content.trim().isEmpty) {
+      final isDocx = (widget.docName ?? '').toLowerCase().endsWith('.docx');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isDocx ? Icons.article_outlined : Icons.description_outlined,
+              size: 64,
+              color: const Color(0xFF0B50C3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.docName ?? 'documentation'.tr(),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                fontFamily: 'SF Pro Display',
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Text(
+          _content,
+          style: const TextStyle(
+            fontSize: 13,
+            height: 1.5,
+            color: Color(0xFF333333),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class PdfPagePreview extends StatefulWidget {

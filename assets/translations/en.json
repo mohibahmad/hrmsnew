@@ -759,6 +759,7 @@
   "freelance": "Freelance",
   "pdf_document": "PDF Document",
   "file_uploaded": "File uploaded",
+  "profile_image_required": "Profile image is required",
   "success_asset_update": "Asset updated successfully!",
   "asset_updated": "Asset updated successfully",
   "account_created_successfully": "Account created successfully",
