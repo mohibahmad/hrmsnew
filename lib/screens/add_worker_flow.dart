@@ -1319,8 +1319,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     String? backIdUrl = _existingBackIdUrl;
     String? cvUrl = _existingCvUrl;
     final newUploadUrls = <String>[];
-    // Old URLs captured BEFORE they are overwritten, so replaced/removed
-    // Firebase Storage files can be deleted after a successful save.
+
     final oldProfileImageUrl = _existingProfileImageUrl;
     final oldFrontIdUrl = _existingFrontIdUrl;
     final oldBackIdUrl = _existingBackIdUrl;
@@ -1496,12 +1495,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           'availableAnnualLeaves': annualLeaveTotal.toString(),
         });
       } else if (!isGuest) {
-        // Normal worker profile edit: do NOT send leavesUsed or
-        // availableAnnualLeaves. A cached in-memory copy must never overwrite
-        // the latest leave balance that may have been changed by another
-        // screen/device (e.g. Time Off assignment). Annual allowance changes
-        // are handled by the leave-policy service which reads the latest
-        // worker balance and current Time Off records.
+
         data.remove('leavesUsed');
         data.remove('availableAnnualLeaves');
       }
@@ -1545,9 +1539,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       }
 
-      // Firestore save succeeded. Delete replaced/removed old files from
-      // Firebase Storage (best-effort — a failed cleanup must never roll back
-      // a successful worker save).
       if (widget.workerToEdit != null) {
         final currentUrls = <String>{
           if (profileImageUrl != null) profileImageUrl,

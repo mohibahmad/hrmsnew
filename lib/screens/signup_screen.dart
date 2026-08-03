@@ -225,11 +225,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  /// Attempts to delete an incomplete (orphaned) Firebase Auth account.
-  /// Returns `true` only when the auth account was successfully removed.
-  /// Returns `false` when deletion failed (e.g. network/permission) so the
-  /// caller can trigger a profile-recovery flow instead of silently leaving
-  /// an unusable orphan account that blocks re-signup and login.
   Future<bool> _cleanupIncompleteSignup(User? user) async {
     if (user == null) return false;
     try {
@@ -303,10 +298,6 @@ class _SignupScreenState extends State<SignupScreen> {
         ErrorReporter.report(e, st, context: 'signupDisplayName');
       }
 
-      // Profile creation failure: attempt to delete the orphaned Firebase
-      // Auth account. If deletion also fails, we must not leave the user in
-      // a state where they can neither sign up (email-already-in-use) nor log
-      // in (missing profile). Force them through the recovery flow.
       try {
         await _firestoreService.createUserProfile(
           username: emailLocalPart,
@@ -339,9 +330,6 @@ class _SignupScreenState extends State<SignupScreen> {
         ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
       }
 
-      // Biometric offer is best-effort: the account is already fully created
-      // (Auth + Firestore profile). A biometric helper failure must never
-      // surface as a signup failure.
       if (mounted) {
         try {
           await offerBiometricLogin(

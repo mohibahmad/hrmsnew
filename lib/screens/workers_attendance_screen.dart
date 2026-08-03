@@ -775,8 +775,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
   }
 
-  /// Indexed lookup of the worker an attendance record belongs to, so the
-  /// per-record worker matching is O(1) instead of scanning all workers.
   Map<String, dynamic>? _findWorkerForAttendanceRecord(
     Map<String, dynamic> record,
   ) {

@@ -764,13 +764,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           await DummyData.saveToPrefs();
         }
       } else {
-        // Partial update: only send the document fields, never the whole
-        // cached worker object. A stale in-memory copy must not overwrite
-        // salary/status/leave-balance/contact changed by another screen.
+
         await _firestore.updateWorkerFields(_workerId, updates);
       }
 
-      // Firestore save succeeded. Delete the replaced old file (best-effort).
       if (existingUrl != null && existingUrl.isNotEmpty && existingUrl != url) {
         try {
           await UploadService.deleteByUrl(existingUrl);
@@ -798,8 +795,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
       );
     } catch (error) {
-      // Firestore save failed: roll back the newly uploaded file so it does
-      // not remain as an invisible orphan in Storage.
+
       if (newlyUploadedUrl != null) {
         try {
           await UploadService.deleteByUrl(newlyUploadedUrl);
@@ -1760,9 +1756,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         ),
       );
     }
-    // Lazy render: only the visible page(s) are rendered on demand at 1.5×
-    // resolution. Off-screen pages are not held in memory, so a 50–100 page
-    // document no longer consumes hundreds of MB of rendered PNGs.
+
     return ListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: document.pagesCount,
@@ -1804,8 +1798,7 @@ class _LazyPdfPageState extends State<_LazyPdfPage> {
     PdfPage? page;
     try {
       page = await widget.document.getPage(widget.pageNumber);
-      // 1.5× resolution is sufficient for on-screen viewing and keeps memory
-      // usage low for long documents.
+
       final pageImage = await page.render(
         width: (page.width * 1.5).toDouble(),
         height: (page.height * 1.5).toDouble(),

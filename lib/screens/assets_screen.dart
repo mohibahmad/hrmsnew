@@ -111,9 +111,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
-    // Only eligible (active) workers may be assigned new assets. Historical
-    // asset records for former workers remain visible, but new assignments
-    // must be blocked.
+
     final validWorkers = workers
         .where(
           (worker) =>
@@ -202,8 +200,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // Use the complete assets stream so search/edit/return/delete work on the
-    // full company asset list, not just the first 50 records.
     _assetsSub?.cancel();
     _assetsSub = _firestore.assetsStream.listen(
       (snapshot) {

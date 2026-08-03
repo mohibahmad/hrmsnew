@@ -1481,9 +1481,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    // Hard eligibility validation: never rely only on UI filtering. A stale
-    // or supplied worker object must be rejected if the worker is
-    // inactive/terminated/deleted/archived.
     if (!_isEligibleWorker(_selectedWorker!)) {
       FlashySnackBar.show(
         context,
@@ -1562,9 +1559,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'contact': _getWorkerPhone(_selectedWorker!),
         'action': _timeOffType,
         'type': _timeOffType,
-        // Date-only values: never use .toUtc() on business date fields. In
-        // Pakistan (+05:00) a selected 03 Aug 00:00 local would otherwise be
-        // saved as 02 Aug 19:00Z, shifting the leave to the wrong day.
+
         'startDate': _dateOnlyString(_startDate),
         'endDate': _dateOnlyString(_endDate),
         'selectedDates': _sortedSelectedDates.map(_dateOnlyString).toList(),

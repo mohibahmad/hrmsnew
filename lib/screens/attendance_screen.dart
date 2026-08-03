@@ -871,9 +871,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           workersList: _workersList,
           rawAttendanceDocs: periodAttendance,
         ).map((record) {
-          // Pass the record's own date so a historical record is NOT marked
-          // Leave just because the worker is on Time Off today. Only the
-          // record's actual date is checked against the Time Off schedule.
+
           final recordDate = AppDateUtils.attendanceRecordDate(record);
           final isOnLeave =
               recordDate != null &&
@@ -892,9 +890,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     }
 
-    // Summary counters are computed from the canonical merged records
-    // (_attendanceDocs), which already include Time Off leaves. This keeps
-    // the Week/Month/Year cards consistent with the worker rows/preview.
     int present = 0;
     int absent = 0;
     int leave = 0;
@@ -944,8 +939,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         start = today;
     }
 
-    // Request token: a slow earlier request must never overwrite the result
-    // of a newer timeframe selection (e.g. Yearly completing after Today).
     final requestId = ++_attendanceRequestId;
     final requestedPeriod = _selectedTimeframe;
 

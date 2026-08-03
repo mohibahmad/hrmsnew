@@ -61,9 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
         const Duration(seconds: 3),
       );
     } catch (e, st) {
-      // Fail-closed: if lock status cannot be verified for an authenticated
-      // (non-guest) session, assume the session is locked. Guest mode is
-      // handled separately below.
+
       ErrorReporter.report(e, st, context: 'splashSessionLocked');
       sessionLocked = true;
     }
@@ -99,20 +97,16 @@ class _SplashScreenState extends State<SplashScreen>
         );
         final isDeleted = profile?['isDeleted'] == true;
         if (isDeleted) {
-          // Only sign out when the server explicitly confirmed the account
-          // is deleted. This is a legitimate, confirmed terminal state.
+
           await _authService.signOut();
           user = null;
         } else if (profile == null) {
-          // The server successfully confirmed the document does not exist.
-          // Treat this as a genuine missing account and sign out.
+
           await _authService.signOut();
           user = null;
         }
       } catch (e, st) {
-        // Network/timeout/permission errors are NOT a confirmed deleted or
-        // missing account. Preserve the existing authenticated session and
-        // continue to Home so the user can retry/offline.
+
         ErrorReporter.report(e, st, context: 'splashProfileValidation');
       }
     }

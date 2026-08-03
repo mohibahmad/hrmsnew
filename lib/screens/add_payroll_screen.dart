@@ -359,9 +359,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       );
       return;
     }
-    // Never save payroll with stale/unverified attendance data. If the
-    // attendance/working-days fetch failed or timed out, the HR user must
-    // retry instead of saving a payroll based on old or missing values.
+
     if (!_attendanceVerified) {
       final errorDetail = _attendanceLoadError?.toString() ?? '';
       FlashySnackBar.show(

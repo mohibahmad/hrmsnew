@@ -267,9 +267,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return;
     }
 
-    // Index active records once per combine pass. This avoids the O(workers ×
-    // records) nested scan for large companies (e.g. 500 workers × 5,000
-    // historical records = millions of identity comparisons per snapshot).
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
     final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
 
@@ -325,7 +322,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'annualLeaves': worker['annualLeaves'],
           'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
-          // Reserved so the UI can visibly mark ineligible former workers.
+
           'canAssignTimeOff': _canAssignTimeOff(worker),
         });
         continue;
@@ -876,9 +873,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     if (hasTimeOff) {
                       _showTimeOffDataDialog(context, doc, index);
                     } else if (doc['canAssignTimeOff'] == false) {
-                      // Former worker (terminated/inactive/deleted/archived):
-                      // historical records may still be viewed, but no new
-                      // Time Off may be assigned.
+
                       _showTimeOffDataDialog(context, doc, index);
                     } else {
                       if (widget.onAssignTimeOff != null) {
@@ -1014,8 +1009,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   return;
                                 }
                                 if (doc['canAssignTimeOff'] == false) {
-                                  // Former worker (terminated/inactive/deleted/
-                                  // archived): no new Time Off may be assigned.
+
                                   _showTimeOffDataDialog(context, doc, index);
                                   return;
                                 }

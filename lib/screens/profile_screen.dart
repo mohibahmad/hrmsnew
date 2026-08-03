@@ -239,11 +239,7 @@ class _ProfileBodyState extends State<ProfileBody> {
 
       if (profile != null) {
         final storedCurrency = profile['currency'];
-        // Display a normalized fallback for the dropdown, but NEVER silently
-        // write it back to Firestore. A missing/invalid stored currency must
-        // be explicitly chosen by the HR user on save — otherwise merely
-        // opening the Profile screen would relabel the company currency to
-        // USD and corrupt historical payroll/worker amounts.
+
         final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
         final profileImage = _profileImageText(profile['profilePic']);
         final companyStamp = _profileImageText(profile['companyStampUrl']);
@@ -536,8 +532,6 @@ class _ProfileBodyState extends State<ProfileBody> {
     if (!mounted) return false;
     setState(() => _isLoading = true);
 
-    // Capture the old stored URLs BEFORE we overwrite them, so we can delete
-    // the replaced/removed Firebase Storage files after a successful save.
     final oldProfilePicUrl = _profilePicUrl;
     final oldCompanyStampUrl = _companyStampUrl;
 
@@ -684,9 +678,6 @@ class _ProfileBodyState extends State<ProfileBody> {
           _clearCompanyStamp = false;
         }
 
-        // Firestore save succeeded. Clean up the replaced/removed old files
-        // from Firebase Storage (best-effort — a failed cleanup must never
-        // roll back a successful profile save).
         if (oldProfilePicUrl != null &&
             oldProfilePicUrl.isNotEmpty &&
             oldProfilePicUrl != downloadUrl) {

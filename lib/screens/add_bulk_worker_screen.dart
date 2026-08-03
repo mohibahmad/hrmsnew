@@ -180,8 +180,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   List<String> _missingColumns = [];
   List<String> _uploadedMediaUrls = [];
 
-  /// Maps a client row id to the media URLs uploaded for that row, so that
-  /// media for rows skipped by the server-side re-check can be cleaned up.
   final Map<String, List<String>> _uploadedMediaByRowId = {};
 
   ScrollController? _hScrollController;
@@ -193,8 +191,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     super.initState();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
-    // Invalidate cached identities whenever the auth state changes (e.g.
-    // guest -> real user) so duplicate validation never uses stale data.
+
     _authSubscription = _authService.authStateChanges.listen((_) {
       _clearIdentityCache();
     });
@@ -580,11 +577,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     final remoteKeys = remoteItems.keys.toList();
 
-    // Download + upload remote files with a bounded worker pool. Each worker
-    // downloads a file and immediately uploads it, so peak memory is bounded
-    // (only maxConcurrent files in flight, not entire download batches) and
-    // uploads start as soon as each file is downloaded instead of waiting for
-    // the whole batch. Broken links are skipped; hard failures abort the rest.
     if (remoteKeys.isNotEmpty) {
       const maxConcurrent = 4;
       var nextIndex = 0;
@@ -638,8 +630,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
     }
 
-    // Record the newly uploaded media URLs per client row id so that media for
-    // rows skipped by the server-side re-check can be cleaned up.
     _uploadedMediaByRowId.clear();
     for (final worker in prepared) {
       final rowId = (worker['clientRowId'] ?? '').toString().trim();
@@ -1625,9 +1615,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       BulkWorkerResult? bulkResult;
 
       if (isGuest) {
-        // Re-check duplicates against the current dummy dataset before
-        // inserting so re-uploading an already imported CSV cannot create
-        // duplicate workers in guest mode.
+
         final existingWorkers = DummyData.workers.toList();
         final acceptedWorkers = <Map<String, dynamic>>[];
         for (final worker in workersReadyToSave) {
@@ -1654,9 +1642,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = bulkResult.imported;
 
-        // Clean up media uploaded for rows that the server-side re-check
-        // skipped (e.g. duplicate detected on another device). Their workers
-        // were never written to Firestore, so their Storage files are orphans.
         if (bulkResult.skippedClientRowIds.isNotEmpty &&
             _uploadedMediaByRowId.isNotEmpty) {
           final orphanUrls = <String>[];
@@ -1680,8 +1665,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // New workers were imported; invalidate the identity cache so a
-      // subsequent upload validates against the freshest data.
       _clearIdentityCache();
 
       if (!mounted) return;
@@ -1791,8 +1774,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         stackTrace,
         context: 'AddBulkWorkerScreen.save',
       );
-      // Best-effort rollback: remove media files that were uploaded to
-      // storage but whose workers were never written to Firestore.
+
       if (!isGuest && _uploadedMediaUrls.isNotEmpty) {
         try {
           await Future.wait(_uploadedMediaUrls.map(UploadService.deleteByUrl));
@@ -1958,8 +1940,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     final DateTime maximumDate;
     if (fieldKey == 'dob') {
-      // A worker must be at least 18 years old today. DateTime normalizes
-      // invalid dates (e.g. Feb 29 in a non-leap year) to the next day.
+
       maximumDate = DateTime(now.year - 18, now.month, now.day);
     } else {
       maximumDate = now;

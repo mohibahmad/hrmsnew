@@ -1215,9 +1215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<Uint8List> _generatePolicyPdf(Map<String, dynamic> policy) async {
-    // Official PDFs must never be generated with a fake/generic company name.
-    // If the company profile cannot be loaded (network/permission) or the
-    // business name is missing, abort PDF generation and surface the error.
+
     final profile = await _firestore.getUserProfileOrThrow();
     final companyName = (profile?['businessName'] ?? '').toString().trim();
     final companyId = (profile?['companyId'] ?? '').toString().trim();
@@ -1269,10 +1267,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Generates the policy PDF and uploads it to Firebase Storage, returning
-  /// the public HTTPS download URL. Only this URL is shared (WhatsApp, email,
-  /// copy link) so recipients open the real PDF in their browser — never a
-  /// local device path.
   Future<String> _uploadPolicyPdfToStorage(Map<String, dynamic> policy) async {
     final bytes = await _generatePolicyPdf(policy);
     final name = LeavePolicyService.safeFileName(
@@ -1295,8 +1289,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return result.url!;
   }
 
-  /// Uploads the policy PDF while showing a brief progress dialog and returns
-  /// its public HTTPS link.
   Future<String> _preparePolicyPdfLink(Map<String, dynamic> policy) async {
     if (!mounted) throw StateError('Screen is no longer mounted');
     final navigator = Navigator.of(context);
@@ -1399,8 +1391,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Uploads the policy PDF to Firebase Storage and copies the public HTTPS
-  /// download link (never a local file path) to the clipboard.
   Future<void> _copyPolicyLink(Map<String, dynamic> policy) async {
     try {
       final url = await _preparePolicyPdfLink(policy);
@@ -2246,18 +2236,12 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
         'description': _notesController.text.trim(),
       };
 
-      // Fetch all workers and their active time-off records BEFORE saving the
-      // policy so we can compute each worker's already-used paid days. This
-      // prevents a policy edit from silently restoring used leave.
       final workersSnapshot = await firestore.getWorkersOnce();
       final workers = workersSnapshot.docs
           .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
           .toList();
       final timeOffRecords = await firestore.getTimeoffOnce();
 
-      // Apply the policy to all workers in controlled Firestore batches
-      // (450 writes per batch). This avoids a partially applied policy when a
-      // network failure occurs mid-way through a large company.
       final updatedCount = await firestore.applyLeavePolicyToWorkers(
         workers: workers,
         annualLeaveDays: annualLeaveDays,
@@ -2265,8 +2249,6 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
         timeOffRecords: timeOffRecords,
       );
 
-      // Only persist the policy document after all worker batches succeeded.
-      // This keeps the policy and worker allowances consistent.
       if (_isEditing) {
         await firestore.updateLeavePolicy(widget.editPolicy!['id'], policyData);
       } else {

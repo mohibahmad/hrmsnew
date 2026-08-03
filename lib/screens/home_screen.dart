@@ -255,10 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currencyCode = CurrencyUtils.normalize(profile?['currency']);
         await PreferencesService.setPremium(isPremium);
       } catch (e, st) {
-        // Fail-closed: a Firestore/network failure must NOT fall back to the
-        // local premium boolean. Premium entitlement must come from the
-        // server-verified profile, not a local flag that could be stale or
-        // tampered with.
+
         ErrorReporter.report(e, st, context: 'loadPremiumStatus');
         isPremium = false;
       }
@@ -276,9 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null || user.isAnonymous) return;
 
     try {
-      // Use the throwing variant so a temporary network/timeout/permission
-      // failure is NOT treated as a confirmed missing profile. Only a
-      // server-confirmed `null` (document does not exist) triggers logout.
+
       final profile = await _firestore.getUserProfileOrThrow();
       if (profile == null) {
         await _authService.signOut();
@@ -289,8 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e, st) {
-      // Temporary Firebase/network failure: preserve the authenticated
-      // session. Do NOT sign out.
+
       ErrorReporter.report(e, st, context: 'checkProfileExistsOrLogout');
     }
   }
@@ -366,9 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _profileSub = _firestore.userProfileStream.listen(
       (profile) async {
         if (profile == null) {
-          // The stream only emits null when the server confirms the document
-          // does not exist (snapshot errors go to onError). This is a genuine
-          // missing account, so sign out.
+
           try {
             await _authService.signOut();
           } catch (_) {}
@@ -392,8 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       onError: (Object error, StackTrace stackTrace) {
-        // Temporary Firestore/network failure: preserve the session and do
-        // NOT sign out. Premium stays at its current value (fail-closed).
+
         ErrorReporter.report(
           error,
           stackTrace,
