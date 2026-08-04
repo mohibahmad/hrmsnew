@@ -1215,7 +1215,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
     const cellExtent = 54.0;
-    const headerHeight = 33.0;
+    const headerHeight = 77.0;
     const calendarPadding = 16.0;
     final adjustedDy = position.dy - headerHeight - calendarPadding;
     final adjustedDx = position.dx - calendarPadding;

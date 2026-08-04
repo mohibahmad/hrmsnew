@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import '../utils/currency_utils.dart';
 import '../utils/file_opener.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
@@ -217,7 +218,7 @@ class InvoiceService {
 
             _tableRow(
               description: 'Basic Salary ($totalWorkDays working days)',
-              rate: '—',
+              rate: _money(dailyRate, defaultCurrency: detectedCurrency),
               quantity: totalWorkDays,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
               textColor: textColor,
@@ -678,7 +679,12 @@ class InvoiceService {
           .trim();
 
       if (detected.isNotEmpty) {
-        prefix = detected[0].toUpperCase() + detected.substring(1);
+        final code = detected.toUpperCase();
+        if (CurrencyUtils.isSupported(code)) {
+          prefix = CurrencyUtils.symbolFor(code);
+        } else {
+          prefix = detected[0].toUpperCase() + detected.substring(1);
+        }
       }
     }
 
@@ -711,6 +717,10 @@ class InvoiceService {
     if (match == null || match.start == 0) return 'Rs';
     final prefix = trimmed.substring(0, match.start).trim();
     if (prefix.isEmpty) return 'Rs';
+    final code = prefix.toUpperCase();
+    if (CurrencyUtils.isSupported(code)) {
+      return CurrencyUtils.symbolFor(code);
+    }
     return prefix[0].toUpperCase() + prefix.substring(1);
   }
 

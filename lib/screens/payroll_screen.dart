@@ -1821,18 +1821,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                       Expanded(
                                         child: _buildMetricCard(
                                           icon: const Icon(
-                                            Icons.calendar_view_day_rounded,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
-                                          title: 'total_working_days'.tr(),
-                                          value: totalWorkDays,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: const Icon(
                                             Icons.event_available_rounded,
                                             color: Color(0xFF004FDE),
                                             size: 20,

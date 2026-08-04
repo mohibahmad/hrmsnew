@@ -2533,55 +2533,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     controller: controller,
                                     setDialogState: setDialogState,
                                   )
-                                else if (isMediaField &&
-                                    fieldKey == 'profileImage' &&
-                                    !hasExistingUpload &&
-                                    mediaDataUrl == null)
-                                  GestureDetector(
-                                    onTap: () => _pickMediaFile(),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 24,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF9FAFB),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0xFFD1D5DB),
-                                          width: 1.2,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            width: 56,
-                                            height: 56,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFEEF2FF),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.add_a_photo_rounded,
-                                              size: 26,
-                                              color: Color(0xFF0247C4),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            'tap_to_upload_profile_image'.tr(),
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF0247C4),
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
                                 else
                                   Container(
                                     clipBehavior: Clip.hardEdge,
