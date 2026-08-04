@@ -209,7 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _allTimeoffDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
-  bool _isPremium = false;
+  // Start from the last known premium status so premium users never see a
+  // flash of the upgrade card while the Firestore status is loading.
+  bool _isPremium = PreferencesService.cachedIsPremium;
   bool _dashboardReady = false;
   bool _initialized = false;
   bool _workersLoaded = false;
@@ -257,7 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e, st) {
 
         ErrorReporter.report(e, st, context: 'loadPremiumStatus');
-        isPremium = false;
+        // Keep the last known status instead of dropping to non-premium on a
+        // transient network error, so premium users don't get the upgrade card.
+        isPremium = PreferencesService.cachedIsPremium;
       }
     }
     if (mounted) {
@@ -923,15 +927,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _markNotificationsSeen() async {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) return;
     try {
-      if (isGuest) {
-        for (final notification in DummyData.notifications) {
-          notification['isRead'] = true;
-        }
-        await DummyData.saveToPrefs();
-      } else {
-        await _firestore.markAllNotificationsRead();
-      }
+      await _firestore.markAllNotificationsRead();
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'MarkNotificationsSeen');
     }

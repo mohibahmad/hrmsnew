@@ -15,6 +15,7 @@ import '../widgets/notification_bell.dart';
 
 import 'assign_time_off.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/localization_helper.dart';
 
 class Worker {
   final String name;
@@ -724,7 +725,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (final f in allFilters)
-              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : f),
+              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : LocalizationHelper.localizePosition(f)),
           ],
         ),
       ),
@@ -958,7 +959,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           child: Padding(
                             padding: const EdgeInsets.only(right: 24.0),
                             child: Text(
-                              position,
+                              LocalizationHelper.localizePosition(position),
                               style: const TextStyle(
                                 fontSize: 15,
                                 color: Colors.black,

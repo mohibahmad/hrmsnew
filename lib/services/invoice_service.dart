@@ -68,12 +68,7 @@ class InvoiceService {
         byteData.offsetInBytes,
         byteData.lengthInBytes,
       );
-      final decoded = img.decodeImage(rawBytes);
-      if (decoded != null) {
-        final resized = img.copyResize(decoded, width: 56, height: 56);
-        final pngBytes = Uint8List.fromList(img.encodePng(resized));
-        logoImage = pw.MemoryImage(pngBytes);
-      }
+      logoImage = pw.MemoryImage(rawBytes);
     } catch (_) {
       logoImage = null;
     }

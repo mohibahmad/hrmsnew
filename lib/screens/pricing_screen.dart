@@ -81,7 +81,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 20),
 
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                                 child: Image.asset(
                                   'assets/app_icon.png',
                                   width: 70,
@@ -282,29 +282,35 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        _buildFooterLink(
-                                          'privacy_policy'.tr(),
-                                          onTap: () => launchUrl(
-                                            Uri.parse(
-                                              'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
-                                            ),
-                                          ),
-                                        ),
-                                        _buildFooterDivider(),
-                                        _buildFooterLink(
-                                          'restore'.tr(),
-                                          onTap: () {},
-                                        ),
-                                        _buildFooterDivider(),
-                                        GestureDetector(
-                                          onTap: () => launchUrl(
-                                            Uri.parse(
-                                              'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-                                            ),
-                                          ),
-                                          behavior: HitTestBehavior.opaque,
+                                        Flexible(
                                           child: _buildFooterLink(
-                                            'terms_of_use'.tr(),
+                                            'privacy_policy'.tr(),
+                                            onTap: () => launchUrl(
+                                              Uri.parse(
+                                                'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        _buildFooterDivider(),
+                                        Flexible(
+                                          child: _buildFooterLink(
+                                            'restore'.tr(),
+                                            onTap: () {},
+                                          ),
+                                        ),
+                                        _buildFooterDivider(),
+                                        Flexible(
+                                          child: GestureDetector(
+                                            onTap: () => launchUrl(
+                                              Uri.parse(
+                                                'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                              ),
+                                            ),
+                                            behavior: HitTestBehavior.opaque,
+                                            child: _buildFooterLink(
+                                              'terms_of_use'.tr(),
+                                            ),
                                           ),
                                         ),
                                       ],

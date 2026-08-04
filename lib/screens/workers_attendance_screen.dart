@@ -113,7 +113,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   bool _timeOffLoaded = false;
   bool _isDialogOpen = false;
   String? _errorMessage;
-  bool _isPremium = false;
+
+  bool _isPremium = PreferencesService.cachedIsPremium;
   late AuthService _authService;
   late FirestoreService _firestore;
   StreamSubscription? _workersSub;
@@ -261,48 +262,51 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       59,
       999,
     );
-    _attendanceSub = _firestore.attendanceStreamForPeriod(
-      start: attendancePeriodStart,
-      end: attendancePeriodEnd,
-    ).listen(
-      (snapshot) {
-        if (!mounted) return;
-        setState(() {
-          final sortedList = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
-          sortedList.sort((a, b) {
-            final aTime = a['createdAt'];
-            final bTime = b['createdAt'];
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return 1;
-            if (bTime == null) return -1;
-            if (aTime is Timestamp && bTime is Timestamp) {
-              return bTime.compareTo(aTime);
-            }
-            return 0;
-          });
-          _attendanceLoaded = true;
-          final filtered = sortedList.where((att) {
-            if (!_attendanceBelongsToCurrentWorker(att)) return false;
-            return app_date_utils.AppDateUtils.isAttendanceRecordWithinPeriod(
-              att,
-              _selectedTimeframe,
-            );
-          }).toList();
-          _periodAttendanceRecords = filtered;
-          _todayAttendance = _latestAttendancePerWorker(filtered);
-          _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
-        });
-      },
-      onError: (e) {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      },
-    );
+    _attendanceSub = _firestore
+        .attendanceStreamForPeriod(
+          start: attendancePeriodStart,
+          end: attendancePeriodEnd,
+        )
+        .listen(
+          (snapshot) {
+            if (!mounted) return;
+            setState(() {
+              final sortedList = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              sortedList.sort((a, b) {
+                final aTime = a['createdAt'];
+                final bTime = b['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return 1;
+                if (bTime == null) return -1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _attendanceLoaded = true;
+              final filtered = sortedList.where((att) {
+                if (!_attendanceBelongsToCurrentWorker(att)) return false;
+                return app_date_utils
+                    .AppDateUtils.isAttendanceRecordWithinPeriod(
+                  att,
+                  _selectedTimeframe,
+                );
+              }).toList();
+              _periodAttendanceRecords = filtered;
+              _todayAttendance = _latestAttendancePerWorker(filtered);
+              _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
+            });
+          },
+          onError: (e) {
+            if (!mounted) return;
+            setState(() {
+              _errorMessage = e.toString();
+              _isLoading = false;
+            });
+          },
+        );
 
     _holidaysSub = _firestore.holidaysStream.listen(
       (snapshot) {
@@ -915,9 +919,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final email = (worker['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final workerStatus = _getWorkerStatus(worker).toLowerCase();
-      final matchesSearch = name.contains(query) || role.contains(query) || email.contains(query) || workerStatus.contains(query);
+      final matchesSearch =
+          name.contains(query) ||
+          role.contains(query) ||
+          email.contains(query) ||
+          workerStatus.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch && workerStatus == _selectedStatusFilter.toLowerCase();
+      return matchesSearch &&
+          workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();
   }
 
@@ -1728,27 +1737,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     return;
                                                   }
 
-                                                  final attendanceData =
-                                                      <String, dynamic>{
-                                                        'workerId': workerId,
-                                                        'name': name,
-                                                        'email': email,
-                                                        'role':
-                                                            workerData['role'] ??
-                                                            workerData['position'] ??
-                                                            '',
-                                                        'status': selectedStatus,
-                                                        'attendanceType':
-                                                            workerData['type2'] ??
-                                                            'Remote',
-                                                        'workType':
-                                                            workerData['type1'] ??
-                                                            'Full Time',
-                                                        'type': type,
-                                                        'desc': desc,
-                                                        'profileImage':
-                                                            workerData['profileImage'],
-                                                      };
+                                                  final attendanceData = <String, dynamic>{
+                                                    'workerId': workerId,
+                                                    'name': name,
+                                                    'email': email,
+                                                    'role':
+                                                        workerData['role'] ??
+                                                        workerData['position'] ??
+                                                        '',
+                                                    'status': selectedStatus,
+                                                    'attendanceType':
+                                                        workerData['type2'] ??
+                                                        'Remote',
+                                                    'workType':
+                                                        workerData['type1'] ??
+                                                        'Full Time',
+                                                    'type': type,
+                                                    'desc': desc,
+                                                    'profileImage':
+                                                        workerData['profileImage'],
+                                                  };
                                                   final attendanceId =
                                                       (todayRecord['id'] ?? '')
                                                           .toString()
@@ -2071,14 +2079,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               'no_workers_found_title'.tr(),
@@ -2169,14 +2177,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               'no_attendance_records'.tr(),

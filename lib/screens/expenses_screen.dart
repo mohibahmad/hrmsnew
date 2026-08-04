@@ -206,7 +206,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
     if (isSalary && payrollKey.isNotEmpty) {
-
       return _payrollAmountsByKey[payrollKey] ?? 0.0;
     }
 
@@ -256,13 +255,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       return NumberFormat.currency(
         locale: context.locale.toString(),
         symbol: symbol,
-        decimalDigits: 2,
+        decimalDigits: 0,
       ).format(amount);
     } catch (_) {
       return NumberFormat.currency(
         locale: 'en_US',
         symbol: symbol,
-        decimalDigits: 2,
+        decimalDigits: 0,
       ).format(amount);
     }
   }
@@ -313,7 +312,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
-
     if (_isPayrollExpense(doc)) return;
     final docId = (doc['id'] ?? '').toString().trim();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -349,8 +347,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _editExpense(Map<String, dynamic> doc) async {
-
-    if (_isPayrollExpense(doc)) return;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final categoryController = TextEditingController(
       text: doc['category']?.toString() ?? '',
@@ -1722,7 +1718,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           return;
         }
 
-        if (_isPayrollExpense(doc)) return;
         _editExpense(doc);
       },
       child: Container(
@@ -1806,10 +1801,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
-
-    if (_isPayrollExpense(doc)) {
-      return const SizedBox(width: 48);
-    }
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(

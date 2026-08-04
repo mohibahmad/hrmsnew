@@ -2871,16 +2871,20 @@ class WorkerDetailFormSection extends StatelessWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildCustomRadio(
-                        label: 'married'.tr(),
-                        isSelected: relationshipStatus == 'Married',
-                        onTap: () => onRelationshipStatusChanged('Married'),
+                      Expanded(
+                        child: _buildCustomRadio(
+                          label: 'married'.tr(),
+                          isSelected: relationshipStatus == 'Married',
+                          onTap: () => onRelationshipStatusChanged('Married'),
+                        ),
                       ),
-                      const SizedBox(width: 120),
-                      _buildCustomRadio(
-                        label: 'single'.tr(),
-                        isSelected: relationshipStatus == 'Single',
-                        onTap: () => onRelationshipStatusChanged('Single'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildCustomRadio(
+                          label: 'single'.tr(),
+                          isSelected: relationshipStatus == 'Single',
+                          onTap: () => onRelationshipStatusChanged('Single'),
+                        ),
                       ),
                     ],
                   ),
@@ -4734,13 +4738,16 @@ Widget _buildCustomRadio({
               : const SizedBox(),
         ),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontFamily: 'SF Pro Display',
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
           ),
         ),
       ],

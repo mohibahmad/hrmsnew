@@ -30,6 +30,7 @@ class PreferencesService {
 
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
+  static bool _cachedIsPremium = false;
   static Directory? _guestDataDir;
 
   static Future<Directory> _getGuestDataDir() async {
@@ -50,10 +51,16 @@ class PreferencesService {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
+    _cachedIsPremium = prefs.getBool(_premiumKey) ?? false;
   }
 
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
   static bool get cachedIsGuest => _cachedIsGuest;
+
+  /// Last known premium status, read synchronously so the UI can render the
+  /// correct upgrade state immediately (avoids flashing the upgrade card for
+  /// premium users on app start while the Firestore status loads).
+  static bool get cachedIsPremium => _cachedIsPremium;
 
   static Future<void> setLoggedIn(bool value) async {
     final prefs = await SharedPreferences.getInstance();
@@ -73,6 +80,7 @@ class PreferencesService {
   }
 
   static Future<void> setPremium(bool value) async {
+    _cachedIsPremium = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_premiumKey, value);
   }
@@ -430,5 +438,6 @@ class PreferencesService {
     }
     _cachedProfilePicUrl = null;
     _cachedIsGuest = false;
+    _cachedIsPremium = false;
   }
 }

@@ -766,7 +766,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      ...positionsToShow.map((p) => {'key': p, 'label': p}),
+      ...positionsToShow.map((p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)}),
     ];
     return Container(
       width: 550,
@@ -1210,7 +1210,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Padding(
               padding: const EdgeInsets.only(right: 24.0),
               child: Text(
-                position,
+                LocalizationHelper.localizePosition(position),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1838,7 +1838,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.business_center,
                           'position'.tr(),
-                          _v(worker, 'position'),
+                          LocalizationHelper.localizePosition(_v(worker, 'position')),
                         ),
                       ),
                       _buildRow(

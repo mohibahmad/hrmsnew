@@ -15,6 +15,7 @@ import '../services/upload_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/localization_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -359,7 +360,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     if (position.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        position,
+                        LocalizationHelper.localizePosition(position),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -824,14 +825,19 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     bool isImage,
     String label, {
     bool isPdf = false,
+    bool isDoc = false,
   }) {
     if (url == null || url.isEmpty) return;
-    if (!isPdf) {
+    if (!isPdf && !isDoc) {
       final lower = url.toLowerCase();
       isPdf =
           lower.endsWith('.pdf') ||
           lower.contains('application/pdf') ||
           lower.contains('/pdf/');
+    }
+    if (!isPdf && !isDoc) {
+      final lower = url.toLowerCase();
+      isDoc = lower.endsWith('.doc') || lower.endsWith('.docx');
     }
     showGeneralDialog(
       context: context,
@@ -844,6 +850,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         label: label,
         isImage: isImage,
         isPdf: isPdf,
+        isDoc: isDoc,
       ),
       transitionBuilder: (ctx, anim, secAnim, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
@@ -1172,6 +1179,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         cleanName.endsWith('.pdf') ||
         cleanUrl.endsWith('.pdf') ||
         cleanUrl.startsWith('data:application/pdf');
+    final bool isDoc =
+        cleanName.endsWith('.doc') ||
+        cleanName.endsWith('.docx') ||
+        cleanUrl.endsWith('.doc') ||
+        cleanUrl.endsWith('.docx');
     final bool isImage =
         bytes != null ||
         cleanName.endsWith('.png') ||
@@ -1202,9 +1214,15 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                     : 'image/jpeg';
                 final dataUrl =
                     'data:$safeMimeType;base64,${base64Encode(bytes)}';
-                _viewDocument(dataUrl, true, label);
+                _viewDocument(dataUrl, true, label, isDoc: isDoc);
               } else if (existingUrl != null && existingUrl.isNotEmpty) {
-                _viewDocument(existingUrl, isImage, label, isPdf: isPdf);
+                _viewDocument(
+                  existingUrl,
+                  isImage,
+                  label,
+                  isPdf: isPdf,
+                  isDoc: isDoc,
+                );
               }
             }
           : onTap,
@@ -1474,6 +1492,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           isImage,
           _cvName ?? 'cv_resume'.tr(),
           isPdf: isPdf,
+          isDoc: isDoc,
         );
       } else if (cvUrl != null && cvUrl.isNotEmpty) {
         _viewDocument(
@@ -1481,6 +1500,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           isImage,
           _cvName ?? 'cv_resume'.tr(),
           isPdf: isPdf,
+          isDoc: isDoc,
         );
       }
     }
@@ -1588,7 +1608,7 @@ String _cleanDocumentFileName(String rawName) {
     name = name.split('/').last;
   }
   name = name.trim();
-  name = name.replaceFirst(RegExp(r'^\d+[_-]+'), '');
+  name = name.replaceFirst(RegExp(r'^\d+[_-]*'), '');
   name = name.replaceAll(RegExp(r'_+'), ' ');
   name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
   return name.trim().isNotEmpty ? name.trim() : 'document'.tr();
@@ -1630,7 +1650,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
     try {
       final source = widget.url?.trim() ?? '';
       if (source.isEmpty) {
-        throw StateError('Failed to load PDF'.tr());
+        throw StateError('failed_to_load_pdf'.tr());
       }
 
       Uint8List bytes;
@@ -1648,11 +1668,11 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         }
         bytes = base64Decode(source.split(',').last);
       } else {
-        throw StateError('Failed to load PDF'.tr());
+        throw StateError('failed_to_load_pdf'.tr());
       }
 
       if (bytes.isEmpty) {
-        throw StateError('Failed to load PDF'.tr());
+        throw StateError('failed_to_load_pdf'.tr());
       }
       if (bytes.length > UploadService.maxFileBytes) {
         throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
@@ -1694,7 +1714,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Loading PDF...'.tr(),
+              'loading_pdf'.tr(),
               style: const TextStyle(
                 fontSize: 13,
                 color: Colors.grey,
@@ -1713,7 +1733,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
             const SizedBox(height: 12),
             Text(
-              'Failed to load PDF'.tr(),
+              'failed_to_load_pdf'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey.shade600,
@@ -1728,7 +1748,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
     if (document == null) {
       return Center(
         child: Text(
-          'No pages found'.tr(),
+          'no_pages_found'.tr(),
           style: const TextStyle(
             color: Colors.grey,
             fontFamily: 'SF Pro Display',
@@ -1807,7 +1827,7 @@ class _LazyPdfPageState extends State<_LazyPdfPage> {
     if (_imageBytes != null) {
       return Image.memory(
         _imageBytes!,
-        fit: BoxFit.contain,
+        fit: BoxFit.fitWidth,
         filterQuality: FilterQuality.high,
         width: double.infinity,
       );
@@ -1836,12 +1856,14 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   final String label;
   final bool isImage;
   final bool isPdf;
+  final bool isDoc;
 
   const _FullScreenDocumentViewer({
     required this.url,
     required this.label,
     required this.isImage,
     this.isPdf = false,
+    this.isDoc = false,
   });
 
   @override
@@ -1866,6 +1888,14 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
     final previewWidth = size.width > 720
         ? (size.width * 0.85).clamp(450.0, 720.0)
         : size.width;
+    // Give the preview area a definite height so the inner ListView /
+    // SingleChildScrollView always gets bounded constraints and scrolls.
+    // Cap it against the available space below the header to avoid overflow
+    // on short windows.
+    final maxPreviewHeight = (size.height * 0.9 - 70).clamp(160.0, 640.0);
+    final previewHeight = (size.height * 0.8)
+        .clamp(160.0, maxPreviewHeight)
+        .toDouble();
     final failedToLoadText = 'failed_to_load'.tr();
     final cleanTitle = _cleanDocumentFileName(widget.label);
     final cleanFileName = _cleanDocumentFileName(widget.url);
@@ -1914,217 +1944,227 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
             ),
           );
 
-    final content = Container(
-      width: previewWidth,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF000000).withValues(alpha: 0.25),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF7F8FA),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+    final content = ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: size.height * 0.9),
+      child: Container(
+        width: previewWidth,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withValues(alpha: 0.25),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    cleanTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Color(0xFF1A1A1A),
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFFEEEEEE), height: 1),
-          Flexible(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(14),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
               ),
-              child: widget.isImage
-                  ? Container(
-                      color: const Color(0xFFFFFFFF),
-                      width: double.infinity,
-                      constraints: BoxConstraints(
-                        maxHeight: size.height * 0.85,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      cleanTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
                       ),
-                      child: InteractiveViewer(
-                        minScale: 0.5,
-                        maxScale: 4.0,
-                        child: imageContent,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
+                        shape: BoxShape.circle,
                       ),
-                    )
-                  : widget.isPdf
-                  ? Container(
-                      color: const Color(0xFFFFFFFF),
-                      width: double.infinity,
-                      constraints: BoxConstraints(
-                        maxHeight: size.height * 0.85,
+                      child: const Icon(
+                        Icons.close,
+                        color: Color(0xFF1A1A1A),
+                        size: 18,
                       ),
-                      child: _FullScreenPdfPreview(url: widget.url),
-                    )
-                  : SizedBox(
-                      height: 280,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.picture_as_pdf,
-                              size: 64,
-                              color: Color(0xFFEF4444),
-                            ),
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0xFFEEEEEE), height: 1),
+            SizedBox(
+              height: previewHeight,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(14),
+                ),
+                child: widget.isPdf
+                    ? Container(
+                        color: const Color(0xFFFFFFFF),
+                        width: double.infinity,
+                        child: _FullScreenPdfPreview(url: widget.url),
+                      )
+                    : widget.isDoc
+                    ? Container(
+                        color: const Color(0xFFFFFFFF),
+                        width: double.infinity,
+                        child: DocPreview(
+                          docUrl: widget.url,
+                          docName: widget.label,
+                        ),
+                      )
+                    : widget.isImage
+                    ? Container(
+                        color: const Color(0xFFFFFFFF),
+                        width: double.infinity,
+                        child: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: imageContent,
+                        ),
+                      )
+                    : SizedBox(
+                        height: 280,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.picture_as_pdf,
+                                size: 64,
+                                color: Color(0xFFEF4444),
                               ),
-                              child: Text(
-                                cleanFileName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF1A1A1A),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
+                              const SizedBox(height: 16),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                child: Text(
+                                  cleanFileName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (widget.url.startsWith('http') ||
-                                    widget.url.startsWith('file'))
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (widget.url.startsWith('http') ||
+                                      widget.url.startsWith('file'))
+                                    GestureDetector(
+                                      onTap: () async {
+                                        try {
+                                          final uri = Uri.tryParse(widget.url);
+                                          if (uri == null) {
+                                            throw const FormatException();
+                                          }
+                                          final opened = await launchUrl(
+                                            uri,
+                                            mode:
+                                                LaunchMode.externalApplication,
+                                          );
+                                          if (!opened && context.mounted) {
+                                            FlashySnackBar.show(
+                                              context,
+                                              message: 'failed_to_load'.tr(),
+                                              isError: true,
+                                            );
+                                          }
+                                        } catch (_) {
+                                          if (context.mounted) {
+                                            FlashySnackBar.show(
+                                              context,
+                                              message: 'failed_to_load'.tr(),
+                                              isError: true,
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 11,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0247C4),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.open_in_new,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'open_document'.tr(),
+                                              style: const TextStyle(
+                                                color: Color(0xFFFFFFFF),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  if (widget.url.startsWith('http') ||
+                                      widget.url.startsWith('file'))
+                                    const SizedBox(width: 12),
                                   GestureDetector(
-                                    onTap: () async {
-                                      try {
-                                        final uri = Uri.tryParse(widget.url);
-                                        if (uri == null) {
-                                          throw const FormatException();
-                                        }
-                                        final opened = await launchUrl(
-                                          uri,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                        if (!opened && context.mounted) {
-                                          FlashySnackBar.show(
-                                            context,
-                                            message: 'failed_to_load'.tr(),
-                                            isError: true,
-                                          );
-                                        }
-                                      } catch (_) {
-                                        if (context.mounted) {
-                                          FlashySnackBar.show(
-                                            context,
-                                            message: 'failed_to_load'.tr(),
-                                            isError: true,
-                                          );
-                                        }
-                                      }
-                                    },
+                                    onTap: () => Navigator.of(context).pop(),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 20,
                                         vertical: 11,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0247C4),
+                                        color: const Color(0xFFF1F5F9),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.open_in_new,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Open Document'.tr(),
-                                            style: const TextStyle(
-                                              color: Color(0xFFFFFFFF),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
+                                      child: Text(
+                                        'close'.tr(),
+                                        style: const TextStyle(
+                                          color: Color(0xFF334155),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
                                     ),
                                   ),
-                                if (widget.url.startsWith('http') ||
-                                    widget.url.startsWith('file'))
-                                  const SizedBox(width: 12),
-                                GestureDetector(
-                                  onTap: () => Navigator.of(context).pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 11,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'close'.tr(),
-                                      style: const TextStyle(
-                                        color: Color(0xFF334155),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 

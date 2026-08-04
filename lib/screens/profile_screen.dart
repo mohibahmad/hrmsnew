@@ -1419,7 +1419,13 @@ class _ProfileBodyState extends State<ProfileBody> {
       );
     }
 
-    final currencies = CurrencyUtils.supportedCodes;
+    final currentCurrency = _currencyController.text;
+    final currencies = <String>[
+      if (!CurrencyUtils.commonCodes.contains(currentCurrency) &&
+          CurrencyUtils.isSupported(currentCurrency))
+        currentCurrency,
+      ...CurrencyUtils.commonCodes,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1444,7 +1450,7 @@ class _ProfileBodyState extends State<ProfileBody> {
             child: DropdownButton<String>(
               value: currencies.contains(_currencyController.text)
                   ? _currencyController.text
-                  : 'USD',
+                  : currencies.first,
               isExpanded: true,
               dropdownColor: Colors.white,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),

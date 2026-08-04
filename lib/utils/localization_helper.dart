@@ -76,6 +76,96 @@ class LocalizationHelper {
     }
   }
 
+  static String localizePosition(String value) {
+    switch (value.toLowerCase()) {
+      case 'designer':
+        return 'designer'.tr();
+      case 'developer':
+        return 'developer'.tr();
+      case 'engineering':
+        return 'engineering'.tr();
+      case 'sales':
+        return 'sales'.tr();
+      case 'management':
+        return 'management'.tr();
+      case 'manager':
+        return 'manager'.tr();
+      case 'accountant':
+        return 'accountant'.tr();
+      case 'assistant':
+        return 'assistant'.tr();
+      case 'director':
+        return 'director'.tr();
+      case 'lead':
+        return 'lead'.tr();
+      case 'engineer':
+        return 'engineer'.tr();
+      case 'analyst':
+        return 'analyst'.tr();
+      case 'coordinator':
+        return 'coordinator'.tr();
+      case 'consultant':
+        return 'consultant'.tr();
+      case 'officer':
+        return 'officer'.tr();
+      case 'specialist':
+        return 'specialist'.tr();
+      case 'administrator':
+        return 'administrator'.tr();
+      case 'researcher':
+        return 'researcher'.tr();
+      case 'writer':
+        return 'writer'.tr();
+      case 'tester':
+        return 'tester'.tr();
+      case 'strategist':
+        return 'strategist'.tr();
+      case 'architect':
+        return 'architect'.tr();
+      default:
+        return _localizeCompoundPosition(value);
+    }
+  }
+
+  static String _localizeCompoundPosition(String value) {
+    final words = value.split(' ');
+    if (words.length <= 1) return value;
+    final parts = words.map((w) {
+      final lower = w.toLowerCase();
+      switch (lower) {
+        case 'manager':
+          return 'manager'.tr();
+        case 'developer':
+          return 'developer'.tr();
+        case 'designer':
+          return 'designer'.tr();
+        case 'engineer':
+          return 'engineer'.tr();
+        case 'analyst':
+          return 'analyst'.tr();
+        case 'director':
+          return 'director'.tr();
+        case 'lead':
+          return 'lead'.tr();
+        case 'coordinator':
+          return 'coordinator'.tr();
+        case 'specialist':
+          return 'specialist'.tr();
+        case 'assistant':
+          return 'assistant'.tr();
+        case 'tester':
+          return 'tester'.tr();
+        case 'writer':
+          return 'writer'.tr();
+        case 'architect':
+          return 'architect'.tr();
+        default:
+          return w;
+      }
+    }).toList();
+    return parts.join(' ');
+  }
+
   static String localizeEducation(String value) {
     switch (value) {
       case 'Matric':

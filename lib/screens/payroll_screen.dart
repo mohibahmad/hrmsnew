@@ -18,6 +18,7 @@ import '../utils/svg_fill_color_mapper.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/localization_helper.dart';
 import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
@@ -1000,7 +1001,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      ...positionsToShow.map((p) => {'key': p, 'label': p}),
+      ...positionsToShow.map((p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)}),
     ];
     return Container(
       width: 550,
@@ -1246,7 +1247,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(right: 24.0),
                 child: Text(
-                  (doc['position'] ?? '').toString(),
+                  LocalizationHelper.localizePosition((doc['position'] ?? '').toString()),
                   style: const TextStyle(
                     fontSize: 15,
                     color: Colors.black,
@@ -1829,6 +1830,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                           value: paidDateText,
                                         ),
                                       ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(child: SizedBox()),
                                     ],
                                   ),
                                 ],
