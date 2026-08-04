@@ -58,6 +58,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime? _lastDragDate;
   Set<DateTime> _selectionBeforeDrag = <DateTime>{};
   bool _dragExceededAvailableDays = false;
+  Offset? _dragStartPosition;
+  bool _dragMoved = false;
 
   bool _sameWorker(Map<String, dynamic> first, Map<String, dynamic> second) {
     String identityId(Map<String, dynamic> value) {
@@ -864,14 +866,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
                 items: _leaveTypeOptions.map((option) {
                   final label = option['labelKey']!.tr();
-                  final remaining = _availableDays;
-                  final displayText = _selectedWorker != null
-                      ? '$label – $remaining ${'remaining_days'.tr()}'
-                      : label;
                   return DropdownMenuItem<String>(
                     value: option['value'],
                     child: Text(
-                      displayText,
+                      label,
                       style: const TextStyle(
                         fontFamily: 'SF Pro Display',
                         fontSize: 14,
@@ -1089,34 +1087,57 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       dragStartBehavior: DragStartBehavior.down,
       onPanDown: (details) {
         final pos = details.localPosition;
-        final isSecond = pos.dx > calendarWidth + 24;
+        const containerWidth = calendarWidth + 32;
+        final isSecond = pos.dx > containerWidth + 24;
         final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
-        _dragAnchorDate = _dateAtGridPosition(monthDate, details.localPosition);
+        final adjustedPos = isSecond
+            ? Offset(pos.dx - containerWidth - 24, pos.dy)
+            : pos;
+        _dragAnchorDate = _dateAtGridPosition(monthDate, adjustedPos);
         _lastDragDate = null;
         _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
         _dragExceededAvailableDays = false;
+        _dragStartPosition = details.localPosition;
+        _dragMoved = false;
       },
       onPanUpdate: (details) {
+        final startPos = _dragStartPosition;
+        if (startPos != null && !_dragMoved) {
+          final dx = (details.localPosition.dx - startPos.dx).abs();
+          final dy = (details.localPosition.dy - startPos.dy).abs();
+          if (dx > 5 || dy > 5) _dragMoved = true;
+        }
+        if (!_dragMoved) return;
+
         final anchor = _dragAnchorDate;
         final pos = details.localPosition;
-        final isSecond = pos.dx > calendarWidth + 24;
+        const containerWidth = calendarWidth + 32;
+        final isSecond = pos.dx > containerWidth + 24;
         final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
-        final current = _dateAtGridPosition(monthDate, details.localPosition);
+        final adjustedPos = isSecond
+            ? Offset(pos.dx - containerWidth - 24, pos.dy)
+            : pos;
+        final current = _dateAtGridPosition(monthDate, adjustedPos);
         if (anchor == null || current == null || current == _lastDragDate) {
           return;
         }
         _lastDragDate = current;
 
         final candidate = Set<DateTime>.from(_selectionBeforeDrag);
+        final isDragRemoving = _selectionBeforeDrag.contains(_dragAnchorDate);
         var exceededAvailableDays = false;
         for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
-          if (candidate.contains(date)) continue;
           if (_isNonWorkingDate(date)) continue;
-          if (_usesPaidAllowance && candidate.length >= _availableDays) {
-            if (!_isGuest) exceededAvailableDays = true;
-            break;
+          if (isDragRemoving) {
+            candidate.remove(date);
+          } else {
+            if (candidate.contains(date)) continue;
+            if (_usesPaidAllowance && candidate.length >= _availableDays) {
+              if (!_isGuest) exceededAvailableDays = true;
+              break;
+            }
+            candidate.add(date);
           }
-          candidate.add(date);
         }
 
         setState(() {
@@ -1125,7 +1146,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           _syncSelectionBounds();
         });
       },
-      onPanEnd: (_) => _finishDateDrag(),
+      onPanEnd: (_) {
+        if (!_dragMoved && _dragAnchorDate != null) {
+          _toggleDate(_dragAnchorDate!);
+        }
+        _finishDateDrag();
+      },
       onPanCancel: _finishDateDrag,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1189,8 +1215,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
     const cellExtent = 54.0;
-    final column = (position.dx / cellExtent).floor();
-    final row = (position.dy / cellExtent).floor();
+    const headerHeight = 33.0;
+    const calendarPadding = 16.0;
+    final adjustedDy = position.dy - headerHeight - calendarPadding;
+    final adjustedDx = position.dx - calendarPadding;
+    if (adjustedDy < 0 || adjustedDx < 0) return null;
+    final column = (adjustedDx / cellExtent).floor();
+    final row = (adjustedDy / cellExtent).floor();
     if (column < 0 || column > 6 || row < 0 || row > 5) return null;
 
     final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
@@ -1213,6 +1244,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _lastDragDate = null;
     _selectionBeforeDrag = <DateTime>{};
     _dragExceededAvailableDays = false;
+    _dragStartPosition = null;
+    _dragMoved = false;
   }
 
   void _toggleDate(DateTime date) {
@@ -1270,36 +1303,33 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: SizedBox(
         width: 50,
         height: 50,
-        child: GestureDetector(
-          onTap: date == null || isDisabled ? null : () => _toggleDate(date),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? selectedBg
+                : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent),
+            border: Border.all(
               color: isSelected
-                  ? selectedBg
-                  : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent),
-              border: Border.all(
-                color: isSelected
-                    ? selectedBorder
-                    : (isSunday
-                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                          : (isFriday
-                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                                : Colors.grey.shade300)),
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(6),
+                  ? selectedBorder
+                  : (isSunday
+                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                        : (isFriday
+                              ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                              : Colors.grey.shade300)),
+              width: 1,
             ),
-            child: Text(
-              day,
-              style: TextStyle(
-                color: isDisabled
-                    ? const Color(0xFFB0B7C3)
-                    : (isSelected ? const Color(0xFFFFFFFF) : dayColor),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            day,
+            style: TextStyle(
+              color: isDisabled
+                  ? const Color(0xFFB0B7C3)
+                  : (isSelected ? const Color(0xFFFFFFFF) : dayColor),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
           ),
         ),

@@ -1195,6 +1195,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    if (_fatherNameController.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'worker_father_husband_name'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
     if (phone.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1665,6 +1676,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_worker_name'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (_fatherNameController.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'worker_father_husband_name'.tr()},
+        ),
         isError: true,
       );
       return;
@@ -4264,7 +4286,7 @@ class DocumentationSection extends StatelessWidget {
                   else if (bytes != null && isImage)
                     Image.memory(
                       bytes,
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
@@ -4273,7 +4295,7 @@ class DocumentationSection extends StatelessWidget {
                       isImage)
                     CachedNetworkImage(
                       imageUrl: existingUrl,
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover,
                       placeholder: (context, url) => Shimmer.fromColors(
                         baseColor: Colors.grey.shade300,
                         highlightColor: Colors.grey.shade100,
@@ -4290,7 +4312,7 @@ class DocumentationSection extends StatelessWidget {
                       existingUrl.startsWith('data:image'))
                     Image.memory(
                       base64Decode(existingUrl.split(',').last),
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
@@ -4505,6 +4527,7 @@ class DocumentationSection extends StatelessWidget {
                                 child: DocPreview(
                                   docBytes: cvBytes,
                                   docName: cvName,
+                                  docUrl: existingCvUrl,
                                 ),
                               ),
                             ),
@@ -4746,8 +4769,9 @@ Widget _buildDropdownField({
 class DocPreview extends StatefulWidget {
   final Uint8List? docBytes;
   final String? docName;
+  final String? docUrl;
 
-  const DocPreview({super.key, this.docBytes, this.docName});
+  const DocPreview({super.key, this.docBytes, this.docName, this.docUrl});
 
   @override
   State<DocPreview> createState() => _DocPreviewState();
@@ -4767,7 +4791,8 @@ class _DocPreviewState extends State<DocPreview> {
   @override
   void didUpdateWidget(covariant DocPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.docBytes != oldWidget.docBytes) {
+    if (widget.docBytes != oldWidget.docBytes ||
+        widget.docUrl != oldWidget.docUrl) {
       _extractContent();
     }
   }
@@ -4781,7 +4806,61 @@ class _DocPreviewState extends State<DocPreview> {
     });
 
     final isDocx = (widget.docName ?? '').toLowerCase().endsWith('.docx');
-    final bytes = widget.docBytes;
+    var bytes = widget.docBytes;
+
+    // When editing a worker, only the URL is stored in Firestore.
+    // Download the bytes so the DOC/DOCX content can be extracted.
+    if (bytes == null && widget.docUrl != null && widget.docUrl!.isNotEmpty) {
+      try {
+        final url = widget.docUrl!;
+        if (url.startsWith('data:')) {
+          if (url.contains(',')) {
+            bytes = base64Decode(url.split(',').last);
+          }
+        } else if (url.startsWith('http://') || url.startsWith('https://')) {
+          final client = io.HttpClient()
+            ..connectionTimeout = const Duration(seconds: 15);
+          try {
+            final request = await client
+                .getUrl(Uri.parse(url))
+                .timeout(const Duration(seconds: 15));
+            final response = await request.close().timeout(
+              const Duration(seconds: 20),
+            );
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+              throw io.HttpException(
+                'HTTP ${response.statusCode}',
+                uri: Uri.parse(url),
+              );
+            }
+            const maxPreviewBytes = 20 * 1024 * 1024;
+            if (response.contentLength > maxPreviewBytes) {
+              throw const FormatException('DOC preview file is too large.');
+            }
+            final bytesBuilder = BytesBuilder();
+            var receivedBytes = 0;
+            await for (final chunk in response) {
+              receivedBytes += chunk.length;
+              if (receivedBytes > maxPreviewBytes) {
+                throw const FormatException('DOC preview file is too large.');
+              }
+              bytesBuilder.add(chunk);
+            }
+            bytes = bytesBuilder.takeBytes();
+          } finally {
+            client.close();
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _error = e.toString();
+          });
+        }
+        return;
+      }
+    }
 
     if (bytes == null) {
       if (mounted) {

@@ -333,6 +333,12 @@ class SalaryDayScheduler {
           isGuest: false,
           userId: authService.currentUser?.uid,
         );
+        if (context.mounted && !autoMode) {
+          FlashySnackBar.show(
+            context,
+            message: 'all_workers_already_paid'.tr(),
+          );
+        }
         return null;
       }
     }
@@ -613,6 +619,10 @@ class SalaryDayScheduler {
       );
       committedSummary = filteredSummary;
       if (!context.mounted) return null;
+      FlashySnackBar.show(
+        context,
+        message: 'processing_payroll'.tr(),
+      );
       try {
         committedCount = await _commitPayrollRun(
           filteredSummary,

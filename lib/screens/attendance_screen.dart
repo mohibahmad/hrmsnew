@@ -172,6 +172,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate = DateTime.now();
     final selectedDates = <DateTime>{};
     DateTime? rangeStart;
+    DateTime? _dragAnchorDate;
+    bool _dragMoved = false;
+    Offset? _dragStartPosition;
+    Offset? _dragCurrentPosition;
+    Set<DateTime> _selectionBeforeDrag = {};
+
+    DateTime? dateAtPosition(Offset position, DateTime monthDate) {
+      const dialogWidth = 400.0;
+      const padding = 12.0;
+      const gap = 8.0;
+      final availableWidth = dialogWidth - (padding * 2);
+      final cellWidth = (availableWidth - (gap * 6)) / 7;
+      final cellHeight = cellWidth;
+      final headerHeight = 18.0 + 10.0 + 12.0 + 30.0;
+      final adjustedDy = position.dy - headerHeight;
+      if (adjustedDy < 0) return null;
+      final column = (position.dx / cellWidth).floor();
+      final row = (adjustedDy / cellHeight).floor();
+      if (column < 0 || column > 6 || row < 0 || row > 5) return null;
+      int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+      int firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
+      int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+      final day = (row * 7) + column - startOffset + 1;
+      if (day < 1 || day > daysInMonth) return null;
+      return DateTime(monthDate.year, monthDate.month, day);
+    }
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
@@ -239,8 +265,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               onPressed: selectedDates.isEmpty
                                   ? null
                                   : () {
-                                      final sortedDates = selectedDates.toList()
-                                        ..sort();
+                                      final sortedDates =
+                                          selectedDates.toList()..sort();
                                       Navigator.of(context).pop(sortedDates);
                                     },
                               child: Text(
@@ -262,53 +288,125 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildCalendarWithWeekdays(
-                      calendarDate,
-                      selectedDates,
-                      (DateTime date) {
+                    Listener(
+                      onPointerDown: (event) {
+                        final date = dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
+                        _dragAnchorDate = date;
+                        _dragStartPosition = event.localPosition;
+                        _dragMoved = false;
+                        _selectionBeforeDrag = Set<DateTime>.from(selectedDates);
+                        setModalState(() {});
+                      },
+                      onPointerMove: (event) {
+                        final startPos = _dragStartPosition;
+                        if (startPos != null && !_dragMoved) {
+                          final dx =
+                              (event.localPosition.dx - startPos.dx).abs();
+                          final dy =
+                              (event.localPosition.dy - startPos.dy).abs();
+                          if (dx > 5 || dy > 5) _dragMoved = true;
+                        }
+                        if (!_dragMoved) return;
+                        final anchor = _dragAnchorDate;
+                        if (anchor == null) return;
+                        final current = dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
+                        if (current == null) return;
+                        _dragCurrentPosition = event.localPosition;
                         setModalState(() {
-                          final isAlreadySelected = selectedDates.any(
-                            (d) =>
-                                d.year == date.year &&
-                                d.month == date.month &&
-                                d.day == date.day,
-                          );
-                          if (isAlreadySelected) {
-                            selectedDates.removeWhere(
+                          selectedDates.clear();
+                          selectedDates.addAll(_selectionBeforeDrag);
+                          final isDragRemoving =
+                              _selectionBeforeDrag.contains(anchor);
+                          final start = anchor.isBefore(current)
+                              ? anchor
+                              : current;
+                          final end = anchor.isAfter(current)
+                              ? anchor
+                              : current;
+                          for (
+                            var d = start;
+                            !d.isAfter(end);
+                            d = d.add(const Duration(days: 1))
+                          ) {
+                            if (isDragRemoving) {
+                              selectedDates.remove(d);
+                            } else {
+                              selectedDates.add(d);
+                            }
+                          }
+                        });
+                      },
+                      onPointerUp: (event) {
+                        if (!_dragMoved && _dragAnchorDate != null) {
+                          final date = _dragAnchorDate!;
+                          setModalState(() {
+                            final isAlreadySelected = selectedDates.any(
                               (d) =>
                                   d.year == date.year &&
                                   d.month == date.month &&
                                   d.day == date.day,
                             );
-                            rangeStart = null;
-                          } else {
-                            if (rangeStart == null) {
-                              rangeStart = date;
-                              selectedDates.add(date);
-                            } else {
-                              final start = rangeStart!.isBefore(date)
-                                  ? rangeStart!
-                                  : date;
-                              final end = rangeStart!.isAfter(date)
-                                  ? rangeStart!
-                                  : date;
-                              for (
-                                var d = start;
-                                !d.isAfter(end);
-                                d = d.add(const Duration(days: 1))
-                              ) {
-                                selectedDates.add(d);
-                              }
+                            if (isAlreadySelected) {
+                              selectedDates.removeWhere(
+                                (d) =>
+                                    d.year == date.year &&
+                                    d.month == date.month &&
+                                    d.day == date.day,
+                              );
                               rangeStart = null;
+                            } else {
+                              if (rangeStart == null) {
+                                rangeStart = date;
+                                selectedDates.add(date);
+                              } else {
+                                final start = rangeStart!.isBefore(date)
+                                    ? rangeStart!
+                                    : date;
+                                final end = rangeStart!.isAfter(date)
+                                    ? rangeStart!
+                                    : date;
+                                for (
+                                  var d = start;
+                                  !d.isAfter(end);
+                                  d = d.add(const Duration(days: 1))
+                                ) {
+                                  selectedDates.add(d);
+                                }
+                                rangeStart = null;
+                              }
                             }
-                          }
-                        });
+                          });
+                        }
+                        _dragAnchorDate = null;
+                        _dragStartPosition = null;
+                        _dragCurrentPosition = null;
+                        _dragMoved = false;
+                        _selectionBeforeDrag = {};
+                        setModalState(() {});
                       },
-                      (DateTime newDate) {
-                        setModalState(() {
-                          calendarDate = newDate;
-                        });
-                      },
+                      child: _buildCalendarWithWeekdays(
+                        calendarDate,
+                        selectedDates,
+                        (DateTime date) {},
+                        (DateTime newDate) {
+                          setModalState(() {
+                            calendarDate = newDate;
+                          });
+                        },
+                        dragAnchor: _dragAnchorDate,
+                        dragCurrent: _dragMoved && _dragCurrentPosition != null
+                            ? dateAtPosition(
+                                _dragCurrentPosition!,
+                                calendarDate,
+                              )
+                            : null,
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -463,8 +561,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate,
     Set<DateTime> selectedDates,
     ValueChanged<DateTime> onDaySelected,
-    ValueChanged<DateTime> onMonthChanged,
-  ) {
+    ValueChanged<DateTime> onMonthChanged, {
+    DateTime? dragAnchor,
+    DateTime? dragCurrent,
+    bool isDragRemoving = false,
+  }) {
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
@@ -524,7 +625,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected),
+        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected,
+            dragAnchor: dragAnchor,
+            dragCurrent: dragCurrent,
+            isDragRemoving: isDragRemoving),
       ],
     );
   }
@@ -555,8 +659,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildDaysGridForRange(
     DateTime calendarDate,
     Set<DateTime> selectedDates,
-    ValueChanged<DateTime> onDaySelected,
-  ) {
+    ValueChanged<DateTime> onDaySelected, {
+    DateTime? dragAnchor,
+    DateTime? dragCurrent,
+    bool isDragRemoving = false,
+  }) {
     int daysInMonth = DateTime(
       calendarDate.year,
       calendarDate.month + 1,
@@ -568,6 +675,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       1,
     ).weekday;
     int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+
+    Set<DateTime> dragRange = {};
+    if (dragAnchor != null && dragCurrent != null) {
+      final start = dragAnchor.isBefore(dragCurrent) ? dragAnchor : dragCurrent;
+      final end = dragAnchor.isAfter(dragCurrent) ? dragAnchor : dragCurrent;
+      for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+        dragRange.add(d);
+      }
+    }
 
     int currentDay = 1;
     List<Widget> rows = [];
@@ -587,8 +703,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 d.month == date.month &&
                 d.day == date.day,
           );
+          final isDragPreview = dragRange.contains(date);
           rowChildren.add(
-            _buildDayCell('$currentDay', isSelected, false, () {
+            _buildDayCell('$currentDay', isSelected, isDragPreview, () {
               onDaySelected(date);
             }, date),
           );
@@ -841,6 +958,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     _attendancePreviewNotifier?.dispose();
+    _initialized = false;
     super.dispose();
   }
 
@@ -871,7 +989,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           workersList: _workersList,
           rawAttendanceDocs: periodAttendance,
         ).map((record) {
-
           final recordDate = AppDateUtils.attendanceRecordDate(record);
           final isOnLeave =
               recordDate != null &&
@@ -1067,6 +1184,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
+    // Workers with no attendance record still need to show (placeholder status).
+    if (AppDateUtils.attendanceRecordDate(doc) == null) return true;
     return AppDateUtils.isAttendanceRecordWithinPeriod(doc, _selectedTimeframe);
   }
 

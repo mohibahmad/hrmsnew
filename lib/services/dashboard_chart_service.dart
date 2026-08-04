@@ -196,7 +196,8 @@ class DashboardChartService {
       now: now,
     )) {
       final date = leave['date'] as DateTime;
-      merged[_leaveIdentity(leave, date, identityIndex)] = leave;
+      final key = _leaveIdentity(leave, date, identityIndex);
+      merged.putIfAbsent(key, () => leave);
     }
 
     for (final attendance in attendanceRecords) {
@@ -226,10 +227,7 @@ class DashboardChartService {
         'type': type,
         'date': date,
       };
-      merged.putIfAbsent(
-        _leaveIdentity(normalized, date, identityIndex),
-        () => normalized,
-      );
+      merged[_leaveIdentity(normalized, date, identityIndex)] = normalized;
     }
 
     final result = merged.values.toList();

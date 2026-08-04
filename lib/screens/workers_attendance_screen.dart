@@ -912,9 +912,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final role = (worker['position'] ?? worker['role'] ?? '')
           .toString()
           .toLowerCase();
+      final email = (worker['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final workerStatus = _getWorkerStatus(worker).toLowerCase();
-      final matchesSearch = name.contains(query) || role.contains(query) || workerStatus.contains(query);
+      final matchesSearch = name.contains(query) || role.contains(query) || email.contains(query) || workerStatus.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
       return matchesSearch && workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();

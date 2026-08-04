@@ -904,6 +904,8 @@
   "confirm_and_process": "Confirm & Process",
   "payroll_operation_timeout": "Payroll operation timed out. Please try again.",
   "payroll_run_complete": "Payroll run complete! {count} workers processed.",
+  "all_workers_already_paid": "All workers have already been paid for this period.",
+  "processing_payroll": "Processing payroll, please wait...",
   "no_results": "No results",
   "payroll_auto_triggered": "Today is salary day! Review the payroll run below.",
   "payroll_auto_triggered_title": "Salary Day Payroll",
@@ -1145,5 +1147,8 @@
   "got_it": "Got It!",
   "work_schedule": "Work Schedule",
   "set_workdays": "Set Workdays",
-  "today_expense": "Today's Expense"
+  "today_expense": "Today's Expense",
+  "please_enter_expense_title": "Please enter expense title",
+  "select_dates": "Select Dates",
+  "generate": "Generate"
 }

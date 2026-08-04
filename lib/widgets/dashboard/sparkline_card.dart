@@ -162,10 +162,12 @@ class SparklineCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  height: 90,
-                  child: TweenAnimationBuilder<double>(
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    height: 100,
+                    child: TweenAnimationBuilder<double>(
                     key: ValueKey(period),
                     tween: Tween(begin: 0, end: 1),
                     duration: const Duration(milliseconds: 650),
@@ -180,8 +182,8 @@ class SparklineCard extends StatelessWidget {
 
                       return LineChart(
                         LineChartData(
-                          minX: -0.5,
-                          maxX: (spots.length - 1).toDouble() + 0.5,
+                          minX: 0,
+                          maxX: (spots.length - 1).toDouble(),
                           minY: 0,
                           maxY: highestValue > 0 ? highestValue * 1.25 : 1,
                           lineTouchData: LineTouchData(
@@ -300,6 +302,7 @@ class SparklineCard extends StatelessWidget {
                       );
                     },
                   ),
+                ),
                 ),
               ],
             )

@@ -1028,6 +1028,8 @@
   "payroll_fail_count": "{count} Falharam",
   "payroll_period": "Período: {period}",
   "payroll_run_complete": "Folha de pagamento concluída! {count} trabalhadores processados.",
+  "all_workers_already_paid": "Todos os trabalhadores já foram pagos para este período.",
+  "processing_payroll": "Processando folha de pagamento, aguarde...",
   "payroll_success_count": "{count} Bem-sucedidos",
   "run_payroll_now": "Executar Folha de Pagamento Agora",
   "select_date_range": "Selecionar Intervalo de Datas",
@@ -1133,5 +1135,8 @@
   "delete_policy": "Excluir Política",
   "delete_policy_confirm": "Tem certeza de que deseja excluir esta política de licença? Esta ação não pode ser desfeita.",
   "policy_deleted_success": "Política excluída com sucesso",
-  "failed_to_delete_policy": "Falha ao excluir a política: {error}"
+  "failed_to_delete_policy": "Falha ao excluir a política: {error}",
+  "please_enter_expense_title": "Por favor, insira o título da despesa",
+  "select_dates": "Selecionar Datas",
+  "generate": "Gerar"
 }

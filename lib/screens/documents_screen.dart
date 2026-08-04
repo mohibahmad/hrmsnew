@@ -19,7 +19,7 @@ import '../widgets/notification_bell.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pdfx/pdfx.dart';
-import 'add_worker_flow.dart' show PdfPagePreview;
+import 'add_worker_flow.dart' show PdfPagePreview, DocPreview;
 import '../utils/guest_restriction.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -764,7 +764,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           await DummyData.saveToPrefs();
         }
       } else {
-
         await _firestore.updateWorkerFields(_workerId, updates);
       }
 
@@ -795,7 +794,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
       );
     } catch (error) {
-
       if (newlyUploadedUrl != null) {
         try {
           await UploadService.deleteByUrl(newlyUploadedUrl);
@@ -1211,7 +1209,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             }
           : onTap,
       child: Container(
-        height: 320,
+        height: 250,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -1521,13 +1519,13 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       ? (_cvBytes != null
                             ? Image.memory(
                                 _cvBytes!,
-                                fit: BoxFit.contain,
+                                fit: BoxFit.cover,
                                 filterQuality: FilterQuality.high,
                               )
                             : (cvUrl != null && cvUrl.isNotEmpty
                                   ? CachedNetworkImage(
                                       imageUrl: cvUrl,
-                                      fit: BoxFit.contain,
+                                      fit: BoxFit.cover,
                                       errorWidget: (context, url, error) =>
                                           const Center(
                                             child: Icon(
@@ -1544,28 +1542,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                           fit: BoxFit.cover,
                         )
                       : isDoc
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                cvNameLower.endsWith('.docx')
-                                    ? Icons.article_outlined
-                                    : Icons.description_outlined,
-                                size: 48,
-                                color: const Color(0xFF0247C4),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _cvName ?? 'cv_resume'.tr(),
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 13,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
-                          ),
+                      ? DocPreview(
+                          docBytes: _cvBytes,
+                          docName: _cvName,
+                          docUrl: cvUrl,
                         )
                       : Center(
                           child: Column(

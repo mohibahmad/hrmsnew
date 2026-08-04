@@ -1030,6 +1030,8 @@
   "payroll_fail_count": "{count} Fallidos",
   "payroll_period": "Período: {period}",
   "payroll_run_complete": "¡Nómina completada! {count} trabajadores procesados.",
+  "all_workers_already_paid": "Todos los trabajadores ya han sido pagados para este período.",
+  "processing_payroll": "Procesando nómina, por favor espera...",
   "payroll_success_count": "{count} Exitosos",
   "run_payroll_now": "Ejecutar Nómina Ahora",
   "select_date_range": "Seleccionar Rango de Fechas",
@@ -1133,5 +1135,8 @@
   "delete_policy": "Eliminar Política",
   "delete_policy_confirm": "¿Estás seguro de que deseas eliminar esta política de permisos? Esta acción no se puede deshacer.",
   "policy_deleted_success": "Política eliminada exitosamente",
-  "failed_to_delete_policy": "Error al eliminar la política: {error}"
+  "failed_to_delete_policy": "Error al eliminar la política: {error}",
+  "please_enter_expense_title": "Por favor ingrese el título del gasto",
+  "select_dates": "Seleccionar Fechas",
+  "generate": "Generar"
 }

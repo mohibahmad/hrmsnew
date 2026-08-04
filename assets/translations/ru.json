@@ -1021,6 +1021,8 @@
   "payroll_fail_count": "{count} Ошибок",
   "payroll_period": "Период: {period}",
   "payroll_run_complete": "Расчёт зарплаты завершён! Обработано {count} работников.",
+  "all_workers_already_paid": "Все работники уже были оплачены за этот период.",
+  "processing_payroll": "Обработка зарплаты, пожалуйста подождите...",
   "payroll_success_count": "{count} Успешных",
   "run_payroll_now": "Запустить Расчёт Зарплаты",
   "select_date_range": "Выбрать Диапазон Дат",
@@ -1128,5 +1130,8 @@
   "delete_policy": "Удалить Политику",
   "delete_policy_confirm": "Вы уверены, что хотите удалить эту политику отпусков? Это действие нельзя отменить.",
   "policy_deleted_success": "Политика успешно удалена",
-  "failed_to_delete_policy": "Не удалось удалить политику: {error}"
+  "failed_to_delete_policy": "Не удалось удалить политику: {error}",
+  "please_enter_expense_title": "Пожалуйста, введите название расхода",
+  "select_dates": "Выбрать Даты",
+  "generate": "Сгенерировать"
 }

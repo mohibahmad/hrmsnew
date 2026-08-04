@@ -1018,6 +1018,8 @@
   "payroll_fail_count": "{count} Échoués",
   "payroll_period": "Période : {period}",
   "payroll_run_complete": "Paie terminée ! {count} travailleurs traités.",
+  "all_workers_already_paid": "Tous les travailleurs ont déjà été payés pour cette période.",
+  "processing_payroll": "Traitement de la paie, veuillez patienter...",
   "payroll_success_count": "{count} Réussis",
   "run_payroll_now": "Exécuter la Paie Maintenant",
   "select_date_range": "Sélectionner la Plage de Dates",
@@ -1133,5 +1135,8 @@
   "delete_policy": "Supprimer la Politique",
   "delete_policy_confirm": "Êtes-vous sûr de vouloir supprimer cette politique de congés ? Cette action ne peut pas être annulée.",
   "policy_deleted_success": "Politique supprimée avec succès",
-  "failed_to_delete_policy": "Échec de la suppression de la politique : {error}"
+  "failed_to_delete_policy": "Échec de la suppression de la politique : {error}",
+  "please_enter_expense_title": "Veuillez entrer le titre de la dépense",
+  "select_dates": "Sélectionner les Dates",
+  "generate": "Générer"
 }
