@@ -35,9 +35,13 @@ Future<void> main() async {
         await PreferencesService.initFromPrefs();
 
         final cachedUrl = PreferencesService.cachedProfilePicUrl;
-
         if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
           AuthService.profilePicNotifier.value = cachedUrl;
+        }
+
+        final cachedStamp = PreferencesService.cachedCompanyStampUrl;
+        if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
+          AuthService.companyStampNotifier.value = cachedStamp;
         }
 
         await Firebase.initializeApp(
@@ -144,7 +148,7 @@ Future<void> _initializeMacOSWindow() async {
 
     const windowOptions = WindowOptions(
       size: Size(1440, 900),
-      minimumSize: Size(1280, 800),
+      minimumSize: Size(1200, 900),
       center: true,
       title: 'HRMS',
       titleBarStyle: TitleBarStyle.normal,

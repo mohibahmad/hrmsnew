@@ -50,11 +50,11 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     ('assets/settings_icon_slidebar.svg', 'sidebar_settings', false),
   ];
 
-  static final _subItems = [
+  static final List<(dynamic, String)> _subItems = [
     ('assets/total_salary.svg', 'sidebar_attendance'),
     ('assets/payroll_icon.svg', 'sidebar_payroll'),
     ('assets/time_off_icon.svg', 'sidebar_time_off'),
-    ('assets/assets_icon.svg', 'sidebar_assets'),
+    ('assets/asset_icon.png', 'sidebar_assets'),
     ('assets/holidays_icon.svg', 'sidebar_holidays'),
     ('assets/documents_icon.svg', 'sidebar_documents'),
   ];
@@ -384,7 +384,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   }
 
   Widget _buildSubMenuItem(
-    String iconAsset,
+    dynamic iconSource,
     String title, {
     bool isSelected = false,
     VoidCallback? onTap,
@@ -404,12 +404,21 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              iconAsset,
-              height: 20,
-              width: 20,
-              color: Color(0xFFFFFFFF),
-            ),
+            iconSource is IconData
+                ? Icon(iconSource, size: 24, color: const Color(0xFFFFFFFF))
+                : iconSource.toString().endsWith('.png')
+                ? Image.asset(
+                    iconSource.toString(),
+                    height: 24,
+                    width: 24,
+                    color: const Color(0xFFFFFFFF),
+                  )
+                : SvgPicture.asset(
+                    iconSource.toString(),
+                    height: 20,
+                    width: 20,
+                    color: const Color(0xFFFFFFFF),
+                  ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -485,12 +494,19 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SvgPicture.asset(
-                  iconAsset,
-                  height: 22,
-                  width: 22,
-                  color: Color(0xFFFFFFFF),
-                ),
+                iconAsset.endsWith('.png')
+                    ? Image.asset(
+                        iconAsset,
+                        height: 22,
+                        width: 22,
+                        color: Color(0xFFFFFFFF),
+                      )
+                    : SvgPicture.asset(
+                        iconAsset,
+                        height: 22,
+                        width: 22,
+                        color: Color(0xFFFFFFFF),
+                      ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

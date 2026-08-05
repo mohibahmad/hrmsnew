@@ -7,6 +7,31 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../utils/svg_fill_color_mapper.dart';
 import '../custom_timeframe_dropdown.dart';
 
+// Fixed colors for known leave types + fallback palette for custom ones
+const _knownTypeColors = <String, Color>{
+  'Casual Leave': Color(0xFF84A9FF),
+  'Sick Leave': Color(0xFFFF4A5E),
+  'Medical Leave': Color(0xFF97FFA9),
+  'Annual Leave': Color(0xFFFFC857),
+  'Maternity Leave': Color(0xFFFF9FDB),
+  'Paternity Leave': Color(0xFF7DE8E8),
+  'Unpaid Leave': Color(0xFFFFB347),
+  'Emergency Leave': Color(0xFFFC6C85),
+  'Study Leave': Color(0xFFA78BFA),
+  'Hajj Leave': Color(0xFF6EE7B7),
+};
+
+const _fallbackPalette = <Color>[
+  Color(0xFF60A5FA),
+  Color(0xFFF87171),
+  Color(0xFF34D399),
+  Color(0xFFFBBF24),
+  Color(0xFFA78BFA),
+  Color(0xFFF472B6),
+  Color(0xFF38BDF8),
+  Color(0xFFFF8C69),
+];
+
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
@@ -21,59 +46,53 @@ class LeaveTypesPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int casualCount = 0;
-    int sickCount = 0;
-    int medicalCount = 0;
-    int annualCount = 0;
-
+    // ── Collect counts for every leave type found in the data ──
+    final counts = <String, int>{};
     for (final att in leaveDocs) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
       if (status != 'leave') continue;
       final type = (att['type'] ?? '').toString().trim();
-      if (type == 'Casual Leave') {
-        casualCount++;
-      } else if (type == 'Sick Leave') {
-        sickCount++;
-      } else if (type == 'Medical Leave') {
-        medicalCount++;
-      } else if (type == 'Annual Leave') {
-        annualCount++;
-      }
+      if (type.isEmpty) continue;
+      counts[type] = (counts[type] ?? 0) + 1;
     }
 
-    final int total = casualCount + sickCount + medicalCount + annualCount;
+    final int total = counts.values.fold(0, (s, v) => s + v);
     final bool reallyEmpty = isEmpty || total == 0;
 
-    final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0;
-    final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0;
-    final double medicalPercent = total > 0 ? (medicalCount / total) * 100 : 0;
-    final double annualPercent = total > 0 ? (annualCount / total) * 100 : 0;
+    // Build ordered list of types (most common first)
+    final sortedTypes = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
-    final double casualVal = total > 0 ? casualPercent : 0;
-    final double sickVal = total > 0 ? sickPercent : 0;
-    final double medicalVal = total > 0 ? medicalPercent : 0;
-    final double annualVal = total > 0 ? annualPercent : 0;
+    // Assign colors
+    int fallbackIdx = 0;
+    final typeColors = <String, Color>{};
+    for (final entry in sortedTypes) {
+      typeColors[entry.key] =
+          _knownTypeColors[entry.key] ??
+          _fallbackPalette[fallbackIdx++ % _fallbackPalette.length];
+    }
 
-    final double totalValue = casualVal + sickVal + medicalVal + annualVal;
-    final double casualSweep = totalValue > 0
-        ? (casualVal / totalValue) * 360
-        : 0;
-    final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
-    final double medicalSweep = totalValue > 0
-        ? (medicalVal / totalValue) * 360
-        : 0;
-    final double annualSweep = totalValue > 0
-        ? (annualVal / totalValue) * 360
-        : 0;
+    // Build percent values per type
+    final typePercents = <String, double>{};
+    for (final entry in sortedTypes) {
+      typePercents[entry.key] = (entry.value / total) * 100;
+    }
 
-    final double casualStartAngle = 108;
-    final double casualMidAngle = casualStartAngle + casualSweep / 2;
-    final double sickStartAngle = casualStartAngle + casualSweep;
-    final double sickMidAngle = sickStartAngle + sickSweep / 2;
-    final double medicalStartAngle = sickStartAngle + sickSweep;
-    final double medicalMidAngle = medicalStartAngle + medicalSweep / 2;
-    final double annualStartAngle = medicalStartAngle + medicalSweep;
-    final double annualMidAngle = annualStartAngle + annualSweep / 2;
+    // Build sweep angles (start at 108° to match original)
+    const double startAngle = 108;
+    final sweeps = <String, double>{};
+    for (final entry in sortedTypes) {
+      sweeps[entry.key] = (typePercents[entry.key]! / 100) * 360;
+    }
+
+    // Mid angles for callout lines
+    final midAngles = <String, double>{};
+    double runningAngle = startAngle;
+    for (final entry in sortedTypes) {
+      final sweep = sweeps[entry.key]!;
+      midAngles[entry.key] = runningAngle + sweep / 2;
+      runningAngle += sweep;
+    }
 
     return Card(
       elevation: 0,
@@ -107,33 +126,12 @@ class LeaveTypesPieChart extends StatelessWidget {
                             PieChartData(
                               sectionsSpace: 0.0,
                               centerSpaceRadius: 0,
-                              startDegreeOffset: 108,
+                              startDegreeOffset: startAngle,
                               sections: [
-                                if (casualVal > 0)
+                                for (final entry in sortedTypes)
                                   PieChartSectionData(
-                                    color: const Color(0xFF84A9FF),
-                                    value: casualVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                if (sickVal > 0)
-                                  PieChartSectionData(
-                                    color: const Color(0xFFFF4A5E),
-                                    value: sickVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                if (medicalVal > 0)
-                                  PieChartSectionData(
-                                    color: const Color(0xFF97FFA9),
-                                    value: medicalVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                if (annualVal > 0)
-                                  PieChartSectionData(
-                                    color: const Color(0xFFFFC857),
-                                    value: annualVal,
+                                    color: typeColors[entry.key]!,
+                                    value: typePercents[entry.key]!,
                                     radius: 85,
                                     showTitle: false,
                                   ),
@@ -142,17 +140,17 @@ class LeaveTypesPieChart extends StatelessWidget {
                           ),
                           CustomPaint(
                             size: const Size(380, 260),
-                            painter: _DonutCalloutPainter(
+                            painter: _DynamicCalloutPainter(
                               center: const Offset(190, 130),
                               radius: 85,
-                              casualVal: casualVal,
-                              sickVal: sickVal,
-                              medicalVal: medicalVal,
-                              annualVal: annualVal,
-                              casualMidAngle: casualMidAngle,
-                              sickMidAngle: sickMidAngle,
-                              medicalMidAngle: medicalMidAngle,
-                              annualMidAngle: annualMidAngle,
+                              entries: [
+                                for (final entry in sortedTypes)
+                                  _CalloutEntry(
+                                    type: entry.key,
+                                    percent: typePercents[entry.key]!,
+                                    midAngle: midAngles[entry.key]!,
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -162,66 +160,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                   const SizedBox(height: 30),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            if (casualVal > 0)
-                              Expanded(
-                                child: buildLegendItem(
-                                  const Color(0xFF84A9FF),
-                                  'casual_leave'.tr(
-                                    namedArgs: {
-                                      'value': '${casualVal.toInt()}',
-                                    },
-                                  ),
-                                ),
-                              ),
-                            if (casualVal > 0 && sickVal > 0)
-                              const SizedBox(width: 16),
-                            if (sickVal > 0)
-                              Expanded(
-                                child: buildLegendItem(
-                                  const Color(0xFFFF4A5E),
-                                  'sick_leave'.tr(
-                                    namedArgs: {'value': '${sickVal.toInt()}'},
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        if (medicalVal > 0 || annualVal > 0)
-                          SizedBox(height: 12),
-                        Row(
-                          children: [
-                            if (medicalVal > 0)
-                              Expanded(
-                                child: buildLegendItem(
-                                  const Color(0xFF97FFA9),
-                                  'medical_leave'.tr(
-                                    namedArgs: {
-                                      'value': '${medicalVal.toInt()}',
-                                    },
-                                  ),
-                                ),
-                              ),
-                            if (medicalVal > 0 && annualVal > 0)
-                              const SizedBox(width: 16),
-                            if (annualVal > 0)
-                              Expanded(
-                                child: buildLegendItem(
-                                  const Color(0xFFFFC857),
-                                  'annual_leave_chart'.tr(
-                                    namedArgs: {
-                                      'value': '${annualVal.toInt()}',
-                                    },
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    child: _buildLegend(sortedTypes, typeColors, typePercents),
                   ),
                 ],
               )
@@ -243,7 +182,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         'no_leave_data_yet'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF9CA3AF),
                           fontFamily: 'SF Pro Display',
@@ -255,6 +194,45 @@ class LeaveTypesPieChart extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  Widget _buildLegend(
+    List<MapEntry<String, int>> sortedTypes,
+    Map<String, Color> typeColors,
+    Map<String, double> typePercents,
+  ) {
+    // Pair them into rows of 2
+    final rows = <Widget>[];
+    for (int i = 0; i < sortedTypes.length; i += 2) {
+      if (i > 0) rows.add(const SizedBox(height: 12));
+      final rowItems = <Widget>[];
+
+      final first = sortedTypes[i];
+      rowItems.add(
+        Expanded(
+          child: buildLegendItem(
+            typeColors[first.key]!,
+            '${first.key}: ${typePercents[first.key]!.toInt()}%',
+          ),
+        ),
+      );
+
+      if (i + 1 < sortedTypes.length) {
+        final second = sortedTypes[i + 1];
+        rowItems.add(const SizedBox(width: 16));
+        rowItems.add(
+          Expanded(
+            child: buildLegendItem(
+              typeColors[second.key]!,
+              '${second.key}: ${typePercents[second.key]!.toInt()}%',
+            ),
+          ),
+        );
+      }
+
+      rows.add(Row(children: rowItems));
+    }
+    return Column(children: rows);
   }
 
   static Widget buildLegendItem(Color color, String text) {
@@ -285,29 +263,26 @@ class LeaveTypesPieChart extends StatelessWidget {
   }
 }
 
-class _DonutCalloutPainter extends CustomPainter {
+class _CalloutEntry {
+  final String type;
+  final double percent;
+  final double midAngle;
+  const _CalloutEntry({
+    required this.type,
+    required this.percent,
+    required this.midAngle,
+  });
+}
+
+class _DynamicCalloutPainter extends CustomPainter {
   final Offset center;
   final double radius;
-  final double casualVal;
-  final double sickVal;
-  final double medicalVal;
-  final double annualVal;
-  final double casualMidAngle;
-  final double sickMidAngle;
-  final double medicalMidAngle;
-  final double annualMidAngle;
+  final List<_CalloutEntry> entries;
 
-  const _DonutCalloutPainter({
+  const _DynamicCalloutPainter({
     required this.center,
     required this.radius,
-    required this.casualVal,
-    required this.sickVal,
-    required this.medicalVal,
-    required this.annualVal,
-    required this.casualMidAngle,
-    required this.sickMidAngle,
-    required this.medicalMidAngle,
-    required this.annualMidAngle,
+    required this.entries,
   });
 
   @override
@@ -320,10 +295,10 @@ class _DonutCalloutPainter extends CustomPainter {
     final leftLabels = <Map<String, dynamic>>[];
     final rightLabels = <Map<String, dynamic>>[];
 
-    void processCallout(String type, double val, double midAngle) {
-      if (val <= 0) return;
+    for (final entry in entries) {
+      if (entry.percent <= 0) continue;
 
-      final angleRad = midAngle * math.pi / 180.0;
+      final angleRad = entry.midAngle * math.pi / 180.0;
       final innerRadius = radius - 35.0;
       final p1 = Offset(
         center.dx + innerRadius * math.cos(angleRad),
@@ -333,23 +308,18 @@ class _DonutCalloutPainter extends CustomPainter {
       final isRightSide = math.cos(angleRad) >= 0;
       final isTopSide = math.sin(angleRad) < 0;
 
-      final double D = 55.0;
+      const double D = 55.0;
       final double dx = isRightSide ? D : -D;
       final double dy = isTopSide ? -D : D;
 
       final p2 = Offset(p1.dx + dx, p1.dy + dy);
 
       if (isRightSide) {
-        rightLabels.add({'type': type, 'val': val, 'p1': p1, 'p2': p2});
+        rightLabels.add({'entry': entry, 'p1': p1, 'p2': p2});
       } else {
-        leftLabels.add({'type': type, 'val': val, 'p1': p1, 'p2': p2});
+        leftLabels.add({'entry': entry, 'p1': p1, 'p2': p2});
       }
     }
-
-    processCallout('casual', casualVal, casualMidAngle);
-    processCallout('sick', sickVal, sickMidAngle);
-    processCallout('medical', medicalVal, medicalMidAngle);
-    processCallout('annual', annualVal, annualMidAngle);
 
     leftLabels.sort(
       (a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy),
@@ -359,12 +329,12 @@ class _DonutCalloutPainter extends CustomPainter {
     );
 
     void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
-      final lineExtension = 65.0;
+      const lineExtension = 65.0;
       double lastY = -9999;
-      final minSpacing = 35.0;
+      const minSpacing = 35.0;
 
       for (final labelData in labels) {
-        final val = labelData['val'] as double;
+        final entry = labelData['entry'] as _CalloutEntry;
         final p1 = labelData['p1'] as Offset;
         var p2 = labelData['p2'] as Offset;
 
@@ -386,7 +356,7 @@ class _DonutCalloutPainter extends CustomPainter {
 
         final textPainter = TextPainter(
           text: TextSpan(
-            text: '${val.toInt()}%',
+            text: '${entry.percent.toInt()}%',
             style: const TextStyle(
               color: Colors.black,
               fontSize: 16,
@@ -411,14 +381,14 @@ class _DonutCalloutPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DonutCalloutPainter oldDelegate) {
-    return casualVal != oldDelegate.casualVal ||
-        sickVal != oldDelegate.sickVal ||
-        medicalVal != oldDelegate.medicalVal ||
-        annualVal != oldDelegate.annualVal ||
-        casualMidAngle != oldDelegate.casualMidAngle ||
-        sickMidAngle != oldDelegate.sickMidAngle ||
-        medicalMidAngle != oldDelegate.medicalMidAngle ||
-        annualMidAngle != oldDelegate.annualMidAngle;
+  bool shouldRepaint(covariant _DynamicCalloutPainter oldDelegate) {
+    if (entries.length != oldDelegate.entries.length) return true;
+    for (int i = 0; i < entries.length; i++) {
+      if (entries[i].percent != oldDelegate.entries[i].percent ||
+          entries[i].midAngle != oldDelegate.entries[i].midAngle) {
+        return true;
+      }
+    }
+    return false;
   }
 }

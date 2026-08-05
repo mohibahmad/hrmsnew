@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io' as io;
+import 'package:firebase_storage/firebase_storage.dart';
+import '../utils/file_opener.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -506,7 +509,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       var cleanValue = value.split('?').first;
       cleanValue = Uri.decodeComponent(cleanValue);
       final name = cleanValue.split('/').last.trim();
-      return name.isNotEmpty ? name : 'cv';
+      // Strip the upload ID prefix like "1722840000000000_1_"
+      final cleaned = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
+      return cleaned.isNotEmpty ? cleaned : 'cv';
     } catch (_) {
       return 'cv';
     }
@@ -635,6 +640,34 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         );
       }
     }
+  }
+
+  Future<void> _downloadFile(
+    String? url,
+    Uint8List? bytes,
+    String defaultName,
+  ) async {
+    try {
+      Uint8List? fileBytes = bytes;
+      if (fileBytes == null && url != null && url.isNotEmpty) {
+        final ref = FirebaseStorage.instance.refFromURL(url);
+        fileBytes = await ref.getData();
+      }
+
+      if (fileBytes != null && fileBytes.isNotEmpty) {
+        final result = await FilePicker.saveFile(
+          dialogTitle: 'Download File',
+          fileName: defaultName,
+          bytes: fileBytes,
+        );
+
+        if (result != null && result.trim().isNotEmpty) {
+          final file = io.File(result);
+          await file.writeAsBytes(fileBytes, flush: true);
+          await FileOpener.open(result);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _uploadAndSave(String field) async {
@@ -952,7 +985,55 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   const Spacer(),
                                   if (_frontIdBytes != null ||
                                       (_existingFrontId != null &&
-                                          _existingFrontId!.isNotEmpty))
+                                          _existingFrontId!.isNotEmpty)) ...[
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: () => _downloadFile(
+                                          _existingFrontId,
+                                          _frontIdBytes,
+                                          _frontIdName ?? 'front_id',
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF000000),
+                                            borderRadius: BorderRadius.circular(6),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF000000).withValues(alpha: 0.25),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.file_download_outlined,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'download'.tr(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     GestureDetector(
                                       onTap: () => _pickFile('frontId'),
                                       child: Container(
@@ -962,9 +1043,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF000000),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -983,16 +1062,16 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
-                                              colorFilter:
-                                                  const ColorFilter.mode(
-                                                    Colors.white,
-                                                    BlendMode.srcIn,
-                                                  ),
+                                              colorFilter: const ColorFilter.mode(
+                                                Colors.white,
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -1020,7 +1099,55 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   const Spacer(),
                                   if (_backIdBytes != null ||
                                       (_existingBackId != null &&
-                                          _existingBackId!.isNotEmpty))
+                                          _existingBackId!.isNotEmpty)) ...[
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: () => _downloadFile(
+                                          _existingBackId,
+                                          _backIdBytes,
+                                          _backIdName ?? 'back_id',
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF000000),
+                                            borderRadius: BorderRadius.circular(6),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF000000).withValues(alpha: 0.25),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.file_download_outlined,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'download'.tr(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     GestureDetector(
                                       onTap: () => _pickFile('backId'),
                                       child: Container(
@@ -1030,9 +1157,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF000000),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1051,16 +1176,16 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
-                                              colorFilter:
-                                                  const ColorFilter.mode(
-                                                    Colors.white,
-                                                    BlendMode.srcIn,
-                                                  ),
+                                              colorFilter: const ColorFilter.mode(
+                                                Colors.white,
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -1101,6 +1226,46 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                               if (_isCvUploaded ||
                                   (_existingCv != null &&
                                       _existingCv!.isNotEmpty)) ...[
+                                // Download button
+                                GestureDetector(
+                                  onTap: () => _downloadFile(
+                                    _existingCv,
+                                    _cvBytes,
+                                    _cvName ?? 'cv',
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF000000),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.file_download_outlined,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'download'.tr(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Edit button
                                 GestureDetector(
                                   onTap: () => _pickFile('cv'),
                                   child: Container(
@@ -1139,6 +1304,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   ),
                                 ),
                               ],
+
                             ],
                           ),
                         ),
@@ -1608,6 +1774,8 @@ String _cleanDocumentFileName(String rawName) {
     name = name.split('/').last;
   }
   name = name.trim();
+  // Strip the upload ID prefix like "1722840000000000_1_"
+  name = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
   name = name.replaceFirst(RegExp(r'^\d+[_-]*'), '');
   name = name.replaceAll(RegExp(r'_+'), ' ');
   name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -1624,6 +1792,7 @@ class _FullScreenPdfPreview extends StatefulWidget {
 }
 
 class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
+  final ScrollController _scrollController = ScrollController();
   PdfDocument? _document;
   bool _isLoading = false;
   String? _error;
@@ -1636,6 +1805,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _document?.close();
     super.dispose();
   }
@@ -1757,15 +1927,32 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: document.pagesCount,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _LazyPdfPage(document: document, pageNumber: index + 1),
-        );
-      },
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          ui.PointerDeviceKind.touch,
+          ui.PointerDeviceKind.mouse,
+          ui.PointerDeviceKind.trackpad,
+          ui.PointerDeviceKind.stylus,
+        },
+      ),
+      child: Scrollbar(
+        controller: _scrollController,
+        child: ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(8),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          itemCount: document.pagesCount,
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _LazyPdfPage(document: document, pageNumber: index + 1),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -2034,7 +2221,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                         ),
                       )
                     : SizedBox(
-                        height: 280,
+                        height: 290,
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,

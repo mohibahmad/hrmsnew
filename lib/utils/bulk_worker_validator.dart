@@ -21,7 +21,6 @@ const List<String> kRequiredFields = [
   'experienceLevel',
   'education',
   'salaryType',
-  'currency',
   'salaryAmount',
   'annualLeaves',
   'joiningDate',
@@ -50,6 +49,9 @@ const Map<String, String> kFieldKeys = {
   'currency': 'field_currency',
   'salaryAmount': 'field_salary_amount',
   'annualLeaves': 'field_annual_leaves',
+  'sickLeaves': 'field_sick_leaves',
+  'casualLeaves': 'field_casual_leaves',
+  'medicalLeaves': 'field_medical_leaves',
   'joiningDate': 'field_joining_date',
   'profileImage': 'field_profile_image_url',
   'frontId': 'field_front_id_image_url',
@@ -84,6 +86,8 @@ const Map<String, String> kHeaderMap = {
   'annual leaves': 'annualLeaves',
   'sick leaves': 'sickLeaves',
   'casual leaves': 'casualLeaves',
+  'medical leaves': 'medicalLeaves',
+  'medical': 'medicalLeaves',
   'joining date': 'joiningDate',
   'profile image url': 'profileImage',
   'profile image': 'profileImage',
@@ -167,6 +171,8 @@ Map<String, String> validateWorkerData(
     } else {
       workerData['currency'] = CurrencyUtils.normalize(currency);
     }
+  } else {
+    workerData['currency'] = CurrencyUtils.defaultCode;
   }
 
   final dobStr = workerData['dob']?.toString().trim() ?? '';
@@ -307,10 +313,11 @@ Map<String, String> validateWorkerData(
     }
   }
 
-  final nationalId = WorkerIdentity.normalizeNationalId(
-    workerData['nationalId'],
-  );
-  if (nationalId.isNotEmpty &&
+  final rawNationalId = workerData['nationalId']?.toString().trim() ?? '';
+  final nationalId = WorkerIdentity.normalizeNationalId(rawNationalId);
+  if (rawNationalId.isNotEmpty && !Validators.isValidNationalId(rawNationalId)) {
+    fieldErrors['nationalId'] = 'validation_invalid_national_id'.tr();
+  } else if (nationalId.isNotEmpty &&
       (existingNationalIds.contains(nationalId) ||
           csvNationalIds.contains(nationalId))) {
     fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
@@ -341,6 +348,24 @@ Map<String, String> validateWorkerData(
     workerData['availableAnnualLeaves'] = '0';
   }
   workerData['leavesUsed'] = '0';
+
+  // Sick, casual, and medical leaves are optional allowances (like annual
+  // leaves) but each gets its own dedicated balance so a worker can have
+  // separate Assigned/Used/Remaining numbers per leave type.
+  for (final key in ['sickLeaves', 'casualLeaves', 'medicalLeaves']) {
+    final text = workerData[key]?.toString().trim() ?? '';
+    if (text.isEmpty) {
+      workerData[key] = '0';
+      continue;
+    }
+    final days = int.tryParse(text);
+    if (days == null || days < 0 || days > 366) {
+      fieldErrors[key] = 'invalid_number'.tr();
+      workerData[key] = '0';
+    } else {
+      workerData[key] = days.toString();
+    }
+  }
 
   final joiningDateText =
       workerData['joiningDate']?.toString().trim() ?? '';

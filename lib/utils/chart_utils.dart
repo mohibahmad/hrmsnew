@@ -21,6 +21,8 @@ NiceChartRange getNiceRange(double rawMax) {
   }
   if (rawMax <= 5) {
     return NiceChartRange(5, 1);
+  } else if (rawMax <= 7) {
+    return NiceChartRange(7, 1);
   } else if (rawMax <= 10) {
     return NiceChartRange(10, 2);
   } else if (rawMax <= 15) {
@@ -155,7 +157,7 @@ ChartData getChartData(
           1050.0,
         ];
         final values = <double>[];
-        for (int i = 0; i < now.month; i++) {
+        for (int i = 0; i < 12; i++) {
           final date = DateTime(now.year, i + 1, 1);
           labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
           values.add(dummyValues[i]);
@@ -205,11 +207,11 @@ ChartData getChartData(
       case 'Yearly':
       default:
         final labels = <String>[];
-        for (int i = 0; i < now.month; i++) {
+        for (int i = 0; i < 12; i++) {
           final date = DateTime(now.year, i + 1, 1);
           labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
         }
-        return ChartData(labels, List.filled(now.month, 0.0));
+        return ChartData(labels, List.filled(12, 0.0));
     }
   }
 
@@ -308,15 +310,15 @@ ChartData getChartData(
     case 'Yearly':
     default:
       final labels = <String>[];
-      final values = List.filled(now.month, 0.0);
+      final values = List.filled(12, 0.0);
 
-      for (int i = 0; i < now.month; i++) {
+      for (int i = 0; i < 12; i++) {
         final date = DateTime(now.year, i + 1, 1);
         labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
-        if (dt.year == now.year && dt.month <= now.month) {
+        if (dt.year == now.year && dt.month <= 12) {
           values[dt.month - 1] += 1.0;
         }
       }

@@ -11,11 +11,75 @@ class PayrollService {
     return DateTime(reference.year, reference.month, 1);
   }
 
-  
-  
-  static DateTime completedPayrollMonth({DateTime? referenceDate}) {
-    final reference = referenceDate ?? DateTime.now();
-    return DateTime(reference.year, reference.month - 1, 1);
+  /// Returns the start date of the current pay period based on the configured
+  /// salary day. E.g. if salary day is 3, the pay period runs from the 3rd of
+  /// the previous month to the 3rd of the current month.
+  static DateTime payPeriodStart(DateTime referenceDate, int? salaryDay) {
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+      return DateTime(referenceDate.year, referenceDate.month, 1);
+    }
+    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
+    if (referenceDate.day >= effectiveDay) {
+      // Current period started on the salary day of this month.
+      return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
+    }
+    // Current period started on the salary day of the previous month.
+    final prevMonth = DateTime(referenceDate.year, referenceDate.month - 1, 1);
+    return DateTime(
+      prevMonth.year,
+      prevMonth.month,
+      effectiveSalaryDay(prevMonth, salaryDay),
+    );
+  }
+
+  /// Returns the end date of the current pay period (the next salary day).
+  static DateTime payPeriodEnd(DateTime referenceDate, int? salaryDay) {
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+      return DateTime(referenceDate.year, referenceDate.month + 1, 0);
+    }
+    final start = payPeriodStart(referenceDate, salaryDay);
+    final nextMonth = DateTime(start.year, start.month + 1, 1);
+    final effectiveDayNextMonth = effectiveSalaryDay(nextMonth, salaryDay);
+    return DateTime(nextMonth.year, nextMonth.month, effectiveDayNextMonth).subtract(const Duration(days: 1));
+  }
+
+  /// Returns the next pay date (the upcoming salary day).
+  static DateTime nextPayDate(DateTime referenceDate, int? salaryDay) {
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+      return DateTime(referenceDate.year, referenceDate.month + 1, 0);
+    }
+    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
+    if (referenceDate.day < effectiveDay) {
+      return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
+    }
+    final nextMonth = DateTime(referenceDate.year, referenceDate.month + 1, 1);
+    return DateTime(
+      nextMonth.year,
+      nextMonth.month,
+      effectiveSalaryDay(nextMonth, salaryDay),
+    );
+  }
+
+  /// Returns true when today is within `reminderDays` days before the next
+  /// pay date (but not on the pay date itself).
+  static bool isPayDateReminderDue(
+    DateTime referenceDate,
+    int? salaryDay, {
+    int reminderDays = 3,
+  }) {
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return true;
+    final nextPay = nextPayDate(referenceDate, salaryDay);
+    final today = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+    final payDay = DateTime(nextPay.year, nextPay.month, nextPay.day);
+    final diff = payDay.difference(today).inDays;
+    return diff <= reminderDays;
+  }
+
+  /// Returns true when today IS the pay date.
+  static bool isPayDate(DateTime referenceDate, int? salaryDay) {
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return false;
+    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
+    return referenceDate.day == effectiveDay;
   }
 
   static String payrollPeriodLabel(DateTime month) =>
@@ -146,17 +210,6 @@ class PayrollService {
         _parseDate(record['paidOn']) != null ||
         _parseDate(record['paymentDate']) != null;
   }
-
-  
-  
-  static bool canEditPayrollRecord(Map<String, dynamic>? record) => true;
-
-  
-  
-  static bool shouldLockPayrollScreen({
-    Map<String, dynamic>? payrollRecord,
-    DateTime? month,
-  }) => false;
 
   static bool _isTruthy(dynamic value) {
     if (value is bool) return value;
@@ -579,10 +632,17 @@ class PayrollService {
 
   static double extractSalary(String salaryStr) {
     if (salaryStr.isEmpty) return 0;
+    // Currency symbols can themselves contain dots ('د.إ', 'ر.ع.', ...) which
+    // would otherwise leak into the numeric parse ('د.إ 5000' -> '.5000' -> 0.5
+    // instead of 5000). Parse only the portion starting at the first digit.
+    final trimmed = salaryStr.trim();
+    final firstDigit = RegExp(r'\d').firstMatch(trimmed);
+    final numericPart =
+        firstDigit == null ? trimmed : trimmed.substring(firstDigit.start);
     final suffix = RegExp(
       r'([KMBT])\s*$',
       caseSensitive: false,
-    ).firstMatch(salaryStr.trim())?.group(1)?.toUpperCase();
+    ).firstMatch(numericPart)?.group(1)?.toUpperCase();
     final multiplier = switch (suffix) {
       'K' => 1e3,
       'M' => 1e6,
@@ -590,7 +650,7 @@ class PayrollService {
       'T' => 1e12,
       _ => 1.0,
     };
-    String cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.,]'), '');
+    String cleaned = numericPart.replaceAll(RegExp(r'[^0-9.,]'), '');
     if (cleaned.isEmpty) return 0;
 
     final lastDot = cleaned.lastIndexOf('.');
@@ -719,17 +779,21 @@ class PayrollService {
     String leaveDeduction = '',
     String customDeduction = '',
     String salaryType = 'Monthly',
+    double taxRatePercent = 0.0,
   }) {
     final enteredSalary = extractSalary(salary);
     final periodSalary = salaryType.trim().toLowerCase() == 'annual'
         ? enteredSalary / 12
         : enteredSalary;
-    final netSalary =
-        periodSalary +
-        extractSalary(overtimeAmount) -
-        extractSalary(absentDeduction) -
-        extractSalary(leaveDeduction) -
-        extractSalary(customDeduction);
+    final overtimeVal = extractSalary(overtimeAmount);
+    final absentVal = extractSalary(absentDeduction);
+    final leaveVal = extractSalary(leaveDeduction);
+    final customVal = extractSalary(customDeduction);
+
+    final subtotal = (periodSalary + overtimeVal - absentVal - leaveVal - customVal)
+        .clamp(0.0, double.infinity);
+    final taxDeduction = taxRatePercent > 0 ? (subtotal * (taxRatePercent / 100)) : 0.0;
+    final netSalary = subtotal - taxDeduction;
     return netSalary.clamp(0.0, double.infinity).toDouble();
   }
 
@@ -743,6 +807,7 @@ class PayrollService {
     String absentDeductionPerDay = '',
     String leaveDeductionPerDay = '',
     String salaryType = 'Monthly',
+    double taxRatePercent = 0.0,
   }) {
     final rawSalaryVal = extractSalary(salary);
     final periodSalary = salaryType.trim().toLowerCase() == 'annual'
@@ -781,7 +846,13 @@ class PayrollService {
     final absentDeduction = absentDays * absentRate;
     final leaveDeduction = leaveDays * leaveRate;
 
-    final totalDeductions = absentDeduction + leaveDeduction;
+    final subtotalBeforeTax = (grossSalary + overtimePay - absentDeduction - leaveDeduction)
+        .clamp(0.0, double.infinity);
+    final taxDeduction = taxRatePercent > 0
+        ? (subtotalBeforeTax * (taxRatePercent / 100))
+        : 0.0;
+
+    final totalDeductions = absentDeduction + leaveDeduction + taxDeduction;
 
     final netSalary = (grossSalary + overtimePay - totalDeductions).clamp(
       0.0,
@@ -803,6 +874,8 @@ class PayrollService {
       'leaveDeductionPerDayApplied': leaveRate,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
+      'taxRatePercent': taxRatePercent,
+      'taxDeduction': taxDeduction,
       'totalDeductions': totalDeductions,
       'netSalary': netSalary,
       'formattedDailyRate': _fmt(dailyRate, p),
@@ -815,33 +888,15 @@ class PayrollService {
       'formattedLeaveDeduct': leaveDeduction > 0
           ? '-${_fmt(leaveDeduction, p)}'
           : _fmt(0.0, p),
+      'formattedTaxDeduct': taxDeduction > 0
+          ? '-${_fmt(taxDeduction, p)}'
+          : _fmt(0.0, p),
       'formattedTotalDeductions': totalDeductions > 0
           ? '-${_fmt(totalDeductions, p)}'
           : _fmt(0.0, p),
+      'formattedNetSalary': _fmt(netSalary, p),
       'formattedNet': _fmt(netSalary, p),
     };
   }
 
-  static String getNetSalaryDisplay({
-    required String salary,
-    required String totalWorkDays,
-    required String absents,
-    String overtimeAmount = '',
-    String salaryType = 'Monthly',
-  }) {
-    final enteredSalary = extractSalary(salary);
-    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-        ? enteredSalary / 12
-        : enteredSalary;
-    final overtime = extractSalary(overtimeAmount);
-    final currency = getCurrencyPrefix(salary);
-    final prefix = currency.isNotEmpty ? '$currency ' : '';
-
-    
-    
-    
-    final netSalary = periodSalary + overtime;
-
-    return '$prefix${formatNumber(netSalary)}';
-  }
 }

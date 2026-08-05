@@ -309,7 +309,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFF14B8A6),
           bgColor: const Color(0xFFE6FAF8),
           label: 'notif_asset'.tr(),
-          iconAsset: 'assets/assets_icon.svg',
+          iconAsset: 'assets/asset_icon.png',
         );
       case 'expense_added':
         return _NotifStyle(
@@ -790,15 +790,22 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     ),
                     child: Center(
                       child: style.iconAsset != null
-                          ? SvgPicture.asset(
-                              style.iconAsset!,
-                              width: 22,
-                              height: 22,
-                              colorFilter: ColorFilter.mode(
-                                style.color,
-                                BlendMode.srcIn,
-                              ),
-                            )
+                          ? (style.iconAsset!.endsWith('.png')
+                              ? Image.asset(
+                                  style.iconAsset!,
+                                  width: 22,
+                                  height: 22,
+                                  color: style.color,
+                                )
+                              : SvgPicture.asset(
+                                  style.iconAsset!,
+                                  width: 22,
+                                  height: 22,
+                                  colorFilter: ColorFilter.mode(
+                                    style.color,
+                                    BlendMode.srcIn,
+                                  ),
+                                ))
                           : Icon(style.icon, size: 22, color: style.color),
                     ),
                   ),

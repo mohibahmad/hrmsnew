@@ -52,7 +52,7 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
-  static const double _tableContentWidth = 3562;
+  static const double _tableContentWidth = 3922;
   static const double _rowHeight = 65.0;
 
   late AuthService _authService;
@@ -450,12 +450,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'experienceLevel': '',
         'education': '',
         'salaryType': '',
-        'currency': '',
         'salaryAmount': '',
         'leavePolicy': '',
         'annualLeaves': '',
         'sickLeaves': '',
         'casualLeaves': '',
+        'medicalLeaves': '',
         'joiningDate': '',
         'profileImage': '',
         'frontId': '',
@@ -1061,7 +1061,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         String? mediaFileName;
         bool hasExistingUpload = false;
         if (isMediaField && currentValue.isNotEmpty) {
-          hasExistingUpload = currentValue.startsWith('data:');
+          // Treat any existing value (http(s) link or data: URL) as an
+          // existing upload so the field is locked and shows "uploaded".
+          hasExistingUpload = true;
           final storedName = worker['${fieldKey}_name'];
           if (currentValue.startsWith('data:')) {
             if (storedName != null && storedName.toString().isNotEmpty) {
@@ -1206,12 +1208,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       controller.text = dateStr;
                                     },
                                   )
-                                else if (fieldKey == 'currency')
-                                  buildCurrencyDropdown(
-                                    label: label,
-                                    controller: controller,
-                                    setDialogState: setDialogState,
-                                  )
                                 else
                                   Container(
                                     clipBehavior: Clip.hardEdge,
@@ -1235,9 +1231,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       maxLines: isMediaField ? 1 : null,
                                       minLines: 1,
                                       expands: false,
-                                      keyboardType: keyboardTypeForField(fieldKey),
-                                      inputFormatters:
-                                          inputFormattersForField(fieldKey),
+                                      keyboardType: keyboardTypeForField(
+                                        fieldKey,
+                                      ),
+                                      inputFormatters: inputFormattersForField(
+                                        fieldKey,
+                                      ),
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontFamily: 'SF Pro Display',
@@ -1527,6 +1526,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       }
                                     } else if (fieldKey == 'nationalId' &&
                                         val.isNotEmpty) {
+                                      if (!Validators.isValidNationalId(val)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_national_id'
+                                                  .tr();
+                                        });
+                                        return;
+                                      }
                                       final normalizedId =
                                           WorkerIdentity.normalizeNationalId(
                                             val,
@@ -1710,17 +1717,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             normalized.substring(1);
                                         Navigator.of(ctx).pop(display);
                                       }
-                                    } else if (fieldKey == 'currency') {
-                                      if (!CurrencyUtils.isSupported(val)) {
-                                        setDialogState(() {
-                                          dialogError = 'invalid_currency_value'
-                                              .tr();
-                                        });
-                                      } else {
-                                        Navigator.of(
-                                          ctx,
-                                        ).pop(CurrencyUtils.normalize(val));
-                                      }
                                     } else if (fieldKey == 'salaryAmount') {
                                       final amount = Validators.parseAmount(
                                         val,
@@ -1738,18 +1734,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       } else {
                                         Navigator.of(ctx).pop(val);
                                       }
-                                    } else if (fieldKey == 'annualLeaves') {
-                                      final annualLeaves = int.tryParse(val);
-                                      if (annualLeaves == null ||
-                                          annualLeaves < 0 ||
-                                          annualLeaves > 366) {
+                                    } else if (fieldKey == 'annualLeaves' ||
+                                        fieldKey == 'sickLeaves' ||
+                                        fieldKey == 'casualLeaves' ||
+                                        fieldKey == 'medicalLeaves') {
+                                      final leaves = int.tryParse(val);
+                                      if (leaves == null ||
+                                          leaves < 0 ||
+                                          leaves > 366) {
                                         setDialogState(() {
                                           dialogError = 'invalid_number'.tr();
                                         });
                                       } else {
                                         Navigator.of(
                                           ctx,
-                                        ).pop(annualLeaves.toString());
+                                        ).pop(leaves.toString());
                                       }
                                     } else if (fieldKey == 'dob') {
                                       final dob = AppDateUtils.parseDateString(
@@ -1805,9 +1804,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               mediaFileName ?? '';
                                           Navigator.of(ctx).pop(mediaDataUrl);
                                         } else if (hasExistingUpload) {
-                                          worker['${fieldKey}_name'] = val
-                                              .split('/')
-                                              .last;
+                                          worker['${fieldKey}_name'] =
+                                              _extractFileName(
+                                                currentValue,
+                                                fieldKey,
+                                              );
                                           Navigator.of(ctx).pop(currentValue);
                                         } else if (val.isNotEmpty &&
                                             !val.startsWith('data:')) {
@@ -1866,15 +1867,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                       );
                                             });
                                           } else {
-                                            worker['${fieldKey}_name'] = val
-                                                .split('/')
-                                                .last;
+                                            worker['${fieldKey}_name'] =
+                                                _extractFileName(val, fieldKey);
                                             Navigator.of(ctx).pop(val);
                                           }
                                         } else {
-                                          worker['${fieldKey}_name'] = val
-                                              .split('/')
-                                              .last;
+                                          worker['${fieldKey}_name'] =
+                                              _extractFileName(val, fieldKey);
                                           Navigator.of(ctx).pop(val);
                                         }
                                       } else {
@@ -1921,6 +1920,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves
               .toString();
           _validWorkers[workerIndex]['leavesUsed'] = '0';
+        } else if (fieldKey == 'sickLeaves' ||
+            fieldKey == 'casualLeaves' ||
+            fieldKey == 'medicalLeaves') {
+          _validWorkers[workerIndex][fieldKey] =
+              (int.tryParse(result) ?? 0).toString();
         }
         _hasUnsavedChanges = true;
       });
@@ -2330,7 +2334,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           _buildHeaderCell('email_address'.tr(), 150, fieldKey: 'email'),
           _buildHeaderCell('job_position'.tr(), 130, fieldKey: 'position'),
           _buildHeaderCell('salary_type'.tr(), 130, fieldKey: 'salaryType'),
-          _buildHeaderCell('currency_title'.tr(), 100, fieldKey: 'currency'),
           _buildHeaderCell('salary_amount'.tr(), 130, fieldKey: 'salaryAmount'),
           _buildHeaderCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
           _buildHeaderCell(
@@ -2359,6 +2362,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             'annual_leaves_title'.tr(),
             120,
             fieldKey: 'annualLeaves',
+          ),
+          _buildHeaderCell(
+            'sick_leaves_title'.tr(),
+            120,
+            fieldKey: 'sickLeaves',
+          ),
+          _buildHeaderCell(
+            'casual_leaves_title'.tr(),
+            120,
+            fieldKey: 'casualLeaves',
+          ),
+          _buildHeaderCell(
+            'medical_leaves_title'.tr(),
+            120,
+            fieldKey: 'medicalLeaves',
           ),
           _buildHeaderCell(
             'joining_date_title'.tr(),
@@ -2426,13 +2444,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             130,
             hasError: hasFieldError(worker, 'salaryType'),
             fieldKey: 'salaryType',
-            workerIndex: index,
-          ),
-          _buildDataCell(
-            worker['currency']?.toString() ?? '',
-            100,
-            hasError: hasFieldError(worker, 'currency'),
-            fieldKey: 'currency',
             workerIndex: index,
           ),
           _buildDataCell(
@@ -2524,6 +2535,27 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             120,
             hasError: hasFieldError(worker, 'annualLeaves'),
             fieldKey: 'annualLeaves',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['sickLeaves']?.toString() ?? '',
+            120,
+            hasError: hasFieldError(worker, 'sickLeaves'),
+            fieldKey: 'sickLeaves',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['casualLeaves']?.toString() ?? '',
+            120,
+            hasError: hasFieldError(worker, 'casualLeaves'),
+            fieldKey: 'casualLeaves',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['medicalLeaves']?.toString() ?? '',
+            120,
+            hasError: hasFieldError(worker, 'medicalLeaves'),
+            fieldKey: 'medicalLeaves',
             workerIndex: index,
           ),
           _buildDataCell(
@@ -2765,6 +2797,32 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         ),
       ),
     );
+
+    if (value.startsWith('data:image')) {
+      try {
+        final commaIndex = value.indexOf(',');
+        if (commaIndex >= 0) {
+          final bytes = base64Decode(value.substring(commaIndex + 1));
+          if (bytes.isNotEmpty) {
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.memory(
+                bytes,
+                width: 24,
+                height: 24,
+                fit: BoxFit.cover,
+                cacheWidth: 48,
+                cacheHeight: 48,
+                errorBuilder: (_, _, _) => imageFallback,
+              ),
+            );
+          }
+        }
+      } catch (_) {
+        // Fall through to the fallback icon.
+      }
+      return imageFallback;
+    }
 
     if (value.startsWith('data:')) {
       return fieldKey == 'cv' ? documentFallback : imageFallback;

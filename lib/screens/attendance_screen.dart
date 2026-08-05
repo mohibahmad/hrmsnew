@@ -24,6 +24,7 @@ import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
+import '../services/error_reporter.dart';
 import 'package:provider/provider.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -130,6 +131,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _initialized = false;
   StreamSubscription? _workersSub;
   StreamSubscription? _timeOffSub;
+  StreamSubscription? _attendanceSub;
   Timer? _searchDebounce;
   List<Map<String, dynamic>>? _cachedFiltered;
   String _filterCacheKey = '';
@@ -171,12 +173,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _showCustomDateRangePicker() async {
     DateTime calendarDate = DateTime.now();
     final selectedDates = <DateTime>{};
-    DateTime? rangeStart;
     DateTime? _dragAnchorDate;
     bool _dragMoved = false;
     Offset? _dragStartPosition;
     Offset? _dragCurrentPosition;
     Set<DateTime> _selectionBeforeDrag = {};
+    final GlobalKey _calendarHeaderKey = GlobalKey();
+
+    // Measures the real rendered height of everything above the day grid
+    // (month nav + weekday labels + spacers) so tap/drag hit-testing maps to
+    // the exact cell under the pointer.
+    double _measuredHeaderHeight() {
+      final context = _calendarHeaderKey.currentContext;
+      if (context == null) return 0;
+      final box = context.findRenderObject();
+      if (box is! RenderBox || !box.hasSize || !box.attached) return 0;
+      return box.size.height;
+    }
 
     DateTime? dateAtPosition(Offset position, DateTime monthDate) {
       const dialogWidth = 400.0;
@@ -185,11 +198,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final availableWidth = dialogWidth - (padding * 2);
       final cellWidth = (availableWidth - (gap * 6)) / 7;
       final cellHeight = cellWidth;
-      final headerHeight = 18.0 + 10.0 + 12.0 + 30.0;
+      // Columns are separated by SizedBox(width: 8) and rows by
+      // SizedBox(height: 8), so each cell occupies cellSize + gap on both
+      // axes. Ignoring the gaps shifts taps one cell ahead horizontally (and
+      // maps the last Saturday column outside the grid, making it dead).
+      final colPitch = cellWidth + gap;
+      final rowPitch = cellHeight + gap;
+      final measuredHeader = _measuredHeaderHeight();
+      // Fall back to an accurate constant layout (month row + 10 + labels + 12)
+      // if the header hasn't laid out yet.
+      final headerHeight =
+          measuredHeader > 0 ? measuredHeader : 18.0 + 10.0 + 12.0 + 30.0;
       final adjustedDy = position.dy - headerHeight;
       if (adjustedDy < 0) return null;
-      final column = (position.dx / cellWidth).floor();
-      final row = (adjustedDy / cellHeight).floor();
+      final column = (position.dx / colPitch).floor();
+      final row = (adjustedDy / rowPitch).floor();
       if (column < 0 || column > 6 || row < 0 || row > 5) return null;
       int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
       int firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
@@ -307,7 +330,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               (event.localPosition.dx - startPos.dx).abs();
                           final dy =
                               (event.localPosition.dy - startPos.dy).abs();
-                          if (dx > 5 || dy > 5) _dragMoved = true;
+                          if (dx > 5 || dy > 5) {
+                            _dragMoved = true;
+                          }
                         }
                         if (!_dragMoved) return;
                         final anchor = _dragAnchorDate;
@@ -353,33 +378,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   d.day == date.day,
                             );
                             if (isAlreadySelected) {
+                              // Tapping an already-selected date removes it.
                               selectedDates.removeWhere(
                                 (d) =>
                                     d.year == date.year &&
                                     d.month == date.month &&
                                     d.day == date.day,
                               );
-                              rangeStart = null;
                             } else {
-                              if (rangeStart == null) {
-                                rangeStart = date;
-                                selectedDates.add(date);
-                              } else {
-                                final start = rangeStart!.isBefore(date)
-                                    ? rangeStart!
-                                    : date;
-                                final end = rangeStart!.isAfter(date)
-                                    ? rangeStart!
-                                    : date;
-                                for (
-                                  var d = start;
-                                  !d.isAfter(end);
-                                  d = d.add(const Duration(days: 1))
-                                ) {
-                                  selectedDates.add(d);
-                                }
-                                rangeStart = null;
-                              }
+                              // A single tap selects just that one date; use
+                              // drag to select a whole range instead.
+                              selectedDates.add(date);
                             }
                           });
                         }
@@ -406,6 +415,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 calendarDate,
                               )
                             : null,
+                        // A drag that starts on an already-selected date is a
+                        // removal drag: the dragged-over cells should appear
+                        // cleared (not highlighted blue like an add).
+                        isDragRemoving:
+                            _dragMoved &&
+                            _dragAnchorDate != null &&
+                            _selectionBeforeDrag.contains(_dragAnchorDate),
+                        headerKey: _calendarHeaderKey,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -565,66 +582,82 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime? dragAnchor,
     DateTime? dragCurrent,
     bool isDragRemoving = false,
+    Key? headerKey,
   }) {
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () {
-                onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
+        Container(
+          key: headerKey,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      onMonthChanged(
+                        DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.chevron_left,
+                        size: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    monthYearStr,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      onMonthChanged(
+                        DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Text(
-              monthYearStr,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildWeekdayLabel('Sun', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Mon', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Tue', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Wed', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Thu', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Fri', const Color(0xFF0247C4)),
+                  const SizedBox(width: 8),
+                  _buildWeekdayLabel('Sat', const Color(0xFF0247C4)),
+                ],
               ),
-            ),
-            GestureDetector(
-              onTap: () {
-                onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
-              ),
-            ),
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            _buildWeekdayLabel('Sun', const Color(0xFFFF0004)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Mon', const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Tue', const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Wed', const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Thu', const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Fri', const Color(0xFF4AC000)),
-            const SizedBox(width: 8),
-            _buildWeekdayLabel('Sat', const Color(0xFF0247C4)),
-          ],
-        ),
-        const SizedBox(height: 12),
         _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected,
             dragAnchor: dragAnchor,
             dragCurrent: dragCurrent,
@@ -703,7 +736,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 d.month == date.month &&
                 d.day == date.day,
           );
-          final isDragPreview = dragRange.contains(date);
+          // During a removal drag the dragged-over cells are already removed
+          // from selectedDates, so showing them as a blue "preview" would look
+          // like they are being added. Skip the preview so they render as
+          // plain unselected cells.
+          final isDragPreview =
+              dragRange.contains(date) && !isDragRemoving;
           rowChildren.add(
             _buildDayCell('$currentDay', isSelected, isDragPreview, () {
               onDaySelected(date);
@@ -734,15 +772,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         child: AspectRatio(aspectRatio: 1, child: SizedBox()),
       );
     }
-    final isSunday = date?.weekday == 7;
-    final isFriday = date?.weekday == 5;
-    final dayColor = isSunday
-        ? const Color(0xFFFF0004)
-        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFFFF0004);
     final dragBg = const Color(0xFF0247C4);
+    final selectedBg = const Color(0xFF0247C4);
 
     Color bgColor;
     Color borderColor;
@@ -755,13 +786,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       borderColor = selectedBg;
     } else {
       bgColor = Colors.transparent;
-      if (isSunday) {
-        borderColor = const Color(0xFFFF0004).withValues(alpha: 0.4);
-      } else if (isFriday) {
-        borderColor = const Color(0xFF4AC000).withValues(alpha: 0.4);
-      } else {
-        borderColor = Colors.grey.shade300;
-      }
+      borderColor = Colors.grey.shade300;
     }
 
     return Expanded(
@@ -781,7 +806,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               style: TextStyle(
                 color: (isSelected || isDragPreview)
                     ? const Color(0xFFFFFFFF)
-                    : dayColor,
+                    : Colors.black,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
@@ -819,7 +844,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (startDate == null || endDate == null) {
           FlashySnackBar.show(
             context,
-            message: 'Please select a date range',
+            message: 'please_select_date_range'.tr(),
             isError: true,
           );
           return;
@@ -883,7 +908,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           'Reason/Notes',
         ]);
         if (snapshot.records.isEmpty) {
-          rows.add(['No attendance records in this period.', '', '', '', '']);
+          rows.add(['no_attendance_records_period'.tr(), '', '', '', '']);
         } else {
           for (final record in snapshot.records) {
             final date = AttendanceReportService.recordDateForRecord(record);
@@ -955,6 +980,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _removeShareDropdownOverlay();
     _workersSub?.cancel();
     _timeOffSub?.cancel();
+    _attendanceSub?.cancel();
     _searchDebounce?.cancel();
     _searchController.dispose();
     _attendancePreviewNotifier?.dispose();
@@ -1007,57 +1033,101 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     }
 
-    int present = 0;
-    int absent = 0;
-    int leave = 0;
-
-    for (final record in _attendanceDocs) {
-      final status = (record['status'] ?? '').toString();
-      if (status == 'Present') {
-        present++;
-      } else if (status == 'Absent') {
-        absent++;
-      } else if (status == 'Leave') {
-        leave++;
-      }
-    }
-
-    _presentCount = present;
-    _absentCount = absent;
-    _leaveCount = leave;
+    // Count the actual attendance records (day-level totals) inside the
+    // selected period, so the Present/Absent/Leave cards match the raw
+    // Firebase data for Weekly, Monthly, etc. A worker can appear on multiple
+    // days, so each record is counted once. For 'Today' this equals the
+    // per-worker count since a worker has at most one record per day.
+    final counts = AttendanceService.countRecordsByStatus(
+      periodAttendance,
+      _timeOffRecords,
+    );
+    _presentCount = counts['present'] ?? 0;
+    _absentCount = counts['absent'] ?? 0;
+    _leaveCount = counts['leave'] ?? 0;
   }
 
   int _attendanceRequestId = 0;
+  bool _streamSnapshotDelivered = false;
+
+  /// Keeps a live subscription to attendance docs within the current
+  /// timeframe so that marking Present/Absent/Leave on the worker attendance
+  /// screen (or anywhere else) is reflected here immediately, without needing
+  /// to leave and re-enter the screen. The subscription is recreated whenever
+  /// the timeframe changes so the stream always matches the visible period.
+  void _subscribeAttendanceStream(DateTime start, DateTime end, int requestId) {
+    _attendanceSub?.cancel();
+    _attendanceSub = _firestore
+        .attendanceStreamForPeriod(start: start, end: end)
+        .listen(
+          (snapshot) {
+            // Guard against a snapshot from a previous timeframe/request
+            // arriving after a newer subscription was started.
+            if (!mounted || requestId != _attendanceRequestId) return;
+            setState(() {
+              _rawAttendanceDocs = snapshot.docs
+                  .map(
+                    (d) =>
+                        {...d.data() as Map<String, dynamic>, 'id': d.id},
+                  )
+                  .toList();
+              _attendanceLoaded = true;
+              _streamSnapshotDelivered = true;
+              _combineAttendance();
+            });
+            _refreshAttendancePreview();
+          },
+          onError: (e) {
+            // If the real-time stream dies (network drop, transient
+            // permission hiccup), fall back to a one-shot re-fetch so the
+            // screen never silently shows stale attendance. Without this,
+            // newly marked Present/Absent/Leave only appears after the user
+            // manually re-selects a timeframe.
+            ErrorReporter.report(
+              e,
+              StackTrace.current,
+              context: 'attendanceScreenStream',
+            );
+            if (!mounted || requestId != _attendanceRequestId) return;
+            _streamSnapshotDelivered = false;
+            _firestore
+                .getAttendanceForPeriod(start, end)
+                .then((snapshot) {
+                  if (!mounted || requestId != _attendanceRequestId) return;
+                  setState(() {
+                    _rawAttendanceDocs = snapshot.docs
+                        .map(
+                          (d) =>
+                              {...d.data() as Map<String, dynamic>, 'id': d.id},
+                        )
+                        .toList();
+                    _attendanceLoaded = true;
+                    _combineAttendance();
+                  });
+                  _refreshAttendancePreview();
+                })
+                .catchError((_) {});
+          },
+        );
+  }
 
   void _loadAttendanceForTimeframe() {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    DateTime start;
-    DateTime end = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-    switch (_selectedTimeframe) {
-      case 'Today':
-        start = today;
-        break;
-      case 'Week':
-        final weekday = today.weekday;
-        start = today.subtract(Duration(days: weekday - 1));
-        break;
-      case 'Month':
-        start = DateTime(now.year, now.month, 1);
-        break;
-      case '6 Month':
-        start = DateTime(now.year, now.month - 5, 1);
-        break;
-      case 'Yearly':
-        start = DateTime(now.year, 1, 1);
-        break;
-      default:
-        start = today;
-    }
+    final start = AppDateUtils.periodStart(_selectedTimeframe, now);
+    final periodEndDate = AppDateUtils.periodEnd(_selectedTimeframe, now);
+    final end = DateTime(
+      periodEndDate.year,
+      periodEndDate.month,
+      periodEndDate.day,
+      23,
+      59,
+      59,
+      999,
+    );
 
     final requestId = ++_attendanceRequestId;
     final requestedPeriod = _selectedTimeframe;
+    _streamSnapshotDelivered = false;
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
@@ -1069,6 +1139,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
+    _subscribeAttendanceStream(start, end, requestId);
+
     _firestore
         .getAttendanceForPeriod(start, end)
         .then((snapshot) {
@@ -1077,6 +1149,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               requestedPeriod != _selectedTimeframe) {
             return;
           }
+          // The live stream already delivered a fresher snapshot for this
+          // request; don't let this (older) one-shot response clobber it.
+          if (_streamSnapshotDelivered) return;
           setState(() {
             _rawAttendanceDocs = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
@@ -1976,7 +2051,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           Expanded(
                             flex: 2,
                             child: Text(
-                              role,
+                              LocalizationHelper.localizePosition(role),
                               style: const TextStyle(
                                 fontSize: 15,
                                 color: textDark,
@@ -2473,7 +2548,7 @@ class _WorkerAttendancePreviewCardState
                 rows: [
                   _buildDetailRow(
                     'position'.tr(),
-                    widget.record.role,
+                    LocalizationHelper.localizePosition(widget.record.role),
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
@@ -2562,7 +2637,9 @@ class _WorkerAttendancePreviewCardState
     rows.add(['Worker Attendance Preview']);
     rows.add(['Worker: ${widget.record.name}']);
     rows.add(['Email: ${widget.record.email}']);
-    rows.add(['Position: ${widget.record.role}']);
+    rows.add([
+      'Position: ${LocalizationHelper.localizePosition(widget.record.role)}',
+    ]);
     rows.add([]);
     rows.add(['Total Working Days', _totalRecords]);
     rows.add(['Total Present', _presents]);

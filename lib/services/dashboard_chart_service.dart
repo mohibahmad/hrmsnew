@@ -53,8 +53,11 @@ class DashboardChartService {
         continue;
       }
 
-      final value = valueOf(record);
-      if (!value.isFinite || value == 0) continue;
+      final rawValue = valueOf(record);
+      final value = (rawValue.isFinite && rawValue > 0)
+          ? rawValue.clamp(0, 1000000000.0).toDouble()
+          : 0.0;
+      if (value == 0) continue;
 
       final date = (dateOf ?? salaryRecordDate)(record);
       if (date != null) {
@@ -138,12 +141,11 @@ class DashboardChartService {
     DateTime? now,
   }) {
     final currentValue = now ?? DateTime.now();
-    final current = _dateOnly(currentValue);
-    final target = _dateOnly(date);
-    if (target.isAfter(current)) return false;
-
     final start = AppDateUtils.periodStart(period, currentValue);
-    return !target.isBefore(_dateOnly(start));
+    final end = AppDateUtils.periodEnd(period, currentValue);
+    
+    final target = _dateOnly(date);
+    return !target.isBefore(_dateOnly(start)) && !target.isAfter(_dateOnly(end));
   }
 
   static List<Map<String, dynamic>> leaveDaysForPeriod({
@@ -219,7 +221,8 @@ class DashboardChartService {
       }
 
       final type = _attendanceLeaveType(attendance);
-      if (!TimeOffService.paidLeaveTypes.contains(type)) continue;
+      // Show all leave types in chart (not just predefined paid types)
+      if (type.isEmpty) continue;
 
       final normalized = <String, dynamic>{
         ...attendance,
@@ -360,39 +363,6 @@ class DashboardChartService {
       'date': record['date'],
     });
     return enteredDate ?? PayrollService.payrollRecordDate(record);
-  }
-
-  static DashboardChartSeries buildDummySalarySeries({
-    required List<Map<String, dynamic>> expenses,
-    required double totalSalary,
-    required String period,
-    DateTime? now,
-  }) {
-    final expenseTotal = expenses.fold<double>(0, (sum, record) {
-      final amount = record['amount'];
-      return sum + (amount is num ? amount.toDouble() : 0);
-    });
-    if (expenseTotal <= 0 || totalSalary <= 0) {
-      return buildSeries(
-        records: const [],
-        valueOf: (_) => 0,
-        period: period,
-        now: now,
-      );
-    }
-
-    return buildSeries(
-      records: expenses,
-      valueOf: (record) {
-        final amount = record['amount'];
-        final expenseValue = amount is num ? amount.toDouble() : 0;
-        return totalSalary * (expenseValue / expenseTotal);
-      },
-      period: period,
-      dateOf: expenseRecordDate,
-      now: now,
-      placeUndatedInCurrentPeriod: true,
-    );
   }
 
   static double _salaryValue(Map<String, dynamic> record) {

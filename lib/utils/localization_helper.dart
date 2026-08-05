@@ -122,6 +122,20 @@ class LocalizationHelper {
         return 'strategist'.tr();
       case 'architect':
         return 'architect'.tr();
+      case 'marketing':
+        return 'marketing'.tr();
+      case 'operations':
+        return 'operations'.tr();
+      case 'it support':
+        return 'it_support'.tr();
+      case 'quality assurance':
+        return 'quality_assurance'.tr();
+      case 'product':
+        return 'product'.tr();
+      case 'research':
+        return 'research'.tr();
+      case 'legal':
+        return 'legal'.tr();
       default:
         return _localizeCompoundPosition(value);
     }
@@ -129,7 +143,10 @@ class LocalizationHelper {
 
   static String _localizeCompoundPosition(String value) {
     final words = value.split(' ');
-    if (words.length <= 1) return value;
+    if (words.length <= 1) {
+      if (value.isEmpty) return value;
+      return value[0].toUpperCase() + value.substring(1);
+    }
     final parts = words.map((w) {
       final lower = w.toLowerCase();
       switch (lower) {
@@ -159,8 +176,22 @@ class LocalizationHelper {
           return 'writer'.tr();
         case 'architect':
           return 'architect'.tr();
+        case 'marketing':
+          return 'marketing'.tr();
+        case 'operations':
+          return 'operations'.tr();
+        case 'product':
+          return 'product'.tr();
+        case 'research':
+          return 'research'.tr();
+        case 'legal':
+          return 'legal'.tr();
         default:
-          return w;
+          // Unknown words (e.g. custom positions like "real state") are
+          // title-cased so "real state" shows as "Real State" instead of
+          // staying lowercase.
+          if (w.isEmpty) return w;
+          return w[0].toUpperCase() + w.substring(1);
       }
     }).toList();
     return parts.join(' ');

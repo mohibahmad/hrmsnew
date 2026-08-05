@@ -1444,7 +1444,7 @@ class DummyData {
     int workerIndex,
     int daysAgo,
   ) {
-    const statuses = ['Present', 'Present', 'Present', 'Absent', 'Leave'];
+    const statuses = ['Present', 'Present', 'Present', 'Present', 'Present'];
     const absentReasons = ['Sick', 'Family Emergency', 'Without Notice'];
     const leaveTypes = ['Sick Leave', 'Casual Leave', 'Medical Leave'];
     final worker = workers[workerIndex];

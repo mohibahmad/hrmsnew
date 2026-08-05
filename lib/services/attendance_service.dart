@@ -1,5 +1,6 @@
 import '../utils/worker_identity.dart';
 import '../utils/date_utils.dart';
+import 'time_off_service.dart';
 
 class AttendanceService {
   static final AttendanceService _instance = AttendanceService._();
@@ -289,5 +290,40 @@ class AttendanceService {
     });
 
     return combined;
+  }
+
+  /// Day-level Present/Absent/Leave totals for a list of attendance records,
+  /// counting every record once (a worker can appear on multiple days). A
+  /// worker with an approved time-off on the record's date counts as Leave
+  /// (never Present), matching the attendance screen cards and the home
+  /// dashboard overview.
+  static Map<String, int> countRecordsByStatus(
+    List<Map<String, dynamic>> records,
+    List<Map<String, dynamic>> timeOffRecords,
+  ) {
+    int present = 0;
+    int absent = 0;
+    int leave = 0;
+    for (final record in records) {
+      final recordDate = AppDateUtils.attendanceRecordDate(record);
+      final isOnLeave = recordDate != null &&
+          TimeOffService.isWorkerOnLeave(
+            record,
+            timeOffRecords,
+            onDate: recordDate,
+          );
+      final status = (record['status'] ?? '').toString().trim().toLowerCase();
+      if (isOnLeave ||
+          status == 'leave' ||
+          status == 'l' ||
+          status == 'approved') {
+        leave++;
+      } else if (status == 'present' || status == 'p') {
+        present++;
+      } else if (status == 'absent' || status == 'a') {
+        absent++;
+      }
+    }
+    return {'present': present, 'absent': absent, 'leave': leave};
   }
 }

@@ -20,6 +20,18 @@ double? _safeDouble(dynamic value) {
   return double.tryParse(text);
 }
 
+/// Parses a whole-number value (leave days are always integers). Also handles
+/// legacy data where leave counts were accidentally stored as doubles (e.g.
+/// `0.0`) by truncating the decimal part instead of producing `null`.
+int? _safeInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  return num.tryParse(text)?.toInt();
+}
+
 /// Parses a timestamp (e.g. `createdAt`) preserving the exact instant. Only
 /// used for timestamps, never for date-only business values.
 DateTime? _safeTimestamp(dynamic value) {
@@ -112,11 +124,12 @@ class Worker {
   final String? currency;
   final double? salaryAmount;
   final String? leavePolicy;
-  final double? annualLeaves;
-  final double? sickLeaves;
-  final double? casualLeaves;
-  final double? availableAnnualLeaves;
-  final double? leavesUsed;
+  final int? annualLeaves;
+  final int? sickLeaves;
+  final int? casualLeaves;
+  final int? medicalLeaves;
+  final int? availableAnnualLeaves;
+  final int? leavesUsed;
   final DateTime? joiningDate;
   final String? profileImage;
   final String? frontId;
@@ -150,6 +163,7 @@ class Worker {
     this.annualLeaves,
     this.sickLeaves,
     this.casualLeaves,
+    this.medicalLeaves,
     this.availableAnnualLeaves,
     this.leavesUsed,
     this.joiningDate,
@@ -194,11 +208,12 @@ class Worker {
       currency: currency,
       salaryAmount: salary,
       leavePolicy: _safeNullableString(data['leavePolicy']),
-      annualLeaves: _safeDouble(data['annualLeaves']),
-      sickLeaves: _safeDouble(data['sickLeaves']),
-      casualLeaves: _safeDouble(data['casualLeaves']),
-      availableAnnualLeaves: _safeDouble(data['availableAnnualLeaves']),
-      leavesUsed: _safeDouble(data['leavesUsed']),
+      annualLeaves: _safeInt(data['annualLeaves']),
+      sickLeaves: _safeInt(data['sickLeaves']),
+      casualLeaves: _safeInt(data['casualLeaves']),
+      medicalLeaves: _safeInt(data['medicalLeaves']),
+      availableAnnualLeaves: _safeInt(data['availableAnnualLeaves']),
+      leavesUsed: _safeInt(data['leavesUsed']),
       joiningDate: _safeBusinessDate(
         data['joiningDate'] ?? data['dateOfJoining'],
       ),
@@ -257,6 +272,7 @@ class Worker {
     _addNumericField(map, 'annualLeaves', annualLeaves, forUpdate);
     _addNumericField(map, 'sickLeaves', sickLeaves, forUpdate);
     _addNumericField(map, 'casualLeaves', casualLeaves, forUpdate);
+    _addNumericField(map, 'medicalLeaves', medicalLeaves, forUpdate);
     _addNumericField(
       map,
       'availableAnnualLeaves',
@@ -297,7 +313,7 @@ class Worker {
   static void _addNumericField(
     Map<String, dynamic> map,
     String key,
-    double? value,
+    num? value,
     bool forUpdate,
   ) {
     if (value != null) {
@@ -341,11 +357,12 @@ class Worker {
     String? currency,
     double? salaryAmount,
     String? leavePolicy,
-    double? annualLeaves,
-    double? sickLeaves,
-    double? casualLeaves,
-    double? availableAnnualLeaves,
-    double? leavesUsed,
+    int? annualLeaves,
+    int? sickLeaves,
+    int? casualLeaves,
+    int? medicalLeaves,
+    int? availableAnnualLeaves,
+    int? leavesUsed,
     DateTime? joiningDate,
     String? profileImage,
     String? frontId,
@@ -379,6 +396,7 @@ class Worker {
       annualLeaves: annualLeaves ?? this.annualLeaves,
       sickLeaves: sickLeaves ?? this.sickLeaves,
       casualLeaves: casualLeaves ?? this.casualLeaves,
+      medicalLeaves: medicalLeaves ?? this.medicalLeaves,
       availableAnnualLeaves:
           availableAnnualLeaves ?? this.availableAnnualLeaves,
       leavesUsed: leavesUsed ?? this.leavesUsed,

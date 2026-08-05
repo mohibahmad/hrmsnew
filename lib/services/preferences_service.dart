@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
 
 class PreferencesService {
   static const String _loggedInKey = 'is_logged_in';
   static const String _guestKey = 'is_guest';
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
+  static const String _companyStampUrlKey = 'company_stamp_url';
   static const String _rateUsNeverShowKey = 'rate_us_never_show';
   static const String _rateUsRemindLaterKey = 'rate_us_remind_later';
   static const String _rateUsFirstExpenseKey = 'rate_us_first_expense';
@@ -29,6 +31,7 @@ class PreferencesService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static String? _cachedProfilePicUrl;
+  static String? _cachedCompanyStampUrl;
   static bool _cachedIsGuest = false;
   static bool _cachedIsPremium = false;
   static Directory? _guestDataDir;
@@ -50,11 +53,24 @@ class PreferencesService {
   static Future<void> initFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
+    _cachedCompanyStampUrl = prefs.getString(_companyStampUrlKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
     _cachedIsPremium = prefs.getBool(_premiumKey) ?? false;
+
+    if ((_cachedCompanyStampUrl == null || _cachedCompanyStampUrl!.isEmpty) &&
+        prefs.containsKey(_guestProfileKey)) {
+      try {
+        final guestData = jsonDecode(prefs.getString(_guestProfileKey) ?? '{}');
+        final stampFromGuest = (guestData['companyStampUrl'] ?? guestData['stampUrl'])?.toString().trim();
+        if (stampFromGuest != null && stampFromGuest.isNotEmpty) {
+          _cachedCompanyStampUrl = stampFromGuest;
+        }
+      } catch (_) {}
+    }
   }
 
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
+  static String? get cachedCompanyStampUrl => _cachedCompanyStampUrl;
   static bool get cachedIsGuest => _cachedIsGuest;
 
   /// Last known premium status, read synchronously so the UI can render the
@@ -88,18 +104,6 @@ class PreferencesService {
   static Future<bool> isPremium() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_premiumKey) ?? false;
-  }
-
-  static Future<bool> verifyAndSyncPremium() async {
-    try {
-      // TODO: Replace with actual StoreKit/App Store receipt verification.
-      // final entitlement = await SubscriptionService.verifyCurrentEntitlement();
-      // await setPremium(entitlement.isActive);
-      // return entitlement.isActive;
-      return await isPremium();
-    } catch (_) {
-      return false;
-    }
   }
 
   static Future<Set<int>> getCompanyWorkingDays() async {
@@ -175,23 +179,6 @@ class PreferencesService {
     return Map<String, String>.from(jsonDecode(raw));
   }
 
-  static Future<void> clearGuestProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_guestProfileKey);
-  }
-
-  static Future<void> setGuestWorkers(
-    List<Map<String, dynamic>> workers,
-  ) async {
-    try {
-      final file = await _guestFile('workers.json');
-      await file.writeAsString(jsonEncode(workers));
-    } catch (_) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_guestWorkersKey, jsonEncode(workers));
-    }
-  }
-
   static Future<List<Map<String, dynamic>>?> getGuestWorkers() async {
     try {
       final file = await _guestFile('workers.json');
@@ -205,15 +192,6 @@ class PreferencesService {
       if (raw == null || raw.isEmpty) return null;
       return List<Map<String, dynamic>>.from(jsonDecode(raw));
     }
-  }
-
-  static Future<void> clearGuestWorkers() async {
-    try {
-      final file = await _guestFile('workers.json');
-      if (await file.exists()) await file.delete();
-    } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_guestWorkersKey);
   }
 
   static Future<void> setGuestPayroll(
@@ -243,15 +221,6 @@ class PreferencesService {
     }
   }
 
-  static Future<void> clearGuestPayroll() async {
-    try {
-      final file = await _guestFile('payroll.json');
-      if (await file.exists()) await file.delete();
-    } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_guestPayrollKey);
-  }
-
   static Future<void> setProfilePicUrl(String? url) async {
     final prefs = await SharedPreferences.getInstance();
     if (url != null && url.isNotEmpty) {
@@ -261,12 +230,35 @@ class PreferencesService {
     }
 
     _cachedProfilePicUrl = url;
+    AuthService.profilePicNotifier.value = url;
   }
 
   static Future<String?> getProfilePicUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final url = prefs.getString(_profilePicUrlKey);
     _cachedProfilePicUrl = url;
+    return url;
+  }
+
+  static Future<void> setCompanyStampUrl(String? url) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (url != null && url.isNotEmpty) {
+      await prefs.setString(_companyStampUrlKey, url);
+    } else {
+      await prefs.remove(_companyStampUrlKey);
+    }
+
+    _cachedCompanyStampUrl = url;
+    AuthService.companyStampNotifier.value = url;
+  }
+
+  static Future<String?> getCompanyStampUrl() async {
+    if (_cachedCompanyStampUrl != null && _cachedCompanyStampUrl!.isNotEmpty) {
+      return _cachedCompanyStampUrl;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final url = prefs.getString(_companyStampUrlKey);
+    _cachedCompanyStampUrl = url;
     return url;
   }
 

@@ -731,12 +731,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 
   Widget _buildFilterTabs() {
-    const defaultPositions = [
-      'Designer',
-      'Developer',
-      'Engineering',
-      'Sales',
-      'Management',
+    final defaultPositions = [
+      'designer'.tr(),
+      'developer'.tr(),
+      'software_engineer'.tr(),
+      'sales'.tr(),
+      'hr'.tr(),
+      'finance'.tr(),
+      'marketing'.tr(),
+      'operations'.tr(),
+      'it_support'.tr(),
+      'product'.tr(),
+      'research'.tr(),
     ];
     final actualPositions = <String>{};
     final positionNormalizer = <String, String>{};
@@ -769,16 +775,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       ...positionsToShow.map((p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)}),
     ];
     return Container(
-      width: 550,
+      width: double.infinity,
       height: 46,
-      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1419,19 +1424,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 16,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
           vertical: 8,
         ),
-        margin: const EdgeInsets.only(right: 4),
+        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CB6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           displayLabel,
-          overflow: TextOverflow.ellipsis,
           maxLines: 1,
+          softWrap: false,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,

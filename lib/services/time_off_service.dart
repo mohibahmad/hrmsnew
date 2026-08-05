@@ -7,6 +7,12 @@ class TimeOffService {
     'Sick Leave',
     'Casual Leave',
     'Medical Leave',
+    'Maternity Leave',
+    'Paternity Leave',
+    'Hajj Leave',
+    'Emergency Leave',
+    'Study Leave',
+    'Compensatory Leave',
   };
 
   static const Set<String> unpaidLeaveTypes = {'Unpaid Leave'};
@@ -15,19 +21,36 @@ class TimeOffService {
     final normalized = type.trim();
     switch (normalized.toLowerCase()) {
       case 'annual leave':
+      case 'annual':
         return 'Annual Leave';
       case 'sick leave':
+      case 'sick':
         return 'Sick Leave';
       case 'casual leave':
+      case 'casual':
         return 'Casual Leave';
       case 'medical leave':
+      case 'medical':
         return 'Medical Leave';
-      case 'unpaid leave':
-      case 'custom leave':
       case 'maternity leave':
+      case 'maternity':
+        return 'Maternity Leave';
+      case 'paternity leave':
+        return 'Paternity Leave';
+      case 'hajj leave':
+        return 'Hajj Leave';
+      case 'emergency leave':
+        return 'Emergency Leave';
+      case 'study leave':
+        return 'Study Leave';
+      case 'compensatory leave':
+        return 'Compensatory Leave';
+      case 'unpaid leave':
         return 'Unpaid Leave';
+      case 'custom leave':
+        return 'Custom Leave';
       default:
-        return normalized;
+        return normalized.isNotEmpty ? normalized : 'Other Leave';
     }
   }
 
@@ -124,10 +147,11 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
     DateTime? onDate,
+    String? excludingRecordId,
   }) {
     final date = onDate ?? DateTime.now();
     final target = DateTime(date.year, date.month, date.day);
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
@@ -135,6 +159,9 @@ class TimeOffService {
 
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
+      if (excludingRecordId != null && leave['id']?.toString() == excludingRecordId) {
+        continue;
+      }
       if (!_belongsToWorker(
         leave,
         workerId: workerId,
@@ -155,7 +182,7 @@ class TimeOffService {
     List<Map<String, dynamic>> timeOffRecords,
   ) {
     final dates = <DateTime>{};
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
@@ -211,7 +238,7 @@ class TimeOffService {
   }) {
     if (timeOffRecords.isEmpty) return 0;
 
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
@@ -245,7 +272,7 @@ class TimeOffService {
   }) {
     if (timeOffRecords.isEmpty) return 0;
 
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
@@ -271,12 +298,61 @@ class TimeOffService {
     return usedDates.length;
   }
 
+  static Map<String, int> paidDaysUsedForWorkerByType(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> timeOffRecords, {
+    String? excludingRecordId,
+  }) {
+    final result = <String, int>{
+      'Sick Leave': 0,
+      'Casual Leave': 0,
+      'Medical Leave': 0,
+      'Annual Leave': 0,
+    };
+    if (timeOffRecords.isEmpty) return result;
+
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+    for (final record in timeOffRecords) {
+      if (!isActiveRecord(record)) continue;
+      if (excludingRecordId != null &&
+          record['id']?.toString() == excludingRecordId) {
+        continue;
+      }
+      if (!isPaidRecord(record)) continue;
+      if (!_belongsToWorker(
+        record,
+        workerId: workerId,
+        workerEmail: workerEmail,
+        workerName: workerName,
+      )) {
+        continue;
+      }
+      final normType = normalizeLeaveType(record['action']?.toString() ?? '');
+      final dates = selectedDatesForRecord(record);
+      result[normType] = (result[normType] ?? 0) + dates.length;
+    }
+    return result;
+  }
+
   static int configuredPaidLeaveAllowance(Map<String, dynamic> worker) {
-    final rawAllowance = worker['annualLeaves'];
-    final parsed = rawAllowance is num
-        ? rawAllowance.toInt()
-        : num.tryParse((rawAllowance ?? '0').toString())?.toInt() ?? 0;
-    return parsed < 0 ? 0 : parsed;
+    final rawAnnual = worker['annualLeaves'];
+    final annual = rawAnnual is num
+        ? rawAnnual.toInt()
+        : int.tryParse((rawAnnual ?? '').toString()) ?? 0;
+
+    if (annual > 0) return annual;
+
+    final sick = int.tryParse((worker['sickLeaves'] ?? '').toString()) ?? 5;
+    final casual = int.tryParse((worker['casualLeaves'] ?? '').toString()) ?? 5;
+    final medical = int.tryParse((worker['medicalLeaves'] ?? '').toString()) ?? 1;
+
+    final total = sick + casual + medical;
+    return total > 0 ? total : 25;
   }
 
   static int remainingPaidLeave(
@@ -295,13 +371,97 @@ class TimeOffService {
     return (total - used).clamp(0, total).toInt();
   }
 
+  /// Reads the configured (assigned) balance for one of the four core leave
+  /// types. Each type has its own independent balance, so a type that is not
+  /// configured (0) never falls back to another type's allowance.
+  static int configuredLimitForType(
+    Map<String, dynamic> worker,
+    String type,
+  ) {
+    switch (normalizeLeaveType(type)) {
+      case 'Annual Leave':
+        final annual = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+        return annual > 0 ? annual : configuredPaidLeaveAllowance(worker);
+      case 'Sick Leave':
+        return int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
+      case 'Casual Leave':
+        return int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
+      case 'Medical Leave':
+        return int.tryParse(worker['medicalLeaves']?.toString() ?? '0') ?? 0;
+      default:
+        return 0;
+    }
+  }
+
+  /// Remaining (unused) days for a single leave type. Only active records of
+  /// that exact type are counted, so assigning Medical Leave never touches the
+  /// Sick / Casual / Annual balances.
+  static int remainingForType(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> timeOffRecords,
+    String type, {
+    String? excludingRecordId,
+  }) {
+    final normType = normalizeLeaveType(type);
+    final limit = configuredLimitForType(worker, normType);
+    if (limit <= 0) return 0;
+
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+    int used = 0;
+    for (final record in timeOffRecords) {
+      if (!isActiveRecord(record)) continue;
+      if (excludingRecordId != null &&
+          record['id']?.toString() == excludingRecordId) {
+        continue;
+      }
+      if (normalizeLeaveType(
+            record['action']?.toString() ?? record['type']?.toString() ?? '',
+          ) !=
+          normType) {
+        continue;
+      }
+      if (!_belongsToWorker(
+        record,
+        workerId: workerId,
+        workerEmail: workerEmail,
+        workerName: workerName,
+      )) {
+        continue;
+      }
+      used += selectedDatesForRecord(record).length;
+    }
+    return (limit - used).clamp(0, limit).toInt();
+  }
+
+  /// True when the worker can no longer be assigned ANY leave — i.e. every
+  /// leave type (Annual / Sick / Casual / Medical) has 0 remaining balance.
+  /// The status flips to "Limit Reached" when the worker has no remaining balance.
+  static bool isWorkerLimitReached(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> timeOffRecords,
+  ) {
+    if (worker['canAssignTimeOff'] == false) return true;
+
+    const types = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Medical Leave'];
+    for (final type in types) {
+      if (remainingForType(worker, timeOffRecords, type) > 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static bool hasOverlappingApprovedLeave(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
     Iterable<DateTime> requestedDates, {
     String? excludingRecordId,
   }) {
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
@@ -334,7 +494,7 @@ class TimeOffService {
     List<Map<String, dynamic>> timeOffRecords, {
     required DateTime month,
   }) {
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();

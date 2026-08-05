@@ -137,7 +137,27 @@ class AppDateUtils {
   }
 
   static DateTime periodEnd(String period, DateTime now) {
-    return DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
+    switch (period) {
+      case 'Today':
+        return today;
+      case 'Week':
+      case 'Weekly':
+        final weekday = today.weekday;
+        final start = today.subtract(Duration(days: weekday - 1));
+        return start.add(const Duration(days: 6));
+      case 'Month':
+      case 'Monthly':
+        return DateTime(now.year, now.month + 1, 0);
+      case '6 Month':
+      case '6 Months':
+      case '6 Monthly':
+        return DateTime(now.year, now.month + 1, 0);
+      case 'Yearly':
+        return DateTime(now.year, 12, 31);
+      default:
+        return today;
+    }
   }
 
   static bool isDateWithinPeriod(String dateStr, String period) {

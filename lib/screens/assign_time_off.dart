@@ -31,8 +31,50 @@ class AssignTimeOffScreen extends StatefulWidget {
   State<AssignTimeOffScreen> createState() => _AssignTimeOffScreenState();
 }
 
+class LeaveColors {
+  static const Color annual = Color(0xFFF59E0B);   // Vibrant Amber
+  static const Color annualBg = Color(0xFFFFFBEB); // Soft Amber Tint
+
+  static const Color sick = Color(0xFFEF4444);     // Vibrant Red
+  static const Color sickBg = Color(0xFFFEF2F2);   // Soft Red Tint
+
+  static const Color casual = Color(0xFF3B82F6);   // Vibrant Blue
+  static const Color casualBg = Color(0xFFEFF6FF); // Soft Blue Tint
+
+  static const Color medical = Color(0xFF10B981);  // Vibrant Emerald Green
+  static const Color medicalBg = Color(0xFFECFDF5);// Soft Green Tint
+
+  static Color getColor(String leaveType) {
+    final lower = leaveType.toLowerCase().trim();
+    if (lower.contains('annual')) return annual;
+    if (lower.contains('sick')) return sick;
+    if (lower.contains('casual')) return casual;
+    if (lower.contains('medical')) return medical;
+    return casual;
+  }
+
+  static Color getTextColor(String leaveType) {
+    final lower = leaveType.toLowerCase().trim();
+    if (lower.contains('annual')) return const Color(0xFFD97706);  // Deep Amber
+    if (lower.contains('sick')) return const Color(0xFFDC2626);    // Deep Red
+    if (lower.contains('casual')) return const Color(0xFF1D4ED8);  // Deep Blue
+    if (lower.contains('medical')) return const Color(0xFF047857); // Deep Green
+    return const Color(0xFF1E293B);
+  }
+
+  static Color getBgColor(String leaveType) {
+    final lower = leaveType.toLowerCase().trim();
+    if (lower.contains('annual')) return annualBg;
+    if (lower.contains('sick')) return sickBg;
+    if (lower.contains('casual')) return casualBg;
+    if (lower.contains('medical')) return medicalBg;
+    return getColor(leaveType).withValues(alpha: 0.15);
+  }
+}
+
 class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   static const List<Map<String, String>> _leaveTypeOptions = [
+    {'value': 'Annual Leave', 'labelKey': 'annual_leave'},
     {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
     {'value': 'Casual Leave', 'labelKey': 'casual_leave_type'},
     {'value': 'Medical Leave', 'labelKey': 'medical_leave_type'},
@@ -45,10 +87,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     'Medical Leave',
   ];
 
+  // Inner calendar grid width: 7 day cells (50px) + 6 gaps (4px).
+  static const double _calendarContentWidth = 7 * 50 + 6 * 4;
+
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _isLoading = false;
-  String _timeOffType = 'Sick Leave';
+  String _timeOffType = 'Annual Leave';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   DateTime _calendarMonth = DateTime.now();
@@ -84,6 +129,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
   List<Map<String, dynamic>> _timeoffRecords = [];
+  // When editing an existing time-off record, this holds the original record data
+  Map<String, dynamic>? _editingRecord;
   List<Map<String, dynamic>> _holidays = [];
   Set<int> _companyWorkingDays = {
     DateTime.monday,
@@ -100,6 +147,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     super.initState();
     if (widget.initialWorker != null) {
       _selectedWorker = widget.initialWorker;
+
+      final hasAction = (widget.initialWorker!['action'] ?? '')
+          .toString()
+          .isNotEmpty;
+      if (hasAction) {
+        _editingRecord = Map<String, dynamic>.from(widget.initialWorker!);
+      }
     }
     _resetFormFields();
   }
@@ -161,22 +215,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _resetFormFields() {
-    if (_selectedWorker != null &&
-        _selectedWorker!['action'] != null &&
-        _selectedWorker!['action'].toString().isNotEmpty) {
-      _editingId = _selectedWorker!['id']?.toString();
-      _timeOffType = _selectedWorker!['action'].toString();
-      _selectedDates = TimeOffService.selectedDatesForRecord(
-        _selectedWorker!,
-      ).toSet();
+    // Use _editingRecord if present (this survives worker stream updates),
+    // otherwise fall back to _selectedWorker fields (initial load path).
+    final source = _editingRecord ?? _selectedWorker;
+    if (source != null && (source['action'] ?? '').toString().isNotEmpty) {
+      // Edit mode: read id from the record, not the worker doc
+      _editingId = (_editingRecord?['id'] ?? source['id'])?.toString();
+      _timeOffType = source['action'].toString();
+      _selectedDates = TimeOffService.selectedDatesForRecord(source).toSet();
       _syncSelectionBounds();
-      _notesController.text = _selectedWorker!['notes']?.toString() ?? '';
+      _notesController.text = source['notes']?.toString() ?? '';
     } else {
       _editingId = null;
       _selectedDates = <DateTime>{};
       _startDate = DateTime.now();
       _endDate = DateTime.now();
-      _timeOffType = 'Sick Leave';
+      _timeOffType = 'Annual Leave';
       _notesController.clear();
     }
 
@@ -192,7 +246,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _timeOffType = TimeOffService.normalizeLeaveType(_timeOffType);
 
     if (!_leaveTypeOptions.any((o) => o['value'] == _timeOffType)) {
-      _timeOffType = 'Sick Leave';
+      _timeOffType = 'Annual Leave';
     }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
 
@@ -256,10 +310,25 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
             if (widget.initialWorker != null) {
-              _selectedWorker = _workers.firstWhere(
-                (worker) => _sameWorker(worker, widget.initialWorker!),
-                orElse: () => widget.initialWorker!,
-              );
+              // Look up the actual worker by workerId/email (not by id, since
+              // initialWorker.id may be a time-off record id in edit mode).
+              final initWorkerId = (widget.initialWorker!['workerId'] ?? '')
+                  .toString()
+                  .trim();
+              final initEmail = (widget.initialWorker!['email'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+              final match = _workers.firstWhere((w) {
+                final wId = (w['workerId'] ?? w['id'] ?? '').toString().trim();
+                final wEmail = (w['email'] ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase();
+                return (initWorkerId.isNotEmpty && initWorkerId == wId) ||
+                    (initEmail.isNotEmpty && initEmail == wEmail);
+              }, orElse: () => widget.initialWorker!);
+              _selectedWorker = match;
             } else if (_workers.isNotEmpty) {
               if (_selectedWorker == null) {
                 _selectedWorker = null;
@@ -271,6 +340,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               }
             } else {
               _selectedWorker = null;
+            }
+            // Re-apply editing id and form state that may have been
+            // loaded from the original record before the worker stream arrived.
+            if (_editingRecord != null) {
+              _editingId = _editingRecord!['id']?.toString();
             }
           });
           _loadTimeoffForSelectedWorker();
@@ -303,7 +377,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
   }
 
-  void _loadTimeoffForSelectedWorker() {
+  Future<void> _loadTimeoffForSelectedWorker() async {
     final worker = _selectedWorker;
     if (worker == null) {
       if (mounted) setState(() => _timeoffRecords = []);
@@ -324,17 +398,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       if (mounted) setState(() => _timeoffRecords = records);
       return;
     }
-    _firestore
-        .getTimeoffForWorker(workerId)
-        .then((snapshot) {
-          if (!mounted) return;
-          setState(() {
-            _timeoffRecords = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-          });
-        })
-        .catchError((_) {});
+    try {
+      final snapshot = await _firestore.getTimeoffForWorker(workerId);
+      if (!mounted) return;
+      setState(() {
+        _timeoffRecords = snapshot.docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .toList();
+      });
+    } catch (_) {}
   }
 
   String _getMonthName(int month) {
@@ -431,25 +503,61 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
   }
 
-  int get _availableDays {
+  int _availableDaysForType(String type) {
     if (_selectedWorker == null) return 0;
-    if (_isGuest) {
-      return TimeOffService.remainingPaidLeave(
-        _selectedWorker!,
-        _timeoffRecords,
-        excludingRecordId: _editingId,
-      );
+    final worker = _selectedWorkerForService;
+
+    final annualLimit =
+        int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+
+    int limit = 0;
+    final normType = TimeOffService.normalizeLeaveType(type);
+    if (normType == 'Sick Leave') {
+      limit = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
+      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
+    } else if (normType == 'Medical Leave') {
+      limit = int.tryParse(worker['medicalLeaves']?.toString() ?? '0') ?? 0;
+      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
+    } else if (normType == 'Casual Leave') {
+      limit = int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
+      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
+    } else if (normType == 'Annual Leave') {
+      limit = annualLimit > 0 ? annualLimit : TimeOffService.configuredPaidLeaveAllowance(worker);
+    } else {
+      return 999;
     }
 
-    final worker = _selectedWorkerForService;
-    final total = TimeOffService.configuredPaidLeaveAllowance(worker);
-    final used = TimeOffService.paidDaysUsedForWorker(
-      worker,
-      _timeoffRecords,
-      excludingRecordId: _editingId,
-    );
-    return (total - used).clamp(0, total);
+    int used = 0;
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+
+    for (final record in _timeoffRecords) {
+      if (!TimeOffService.isActiveRecord(record)) continue;
+      if (_editingId != null && record['id']?.toString() == _editingId)
+        continue;
+      if (TimeOffService.normalizeLeaveType(
+            record['action']?.toString() ?? '',
+          ) ==
+          normType) {
+        final recWorkerId = (record['workerId'] ?? '').toString().trim();
+        final recEmail = (record['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        if ((workerId.isNotEmpty && workerId == recWorkerId) ||
+            (workerEmail.isNotEmpty && workerEmail == recEmail)) {
+          used += TimeOffService.selectedDatesForRecord(record).length;
+        }
+      }
+    }
+
+    return (limit - used).clamp(0, limit);
   }
+
+  int get _availableDays => _availableDaysForType(_timeOffType);
 
   @override
   void dispose() {
@@ -472,14 +580,40 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'assign_time_off'.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'assign_time_off'.tr(),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+
+                      const Spacer(),
+                      _buildLeaveLegendItem(
+                        'Annual Leave',
+                        LeaveColors.annual,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildLeaveLegendItem(
+                        'Sick Leave',
+                        LeaveColors.sick,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildLeaveLegendItem(
+                        'Casual Leave',
+                        LeaveColors.casual,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildLeaveLegendItem(
+                        'Medical Leave',
+                        LeaveColors.medical,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   _buildMainCard(),
@@ -489,6 +623,32 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLeaveLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ],
     );
   }
 
@@ -587,88 +747,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       );
     }
 
-    final bool isExhausted =
-        _selectedWorker != null &&
-        _editingId == null &&
-        _availableDays <= 0 &&
-        (_isGuest || _isPaidLeave);
-
-    if (isExhausted) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.event_busy_rounded,
-                size: 64,
-                color: Color(0xFF94A3B8),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'all_leaves_utilized'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'paid_leave_exhausted_help'.tr(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  elevation: 0,
-                ),
-                onPressed: () => _showAddAnnualLeavesDialog(),
-                icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                label: Text(
-                  'add_more_annual_leaves'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -734,6 +812,237 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           child: _buildLabeledInput(
             'selected_dates'.tr(),
             _selectedDatesSummary,
+            onTap: () {
+              if (_selectedDates.isEmpty) return;
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    child: Container(
+                      width: 420,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  onPressed: () => Navigator.pop(context),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      'assign_time_off'.tr(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 30), // Balance spacing
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_selectedWorker != null) ...[
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 24,
+                                        backgroundColor: Colors.blue.shade100,
+                                        child: Text(
+                                          (_selectedWorker!['name'] ?? 'U').toString()[0].toUpperCase(),
+                                          style: const TextStyle(color: Color(0xFF004FDE), fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              (_selectedWorker!['name'] ?? '').toString(),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.email, size: 12, color: Colors.grey),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    (_selectedWorker!['email'] ?? '').toString(),
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey,
+                                                      fontFamily: 'SF Pro Display',
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTimeOffMetricCard(
+                                        icon: const Icon(Icons.category, color: Color(0xFF004FDE), size: 20),
+                                        title: 'time_off_type'.tr(),
+                                        value: _timeOffType,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildTimeOffMetricCard(
+                                        icon: const Icon(Icons.event_available, color: Color(0xFF004FDE), size: 20),
+                                        title: 'available_annual_leave'.tr(),
+                                        value: '$_availableDays',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTimeOffMetricCard(
+                                        icon: const Icon(Icons.event, color: Color(0xFF004FDE), size: 20),
+                                        title: 'requested_days'.tr(),
+                                        value: '$_requestedDays',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildTimeOffMetricCard(
+                                        icon: const Icon(Icons.check_circle_outline, color: Color(0xFF004FDE), size: 20),
+                                        title: 'selected_days'.tr(),
+                                        value: '$_selectedDaysCount',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTimeOffMetricCard(
+                                        icon: const Icon(Icons.pie_chart, color: Color(0xFF004FDE), size: 20),
+                                        title: 'remaining_days'.tr(),
+                                        value: '$_remainingDaysAfterRequest',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => _showSelectedDatesListDialog(context),
+                                        child: _buildTimeOffMetricCard(
+                                          icon: const Icon(Icons.date_range, color: Color(0xFF004FDE), size: 20),
+                                          title: 'selected_dates'.tr(),
+                                          value: _selectedDatesSummary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFFFFF),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF8F9FA),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: const Color(0xFFEEEEEE)),
+                                            ),
+                                            child: const Center(child: Icon(Icons.notes, color: Color(0xFF004FDE), size: 16)),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'notes_label'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF64748B),
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _notesController.text.trim().isEmpty ? 'N/A' : _notesController.text,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF0F172A),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ),
         const SizedBox(width: 16),
@@ -745,45 +1054,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
         ),
         const SizedBox(width: 16),
-        if (_editingId != null) ...[
-          Expanded(
-            flex: 2,
-            child: SizedBox(
-              height: 48,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE53935),
-                  side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                onPressed: _isLoading ? null : _handleCancelTimeOff,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFFE53935),
-                        ),
-                      )
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'cancel_time_off'.tr(),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-        ],
         Expanded(
           flex: 2,
           child: SizedBox(
@@ -864,24 +1134,65 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   fontSize: 14,
                   color: Colors.black,
                 ),
+                selectedItemBuilder: (context) {
+                  return _leaveTypeOptions.map((option) {
+                    final label = option['labelKey']!.tr();
+                    final typeVal = option['value']!;
+                    var avail = _availableDaysForType(typeVal);
+                    if (typeVal == _timeOffType) {
+                      avail = (avail - _selectedDates.length).clamp(0, avail);
+                    }
+                    final displayLabel =
+                        (_selectedWorker != null && avail < 999)
+                        ? '$label ($avail)'
+                        : label;
+                    final textColor = LeaveColors.getTextColor(typeVal);
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        displayLabel,
+                        style: TextStyle(
+                          fontFamily: 'SF Pro Display',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList();
+                },
                 items: _leaveTypeOptions.map((option) {
                   final label = option['labelKey']!.tr();
+                  final typeVal = option['value']!;
+                  var avail = _availableDaysForType(typeVal);
+                  if (typeVal == _timeOffType) {
+                    avail = (avail - _selectedDates.length).clamp(0, avail);
+                  }
+                  final displayLabel = (_selectedWorker != null && avail < 999)
+                      ? '$label ($avail)'
+                      : label;
+                  final textColor = LeaveColors.getTextColor(typeVal);
                   return DropdownMenuItem<String>(
-                    value: option['value'],
+                    value: typeVal,
                     child: Text(
-                      label,
-                      style: const TextStyle(
+                      displayLabel,
+                      style: TextStyle(
                         fontFamily: 'SF Pro Display',
                         fontSize: 14,
-                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   );
                 }).toList(),
                 onChanged: (v) {
-                  if (v != null) {
+                  if (v != null && v != _timeOffType) {
                     setState(() {
                       _timeOffType = v;
+                      _selectedDates.clear();
+                      _syncSelectionBounds();
                     });
                   }
                 },
@@ -893,7 +1204,32 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildLabeledInput(String label, String value) {
+  Widget _buildLabeledInput(String label, String value, {VoidCallback? onTap}) {
+    Widget content = Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.grey,
+          fontFamily: 'SF Pro Display',
+        ),
+      ),
+    );
+
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -907,26 +1243,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
+        content,
       ],
     );
   }
@@ -941,7 +1258,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       ),
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 374),
+        constraints: const BoxConstraints(maxWidth: _calendarContentWidth),
         child: Column(
           children: [
             Row(
@@ -955,6 +1272,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         _calendarMonth.month - 1,
                         1,
                       );
+                      if (newMonth.year != DateTime.now().year) return;
                       setState(() {
                         _calendarMonth = newMonth;
                       });
@@ -964,6 +1282,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         _calendarMonth2.month - 1,
                         1,
                       );
+                      if (newMonth.year != DateTime.now().year) return;
                       setState(() {
                         _calendarMonth2 = newMonth;
                       });
@@ -992,20 +1311,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 InkWell(
                   onTap: () {
                     if (isStartCalendar) {
+                      final newMonth = DateTime(
+                        _calendarMonth.year,
+                        _calendarMonth.month + 1,
+                        1,
+                      );
+                      if (newMonth.year != DateTime.now().year) return;
                       setState(() {
-                        _calendarMonth = DateTime(
-                          _calendarMonth.year,
-                          _calendarMonth.month + 1,
-                          1,
-                        );
+                        _calendarMonth = newMonth;
                       });
                     } else {
+                      final newMonth = DateTime(
+                        _calendarMonth2.year,
+                        _calendarMonth2.month + 1,
+                        1,
+                      );
+                      if (newMonth.year != DateTime.now().year) return;
                       setState(() {
-                        _calendarMonth2 = DateTime(
-                          _calendarMonth2.year,
-                          _calendarMonth2.month + 1,
-                          1,
-                        );
+                        _calendarMonth2 = newMonth;
                       });
                     }
                   },
@@ -1035,7 +1358,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),
+        _buildWeekday('weekday_sun'.tr(), const Color(0xFF0247C4)),
         const SizedBox(width: 4),
         _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
         const SizedBox(width: 4),
@@ -1045,7 +1368,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         const SizedBox(width: 4),
         _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
         const SizedBox(width: 4),
-        _buildWeekday('weekday_fri'.tr(), const Color(0xFF4AC000)),
+        _buildWeekday('weekday_fri'.tr(), const Color(0xFF0247C4)),
         const SizedBox(width: 4),
         _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
       ],
@@ -1082,85 +1405,117 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Widget _buildUnifiedDaysGrid() {
     const cellExtent = 54.0;
     const calendarWidth = 7 * cellExtent;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      dragStartBehavior: DragStartBehavior.down,
-      onPanDown: (details) {
-        final pos = details.localPosition;
-        const containerWidth = calendarWidth + 32;
-        final isSecond = pos.dx > containerWidth + 24;
-        final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
-        final adjustedPos = isSecond
-            ? Offset(pos.dx - containerWidth - 24, pos.dy)
-            : pos;
-        _dragAnchorDate = _dateAtGridPosition(monthDate, adjustedPos);
-        _lastDragDate = null;
-        _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
-        _dragExceededAvailableDays = false;
-        _dragStartPosition = details.localPosition;
-        _dragMoved = false;
-      },
-      onPanUpdate: (details) {
-        final startPos = _dragStartPosition;
-        if (startPos != null && !_dragMoved) {
-          final dx = (details.localPosition.dx - startPos.dx).abs();
-          final dy = (details.localPosition.dy - startPos.dy).abs();
-          if (dx > 5 || dy > 5) _dragMoved = true;
-        }
-        if (!_dragMoved) return;
+    const containerWidth = calendarWidth + 32;
+    // Each calendar renders 374px of grid + 32px padding + 2px border = 408px.
+    const calendarOuterWidth = _calendarContentWidth + 32.0 + 2.0;
+    const naturalRowWidth = calendarOuterWidth * 2 + 24.0; // 840
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double gridScale = constraints.maxWidth < naturalRowWidth
+            ? constraints.maxWidth / naturalRowWidth
+            : 1.0;
 
-        final anchor = _dragAnchorDate;
-        final pos = details.localPosition;
-        const containerWidth = calendarWidth + 32;
-        final isSecond = pos.dx > containerWidth + 24;
-        final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
-        final adjustedPos = isSecond
-            ? Offset(pos.dx - containerWidth - 24, pos.dy)
-            : pos;
-        final current = _dateAtGridPosition(monthDate, adjustedPos);
-        if (anchor == null || current == null || current == _lastDragDate) {
-          return;
-        }
-        _lastDragDate = current;
+        // Convert a pointer position from the (possibly scaled) widget space
+        // back into the unscaled calendar space used by the drag hit-testing.
+        Offset toGridSpace(Offset pos) => gridScale == 1.0
+            ? pos
+            : Offset(pos.dx / gridScale, pos.dy / gridScale);
 
-        final candidate = Set<DateTime>.from(_selectionBeforeDrag);
-        final isDragRemoving = _selectionBeforeDrag.contains(_dragAnchorDate);
-        var exceededAvailableDays = false;
-        for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
-          if (_isNonWorkingDate(date)) continue;
-          if (isDragRemoving) {
-            candidate.remove(date);
-          } else {
-            if (candidate.contains(date)) continue;
-            if (_usesPaidAllowance && candidate.length >= _availableDays) {
-              if (!_isGuest) exceededAvailableDays = true;
-              break;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          dragStartBehavior: DragStartBehavior.down,
+          onPanDown: (details) {
+            final pos = toGridSpace(details.localPosition);
+            final isSecond = pos.dx > containerWidth + 24;
+            final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
+            final adjustedPos = isSecond
+                ? Offset(pos.dx - containerWidth - 24, pos.dy)
+                : pos;
+            _dragAnchorDate = _dateAtGridPosition(monthDate, adjustedPos);
+            _lastDragDate = null;
+            _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
+            _dragExceededAvailableDays = false;
+            _dragStartPosition = pos;
+            _dragMoved = false;
+          },
+          onPanUpdate: (details) {
+            final pos = toGridSpace(details.localPosition);
+            final startPos = _dragStartPosition;
+            if (startPos != null && !_dragMoved) {
+              final dx = (pos.dx - startPos.dx).abs();
+              final dy = (pos.dy - startPos.dy).abs();
+              if (dx > 5 || dy > 5) _dragMoved = true;
             }
-            candidate.add(date);
-          }
-        }
+            if (!_dragMoved) return;
 
-        setState(() {
-          _selectedDates = candidate;
-          _dragExceededAvailableDays = exceededAvailableDays;
-          _syncSelectionBounds();
-        });
+            final anchor = _dragAnchorDate;
+            final isSecond = pos.dx > containerWidth + 24;
+            final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
+            final adjustedPos = isSecond
+                ? Offset(pos.dx - containerWidth - 24, pos.dy)
+                : pos;
+            final current = _dateAtGridPosition(monthDate, adjustedPos);
+            if (anchor == null || current == null || current == _lastDragDate) {
+              return;
+            }
+            _lastDragDate = current;
+
+            final candidate = Set<DateTime>.from(_selectionBeforeDrag);
+            final isDragRemoving = _selectionBeforeDrag.contains(_dragAnchorDate);
+            var exceededAvailableDays = false;
+            for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
+              if (_isNonWorkingDate(date)) continue;
+              if (isDragRemoving) {
+                candidate.remove(date);
+              } else {
+                if (candidate.contains(date)) continue;
+
+                // Check if already assigned
+                if (_selectedWorker != null) {
+                  final savedLeave = TimeOffService.activeLeaveForWorker(
+                    _selectedWorker!,
+                    _timeoffRecords,
+                    onDate: date,
+                    excludingRecordId: _editingId,
+                  );
+                  if (savedLeave != null) continue;
+                }
+
+                if (_usesPaidAllowance && candidate.length >= _availableDays) {
+                  if (!_isGuest) exceededAvailableDays = true;
+                  break;
+                }
+                candidate.add(date);
+              }
+            }
+
+            setState(() {
+              _selectedDates = candidate;
+              _dragExceededAvailableDays = exceededAvailableDays;
+              _syncSelectionBounds();
+            });
+          },
+          onPanEnd: (_) {
+            if (!_dragMoved && _dragAnchorDate != null) {
+              _toggleDate(_dragAnchorDate!);
+            }
+            _finishDateDrag();
+          },
+          onPanCancel: _finishDateDrag,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCalendar(_calendarMonth, isStartCalendar: true),
+                const SizedBox(width: 24),
+                _buildCalendar(_calendarMonth2, isStartCalendar: false),
+              ],
+            ),
+          ),
+        );
       },
-      onPanEnd: (_) {
-        if (!_dragMoved && _dragAnchorDate != null) {
-          _toggleDate(_dragAnchorDate!);
-        }
-        _finishDateDrag();
-      },
-      onPanCancel: _finishDateDrag,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCalendar(_calendarMonth, isStartCalendar: true),
-          const SizedBox(width: 24),
-          _buildCalendar(_calendarMonth2, isStartCalendar: false),
-        ],
-      ),
     );
   }
 
@@ -1259,6 +1614,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       );
       return;
     }
+
+    if (!isRemoving && _selectedWorker != null) {
+      final savedLeave = TimeOffService.activeLeaveForWorker(
+        _selectedWorker!,
+        _timeoffRecords,
+        onDate: selectedDate,
+        excludingRecordId: _editingId,
+      );
+      if (savedLeave != null) {
+        FlashySnackBar.show(
+          context,
+          message: 'worker_already_on_leave_date'.tr(),
+          isError: true,
+        );
+        return;
+      }
+    }
+
     if (!isRemoving &&
         _usesPaidAllowance &&
         _selectedDates.length >= _availableDays) {
@@ -1288,48 +1661,66 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (day.isEmpty) {
       return const SizedBox(width: 50, height: 50);
     }
-    final isSunday = date?.weekday == 7;
-    final isFriday = date?.weekday == 5;
-    final dayColor = isSunday
-        ? const Color(0xFFFF0004)
-        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFFFF0004);
-    final selectedBorder = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFFFF0004);
+
+    Map<String, dynamic>? savedLeave;
+    if (!isSelected && date != null && _selectedWorker != null) {
+      savedLeave = TimeOffService.activeLeaveForWorker(
+        _selectedWorker!,
+        _timeoffRecords,
+        onDate: date,
+        excludingRecordId: _editingId,
+      );
+    }
+    final savedType = savedLeave != null
+        ? (savedLeave['action'] ?? savedLeave['type']).toString()
+        : null;
+    final savedColor = savedType != null
+        ? LeaveColors.getColor(savedType)
+        : null;
+
+    final selectedColor = LeaveColors.getColor(_timeOffType);
+    final bgColor = isSelected
+        ? selectedColor
+        : (savedColor ??
+              (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent));
+
+    final borderColor = isSelected
+        ? selectedColor
+        : (savedColor ?? Colors.grey.shade300);
+
+    final textColor = isDisabled && savedColor == null
+        ? const Color(0xFFB0B7C3)
+        : (isSelected || savedColor != null
+              ? const Color(0xFFFFFFFF)
+              : Colors.black);
+
+    final String tooltipMessage = savedType != null
+        ? '${savedType.replaceAll(' Leave', '')} - ${DateFormat('dd/MM/yyyy').format(date!)}'
+        : (date != null ? DateFormat('dd/MM/yyyy').format(date) : '');
+
     return Center(
-      child: SizedBox(
-        width: 50,
-        height: 50,
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? selectedBg
-                : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent),
-            border: Border.all(
-              color: isSelected
-                  ? selectedBorder
-                  : (isSunday
-                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                        : (isFriday
-                              ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                              : Colors.grey.shade300)),
-              width: 1,
+      child: Tooltip(
+        message: tooltipMessage,
+        preferBelow: false,
+        waitDuration: const Duration(milliseconds: 400),
+        child: SizedBox(
+          width: 50,
+          height: 50,
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bgColor,
+              border: Border.all(color: borderColor, width: 1),
+              borderRadius: BorderRadius.circular(6),
             ),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            day,
-            style: TextStyle(
-              color: isDisabled
-                  ? const Color(0xFFB0B7C3)
-                  : (isSelected ? const Color(0xFFFFFFFF) : dayColor),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
+            child: Text(
+              day,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ),
@@ -1491,9 +1882,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _handleSave() async {
     if (_isLoading) return;
 
-    if (_selectedWorker == null &&
-        _notesController.text.trim().isEmpty &&
-        _selectedDates.isEmpty) {
+    if (_selectedWorker == null && _selectedDates.isEmpty) {
       FlashySnackBar.show(
         context,
         message: 'please_fill_all_fields'.tr(),
@@ -1515,15 +1904,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       FlashySnackBar.show(
         context,
         message: 'guest_action_not_allowed'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (_notesController.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_notes'.tr(),
         isError: true,
       );
       return;
@@ -1624,9 +2004,25 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         0,
         totalPaidDays,
       );
+
+      final perTypeUsed = isGuest
+          ? <String, int>{
+              'Sick Leave': 0,
+              'Casual Leave': 0,
+              'Medical Leave': 0,
+              'Annual Leave': 0,
+            }
+          : TimeOffService.paidDaysUsedForWorkerByType(
+              serviceWorker,
+              projectedRecords,
+            );
+
       final balanceUpdate = <String, dynamic>{
         'availableAnnualLeaves': remainingPaidDays.toString(),
         'leavesUsed': usedLeaveDays.toString(),
+        'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
+        'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
+        'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
       };
 
       if (isGuest) {
@@ -1662,13 +2058,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       }
 
       if (mounted) {
+        setState(() {
+          _selectedWorker = {..._selectedWorker!, ...balanceUpdate};
+        });
+        await _loadTimeoffForSelectedWorker();
+        if (!mounted) return;
         FlashySnackBar.show(
           context,
           message:
               (_editingId == null
                       ? 'assign_time_off_success'
                       : 'update_time_off_success')
-                  .tr(),
+                  .tr(
+                    namedArgs: {
+                      'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
+                    },
+                  ),
         );
         widget.onBack();
         return;
@@ -1718,11 +2123,27 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
         isGuest ? _selectedWorker! : serviceWorker,
       );
+
+      final perTypeUsed = isGuest
+          ? <String, int>{
+              'Sick Leave': 0,
+              'Casual Leave': 0,
+              'Medical Leave': 0,
+              'Annual Leave': 0,
+            }
+          : TimeOffService.paidDaysUsedForWorkerByType(
+              serviceWorker,
+              projectedRecords,
+            );
+
       final balanceUpdate = <String, dynamic>{
         'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
             .clamp(0, totalPaidDays)
             .toString(),
         'leavesUsed': usedLeaveDays.toString(),
+        'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
+        'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
+        'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
       };
 
       final workerId =
@@ -1898,9 +2319,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final workerId =
           (_selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '')
               .toString();
-      final currentAnnual =
-          int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ??
-          12;
+      final currentAnnual = TimeOffService.configuredPaidLeaveAllowance(
+        _selectedWorker!,
+      );
       final currentAvailable = isGuest
           ? int.tryParse(
                   _selectedWorker!['availableAnnualLeaves']?.toString() ?? '0',
@@ -1974,5 +2395,259 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Widget _buildTimeOffMetricCard({
+    required Widget icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFEEEEEE)),
+            ),
+            child: Center(child: icon),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSelectedDatesListDialog(BuildContext context) {
+    final String dayDisplayType = _timeOffType.replaceAll(' Leave', '');
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          width: 380,
+          constraints: const BoxConstraints(maxHeight: 500),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_month_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${'selected_dates'.tr()} (${_sortedSelectedDates.length} ${'total_leaves'.tr()})',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: _sortedSelectedDates.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'No dates selected',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _sortedSelectedDates.length,
+                          separatorBuilder: (_, _) => const Divider(
+                            height: 1,
+                            color: Color(0xFFEEEEEE),
+                          ),
+                          itemBuilder: (context, index) {
+                            final date = _sortedSelectedDates[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE5EEFC),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF004FDE),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      DateFormat('dd/MM/yyyy').format(date),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat('EEEE').format(date),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF666666),
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  if (dayDisplayType.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: LeaveColors.getBgColor(_timeOffType),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        dayDisplayType,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: LeaveColors.getColor(_timeOffType),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0247C4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      'close'.tr(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

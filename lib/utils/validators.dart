@@ -27,6 +27,8 @@ class Validators {
   }
 
   static final RegExp _companyId = RegExp(r'^[A-Z0-9-]+$');
+  static final RegExp _nationalIdSeparators = RegExp(r'[\s-]');
+  static final RegExp _digitsOnly = RegExp(r'^\d+$');
 
   static bool isValidCompanyId(String? value) {
     final trimmed = value?.trim() ?? '';
@@ -41,12 +43,13 @@ class Validators {
     return null;
   }
 
-  static String? requiredField(String? value, {String? label}) {
-    if (value == null || value.trim().isEmpty)
-      return 'field_is_required'.tr(
-        namedArgs: {'field': label ?? 'this_field'.tr()},
-      );
-    return null;
+  /// A national ID is valid when it contains at least 6 digits after removing
+  /// separators like spaces and dashes (e.g. Pakistan CNIC `37405-1234567-1`).
+  /// Short or non-numeric values (e.g. `348`) are rejected.
+  static bool isValidNationalId(String? value) {
+    final cleaned = (value ?? '').replaceAll(_nationalIdSeparators, '');
+    if (cleaned.isEmpty || cleaned.length < 6) return false;
+    return _digitsOnly.hasMatch(cleaned);
   }
 
   static String? email(String? value, {bool required = false}) {

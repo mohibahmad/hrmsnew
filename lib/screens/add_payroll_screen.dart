@@ -18,6 +18,7 @@ import '../utils/delete_dialog.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
+import '../utils/company_profile_helper.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
@@ -50,6 +51,7 @@ Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
     companyPhone: args['companyPhone'] as String? ?? '',
     companyId: args['companyId'] as String? ?? '',
     companyStampImageUrl: args['companyStampImageUrl'] as String?,
+    companyLogoUrl: args['companyLogoUrl'] as String?,
     workerId: args['workerId'] as String? ?? '',
   );
 }
@@ -108,6 +110,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   int _unpaidLeaves = 0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
+  int? _salaryDay;
 
   String get _name => (widget.workerData['name'] ?? '').toString();
 
@@ -279,6 +282,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       _captureSavedValues();
     }
     try {
+      final profile = await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+      final dynamic rawSalaryDay = profile['salaryDay'];
+      if (rawSalaryDay is num) {
+        _salaryDay = rawSalaryDay.toInt();
+      } else if (rawSalaryDay != null) {
+        _salaryDay = int.tryParse(rawSalaryDay.toString());
+      }
+      _salaryDay ??= await PreferencesService.getCompanySalaryDay();
       final results = await _firestore
           .getWorkerMonthlyAttendance(
             _email,
@@ -299,7 +310,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             const Duration(seconds: 10),
             onTimeout: () {
               throw TimeoutException(
-                'Working days request timed out. Please check your connection and retry.',
+                'working_days_timeout'.tr(),
               );
             },
           );
@@ -312,7 +323,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         _unpaidLeavesCtrl.text = _unpaidLeaves.toString();
         _leavesCtrl.text = (results['leaves'] ?? 0).toString();
 
-        if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
+        // The payroll screen seeds a fresh (unpaid) worker with '0' work days,
+        // so treat both an empty field and a literal '0' as "not yet filled"
+        // and let the real working-days count take over. Otherwise saving a
+        // brand-new payroll fails with "work days must be greater than zero".
+        final currentWorkDays = _workDaysCtrl.text.trim();
+        if ((currentWorkDays.isEmpty || currentWorkDays == '0') &&
+            workingDays > 0) {
           _workDaysCtrl.text = workingDays.toString();
         }
         _attendanceVerified = true;
@@ -354,7 +371,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     if (_isAttendanceLoading) {
       FlashySnackBar.show(
         context,
-        message: 'Attendance is still loading. Please wait.',
+        message: 'attendance_still_loading'.tr(),
         isError: true,
       );
       return;
@@ -609,10 +626,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         'payroll_${_name.replaceAll(' ', '_')}'
         '_${payPeriod.replaceAll('/', '-')}.pdf';
 
-    Map<String, dynamic> companyProfile = const {};
-    try {
-      companyProfile = await _firestore.getUserProfile() ?? const {};
-    } catch (_) {}
+    // Resolve company info (name, logo, stamp, ...) from Firestore with
+    // guest-data + cached profile-pic fallbacks, so the uploaded profile
+    // image replaces the default app icon on the invoice.
+    final companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
+      _firestore,
+    );
 
     final bytes = await compute(_generateInvoiceInIsolate, {
       'employeeName': _name,
@@ -633,21 +652,19 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'totalDeductions': (cr['formattedTotalDeductions'] as String?) ?? '',
       'netSalary': (cr['formattedNet'] as String?) ?? '',
       'currency': _currencyCode,
-      'companyName':
-          (companyProfile['businessName'] ??
-                  companyProfile['companyName'] ??
-                  'HRMS Company')
-              .toString(),
+      'companyName': CompanyProfileHelper.companyNameOrFallback(
+        companyProfile['companyName'],
+      ),
       'companyAddress': (companyProfile['address'] ?? '').toString(),
       'companyEmail': (companyProfile['email'] ?? '').toString(),
-      'companyPhone':
-          (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
-              .toString(),
-      'companyId':
-          (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
-              .toString(),
-      'companyStampImageUrl': (companyProfile['companyStampUrl'] ?? '')
-          .toString(),
+      'companyPhone': (companyProfile['phone'] ?? '').toString(),
+      'companyId': (companyProfile['companyId'] ?? '').toString(),
+      'companyStampImageUrl': AuthService.companyStampNotifier.value?.isNotEmpty == true
+          ? AuthService.companyStampNotifier.value
+          : (companyProfile['companyStampUrl'] ?? '').toString(),
+      'companyLogoUrl': AuthService.profilePicNotifier.value?.isNotEmpty == true
+          ? AuthService.profilePicNotifier.value
+          : (companyProfile['profilePicUrl'] ?? '').toString(),
       'workerId': _workerId,
     });
 
@@ -729,8 +746,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                const Text(
-                                  'Invoice Preview',
+                                Text(
+                                  'invoice_preview'.tr(),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -1151,8 +1168,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               child: Icon(Icons.arrow_back, color: _textDark, size: 24),
             ),
           ),
-          const Text(
-            'Workforce',
+          Text(
+            'workforce'.tr(),
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -1279,8 +1296,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Widget _buildEmployeeBanner() {
-    final firstDay = _payrollMonth;
-    final lastDay = DateTime(_payrollMonth.year, _payrollMonth.month + 1, 0);
+    final firstDay = PayrollService.payPeriodStart(_payrollMonth, _salaryDay);
+    final lastDay = PayrollService.payPeriodEnd(_payrollMonth, _salaryDay);
     final monthFmt = DateFormat('MMM');
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '
@@ -1456,16 +1473,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
-                  'unpaid_leaves_label'.tr(),
-                  '0',
-                  _unpaidLeavesCtrl,
-                  readOnly: true,
-                  focusedBorderColor: _borderLight,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildInput(
                   'overtime_amount'.tr(),
                   '0',
                   _overtimeAmountCtrl,
@@ -1485,21 +1492,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   '0',
                   _absentDeductionCtrl,
                   isCurrency: true,
-                  helperText: _calcResult['formattedDailyRate'] != null
-                      ? '${'daily_rate'.tr()}: ${_calcResult['formattedDailyRate']}'
-                      : null,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildInput(
-                  'unpaid_leave_deduction_per_day'.tr(),
-                  '0',
-                  _leaveDeductionCtrl,
-                  isCurrency: true,
-                  helperText: _calcResult['formattedDailyRate'] != null
-                      ? '${'daily_rate'.tr()}: ${_calcResult['formattedDailyRate']}'
-                      : null,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1666,12 +1658,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Column(
         children: [
           _breakdownRow(
-            'daily_rate'.tr(),
-            fmt('formattedDailyRate'),
-            '${cr['totalWorkDaysPerYear'] ?? 0} ${'days_per_year'.tr()}',
-          ),
-          const Divider(height: 16),
-          _breakdownRow(
             'gross_pay'.tr(),
             fmt('formattedGross'),
             '${cr['workedDays'] ?? 0} ${'days'.tr()}',
@@ -1681,11 +1667,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             'absent_deduction'.tr(),
             fmt('formattedAbsentDeduct'),
             '${cr['absentDays'] ?? 0} ${'days'.tr()}',
-          ),
-          _breakdownRow(
-            'unpaid_leave_deduction'.tr(),
-            fmt('formattedLeaveDeduct'),
-            '${cr['leaveDays'] ?? 0} ${'days'.tr()}',
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(

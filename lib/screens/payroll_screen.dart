@@ -19,6 +19,7 @@ import '../utils/guest_restriction.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
+import '../utils/company_profile_helper.dart';
 import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
@@ -63,6 +64,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
+  StreamSubscription? _attendanceSub;
 
   bool _isAddingPayroll = false;
   Map<String, dynamic>? _workerForPayroll;
@@ -71,9 +73,24 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isLoadingAttendance = false;
   bool _attendanceFetchPending = false;
   Timer? _attendanceDebounce;
+  bool _payDuePopupCheckInProgress = false;
+  bool _payDuePopupShown = false;
+  String? _lastPayDuePopupPeriod;
+  List<Map<String, dynamic>> _timeoffDocs = [];
+  List<Map<String, dynamic>> _workersFullList = [];
+  bool _payrollListenersStarted = false;
 
   bool get _isPayDate {
-    return PayrollService.isPayrollDue(DateTime.now(), _salaryPaymentDay);
+    return PayrollService.isPayDate(DateTime.now(), _salaryPaymentDay);
+  }
+
+  String _buildPayPeriodLabel() {
+    final now = DateTime.now();
+    final start = PayrollService.payPeriodStart(now, _salaryPaymentDay);
+    final end = PayrollService.payPeriodEnd(now, _salaryPaymentDay);
+    final monthFmt = DateFormat('MMM');
+    return '${monthFmt.format(start)} ${start.day} – '
+        '${monthFmt.format(end)} ${end.day}, ${end.year}';
   }
 
   @override
@@ -81,6 +98,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _attendanceDebounce?.cancel();
     _payrollSub?.cancel();
     _workersSub?.cancel();
+    _attendanceSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -115,7 +133,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   void _scheduleAttendanceFetch() {
     _attendanceDebounce?.cancel();
-    _attendanceDebounce = Timer(const Duration(seconds: 2), () {
+    // Short debounce so attendance marked on the worker attendance screen
+    // shows up here almost immediately, while a burst of writes still only
+    // triggers one recount.
+    _attendanceDebounce = Timer(const Duration(milliseconds: 600), () {
       if (_isLoadingAttendance) {
         _attendanceFetchPending = true;
         return;
@@ -225,7 +246,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
       doc['unpaidLeaves'] = (attendance['unpaidLeaves'] ?? 0).toString();
       doc['leaves'] = (attendance['leaves'] ?? 0).toString();
       doc['totalWorkDays'] = workingDays.toString();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      // Never silently leave the absents/leaves at a stale value: surface the
+      // failure so it can be diagnosed instead of looking like the attendance
+      // genuinely is zero.
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollAttendanceFetch($email)',
+      );
+    }
   }
 
   Future<void> _loadCompanySettings() async {
@@ -281,6 +311,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     });
     _scheduleAttendanceFetch();
     _maybeAdvancePayrollPeriod();
+    _maybeShowPayDuePopup();
   }
 
   Future<void> _saveActivePayrollPeriod(DateTime month) async {
@@ -585,6 +616,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           });
           _scheduleAttendanceFetch();
           _maybeAdvancePayrollPeriod();
+          _maybeShowPayDuePopup();
         }
       }, onError: _handlePayrollStreamError);
       _payrollSub = _firestore.payrollStream.listen((snapshot) {
@@ -598,7 +630,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
           });
           _scheduleAttendanceFetch();
           _maybeAdvancePayrollPeriod();
+          _maybeShowPayDuePopup();
         }
+      }, onError: _handlePayrollStreamError);
+
+      _attendanceSub = _firestore.attendanceStream.listen((_) {
+        if (mounted) _scheduleAttendanceFetch();
       }, onError: _handlePayrollStreamError);
     } else {
       setState(() {
@@ -610,6 +647,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _scheduleAttendanceFetch();
       });
       _maybeAdvancePayrollPeriod();
+      _maybeShowPayDuePopup();
     }
   }
 
@@ -620,6 +658,435 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Widget _buildWorkerCardInPopup(
+    BuildContext dialogContext,
+    Map<String, dynamic> worker,
+    DateTime targetMonth, {
+    bool isOverdue = false,
+  }) {
+    final name = (worker['name'] ?? '').toString();
+    final position = (worker['position'] ?? '').toString();
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(dialogContext).pop();
+          if (mounted) {
+            setState(() {
+              _payrollMonth = targetMonth;
+              _workerForPayroll = worker;
+              _isAddingPayroll = true;
+            });
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isOverdue
+                  ? const Color(0xFFFCA5A5)
+                  : const Color(0xFFF1F5F9),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              WorkerAvatar(
+                imageUrl: worker['profileImage']?.toString(),
+                name: name,
+                size: 36,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    if (position.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        position,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isOverdue
+                      ? const Color(0xFFFEF2F2)
+                      : const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.schedule,
+                  color: isOverdue
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFFEA580C),
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF94A3B8),
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shows a popup when the Payroll screen is opened during the window
+  /// around the configured pay date, listing workers whose pay is still due.
+  Future<void> _maybeShowPayDuePopup() async {
+    if (_payDuePopupCheckInProgress ||
+        !_workersLoaded ||
+        !_payrollLoaded) {
+      return;
+    }
+    final now = DateTime.now();
+    if (!PayrollService.isPayDateReminderDue(now, _salaryPaymentDay)) return;
+
+    final nextPay = PayrollService.nextPayDate(now, _salaryPaymentDay);
+
+    final currentMonth = PayrollService.currentPayrollMonth(referenceDate: nextPay);
+    final prevMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
+
+    final currentUnpaidWorkers = PayrollService.combinePayroll(
+      _workersList,
+      _rawPayrollDocs,
+      month: currentMonth,
+    ).where((worker) => worker['isPaid'] != true).toList();
+
+    final prevUnpaidWorkers = PayrollService.combinePayroll(
+      _workersList,
+      _rawPayrollDocs,
+      month: prevMonth,
+    ).where((worker) => worker['isPaid'] != true).toList();
+
+    if (currentUnpaidWorkers.isEmpty && prevUnpaidWorkers.isEmpty) {
+      return;
+    }
+
+    _payDuePopupCheckInProgress = true;
+
+    if (!mounted) {
+      _payDuePopupCheckInProgress = false;
+      return;
+    }
+
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final dueDayDate = DateTime(nextPay.year, nextPay.month, nextPay.day);
+    final isOverdue = todayDate.isAfter(dueDayDate) || prevUnpaidWorkers.isNotEmpty;
+    final isDueToday = todayDate.isAtSameMomentAs(dueDayDate) && prevUnpaidWorkers.isEmpty;
+
+    final String popupTitle = isOverdue
+        ? 'overdue_payroll'.tr()
+        : isDueToday
+            ? 'pay_due_today'.tr()
+            : 'pay_due_reminder'.tr();
+
+    final Color headerBgColor = isOverdue
+        ? const Color(0xFFDC2626)
+        : const Color(0xFF004FDE);
+
+    final IconData headerIcon = isOverdue
+        ? Icons.warning_amber_rounded
+        : isDueToday
+            ? Icons.calendar_month_rounded
+            : Icons.payments_rounded;
+
+    final payDateText = DateFormat('dd MMM yyyy').format(nextPay);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'PayDueReminderDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.4),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+        child: StatefulBuilder(
+          builder: (stfContext, setModalState) {
+            final activeCurrentUnpaid = PayrollService.combinePayroll(
+              _workersList,
+              _rawPayrollDocs,
+              month: currentMonth,
+            ).where((w) => w['isPaid'] != true).toList();
+
+            final activePrevUnpaid = PayrollService.combinePayroll(
+              _workersList,
+              _rawPayrollDocs,
+              month: prevMonth,
+            ).where((w) => w['isPaid'] != true).toList();
+
+            if (activeCurrentUnpaid.isEmpty && activePrevUnpaid.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (Navigator.of(dialogContext).canPop()) {
+                  Navigator.of(dialogContext).pop();
+                }
+              });
+            }
+
+            final totalUnpaidCount =
+                activeCurrentUnpaid.length + activePrevUnpaid.length;
+
+            return Container(
+              width: 480,
+              constraints: const BoxConstraints(maxHeight: 600),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF000000).withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: headerBgColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          headerIcon,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            popupTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).pop(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Salaries for $totalUnpaidCount worker(s) are due on $payDateText. Please process their payroll to ensure timely payment.',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF475569),
+                              fontFamily: 'SF Pro Display',
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          if (activePrevUnpaid.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFFCA5A5),
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Color(0xFFDC2626),
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Previous Payroll Overdue',
+                                    style: TextStyle(
+                                      color: Color(0xFFDC2626),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ...activePrevUnpaid.map((w) =>
+                                _buildWorkerCardInPopup(
+                                  dialogContext,
+                                  w,
+                                  prevMonth,
+                                  isOverdue: true,
+                                )),
+                            const SizedBox(height: 16),
+                          ],
+                          if (activeCurrentUnpaid.isNotEmpty) ...[
+                            if (activePrevUnpaid.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  'Current Payroll Due ($payDateText)',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF64748B),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ...activeCurrentUnpaid.map((w) =>
+                                _buildWorkerCardInPopup(
+                                  dialogContext,
+                                  w,
+                                  currentMonth,
+                                  isOverdue: isOverdue,
+                                )),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                              side: const BorderSide(
+                                color: Color(0xFFCBD5E1),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'remind_me_later'.tr(),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF475569),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop();
+                              _handlePayAll();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004FDE),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'process_payroll'.tr(),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    _payDuePopupCheckInProgress = false;
   }
 
   Future<void> _handlePayAll() async {
@@ -852,7 +1319,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 2),
+              // Show the pay period range based on the configured salary day.
+              // E.g. if salary day is 3, the period shows "3 Jul – 3 Aug".
+              Text(
+                _buildPayPeriodLabel(),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
             ],
           ),
           const Spacer(),
@@ -948,7 +1426,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final pos = (doc['position'] ?? '').toString().toLowerCase();
       final email = (doc['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final matchesSearch = name.contains(query) || pos.contains(query) || email.contains(query);
+      final matchesSearch =
+          name.contains(query) || pos.contains(query) || email.contains(query);
 
       if (!matchesSearch) return false;
       return _matchesFilter(doc, _selectedFilter);
@@ -966,12 +1445,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
-    const defaultPositions = [
-      'Designer',
-      'Developer',
-      'Engineering',
-      'Sales',
-      'Management',
+    final defaultPositions = [
+      'designer'.tr(),
+      'developer'.tr(),
+      'software_engineer'.tr(),
+      'sales'.tr(),
+      'hr'.tr(),
+      'finance'.tr(),
+      'marketing'.tr(),
+      'operations'.tr(),
+      'it_support'.tr(),
+      'product'.tr(),
+      'research'.tr(),
     ];
     final actualPositions = <String>{};
     final positionNormalizer = <String, String>{};
@@ -1001,19 +1486,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      ...positionsToShow.map((p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)}),
+      ...positionsToShow.map(
+        (p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)},
+      ),
     ];
     return Container(
-      width: 550,
+      width: double.infinity,
       height: 46,
-      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1032,19 +1518,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 16,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
           vertical: 8,
         ),
-        margin: const EdgeInsets.only(right: 4),
+        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           displayLabel,
-          overflow: TextOverflow.ellipsis,
           maxLines: 1,
+          softWrap: false,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -1247,7 +1733,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(right: 24.0),
                 child: Text(
-                  LocalizationHelper.localizePosition((doc['position'] ?? '').toString()),
+                  LocalizationHelper.localizePosition(
+                    (doc['position'] ?? '').toString(),
+                  ),
                   style: const TextStyle(
                     fontSize: 15,
                     color: Colors.black,
@@ -1347,6 +1835,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
         data,
         companyCurrency: _companyCurrency,
       );
+      final double workerTaxRate = double.tryParse(
+            (data['taxRatePercent'] ?? '0.0').toString(),
+          ) ??
+          0.0;
       final calculation = PayrollService.calculatePayroll(
         salary: salary,
         totalWorkDays: totalWorkDays,
@@ -1357,6 +1849,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         absentDeductionPerDay: deductionsAreTotals ? '' : rawAbsentDeduction,
         leaveDeductionPerDay: deductionsAreTotals ? '' : rawLeaveDeduction,
         salaryType: (data['salaryType'] ?? 'Monthly').toString(),
+        taxRatePercent: workerTaxRate,
       );
       final currency = PayrollService.getCurrencyPrefix(salary);
       final prefix = currency.isEmpty ? '' : '$currency ';
@@ -1371,20 +1864,27 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ? PayrollService.extractSalary(rawLeaveDeduction)
           : PayrollService.extractSalary(calculation['formattedLeaveDeduct']);
       final overtimeValue = PayrollService.extractSalary(overtime);
-      final totalDeductions = absentDeductionTotal + leaveDeductionTotal;
+      final subtotalBeforeTax = (grossSalary + overtimeValue - absentDeductionTotal - leaveDeductionTotal)
+          .clamp(0.0, double.infinity);
+      final taxDeductionTotal = workerTaxRate > 0
+          ? (subtotalBeforeTax * (workerTaxRate / 100))
+          : 0.0;
+      final totalDeductions = absentDeductionTotal + leaveDeductionTotal + taxDeductionTotal;
       final netSalary = (grossSalary + overtimeValue - totalDeductions).clamp(
         0.0,
         double.infinity,
       );
 
-      Map<String, dynamic> companyProfile = const {};
-      try {
-        companyProfile = await _firestore.getUserProfile() ?? const {};
-      } catch (_) {}
+      final companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+      
+      final logoUrl = companyProfile['profilePicUrl'] ?? '';
+      final stampUrl = companyProfile['companyStampUrl'] ?? '';
+
       final period = (data['payrollPeriod'] ?? '').toString().trim();
       final payPeriod = period.isNotEmpty
           ? period
           : PayrollService.payrollPeriodLabel(_payrollMonth);
+          
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: (data['name'] ?? '').toString(),
         email: (data['email'] ?? '').toString(),
@@ -1396,36 +1896,30 @@ class _PayrollScreenState extends State<PayrollScreen> {
         leaves: unpaidLeaves,
         overtimeAmount: AmountText.formatFull(overtime),
         salary: AmountText.formatFull(salary),
-        dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00')
-            .toString(),
+        dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00').toString(),
         grossPay: '$prefix${PayrollService.formatFullNumber(grossSalary)}',
-        overtimePay: (calculation['formattedOvertime'] ?? '${prefix}0.00')
-            .toString(),
-        absentDeduction:
-            '$prefix${PayrollService.formatFullNumber(absentDeductionTotal)}',
-        leaveDeduction:
-            '$prefix${PayrollService.formatFullNumber(leaveDeductionTotal)}',
-        totalDeductions:
-            '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
+        overtimePay: (calculation['formattedOvertime'] ?? '${prefix}0.00').toString(),
+        absentDeduction: '$prefix${PayrollService.formatFullNumber(absentDeductionTotal)}',
+        leaveDeduction: '$prefix${PayrollService.formatFullNumber(leaveDeductionTotal)}',
+        taxDeduction: '$prefix${PayrollService.formatFullNumber(taxDeductionTotal)}',
+        taxRatePercent: workerTaxRate > 0 ? workerTaxRate.toStringAsFixed(1) : '',
+        totalDeductions: '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
         netSalary: '$prefix${PayrollService.formatFullNumber(netSalary)}',
         currency: _companyCurrency,
-        companyName:
-            (companyProfile['businessName'] ??
-                    companyProfile['companyName'] ??
-                    'HRMS Company')
-                .toString(),
+        companyName: CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']),
         companyAddress: (companyProfile['address'] ?? '').toString(),
         companyEmail: (companyProfile['email'] ?? '').toString(),
-        companyPhone:
-            (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
-                .toString(),
-        companyId:
-            (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
-                .toString(),
-        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
-            .toString(),
+        companyPhone: (companyProfile['phone'] ?? '').toString(),
+        companyId: (companyProfile['companyId'] ?? '').toString(),
+        companyStampImageUrl: AuthService.companyStampNotifier.value?.isNotEmpty == true
+            ? AuthService.companyStampNotifier.value
+            : stampUrl,
+        companyLogoUrl: AuthService.profilePicNotifier.value?.isNotEmpty == true
+            ? AuthService.profilePicNotifier.value
+            : logoUrl,
         workerId: (data['workerId'] ?? '').toString(),
       );
+      
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),
         '_',
@@ -1636,9 +2130,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 child: Text(
                                   'payroll_data_preview'.tr(),
                                   textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Color(0xFFFFFFFF),
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'SF Pro Display',
                                   ),
@@ -1735,37 +2231,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     children: [
                                       Expanded(
                                         child: _buildMetricCard(
-                                          icon: _buildPresentsIcon(),
-                                          title: 'presents'.tr(),
-                                          value: '$presentDays',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
                                           icon: _buildAbsentsIcon(),
                                           title: 'absents_label'.tr(),
                                           value: absents,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
+                                      const SizedBox(width: 12),
                                       Expanded(
                                         child: _buildMetricCard(
                                           icon: _buildLeavesIcon(),
                                           title: 'leaves_label'.tr(),
                                           value: paidLeaves,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildUnpaidLeavesIcon(),
-                                          title: 'unpaid_leaves_label'.tr(),
-                                          value: unpaidLeaves,
                                         ),
                                       ),
                                     ],
@@ -1975,13 +2451,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   maxLines: 1,
                 ),
                 const SizedBox(height: 2),
+                // Slightly smaller with a tighter line height so long values
+                // (e.g. 'د.إ 300,000,000,000,000') wrap to two lines without
+                // overflowing the fixed 80px card.
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Color(0xFF000000),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
+                    height: 1.15,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,

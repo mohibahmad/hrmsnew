@@ -257,7 +257,6 @@ class _HomeScreenState extends State<HomeScreen> {
         currencyCode = CurrencyUtils.normalize(profile?['currency']);
         await PreferencesService.setPremium(isPremium);
       } catch (e, st) {
-
         ErrorReporter.report(e, st, context: 'loadPremiumStatus');
         // Keep the last known status instead of dropping to non-premium on a
         // transient network error, so premium users don't get the upgrade card.
@@ -277,7 +276,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null || user.isAnonymous) return;
 
     try {
-
       final profile = await _firestore.getUserProfileOrThrow();
       if (profile == null) {
         await _authService.signOut();
@@ -288,7 +286,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e, st) {
-
       ErrorReporter.report(e, st, context: 'checkProfileExistsOrLogout');
     }
   }
@@ -364,7 +361,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _profileSub = _firestore.userProfileStream.listen(
       (profile) async {
         if (profile == null) {
-
           try {
             await _authService.signOut();
           } catch (_) {}
@@ -388,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       onError: (Object error, StackTrace stackTrace) {
-
         ErrorReporter.report(
           error,
           stackTrace,
@@ -720,7 +715,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _payrollReminderCheckInProgress = false;
     }
   }
-
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
@@ -850,10 +844,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Map<String, dynamic>> _getFilteredAttendanceDocs(String period) {
-    return _allAttendanceDocs.where((attendance) {
-      if (!_attendanceBelongsToExistingWorker(attendance)) return false;
-      final date = AppDateUtils.attendanceRecordDate(attendance);
-      if (date == null) return false;
+    final isGuest =
+        (_authService.currentUser?.isAnonymous ?? false) ||
+        PreferencesService.cachedIsGuest;
+    // Use raw attendance docs for chart — combineAttendance() picks only 1
+    // record per worker (the latest), which loses historical records needed
+    // for the yearly/6-month charts.
+    final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
+
+    // Build a set of valid worker identifiers to skip orphaned records
+    final workersList = isGuest ? DummyData.workers : _workersDocs;
+    final validWorkerIds = <String>{};
+    final validEmails = <String>{};
+    for (final w in workersList) {
+      final id = (w['id'] ?? w['workerId'] ?? '').toString().trim();
+      if (id.isNotEmpty) validWorkerIds.add(id);
+      final email = (w['email'] ?? '').toString().trim().toLowerCase();
+      if (email.isNotEmpty) validEmails.add(email);
+    }
+
+    return rawDocs.where((attendance) {
+      // Filter out absent/leave statuses
+      final s = (attendance['status'] ?? '').toString().trim().toLowerCase();
+      if (s == 'absent' || s == 'a' || s == 'leave' || s == 'l') return false;
+
+      // Only include records that belong to existing workers
+      if (workersList.isNotEmpty) {
+        final rId = (attendance['workerId'] ?? attendance['id'] ?? '').toString().trim();
+        final rEmail = (attendance['email'] ?? '').toString().trim().toLowerCase();
+        final belongsToWorker =
+            (rId.isNotEmpty && validWorkerIds.contains(rId)) ||
+            (rEmail.isNotEmpty && validEmails.contains(rEmail));
+        if (!belongsToWorker) return false;
+      }
+
+      // Filter by date range
+      final date =
+          AppDateUtils.attendanceRecordDate(attendance) ?? DateTime.now();
       return DashboardChartService.isDateWithinPeriod(date, period);
     }).toList();
   }

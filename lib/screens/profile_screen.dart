@@ -100,7 +100,7 @@ class ProfileInlineHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(width: 8),
+          SizedBox(width: 3),
           Text(
             'my_info'.tr(),
             style: TextStyle(
@@ -215,20 +215,22 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         setState(() {
           _businessNameController.text =
-              guestData?['businessName'] ?? 'Guest Company Ltd.';
+              guestData?['businessName'] ?? 'ABC Corporation';
           _companyIdController.text = guestData?['companyId'] ?? '';
-          _emailController.text = guestData?['email'] ?? 'guest@example.com';
+          _emailController.text = guestData?['email'] ?? 'guest_email'.tr();
           _currencyController.text = CurrencyUtils.normalize(
             guestData?['currency'],
           );
           _contact1Controller.text =
-              guestData?['contact1'] ?? '+1 415-555-0198';
+              guestData?['contact1'] ?? 'guest_contact_1'.tr();
           _contact2Controller.text =
-              guestData?['contact2'] ?? '+1 415-555-0299';
+              guestData?['contact2'] ?? 'guest_contact_2'.tr();
           _addressController.text =
-              guestData?['address'] ?? '123 Demo Street, Test City';
-          _profilePicUrl = AuthService.profilePicNotifier.value;
-          _companyStampUrl = null;
+              guestData?['address'] ?? 'guest_address'.tr();
+          _profilePicUrl = guestData?['profilePic'] ?? AuthService.profilePicNotifier.value;
+          _companyStampUrl = guestData?['companyStampUrl'];
+          AuthService.profilePicNotifier.value = _profilePicUrl;
+          AuthService.companyStampNotifier.value = _companyStampUrl;
           _isLoading = false;
         });
       }
@@ -261,12 +263,13 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newCompanyStampBytes = null;
           _clearCompanyStamp = false;
           AuthService.profilePicNotifier.value = profileImage;
+          AuthService.companyStampNotifier.value = companyStamp;
           _isLoading = false;
         });
       } else {
         setState(() {
           _profilePicUrl = AuthService.profilePicNotifier.value;
-          _companyStampUrl = null;
+          _companyStampUrl = AuthService.companyStampNotifier.value;
           _isLoading = false;
         });
       }
@@ -655,27 +658,25 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImageBytes = null;
           _newProfileImagePath = null;
 
-          try {
-            await _authService.currentUser?.updatePhotoURL(downloadUrl);
-          } catch (error, stackTrace) {
+          _authService.currentUser?.updatePhotoURL(downloadUrl).catchError((error, stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
               context: 'UpdateAuthProfileImage',
             );
-          }
-          try {
-            await PreferencesService.setProfilePicUrl(downloadUrl);
-          } catch (error, stackTrace) {
+          });
+          PreferencesService.setProfilePicUrl(downloadUrl).catchError((error, stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
               context: 'CacheProfileImage',
             );
-          }
+          });
         }
         if (stampDownloadUrl != null || _clearCompanyStamp) {
           _companyStampUrl = stampDownloadUrl;
+          AuthService.companyStampNotifier.value = stampDownloadUrl;
+          PreferencesService.setCompanyStampUrl(stampDownloadUrl).catchError((_) {});
           _newCompanyStampBytes = null;
           _clearCompanyStamp = false;
         }
@@ -683,28 +684,24 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (oldProfilePicUrl != null &&
             oldProfilePicUrl.isNotEmpty &&
             oldProfilePicUrl != downloadUrl) {
-          try {
-            await UploadService.deleteByUrl(oldProfilePicUrl);
-          } catch (error, stackTrace) {
+          UploadService.deleteByUrl(oldProfilePicUrl).catchError((error, stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
               context: 'CleanupOldProfilePic',
             );
-          }
+          });
         }
         if (oldCompanyStampUrl != null &&
             oldCompanyStampUrl.isNotEmpty &&
             oldCompanyStampUrl != stampDownloadUrl) {
-          try {
-            await UploadService.deleteByUrl(oldCompanyStampUrl);
-          } catch (error, stackTrace) {
+          UploadService.deleteByUrl(oldCompanyStampUrl).catchError((error, stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
               context: 'CleanupOldCompanyStamp',
             );
-          }
+          });
         }
       } else {
         if (_newProfileImageBytes != null) {
@@ -717,11 +714,34 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (downloadUrl != null) {
           _profilePicUrl = downloadUrl;
           AuthService.profilePicNotifier.value = downloadUrl;
+          try {
+            await PreferencesService.setProfilePicUrl(downloadUrl);
+          } catch (_) {}
           _newProfileImageBytes = null;
           _newProfileImagePath = null;
         }
 
+        if (_newCompanyStampBytes != null) {
+          final stampFormat = _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
+          final base64String = base64Encode(_newCompanyStampBytes!);
+          _companyStampUrl = 'data:image/$stampFormat;base64,$base64String';
+          AuthService.companyStampNotifier.value = _companyStampUrl;
+          try {
+            await PreferencesService.setCompanyStampUrl(_companyStampUrl);
+          } catch (_) {}
+          _newCompanyStampBytes = null;
+        } else if (_clearCompanyStamp) {
+          _companyStampUrl = null;
+          AuthService.companyStampNotifier.value = null;
+          try {
+            await PreferencesService.setCompanyStampUrl(null);
+          } catch (_) {}
+          _clearCompanyStamp = false;
+        }
+
+        final existingGuest = await PreferencesService.getGuestProfileData() ?? {};
         await PreferencesService.setGuestProfileData({
+          ...existingGuest,
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
           'email': _emailController.text,
@@ -729,6 +749,12 @@ class _ProfileBodyState extends State<ProfileBody> {
           'contact1': _contact1Controller.text,
           'contact2': _contact2Controller.text,
           'address': _addressController.text,
+          if (_profilePicUrl != null && _profilePicUrl!.isNotEmpty)
+            'profilePic': _profilePicUrl!,
+          if (_companyStampUrl != null && _companyStampUrl!.isNotEmpty)
+            'companyStampUrl': _companyStampUrl!
+          else
+            'companyStampUrl': '',
         });
       }
 
@@ -1063,15 +1089,17 @@ class _ProfileBodyState extends State<ProfileBody> {
     final hasStamp = hasNewStamp || hasSavedStamp;
 
     final preview = Container(
-      width: 132,
-      height: 88,
-      padding: const EdgeInsets.all(8),
+      width: 180,
+      height: 104,
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFD8DCE5)),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: _buildCompanyStampPreview(),
+      child: Center(
+        child: _buildCompanyStampPreview(),
+      ),
     );
 
     final details = Column(
@@ -1087,6 +1115,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             fontWeight: FontWeight.w600,
             fontFamily: 'SF Pro Display',
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 5),
         Text(
@@ -1099,6 +1129,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             height: 1.35,
             fontFamily: 'SF Pro Display',
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         if (_isEditing) ...[
           const SizedBox(height: 12),
@@ -1296,15 +1328,15 @@ class _ProfileBodyState extends State<ProfileBody> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final hintText = isGuest
         ? isEmailField
-              ? 'example@company.com'
+              ? 'hint_enter_email'.tr()
               : isCompanyId
-              ? 'e.g. ABC123'
+              ? 'hint_enter_company_id'.tr()
               : isBusinessName
-              ? 'e.g. ABC Corporation'
+              ? 'hint_enter_business_name'.tr()
               : isContact
-              ? '+1 415-555-0198'
+              ? 'hint_enter_phone'.tr()
               : isAddress
-              ? 'e.g. 123 Main St, City'
+              ? 'hint_enter_address'.tr()
               : ''
         : isEmailField
         ? 'hint_enter_email'.tr()
@@ -1364,7 +1396,10 @@ class _ProfileBodyState extends State<ProfileBody> {
                   autocorrect: !isEmailField && !isCompanyId,
                   enableSuggestions: !isEmailField && !isCompanyId,
                   inputFormatters:
-                      isCompanyId || isContact || isBusinessName || isAddress
+                      isCompanyId ||
+                          isContact ||
+                          isBusinessName ||
+                          isAddress
                       ? [
                           LengthLimitingTextInputFormatter(
                             isBusinessName
@@ -1393,6 +1428,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                       fontSize: 15,
                       fontFamily: 'SF Pro Display',
                     ),
+                    counterText: '',
                   ),
                   style: TextStyle(
                     fontSize: 15,
@@ -1441,7 +1477,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         ),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
@@ -1452,6 +1488,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   ? _currencyController.text
                   : currencies.first,
               isExpanded: true,
+              itemHeight: 48,
               dropdownColor: Colors.white,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
               style: const TextStyle(
@@ -1605,16 +1642,21 @@ class ProfilePreviewDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: 24),
                     Expanded(
-                      child: Text(
-                        businessName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            businessName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -1689,7 +1731,6 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
                   ],
                 ),
               ),

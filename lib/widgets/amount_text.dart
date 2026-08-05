@@ -8,18 +8,40 @@ class AmountText extends StatelessWidget {
 
   const AmountText(this.amount, {super.key, this.style, this.textAlign});
 
+  /// Extracts the currency prefix (everything before the first digit) from a
+  /// formatted amount. Unlike the old regex, this keeps multi-character
+  /// symbols intact (e.g. 'د.إ', 'ر.ع.', 'CA$') instead of truncating them at
+  /// the first '.'. The prefix is also excluded from numeric parsing so a
+  /// symbol's dot (as in 'د.إ') never turns 5000 into 0.5.
+  static String _numericPart(String input) {
+    final trimmed = input.trim();
+    final firstDigit = RegExp(r'\d').firstMatch(trimmed);
+    if (firstDigit == null) return trimmed;
+    final sign = trimmed.startsWith('-') ? '-' : '';
+    return sign + trimmed.substring(firstDigit.start);
+  }
+  static String _extractSymbol(String input) {
+    final trimmed = input.trim();
+    if (trimmed.startsWith('-')) {
+      final stripped = trimmed.substring(1).trimLeft();
+      final firstDigit = RegExp(r'\d').firstMatch(stripped);
+      return firstDigit == null ? '' : stripped.substring(0, firstDigit.start).trim();
+    }
+    final firstDigit = RegExp(r'\d').firstMatch(trimmed);
+    return firstDigit == null ? '' : trimmed.substring(0, firstDigit.start).trim();
+  }
+
   static String formatCompact(String input) {
     try {
       if (input.trim().isEmpty) return '0';
       if (RegExp(r'[KMBTkmbt]$').hasMatch(input.trim())) {
         return input;
       }
-      final cleaned = input.replaceAll(RegExp(r"[^0-9.\-]"), '');
+      final cleaned = _numericPart(input).replaceAll(RegExp(r"[^0-9.\-]"), '');
       if (cleaned.isEmpty) return '0';
       final val = double.tryParse(cleaned);
       if (val == null) return input;
-      final symbolMatch = RegExp(r"^\s*([^0-9\s.-]+)").firstMatch(input);
-      final symbol = symbolMatch != null ? symbolMatch.group(1) ?? '' : '';
+      final symbol = _extractSymbol(input);
       final abs = val.abs();
       if (abs >= 1e12) return '$symbol${(val / 1e12).toStringAsFixed(1)}T';
       if (abs >= 1e9) return '$symbol${(val / 1e9).toStringAsFixed(1)}B';
@@ -40,12 +62,11 @@ class AmountText extends StatelessWidget {
   static String formatFull(String input) {
     try {
       if (input.trim().isEmpty) return '0';
-      final cleaned = input.replaceAll(RegExp(r"[^0-9.\-]"), '');
+      final cleaned = _numericPart(input).replaceAll(RegExp(r"[^0-9.\-]"), '');
       if (cleaned.isEmpty) return '0';
       final val = double.tryParse(cleaned);
       if (val == null) return input;
-      final symbolMatch = RegExp(r"^\s*([^0-9\s.-]+)").firstMatch(input);
-      final symbol = symbolMatch != null ? symbolMatch.group(1) ?? '' : '';
+      final symbol = _extractSymbol(input);
       final hasDecimals = val != val.roundToDouble();
       final formatted = NumberFormat.currency(
         locale: 'en_US',

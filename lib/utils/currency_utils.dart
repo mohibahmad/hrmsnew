@@ -63,11 +63,6 @@ class CurrencyUtils {
     return supportedCodes.contains(code);
   }
 
-  static List<String> codesForLocale(String localeCode) {
-    final lang = localeCode.split('_').first.toLowerCase();
-    return localeCurrencies[lang] ?? supportedCodes;
-  }
-
   static String normalize(dynamic value) {
     final code = value?.toString().trim().toUpperCase() ?? '';
     return supportedCodes.contains(code) ? code : defaultCode;

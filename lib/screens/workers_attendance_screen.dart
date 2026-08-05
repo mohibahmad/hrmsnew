@@ -253,10 +253,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       _selectedTimeframe,
       attendanceNow,
     );
+    final periodEndDate = app_date_utils.AppDateUtils.periodEnd(
+      _selectedTimeframe,
+      attendanceNow,
+    );
     final attendancePeriodEnd = DateTime(
-      attendanceNow.year,
-      attendanceNow.month,
-      attendanceNow.day,
+      periodEndDate.year,
+      periodEndDate.month,
+      periodEndDate.day,
       23,
       59,
       59,
@@ -438,7 +442,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
-    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+    final recordWorkerId = (record['workerId'] ?? record['userId'] ?? record['id'] ?? '')
+        .toString()
+        .trim();
     if (recordWorkerId.isNotEmpty) {
       return workerId.isNotEmpty && recordWorkerId == workerId;
     }
@@ -631,11 +637,20 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
     final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(worker);
     final usedLeaveDays = _paidLeaveDaysUsedForWorker(worker, projectedRecords);
+
+    final perTypeUsed = _isGuest
+        ? <String, int>{'Sick Leave': 0, 'Casual Leave': 0, 'Medical Leave': 0, 'Annual Leave': 0}
+        : TimeOffService.paidDaysUsedForWorkerByType(worker, projectedRecords);
+
     final balanceUpdate = <String, dynamic>{
       'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
           .clamp(0, totalPaidDays)
           .toString(),
       'leavesUsed': usedLeaveDays.toString(),
+      'annualLeavesUsed': (perTypeUsed['Annual Leave'] ?? 0).toString(),
+      'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
+      'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
+      'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
     };
 
     final result = await _firestore.saveAttendanceWithLeaveSync(
@@ -679,13 +694,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return '';
     }
 
-    final directStatus = worker['status']?.toString() ?? '';
+    final directStatus = worker['status']?.toString().trim() ?? '';
     if (_isGuest && directStatus.isNotEmpty && directStatus != '*****') {
       return directStatus;
     }
-    if (!_isGuest &&
-        const {'Present', 'Absent', 'Leave'}.contains(directStatus)) {
-      return directStatus;
+    final directLower = directStatus.toLowerCase();
+    if (!_isGuest && const {'present', 'absent', 'leave'}.contains(directLower)) {
+      if (directLower == 'present') return 'Present';
+      if (directLower == 'absent') return 'Absent';
+      if (directLower == 'leave') return 'Leave';
     }
 
     final attRecord = _todayAttendance.cast<Map<String, dynamic>?>().firstWhere(
@@ -708,10 +725,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     );
     if (attRecord == null) return '';
 
-    final attStatus = attRecord['status']?.toString() ?? '';
-    return const {'Present', 'Absent', 'Leave'}.contains(attStatus)
-        ? attStatus
-        : '';
+    final attStatus = attRecord['status']?.toString().trim() ?? '';
+    final normAttStatus = attStatus.toLowerCase();
+    if (normAttStatus == 'present' || normAttStatus == 'p') return 'Present';
+    if (normAttStatus == 'absent' || normAttStatus == 'a') return 'Absent';
+    if (normAttStatus == 'leave' || normAttStatus == 'l' || normAttStatus == 'approved') return 'Leave';
+    return '';
   }
 
   bool _isTodayAttendance(Map<String, dynamic> record) {

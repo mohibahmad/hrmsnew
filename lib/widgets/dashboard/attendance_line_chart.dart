@@ -6,6 +6,17 @@ import '../../services/auth_service.dart';
 import '../../utils/chart_utils.dart';
 import '../custom_timeframe_dropdown.dart';
 
+/// Picks a label spacing (1 = every point, 2 = every other point, ...) so
+/// that day-level series (a full month has ~28-31 points) remain readable.
+int _labelStepFor(int count) {
+  if (count <= 8) return 1;
+  if (count <= 16) return 2;
+  if (count <= 24) return 3;
+  if (count <= 32) return 5;
+  if (count <= 40) return 7;
+  return 10;
+}
+
 class AttendanceLineChart extends StatefulWidget {
   final String period;
   final bool isEmpty;
@@ -96,6 +107,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                 LineChartData(
                                   minX: -0.4,
                                   maxX: (spots.length - 1).toDouble() + 0.4,
+                                  clipData: const FlClipData.none(),
                                   minY: 0,
                                   maxY: range.maxY,
                                   lineTouchData: LineTouchData(
@@ -127,8 +139,18 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                     drawVerticalLine: true,
                                     verticalInterval: 1,
                                     checkToShowVerticalLine: (value) {
-                                      return (value - value.round()).abs() <
-                                          0.01;
+                                      if ((value - value.round()).abs() >=
+                                          0.01) {
+                                        return false;
+                                      }
+                                      // Keep grid lines aligned with the
+                                      // (spaced) bottom labels so long series
+                                      // (e.g. a month of days) stay readable.
+                                      final idx = value.round();
+                                      final labelStep = _labelStepFor(
+                                        chartData.labels.length,
+                                      );
+                                      return idx % labelStep == 0;
                                     },
                                     getDrawingVerticalLine: (value) => FlLine(
                                       color: Colors.black.withValues(
@@ -186,6 +208,19 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                           final idx = value.round();
                                           if (idx < 0 ||
                                               idx >= chartData.labels.length) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          // Show a label only every N steps so
+                                          // day-level series don't crowd the
+                                          // axis; always keep the first and
+                                          // last label visible.
+                                          final labelStep = _labelStepFor(
+                                            chartData.labels.length,
+                                          );
+                                          if (idx % labelStep != 0 &&
+                                              idx !=
+                                                  chartData.labels.length -
+                                                      1) {
                                             return const SizedBox.shrink();
                                           }
                                           const style = TextStyle(

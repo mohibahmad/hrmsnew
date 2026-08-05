@@ -420,6 +420,33 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         (workerData['id'] ?? '').toString();
                                     final workerProfileImage =
                                         workerData['profileImage']?.toString();
+                                    try {
+                                      final policies = await _firestore.getPolicies();
+                                      final assetPolicyList = policies.where((p) => p['typeId'] == 'Asset Policy').toList();
+                                      if (assetPolicyList.isNotEmpty) {
+                                        final assetPolicy = assetPolicyList.first;
+                                        final int maxAssets = int.tryParse(assetPolicy['maxAssetsPerWorker']?.toString() ?? '3') ?? 3;
+                                        
+                                        final assignedAssets = _assets.where((a) {
+                                          final wId = (a.workerId ?? '').toString();
+                                          final wName = a.name;
+                                          final returned = a.isReturned;
+                                          return !returned && (wId == selectedWorkerId || wName == actualWorkerName);
+                                        }).length;
+
+                                        if (assignedAssets >= maxAssets) {
+                                          setModalState(() => isSaving = false);
+                                          FlashySnackBar.show(
+                                            context,
+                                            message: 'worker_asset_limit_reached'.tr(
+                                              namedArgs: {'maxAssets': '$maxAssets'},
+                                            ),
+                                            isError: true,
+                                          );
+                                          return;
+                                        }
+                                      }
+                                    } catch (_) {}
                                     final workerEmail = workerData['email']
                                         ?.toString();
                                     final workerPhone = workerData['phone']
@@ -1194,60 +1221,59 @@ class _AssetsScreenState extends State<AssetsScreen> {
         ),
         const SizedBox(width: 10),
 
-        ElevatedButton.icon(
-          onPressed: () async {
-            final isGuest = _authService.currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              if (!mounted) return;
-              showGuestRestrictionDialog(context);
-              return;
-            }
-            if (!mounted) return;
-            final isPremium = await PreferencesService.isPremium();
-            if (!PremiumGate.canAddEntry(
-              currentEntryCount: _assets.length,
-              isPremium: isPremium,
-              isGuest: isGuest,
-            )) {
-              if (!mounted) return;
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                context,
-              );
-              if (!mounted) return;
-              if (upgraded == true) {
-                _showAddAssetModal(context);
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final isGuest = _authService.currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                if (mounted) showGuestRestrictionDialog(context);
+                return;
               }
-              return;
-            }
-            if (!mounted) return;
-            _showAddAssetModal(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0247C4),
-            minimumSize: const Size(140, 44),
-            fixedSize: const Size.fromHeight(44),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+              final isPremium = await PreferencesService.isPremium();
+              if (!mounted) return;
+              if (!PremiumGate.canAddEntry(
+                currentEntryCount: _assets.length,
+                isPremium: isPremium,
+                isGuest: isGuest,
+              )) {
+                if (!mounted) return;
+                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                  context,
+                );
+                if (!mounted) return;
+                if (upgraded == true) {
+                  _showAddAssetModal(context);
+                }
+                return;
+              }
+              if (!mounted) return;
+              _showAddAssetModal(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0247C4),
+              minimumSize: const Size(140, 44),
+              fixedSize: const Size.fromHeight(44),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
             ),
-            elevation: 0,
-          ),
-          icon: SvgPicture.asset(
-            'assets/assets_icon.svg',
-            width: 20,
-            height: 20,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFFFFFF),
-              BlendMode.srcIn,
+            icon: Image.asset(
+              'assets/asset_icon.png',
+              width: 20,
+              height: 20,
+              color: Colors.white,
             ),
-          ),
-          label: Text(
-            'add_asset'.tr(),
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
+            label: Text(
+              'assign_assets'.tr(),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ),

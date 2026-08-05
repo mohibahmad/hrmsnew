@@ -25,6 +25,8 @@ class AuthService {
 
   static final ValueNotifier<String?> profilePicNotifier =
       ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> companyStampNotifier =
+      ValueNotifier<String?>(null);
 
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting) {
@@ -131,6 +133,7 @@ class AuthService {
     }
 
     profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
   }
 
   Future<void> _setPremiumFromProfile(Map<String, dynamic>? profile) async {
@@ -191,6 +194,7 @@ class AuthService {
     await PreferencesService.setSessionLocked(false);
     await DummyData.resetToDefaults();
     profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
     return GuestUserCredential(_guestUser);
   }
 
@@ -300,6 +304,7 @@ class AuthService {
       preserveBiometricCredentials: preserveBiometricLogin || isGuest,
     );
     profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
   }
 
   Future<void> _syncPremiumStatusFromFirestore() async {
@@ -441,14 +446,6 @@ class MockUser implements User {
 
   @override
   Future<void> updateDisplayName(String? displayName) async {}
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class MockUserCredential implements UserCredential {
-  @override
-  final User user = MockUser();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -27,6 +27,9 @@ String fieldHint(String fieldKey) {
     'salaryType': 'hint_enter_salary_type',
     'salaryAmount': 'hint_enter_salary_amount',
     'annualLeaves': 'hint_enter_annual_leaves',
+    'sickLeaves': 'hint_enter_sick_leaves',
+    'casualLeaves': 'hint_enter_casual_leaves',
+    'medicalLeaves': 'hint_enter_medical_leaves',
     'joiningDate': 'hint_enter_joining_date',
     'profileImage': 'hint_enter_profile_image',
     'frontId': 'hint_enter_front_id',
@@ -477,7 +480,10 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
   if (fieldKey == 'address') {
     return [LengthLimitingTextInputFormatter(500)];
   }
-  if (fieldKey == 'annualLeaves') {
+  if (fieldKey == 'annualLeaves' ||
+      fieldKey == 'sickLeaves' ||
+      fieldKey == 'casualLeaves' ||
+      fieldKey == 'medicalLeaves') {
     return [
       LengthLimitingTextInputFormatter(3),
       TextInputFormatter.withFunction((oldValue, newValue) {
@@ -511,7 +517,11 @@ TextInputType? keyboardTypeForField(String fieldKey) {
   if (fieldKey == 'salaryAmount') {
     return const TextInputType.numberWithOptions(decimal: true);
   }
-  if (fieldKey == 'annualLeaves' || fieldKey == 'nationalId') {
+  if (fieldKey == 'annualLeaves' ||
+      fieldKey == 'sickLeaves' ||
+      fieldKey == 'casualLeaves' ||
+      fieldKey == 'medicalLeaves' ||
+      fieldKey == 'nationalId') {
     return TextInputType.number;
   }
   return null;

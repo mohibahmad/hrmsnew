@@ -582,7 +582,4 @@ class UploadService {
     }
   }
 
-  static String base64EncodeFallback(Uint8List bytes, String mime) {
-    return 'data:$mime;base64,${base64Encode(bytes)}';
-  }
 }

@@ -312,9 +312,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
-    if (_isPayrollExpense(doc)) return;
     final docId = (doc['id'] ?? '').toString().trim();
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false || PreferencesService.cachedIsGuest;
     if (docId.isEmpty) return;
 
     final confirmed = await DeleteDialog.show(
@@ -474,11 +473,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                  final date = DateTime(
+                                   final date = DateTime(
                                     calendarDate.year,
                                     calendarDate.month,
                                     selectedDay,
                                   );
+                                  final bool wasPayrollExpense = _isPayrollExpense(doc);
+                                  final String payrollKey = wasPayrollExpense
+                                      ? (doc['payrollKey'] ?? '').toString().trim()
+                                      : '';
                                   final updatedMap = {
                                     'date': date,
                                     'category': categoryController.text.trim(),
@@ -486,9 +489,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'name': descriptionController.text.trim(),
                                     'description': descriptionController.text
                                         .trim(),
-
-                                    if (_isPayrollExpense(doc))
-                                      'payrollKey': '',
                                   };
                                   try {
                                     if (isGuest) {
@@ -515,6 +515,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         docId,
                                         updatedMap,
                                       );
+                                      if (wasPayrollExpense && payrollKey.isNotEmpty) {
+                                        await _firestore.updatePayrollByPayrollKey(
+                                          payrollKey,
+                                          {'netSalaryAmount': amt},
+                                        );
+                                      }
                                     }
                                   } catch (e) {
                                     setModalState(() => isSaving = false);
@@ -784,6 +790,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
+
+                                  try {
+                                    final policies = await _firestore.getPolicies();
+                                    final expPolicyList = policies.where((p) => p['typeId'] == 'Expense Policy').toList();
+                                    if (expPolicyList.isNotEmpty) {
+                                      final expPolicy = expPolicyList.first;
+                                      final double maxLimit = double.tryParse(expPolicy['maxExpenseLimitPerClaim']?.toString() ?? '500.0') ?? 500.0;
+                                      if (amt > maxLimit) {
+                                        setModalState(() => isSaving = false);
+                                        FlashySnackBar.show(
+                                          context,
+                                          message: 'expense_claim_exceeds_limit'.tr(
+                                            namedArgs: {
+                                              'maxLimit': '\$${maxLimit.toStringAsFixed(0)}',
+                                            },
+                                          ),
+                                          isError: true,
+                                        );
+                                        return;
+                                      }
+                                    }
+                                  } catch (_) {}
                                   if (description.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
@@ -1251,14 +1279,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     DateTime? date,
   ) {
     if (day.isEmpty) return const SizedBox();
-    final isSunday = date?.weekday == 7;
-    final isFriday = date?.weekday == 5;
-    final dayColor = isSunday
-        ? const Color(0xFFFF0004)
-        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFF0247C4);
+    final selectedBg = const Color(0xFF0247C4);
     return AspectRatio(
       aspectRatio: 1.1,
       child: GestureDetector(
@@ -1268,13 +1289,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           decoration: BoxDecoration(
             color: isSelected ? selectedBg : Colors.transparent,
             border: Border.all(
-              color: isSelected
-                  ? selectedBg
-                  : (isSunday
-                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                        : (isFriday
-                              ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                              : Colors.grey.shade300)),
+              color: isSelected ? selectedBg : Colors.grey.shade300,
               width: 1,
             ),
             borderRadius: BorderRadius.circular(3),
@@ -1282,9 +1297,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : dayColor,
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              color: isSelected ? Colors.white : Colors.black,
+              fontSize: 13,
               fontFamily: 'SF Pro Display',
             ),
           ),

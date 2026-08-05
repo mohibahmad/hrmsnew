@@ -117,8 +117,6 @@ class FirestoreService {
   CollectionReference? get _holidays => _userDoc?.collection('hrms_holidays');
   CollectionReference? get _notifications =>
       _userDoc?.collection('hrms_notifications');
-  CollectionReference? get _leavePolicies =>
-      _userDoc?.collection('hrms_leave_policies');
 
   Future<void> createUserProfile({
     required String username,
@@ -511,10 +509,13 @@ class FirestoreService {
   ) async {
     final coll = _workers;
     if (coll == null || id.isEmpty) return;
-    await coll.doc(id).update({
-      ..._withNormalizedCurrency(fields),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await coll.doc(id).set(
+      {
+        ..._withNormalizedCurrency(fields),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   /// Applies a leave-policy allowance to many workers in Firestore batches
@@ -524,6 +525,9 @@ class FirestoreService {
   Future<int> applyLeavePolicyToWorkers({
     required List<Map<String, dynamic>> workers,
     required int annualLeaveDays,
+    required int sickLeaveDays,
+    required int casualLeaveDays,
+    required int medicalLeaveDays,
     required String policyName,
     required List<Map<String, dynamic>> timeOffRecords,
   }) async {
@@ -572,11 +576,88 @@ class FirestoreService {
 
       batch.update(coll.doc(workerId), {
         'annualLeaves': annualLeaveDays,
+        'sickLeaves': sickLeaveDays,
+        'casualLeaves': casualLeaveDays,
+        'medicalLeaves': medicalLeaveDays,
         'availableAnnualLeaves': remaining,
         'leavePolicy': policyName,
       });
       pending++;
       updated++;
+
+      if (pending == 450) {
+        await batch.commit();
+        batch = _db.batch();
+        pending = 0;
+      }
+    }
+
+    if (pending > 0) {
+      await batch.commit();
+    }
+
+    return updated;
+  }
+
+  Future<int> applyGenericPolicyToWorkers({
+    required String policyType,
+    required Map<String, dynamic> policyData,
+    required List<Map<String, dynamic>> workers,
+    required String appliedToWorkerId,
+  }) async {
+    final coll = _workers;
+    if (coll == null) return 0;
+
+    var updated = 0;
+    var batch = _db.batch();
+    var pending = 0;
+
+    for (final worker in workers) {
+      final workerId = (worker['id'] ?? '').toString().trim();
+      if (workerId.isEmpty) continue;
+
+      final selectedWorkerIds = appliedToWorkerId
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      if (appliedToWorkerId != 'all' && !selectedWorkerIds.contains(workerId)) {
+        continue;
+      }
+
+      final updates = <String, dynamic>{};
+      final policyName = policyData['policyName'] ?? policyType;
+
+      if (policyType == 'Leave Policy') {
+        final annual = int.tryParse(policyData['annualLeaveDays']?.toString() ?? '14') ?? 14;
+        final sick = int.tryParse(policyData['sickLeaves']?.toString() ?? '5') ?? 5;
+        final casual = int.tryParse(policyData['casualLeaves']?.toString() ?? '5') ?? 5;
+        final medical = int.tryParse(policyData['medicalLeaves']?.toString() ?? '5') ?? 5;
+        updates['annualLeaves'] = annual;
+        updates['sickLeaves'] = sick;
+        updates['casualLeaves'] = casual;
+        updates['medicalLeaves'] = medical;
+        updates['leavePolicy'] = policyName;
+      } else if (policyType == 'Payroll Policy') {
+        updates['paymentFrequency'] = policyData['paymentFrequency'] ?? 'Monthly';
+        updates['taxRatePercent'] = double.tryParse(policyData['taxRatePercent']?.toString() ?? '5.0') ?? 5.0;
+        updates['salaryDay'] = int.tryParse(policyData['salaryDay']?.toString() ?? '1') ?? 1;
+        updates['payrollPolicy'] = policyName;
+      } else if (policyType == 'Holiday Policy') {
+        updates['weeklyOffDays'] = policyData['weeklyOffDays'] ?? 'Sunday';
+        updates['paidHolidaysCount'] = int.tryParse(policyData['paidHolidaysCount']?.toString() ?? '10') ?? 10;
+        updates['holidayPolicy'] = policyName;
+      } else if (policyType == 'Asset Policy') {
+        updates['maxAssetsPerWorker'] = int.tryParse(policyData['maxAssetsPerWorker']?.toString() ?? '3') ?? 3;
+        updates['returnGracePeriodDays'] = int.tryParse(policyData['returnGracePeriodDays']?.toString() ?? '7') ?? 7;
+        updates['assetPolicy'] = policyName;
+      }
+
+      if (updates.isNotEmpty) {
+        batch.update(coll.doc(workerId), updates);
+        pending++;
+        updated++;
+      }
 
       if (pending == 450) {
         await batch.commit();
@@ -1484,6 +1565,20 @@ class FirestoreService {
     });
   }
 
+  Future<void> updatePayrollByPayrollKey(String payrollKey, Map<String, dynamic> data) async {
+    final coll = _payroll;
+    if (coll == null || payrollKey.trim().isEmpty) return;
+
+    final snapshot = await coll.where('payrollKey', isEqualTo: payrollKey.trim()).limit(1).get();
+    if (snapshot.docs.isEmpty) return;
+
+    await snapshot.docs.first.reference.update({
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lastModified': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> savePayrollAndExpenseBatch({
     required Map<String, dynamic> record,
     required String payrollKey,
@@ -2117,49 +2212,11 @@ class FirestoreService {
     await _deleteDocumentsInChunks(snap.docs.map((doc) => doc.reference));
   }
 
-  Future<DocumentReference?> addLeavePolicy(Map<String, dynamic> data) async {
-    final coll = _leavePolicies;
-    if (coll == null) return null;
-    data['createdAt'] = FieldValue.serverTimestamp();
-    data['updatedAt'] = FieldValue.serverTimestamp();
-    data['isActive'] = true;
-    return await coll.add(data);
-  }
-
-  Future<void> updateLeavePolicy(String id, Map<String, dynamic> data) async {
-    final coll = _leavePolicies;
-    if (coll == null) return;
-    data['updatedAt'] = FieldValue.serverTimestamp();
-    await coll.doc(id).update(data);
-  }
-
-  Future<void> deleteLeavePolicy(dynamic id) async {
-    final coll = _leavePolicies;
-    if (coll == null || id == null) return;
-    await coll.doc(id.toString()).delete();
-  }
-
-  Future<void> toggleLeavePolicyActive(String id, bool isActive) async {
-    final coll = _leavePolicies;
-    if (coll == null) return;
-    await coll.doc(id).update({
-      'isActive': isActive,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Stream<QuerySnapshot> get leavePoliciesStream {
-    final coll = _leavePolicies;
-    if (coll == null) return const Stream.empty();
-    return coll.orderBy('createdAt', descending: true).snapshots();
+  Future<List<Map<String, dynamic>>> getPolicies() async {
+    return [];
   }
 
   Future<List<Map<String, dynamic>>> getLeavePolicies() async {
-    final coll = _leavePolicies;
-    if (coll == null) return [];
-    final snap = await coll.orderBy('createdAt', descending: true).get();
-    return snap.docs
-        .map((d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-        .toList();
+    return [];
   }
 }

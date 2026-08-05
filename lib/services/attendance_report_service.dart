@@ -64,7 +64,20 @@ class AttendanceReportService {
       _ => today,
     };
 
-    return AttendanceDateRange(start: start, end: today);
+    // The report covers the whole selected period (week = Mon..Sun, month =
+    // 1st..last day, etc.) rather than ending at today, so the exported
+    // period label and the date range it implies are complete. Records for
+    // future days simply don't exist yet, so nothing phantom is counted.
+    final end = switch (normalizedPeriod) {
+      'Today' => today,
+      'Week' => start.add(const Duration(days: 6)),
+      'Month' => DateTime(today.year, today.month + 1, 0),
+      '6 Month' => DateTime(today.year, today.month + 1, 0),
+      'Yearly' => DateTime(today.year, 12, 31),
+      _ => today,
+    };
+
+    return AttendanceDateRange(start: start, end: end);
   }
 
   static DateTime? recordDate(dynamic value) {
@@ -77,18 +90,6 @@ class AttendanceReportService {
     return AppDateUtils.attendanceRecordDate(record);
   }
 
-  
-  static String csvDate(DateTime? date) {
-    if (date == null) return '';
-    return '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
-  }
-
-  
-  
-  
-  
   static String csvTextDate(DateTime? date) {
     if (date == null) return '';
     const months = [

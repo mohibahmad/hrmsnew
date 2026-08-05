@@ -46,7 +46,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Unable to sign out. Please try again.'),
+          content: Text('unable_to_sign_out'.tr()),
           backgroundColor: Colors.red,
         ),
       );

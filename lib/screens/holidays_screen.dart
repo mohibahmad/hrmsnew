@@ -835,7 +835,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         const SizedBox(height: 10),
         Row(
           children: [
-            _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),
+            _buildWeekday('weekday_sun'.tr(), const Color(0xFF0247C4)),
             const SizedBox(width: 8),
             _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
             const SizedBox(width: 8),
@@ -845,7 +845,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             const SizedBox(width: 8),
             _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
             const SizedBox(width: 8),
-            _buildWeekday('weekday_fri'.tr(), const Color(0xFF4AC000)),
+            _buildWeekday('weekday_fri'.tr(), const Color(0xFF0247C4)),
             const SizedBox(width: 8),
             _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
           ],
@@ -957,16 +957,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       );
     }
     final isPast = onTap == null && date != null;
-    final isSunday = date?.weekday == 7;
-    final isFriday = date?.weekday == 5;
-    final dayColor = isPast
-        ? Colors.grey.shade400
-        : (isSunday
-              ? const Color(0xFFFF0004)
-              : (isFriday ? const Color(0xFF4AC000) : Colors.black));
-    final selectedBg = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFFFF0004);
+    final dayColor = isPast ? Colors.grey.shade400 : Colors.black;
+    final selectedBg = const Color(0xFF0247C4);
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -979,15 +971,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               border: Border.all(
                 color: isSelected
                     ? selectedBg
-                    : (isPast
-                          ? Colors.grey.shade200
-                          : (isSunday
-                                ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                                : (isFriday
-                                      ? const Color(
-                                          0xFF4AC000,
-                                        ).withValues(alpha: 0.4)
-                                      : Colors.grey.shade300))),
+                    : (isPast ? Colors.grey.shade200 : Colors.grey.shade300),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),

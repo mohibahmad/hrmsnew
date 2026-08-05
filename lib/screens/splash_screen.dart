@@ -61,7 +61,6 @@ class _SplashScreenState extends State<SplashScreen>
         const Duration(seconds: 3),
       );
     } catch (e, st) {
-
       ErrorReporter.report(e, st, context: 'splashSessionLocked');
       sessionLocked = true;
     }
@@ -97,16 +96,13 @@ class _SplashScreenState extends State<SplashScreen>
         );
         final isDeleted = profile?['isDeleted'] == true;
         if (isDeleted) {
-
           await _authService.signOut();
           user = null;
         } else if (profile == null) {
-
           await _authService.signOut();
           user = null;
         }
       } catch (e, st) {
-
         ErrorReporter.report(e, st, context: 'splashProfileValidation');
       }
     }

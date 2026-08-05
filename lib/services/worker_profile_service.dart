@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import '../utils/file_opener.dart';
+import '../utils/pdf_stamp_widget.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -48,12 +49,16 @@ class WorkerProfileService {
       regularFontData = fontData.buffer.asUint8List();
     } catch (_) {}
 
-    final imageResults = await Future.wait([
-      _loadImageBytes(profileImageUrl),
-      _loadImageBytes(companyStampImageUrl),
-    ]);
-    final rawProfileBytes = imageResults[0];
-    final rawStampBytes = imageResults[1];
+    // Load images concurrently. Fix: .then() was returning another Future<Uint8List?>
+    // which caused "type 'Future<Uint8List?>' is not a subtype of type 'Uint8List?'" cast error.
+    final rawProfileBytes = await _loadImageBytes(profileImageUrl);
+
+    // Load stamp — if user hasn't uploaded one, pass null (no fallback icon)
+    Uint8List? rawStampBytes;
+    final stampSource = (companyStampImageUrl ?? '').trim();
+    if (stampSource.isNotEmpty) {
+      rawStampBytes = await _loadImageBytes(stampSource);
+    }
 
     final profileBytes = _compressImageForPdf(rawProfileBytes);
     final stampBytes = _compressImageForPdf(rawStampBytes);
@@ -199,7 +204,9 @@ class WorkerProfileService {
       if (response.statusCode != HttpStatus.ok) return null;
 
       final contentType = response.headers.contentType?.mimeType.toLowerCase();
-      if (contentType != null && !contentType.startsWith('image/')) {
+      if (contentType != null &&
+          (contentType.startsWith('text/html') ||
+              contentType.startsWith('application/json'))) {
         return null;
       }
 
@@ -380,7 +387,7 @@ pw.Widget _label(String text) {
 
 pw.Widget _detailRow(String label, String value) {
   return pw.Padding(
-    padding: const pw.EdgeInsets.only(bottom: 6),
+    padding: const pw.EdgeInsets.only(bottom: 4),
     child: pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -420,7 +427,7 @@ pw.TableRow _tableRow(
         : null,
     children: cells.map((cell) {
       return pw.Container(
-        padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
         child: pw.Text(
           cell.trim().isNotEmpty ? cell : '-',
           style: pw.TextStyle(
@@ -431,120 +438,6 @@ pw.TableRow _tableRow(
         ),
       );
     }).toList(),
-  );
-}
-
-pw.Widget _buildSignatureStamp(
-  String companyName,
-  String companyId, {
-  pw.MemoryImage? stampImage,
-}) {
-  final navy = PdfColor.fromHex('#162036');
-  final red = PdfColor.fromHex('#DC2626');
-  final grey = PdfColor.fromHex('#6B7280');
-  final cleanName =
-      companyName.trim().isEmpty ? 'HRMS Company' : companyName.trim();
-  final initials = cleanName
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .take(3)
-      .map((word) => word.substring(0, 1).toUpperCase())
-      .join();
-
-  return pw.SizedBox(
-    width: 235,
-    height: 66,
-    child: pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.end,
-      children: [
-        if (stampImage != null)
-          pw.Container(
-            width: 72,
-            height: 60,
-            alignment: pw.Alignment.center,
-            child: pw.Image(stampImage, fit: pw.BoxFit.contain),
-          )
-        else
-          pw.Container(
-            width: 60,
-            height: 60,
-            decoration: pw.BoxDecoration(
-              shape: pw.BoxShape.circle,
-              border: pw.Border.all(color: red, width: 1.8),
-            ),
-            child: pw.Stack(
-              alignment: pw.Alignment.center,
-              children: [
-                pw.Container(
-                  width: 50,
-                  height: 50,
-                  decoration: pw.BoxDecoration(
-                    shape: pw.BoxShape.circle,
-                    border: pw.Border.all(color: red, width: 0.7),
-                  ),
-                ),
-                pw.Column(
-                  mainAxisAlignment: pw.MainAxisAlignment.center,
-                  children: [
-                    pw.Text(
-                      initials.isEmpty ? 'HRMS' : initials,
-                      style: pw.TextStyle(
-                        fontSize: 9,
-                        fontWeight: pw.FontWeight.bold,
-                        color: red,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    pw.Text(
-                      'OFFICIAL',
-                      style: pw.TextStyle(
-                        fontSize: 5,
-                        color: red,
-                        letterSpacing: 0.7,
-                      ),
-                    ),
-                    if (companyId.trim().isNotEmpty)
-                      pw.Text(
-                        companyId.trim(),
-                        style: pw.TextStyle(fontSize: 4.5, color: red),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        pw.SizedBox(width: 12),
-        pw.Expanded(
-          child: pw.Column(
-            mainAxisAlignment: pw.MainAxisAlignment.end,
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                cleanName,
-                maxLines: 2,
-                style: pw.TextStyle(
-                  fontSize: 11,
-                  fontWeight: pw.FontWeight.bold,
-                  color: navy,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              pw.SizedBox(height: 3),
-              pw.Container(width: double.infinity, height: 1, color: navy),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                _localized('authorized_signatory', 'Authorized Signatory'),
-                style: pw.TextStyle(
-                  fontSize: 7,
-                  color: grey,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
   );
 }
 
@@ -677,7 +570,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                   pw.Text(
                     titleLines.$1.toUpperCase(),
                     style: pw.TextStyle(
-                      fontSize: 42,
+                      fontSize: 36,
                       fontWeight: pw.FontWeight.bold,
                       color: navy,
                       height: 1,
@@ -688,7 +581,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                     pw.Text(
                       titleLines.$2.toUpperCase(),
                       style: pw.TextStyle(
-                        fontSize: 42,
+                        fontSize: 36,
                         fontWeight: pw.FontWeight.bold,
                         color: navy,
                         height: 1,
@@ -700,16 +593,16 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             ),
             pw.SizedBox(width: 20),
             pw.Container(
-              width: 90,
-              height: 90,
+              width: 84,
+              height: 84,
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: border, width: 1.5),
               ),
               child: profileImage != null
                   ? pw.Image(
                       profileImage,
-                      width: 90,
-                      height: 90,
+                      width: 84,
+                      height: 84,
                       fit: pw.BoxFit.cover,
                     )
                   : pw.Container(
@@ -728,7 +621,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             ),
           ],
         ),
-        pw.SizedBox(height: 30),
+        pw.SizedBox(height: 18),
         pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -737,7 +630,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   _label(employeeDetails.toUpperCase()),
-                  pw.SizedBox(height: 10),
+                  pw.SizedBox(height: 8),
                   _detailRow(nameLabel, args.name),
                   _detailRow(fatherHusbandLabel, args.fatherHusbandName),
                   _detailRow(positionLabel, args.position),
@@ -753,7 +646,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   _label(contactAndWork.toUpperCase()),
-                  pw.SizedBox(height: 10),
+                  pw.SizedBox(height: 8),
                   _detailRow(phoneLabel, args.phone),
                   _detailRow(emailLabel, args.email),
                   _detailRow(joiningDateLabel, args.joiningDate),
@@ -765,13 +658,13 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             ),
           ],
         ),
-        pw.SizedBox(height: 25),
+        pw.SizedBox(height: 16),
         pw.Container(height: 1, color: black),
         pw.SizedBox(height: 2),
         pw.Container(height: 1, color: black),
-        pw.SizedBox(height: 20),
+        pw.SizedBox(height: 14),
         _label(personalInformation.toUpperCase()),
-        pw.SizedBox(height: 10),
+        pw.SizedBox(height: 8),
         pw.Table(
           columnWidths: const {
             0: pw.FlexColumnWidth(2),
@@ -798,9 +691,9 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             ),
           ],
         ),
-        pw.SizedBox(height: 25),
+        pw.SizedBox(height: 16),
         _label(workSummary.toUpperCase()),
-        pw.SizedBox(height: 10),
+        pw.SizedBox(height: 8),
         pw.Table(
           columnWidths: const {
             0: pw.FlexColumnWidth(4),
@@ -816,21 +709,26 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             _tableRow([salaryLabel, args.salary.isNotEmpty ? args.salary : '-'], navy),
           ],
         ),
-        pw.SizedBox(height: 40),
+        pw.SizedBox(height: 20),
         pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
-        pw.SizedBox(height: 10),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            _buildSignatureStamp(
-              args.companyName,
-              args.companyId,
-              stampImage: stampImage,
-            ),
-            pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(
+        pw.SizedBox(height: 8),
+        // RIGHT: Company stamp + signature block, same position as the
+        // payroll invoice PDF.
+        pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              buildCompanyAuthorization(
+                companyName: args.companyName,
+                companyId: args.companyId,
+                stampImage: stampImage,
+                accentColor: navy,
+                mutedColor: PdfColor.fromHex('#6B7280'),
+                authorizedSignatoryText: s['authorized_signatory']!,
+              ),
+              pw.SizedBox(height: 6),
+              pw.Text(
                 args.generatedOnText ??
                     '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
                 style: pw.TextStyle(
@@ -838,8 +736,8 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                   color: PdfColor.fromHex('#6B7280'),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     ),

@@ -20,6 +20,7 @@ import 'error_reporter.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
 
 class AutoPayrollResult {
@@ -35,7 +36,6 @@ class AutoPayrollResult {
   final int paidLeaves;
   final int unpaidLeaves;
   String absentDeduction;
-  String leaveDeduction;
   bool deductionsAreTotals;
   String overtimeAmount;
   String customDeduction;
@@ -60,7 +60,6 @@ class AutoPayrollResult {
     this.paidLeaves = 0,
     this.unpaidLeaves = 0,
     this.absentDeduction = '',
-    this.leaveDeduction = '',
     this.deductionsAreTotals = false,
     this.overtimeAmount = '',
     this.customDeduction = '',
@@ -86,7 +85,6 @@ class AutoPayrollResult {
     paidLeaves: paidLeaves,
     unpaidLeaves: unpaidLeaves,
     absentDeduction: absentDeduction,
-    leaveDeduction: leaveDeduction,
     deductionsAreTotals: deductionsAreTotals,
     overtimeAmount: overtimeAmount,
     customDeduction: customDeduction,
@@ -406,7 +404,7 @@ class SalaryDayScheduler {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Unable to load working days. Payroll was not generated.',
+          message: 'failed_to_load_working_days'.tr(),
           isError: true,
         );
       }
@@ -417,7 +415,9 @@ class SalaryDayScheduler {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Invalid working days ($autoWorkDays). Payroll was not generated.',
+          message: 'invalid_working_days'.tr(
+            namedArgs: {'days': '$autoWorkDays'},
+          ),
           isError: true,
         );
       }
@@ -473,7 +473,6 @@ class SalaryDayScheduler {
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
 
       late double absentDeductionTotal;
-      late double leaveDeductionTotal;
       String netSalary;
       double rawNetVal = 0;
 
@@ -488,17 +487,10 @@ class SalaryDayScheduler {
           final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
               .toString()
               .trim();
-          final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
-              .toString()
-              .trim();
 
           absentDeductionTotal = absentDeductionPerDay.isEmpty
               ? dailyRate * absents
               : PayrollService.extractSalary(absentDeductionPerDay) * absents;
-          leaveDeductionTotal = leaveDeductionPerDay.isEmpty
-              ? dailyRate * unpaidLeaves
-              : PayrollService.extractSalary(leaveDeductionPerDay) *
-                    unpaidLeaves;
           final effectiveDays = workDays - absents - unpaidLeaves;
           final calc = PayrollService.calculatePayroll(
             salary: salaryStr,
@@ -508,19 +500,17 @@ class SalaryDayScheduler {
             leaves: unpaidLeaves.toString(),
             overtimeAmount: overtimeAmount,
             absentDeductionPerDay: absentDeductionPerDay,
-            leaveDeductionPerDay: leaveDeductionPerDay,
             salaryType: salaryType,
           );
           netSalary = calc['formattedNet'] as String? ?? '0';
           rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
         } else {
           absentDeductionTotal = dailyRate * (absents + (halfDays * 0.5));
-          leaveDeductionTotal = dailyRate * unpaidLeaves;
           rawNetVal = PayrollService.calculateNetFromTotals(
             salary: salaryStr,
             overtimeAmount: overtimeAmount,
             absentDeduction: absentDeductionTotal.toString(),
-            leaveDeduction: leaveDeductionTotal.toString(),
+            customDeduction: '0',
             salaryType: salaryType,
           );
           final currency = PayrollService.getCurrencyPrefix(salaryStr);
@@ -575,7 +565,7 @@ class SalaryDayScheduler {
           paidLeaves: paidLeaves,
           unpaidLeaves: unpaidLeaves,
           absentDeduction: _editableAmount(absentDeductionTotal),
-          leaveDeduction: _editableAmount(leaveDeductionTotal),
+          customDeduction: _editableAmount(0.0),
           deductionsAreTotals: true,
           overtimeAmount: overtimeAmount,
           salary: salaryStr,
@@ -959,8 +949,7 @@ class SalaryDayScheduler {
         'leaves': r.leaves.toString(),
         'overtimeAmount': r.overtimeAmount,
         'absentDeduction': r.absentDeduction,
-        'leaveDeduction': r.leaveDeduction,
-        'deductionsAreTotals': r.deductionsAreTotals,
+        'deductionsAreTotals': true,
         'salary': r.salary,
         'currency': r.currency,
         'salaryType': r.salaryType,
@@ -1082,11 +1071,10 @@ class SalaryDayScheduler {
     try {
       final archive = Archive();
       final now = DateTime.now();
-      Map<String, dynamic> companyProfile = const {};
-      try {
-        companyProfile =
-            await context.read<FirestoreService>().getUserProfile() ?? const {};
-      } catch (_) {}
+      final companyProfile =
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(
+            context.read<FirestoreService>(),
+          );
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -1099,7 +1087,6 @@ class SalaryDayScheduler {
             ? enteredSalary / 12
             : enteredSalary;
         final workDays = int.tryParse(r.totalWorkDays) ?? 30;
-        final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
         final absentsInt = r.absents;
         final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
@@ -1110,17 +1097,17 @@ class SalaryDayScheduler {
                 .clamp(0, workDays)
                 .toDouble();
         final grossSalary = rawSalary;
+        final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
         final absentDeductionTotal = PayrollService.extractSalary(
           r.absentDeduction,
         );
-        final leaveDeductionTotal = PayrollService.extractSalary(
-          r.leaveDeduction,
-        );
+        final totalDeductions =
+            PayrollService.extractSalary(r.customDeduction) +
+                absentDeductionTotal;
         final netSalary =
             (grossSalary +
                     overtimeAmt -
-                    absentDeductionTotal -
-                    leaveDeductionTotal)
+                    totalDeductions)
                 .clamp(0.0, double.infinity);
         final currency = PayrollService.getCurrencySymbol(r.currency);
 
@@ -1139,30 +1126,23 @@ class SalaryDayScheduler {
           grossPay: _invoiceMoney(grossSalary, currency),
           overtimePay: _invoiceMoney(overtimeAmt, currency),
           absentDeduction: _invoiceMoney(absentDeductionTotal, currency),
-          leaveDeduction: _invoiceMoney(leaveDeductionTotal, currency),
+          leaveDeduction: '0',
           totalDeductions: _invoiceMoney(
-            absentDeductionTotal + leaveDeductionTotal,
+            absentDeductionTotal,
             currency,
           ),
           netSalary: _invoiceMoney(netSalary, currency),
           currency: currency,
-          companyName:
-              (companyProfile['businessName'] ??
-                      companyProfile['companyName'] ??
-                      'HRMS Company')
-                  .toString(),
+          companyName: CompanyProfileHelper.companyNameOrFallback(
+            companyProfile['companyName'],
+          ),
           companyAddress: (companyProfile['address'] ?? '').toString(),
           companyEmail: (companyProfile['email'] ?? '').toString(),
-          companyPhone:
-              (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
-                  .toString(),
-          companyId:
-              (companyProfile['companyId'] ??
-                      companyProfile['businessId'] ??
-                      '')
-                  .toString(),
+          companyPhone: (companyProfile['phone'] ?? '').toString(),
+          companyId: (companyProfile['companyId'] ?? '').toString(),
           companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
               .toString(),
+          companyLogoUrl: (companyProfile['profilePicUrl'] ?? '').toString(),
           workerId: r.workerId,
         );
 
@@ -2330,14 +2310,7 @@ class SalaryDayScheduler {
           listen: false,
         ).currentUser?.isAnonymous ??
         false;
-    final totalWorkDays = int.tryParse(result.totalWorkDays) ?? 30;
-    final presents =
-        (totalWorkDays -
-                result.absents -
-                result.leaves -
-                (result.halfDays * 0.5))
-            .clamp(0, totalWorkDays)
-            .toDouble();
+
 
     return showDialog<AutoPayrollResult>(
       context: context,
@@ -2504,13 +2477,6 @@ class SalaryDayScheduler {
                                     iconColor: const Color(0xFF3B82F6),
                                     rows: [
                                       _metricRow(
-                                        'presents'.tr(),
-                                        '${_formatDayCount(presents)} ${'days_suffix'.tr()}',
-                                        const Color(0xFFF9FAFB),
-                                        const Color(0xFF6B7280),
-                                        const Color(0xFF111827),
-                                      ),
-                                      _metricRow(
                                         'absents'.tr(),
                                         '${result.absents} ${'days_suffix'.tr()}',
                                         const Color(0xFFF9FAFB),
@@ -2546,13 +2512,6 @@ class SalaryDayScheduler {
                                         const Color(0xFF111827),
                                       ),
                                       _metricRow(
-                                        'working_days'.tr(),
-                                        result.totalWorkDays,
-                                        const Color(0xFFF9FAFB),
-                                        const Color(0xFF6B7280),
-                                        const Color(0xFF111827),
-                                      ),
-                                      _metricRow(
                                         'overtime_bonus'.tr(),
                                         result.overtimeAmount.isNotEmpty
                                             ? AmountText.formatCompact(
@@ -2580,20 +2539,6 @@ class SalaryDayScheduler {
                                         controllers: overtimeControllers,
                                         onChanged: (val) {
                                           result.absentDeduction = val;
-                                          _recalcWithDeductions(
-                                            result,
-                                            result.customDeduction,
-                                            () => setDetailState(() {}),
-                                          );
-                                        },
-                                      ),
-                                      _editableDeductionRow(
-                                        label: 'leave_deduction'.tr(),
-                                        value: result.leaveDeduction,
-                                        controllerKey: originalIndex * 10 + 2,
-                                        controllers: overtimeControllers,
-                                        onChanged: (val) {
-                                          result.leaveDeduction = val;
                                           _recalcWithDeductions(
                                             result,
                                             result.customDeduction,
@@ -3040,7 +2985,7 @@ class SalaryDayScheduler {
         salary: r.salary,
         overtimeAmount: r.overtimeAmount,
         absentDeduction: r.absentDeduction,
-        leaveDeduction: r.leaveDeduction,
+        leaveDeduction: '0',
         customDeduction: deductionVal,
         salaryType: r.salaryType,
       );
