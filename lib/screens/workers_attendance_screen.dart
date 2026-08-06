@@ -91,6 +91,8 @@ class WorkersAttendanceScreen extends StatefulWidget {
 
 class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   final _searchController = TextEditingController();
+  final GlobalKey _statusFilterButtonKey = GlobalKey();
+  double? _statusFilterButtonWidth;
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
   String _selectedTimeframe = 'Today';
@@ -716,6 +718,70 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         ? <String, int>{'Sick Leave': 0, 'Casual Leave': 0, 'Medical Leave': 0, 'Annual Leave': 0}
         : TimeOffService.paidDaysUsedForWorkerByType(worker, projectedRecords);
 
+    // Per-type balance sync: the exact leave type that was applied gets -1,
+    // and editing the attendance record back to Present restores +1 to that
+    // SAME type (never a different one).
+    final Map<String, dynamic> perTypeBalances = Map<String, dynamic>.from(
+      (worker['leaveBalances'] as Map<String, dynamic>?) ?? {},
+    );
+
+    String balanceFieldFor(String type) =>
+        switch (TimeOffService.normalizeLeaveType(type)) {
+          'Annual Leave' => 'annualLeave',
+          'Sick Leave' => 'sickLeave',
+          'Casual Leave' => 'casualLeave',
+          'Medical Leave' => 'medicalLeave',
+          _ => '',
+        };
+
+    int balanceFor(String field) {
+      if (perTypeBalances.containsKey(field)) {
+        return int.tryParse(perTypeBalances[field]?.toString() ?? '0') ?? 0;
+      }
+      return switch (field) {
+        'annualLeave' => int.tryParse(
+                (worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0')
+                    .toString()) ??
+            0,
+        'sickLeave' =>
+          int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0,
+        'casualLeave' =>
+          int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0,
+        'medicalLeave' =>
+          int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0,
+        _ => 0,
+      };
+    }
+
+    // Make sure every paid type is present so attendance-marked leave never
+    // zeroes the untouched types when the map is first created.
+    const allBalanceFields = [
+      'annualLeave',
+      'sickLeave',
+      'casualLeave',
+      'medicalLeave',
+    ];
+    for (final field in allBalanceFields) {
+      perTypeBalances.putIfAbsent(field, () => balanceFor(field));
+    }
+
+    // Restore the previously applied type when the record is removed or its
+    // type changes.
+    final previousType = existing != null
+        ? (existing['type'] ?? existing['action'] ?? '').toString()
+        : '';
+    final previousField = balanceFieldFor(previousType);
+    if (previousField.isNotEmpty) {
+      perTypeBalances[previousField] = balanceFor(previousField) + 1;
+    }
+
+    // Deduct the newly applied type.
+    final newField = balanceFieldFor(leaveType);
+    if (shouldHaveLeave && newField.isNotEmpty) {
+      perTypeBalances[newField] =
+          (balanceFor(newField) - 1).clamp(0, 99999);
+    }
+
     final balanceUpdate = <String, dynamic>{
       'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
           .clamp(0, totalPaidDays)
@@ -725,6 +791,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
       'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
       'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
+      'leaveBalances': perTypeBalances,
     };
 
     final result = await _firestore.saveAttendanceWithLeaveSync(
@@ -1049,6 +1116,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> get _visibleTodayAttendance {
     return _todayAttendance
         .where((record) => _attendanceBelongsToCurrentWorker(record))
+        .where((record) {
+          if (_selectedStatusFilter == 'All') return true;
+          final status = (record['status'] ?? '').toString().toLowerCase();
+          return status == _selectedStatusFilter.toLowerCase();
+        })
         .toList();
   }
 
@@ -1312,8 +1384,24 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Widget _buildStatusFilterDropdown() {
+    // Keep the opened menu the exact width of the trigger button so the
+    // dropdown aligns perfectly instead of being wider than the button.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final width = _statusFilterButtonKey.currentContext?.size?.width;
+      if (width == null) return;
+      if (width != _statusFilterButtonWidth) {
+        setState(() => _statusFilterButtonWidth = width);
+      }
+    });
     return PopupMenuButton<String>(
       tooltip: '',
+      constraints: _statusFilterButtonWidth == null
+          ? null
+          : BoxConstraints(
+              minWidth: _statusFilterButtonWidth!,
+              maxWidth: _statusFilterButtonWidth!,
+            ),
       onSelected: (val) {
         setState(() {
           _selectedStatusFilter = val;
@@ -1388,6 +1476,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         }).toList();
       },
       child: Container(
+        key: _statusFilterButtonKey,
         height: 43,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
@@ -1604,11 +1693,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           final initialType = (todayRecord['type'] ?? '').toString();
           const absentTypes = {
             'Without Notice',
-            'Sick',
             'Family Emergency',
             'Other',
           };
-          const leaveTypes = {'Sick Leave', 'Casual Leave', 'Medical Leave'};
+          const leaveTypes = {
+            'Annual Leave',
+            'Sick Leave',
+            'Casual Leave',
+            'Medical Leave',
+          };
           String selectedLeaveType = selectedStatus == 'Leave'
               ? (leaveTypes.contains(initialType) ? initialType : 'Sick Leave')
               : (absentTypes.contains(initialType)
@@ -1619,12 +1712,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             if (selectedStatus == 'Absent') {
               return const [
                 {'value': 'Without Notice', 'key': 'absent_without_notice'},
-                {'value': 'Sick', 'key': 'absent_sick'},
                 {'value': 'Family Emergency', 'key': 'absent_emergency'},
                 {'value': 'Other', 'key': 'absent_other'},
               ];
             }
             return const [
+              {'value': 'Annual Leave', 'key': 'annual_leave'},
               {'value': 'Sick Leave', 'key': 'sick_leave_type'},
               {'value': 'Casual Leave', 'key': 'casual_leave_type'},
               {'value': 'Medical Leave', 'key': 'medical_leave_type'},

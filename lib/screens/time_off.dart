@@ -952,9 +952,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
                 final bool canAssign = doc['canAssignTimeOff'] != false;
                 final String displayAction = !canAssign
-                    ? (doc['status'] ?? doc['workerStatus'] ?? doc['employmentStatus'] ?? 'Inactive')
-                        .toString()
-                        .toUpperCase()
+                    ? (doc['status'] ??
+                              doc['workerStatus'] ??
+                              doc['employmentStatus'] ??
+                              'Inactive')
+                          .toString()
+                          .toUpperCase()
                     : (isLimitReached ? 'limit_reached'.tr() : 'assign'.tr());
                 final Color actionColor = !canAssign || isLimitReached
                     ? const Color(0xFFDC2626)
@@ -1352,7 +1355,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'Available Leave Days',
-                                  value: '${TimeOffService.totalAvailableLeaves(data)}',
+                                  value:
+                                      '${TimeOffService.totalAvailableLeaves(data)}',
                                 ),
                               ),
                             ],
@@ -1368,7 +1372,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'requested_days'.tr(),
-                                  value: '${data['requestedDays'] ?? selectedDays}',
+                                  value:
+                                      '${data['requestedDays'] ?? selectedDays}',
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1380,7 +1385,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'remaining_days'.tr(),
-                                  value: '${TimeOffService.remainingPaidLeave(data, _rawTimeoffDocs)}',
+                                  value:
+                                      '${TimeOffService.remainingPaidLeave(data, _rawTimeoffDocs)}',
                                 ),
                               ),
                             ],
@@ -1396,7 +1402,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'selected_dates'.tr(),
-                                  value: '${allDatesWithTypes.length} ${'days'.tr()}',
+                                  value:
+                                      '${allDatesWithTypes.length} ${'days'.tr()}',
                                   onTap: () {
                                     _showSelectedDatesDialog(
                                       context,
@@ -1433,10 +1440,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
 
     if (result == 'edit' && mounted) {
-      // Find the most recent active time-off record for this worker
-      // so we can open in edit mode with the correct record pre-loaded.
-      // Merge it with the worker doc so the edit screen has both
-      // leave quotas (sickLeaves etc.) AND the record fields (action, selectedDates, id).
       final wId = (data['id'] ?? data['workerId'] ?? '').toString().trim();
       final wEmail = (data['email'] ?? '').toString().trim().toLowerCase();
 
@@ -1921,7 +1924,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             final item = datesWithTypes[index];
                             final date = item['date'] as DateTime;
                             final type = item['type'] as String?;
-                            final effectiveType = (type?.isNotEmpty == true) ? type : leaveType;
+                            final effectiveType = (type?.isNotEmpty == true)
+                                ? type
+                                : leaveType;
                             final String displayType = effectiveType ?? '';
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1999,7 +2004,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                 ),
               ),
-
             ],
           ),
         ),
