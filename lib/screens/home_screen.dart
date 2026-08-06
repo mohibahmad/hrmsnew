@@ -21,6 +21,7 @@ import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import '../utils/logout_dialog.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 import '../widgets/notification_sidebar.dart';
 import 'login_screen.dart';
 import '../services/payroll_service.dart';
@@ -92,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case 3:
         return PayrollScreen(
+          isActive: _selectedIndex == 3 && !_showAssignTimeOff && !_showProfile && !_showWorkersAttendance && !_showNotifications,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onAssignTimeOff: () {
@@ -346,13 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
-    if (cachedUrl != null &&
-        cachedUrl.isNotEmpty &&
-        cachedUrl.startsWith('http')) {
-      AuthService.profilePicNotifier.value = cachedUrl;
-    } else {
-      AuthService.profilePicNotifier.value = null;
-    }
+    AuthService.profilePicNotifier.value =
+        (cachedUrl != null && cachedUrl.isNotEmpty) ? cachedUrl : null;
   }
 
   void _startPremiumListener() {
@@ -1029,10 +1026,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
                       if (_selectedIndex == 1 &&
-                          _workersKey.currentState?.hasUnsavedBulkChanges ==
-                              true) {
+                          _workersKey.currentState?.hasUnsavedChanges == true) {
                         final shouldDiscard = await _workersKey.currentState!
-                            .confirmDiscardBulkChanges();
+                            .confirmDiscardChanges();
+                        if (!shouldDiscard) return;
+                      }
+                      if (_showAssignTimeOff) {
+                        final shouldDiscard = await UnsavedChangesDialog.show(context);
                         if (!shouldDiscard) return;
                       }
                       setState(() {

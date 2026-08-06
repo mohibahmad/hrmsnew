@@ -803,7 +803,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                           context,
                                           message: 'expense_claim_exceeds_limit'.tr(
                                             namedArgs: {
-                                              'maxLimit': '\$${maxLimit.toStringAsFixed(0)}',
+                                              'maxLimit': formatMoney(
+                                                maxLimit,
+                                                CurrencyUtils.symbolFor(_currencyCode),
+                                              ),
                                             },
                                           ),
                                           isError: true,

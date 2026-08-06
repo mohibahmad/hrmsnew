@@ -950,10 +950,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   _rawTimeoffDocs,
                 );
 
-                final String displayAction = isLimitReached
-                    ? 'limit_reached'.tr()
-                    : 'assign'.tr();
-                final Color actionColor = isLimitReached
+                final bool canAssign = doc['canAssignTimeOff'] != false;
+                final String displayAction = !canAssign
+                    ? (doc['status'] ?? doc['workerStatus'] ?? doc['employmentStatus'] ?? 'Inactive')
+                        .toString()
+                        .toUpperCase()
+                    : (isLimitReached ? 'limit_reached'.tr() : 'assign'.tr());
+                final Color actionColor = !canAssign || isLimitReached
                     ? const Color(0xFFDC2626)
                     : const Color(0xFF0D4CC6);
 
@@ -965,7 +968,27 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       showGuestRestrictionDialog(context);
                       return;
                     }
-                    _showTimeOffDataDialog(context, doc, index);
+                    if (isLimitReached || doc['canAssignTimeOff'] == false) {
+                      _showTimeOffDataDialog(context, doc, index);
+                      return;
+                    }
+                    if (widget.onAssignTimeOff != null) {
+                      widget.onAssignTimeOff!(_docForNewLeave(doc));
+                    } else {
+                      Navigator.of(context)
+                          .push(
+                            MaterialPageRoute(
+                              builder: (context) => AssignTimeOffScreen(
+                                onBack: () => Navigator.of(context).pop(),
+                                initialWorker: _docForNewLeave(doc),
+                              ),
+                            ),
+                          )
+                          .then((_) {
+                            if (!isGuest) return;
+                            _refreshGuestData();
+                          });
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1160,8 +1183,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final String notes = (data['notes'] ?? '').toString();
 
     final String workerId = (data['id'] ?? data['workerId'] ?? '').toString();
-    // ALL active leave records assigned to this worker (not just the row that
-    // was clicked), so older records are never hidden or overwritten.
     final workerRecords = _rawTimeoffDocs.where((d) {
       if (!TimeOffService.isActiveRecord(d)) return false;
       final recWorkerId = (d['workerId'] ?? '').toString();
@@ -1331,7 +1352,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'Available Leave Days',
-                                  value: '${TimeOffService.remainingPaidLeave(data, _rawTimeoffDocs, excludingRecordId: data['id']?.toString())}',
+                                  value: '${TimeOffService.totalAvailableLeaves(data)}',
                                 ),
                               ),
                             ],
@@ -1978,32 +1999,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFEEEEEE)),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004FDE),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+
             ],
           ),
         ),

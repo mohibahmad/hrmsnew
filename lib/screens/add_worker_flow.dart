@@ -2,6 +2,7 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart' show compute;
 import 'package:image/image.dart' as img;
@@ -119,7 +120,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type2Controller = TextEditingController(text: 'On-Site');
 
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
-  final _educationController = TextEditingController(text: 'Bachelor');
+  final _educationController = TextEditingController(text: 'Bachelors');
   final _salaryTypeController = TextEditingController(text: 'Monthly');
   final _currencyController = TextEditingController(text: 'USD');
   final _salaryAmountController = TextEditingController();
@@ -458,7 +459,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _isCvUploaded = true;
         _cvName = _cleanFileName(_existingCvUrl!);
       }
-      _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
+      _joiningDate = _workerDateText(widget.workerToEdit!['joiningDate']);
     }
   }
 
@@ -709,6 +710,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     );
   }
 
+  String? _workerDateText(dynamic value) {
+    if (value == null) return null;
+    final date = AppDateUtils.dateFromValue(value);
+    return date != null ? AppDateUtils.formatDate(date) : value.toString();
+  }
+
   DateTime? _parseWorkerDate(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
@@ -784,6 +791,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_job_position'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final salaryType = _salaryTypeController.text.trim();
+    if (salaryType.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_salary_type'.tr(),
         isError: true,
       );
       return false;
@@ -1182,7 +1199,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         (edit['medicalLeaves'] ?? '').toString().trim()) {
       return true;
     }
-    if (!_sameWorkerDate(_joiningDate, edit['joiningDate']?.toString())) {
+    if (!_sameWorkerDate(_joiningDate, _workerDateText(edit['joiningDate']))) {
       return true;
     }
     if (_profileImageBytes != null ||
@@ -1552,7 +1569,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'experienceLevel': _experienceLevelController.text.trim(),
         'education': _educationController.text.trim(),
         'salaryType': _salaryTypeController.text.trim(),
-        'currency': CurrencyUtils.normalize(_currencyController.text),
         'salaryAmount':
             double.tryParse(
               _salaryAmountController.text.trim().replaceAll(',', ''),
@@ -1565,10 +1581,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'leavesUsed': 0,
         'sickLeaves': int.tryParse(_sickLeavesController.text.trim()) ?? 0,
         'casualLeaves': int.tryParse(_casualLeavesController.text.trim()) ?? 0,
-        'medicalLeaves': int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
+        'medicalLeaves':
+            int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
         'joiningDate': isGuest
             ? (_joiningDate ?? '')
-            : AppDateUtils.formatDate(joiningDate),
+            : Timestamp.fromDate(
+                DateTime(joiningDate.year, joiningDate.month, joiningDate.day),
+              ),
         'profileImage': profileImageUrl,
 
         'frontId': frontIdUrl,
@@ -3329,8 +3348,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       LocalizationHelper.localizeEducation(value);
   String _localizeSalaryType(String value) =>
       LocalizationHelper.localizeSalaryType(value);
-  String _localizeCurrency(String value) =>
-      LocalizationHelper.localizeCurrency(value);
 
   void _parseSelectedDate({bool includeLocalizedMonth = false}) {
     final dateStr = widget.selectedJoiningDate?.trim() ?? '';
@@ -3927,7 +3944,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Expanded(
                           child: _buildInputField(
                             'annual_leaves_days'.tr(),
-                            'hint_annual_leaves'.tr(),
+                            '0',
                             controller: widget.annualLeavesController,
                             isLeaves: true,
                           ),
@@ -3936,7 +3953,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Expanded(
                           child: _buildInputField(
                             'sick_leaves_days'.tr(),
-                            'hint_sick_leaves'.tr(),
+                            '0',
                             controller: widget.sickLeavesController,
                             isLeaves: true,
                           ),
@@ -3949,7 +3966,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Expanded(
                           child: _buildInputField(
                             'casual_leaves_days'.tr(),
-                            'hint_casual_leaves'.tr(),
+                            '0',
                             controller: widget.casualLeavesController,
                             isLeaves: true,
                           ),
@@ -3958,7 +3975,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Expanded(
                           child: _buildInputField(
                             'medical_leaves_days'.tr(),
-                            'hint_medical_leaves'.tr(),
+                            '0',
                             controller: widget.medicalLeavesController,
                             isLeaves: true,
                           ),

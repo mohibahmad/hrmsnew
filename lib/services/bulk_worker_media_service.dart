@@ -237,8 +237,14 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
           fallbackMimeType: item.fallbackMime,
         );
       } catch (e) {
-        debugPrint('Skipping broken link for ${item.url}: $e');
-        return;
+        final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker')
+            .toString();
+        final errorText = 'bulk_media_broken_link_error'.tr(
+          namedArgs: {'error': readableSaveError(e)},
+        );
+        throw StateError(
+          '$workerName — ${mediaFieldName(item.field)} link: $errorText',
+        );
       }
       final file = downloaded;
       if (!isSupportedMediaType(item.field, file.mimeType)) {

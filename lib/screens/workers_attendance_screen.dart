@@ -122,6 +122,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   StreamSubscription? _holidaysSub;
   StreamSubscription? _timeOffSub;
   bool _leaveNoticeShown = false;
+  bool _autoMarkInProgress = false;
+  bool _autoMarkDoneForToday = false;
   final Map<String, Map<String, dynamic>> _workersById = {};
   final Map<String, Map<String, dynamic>> _workersByEmail = {};
 
@@ -302,6 +304,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               _todayAttendance = _latestAttendancePerWorker(filtered);
               _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
             });
+            _autoMarkPlannedLeaves();
           },
           onError: (e) {
             if (!mounted) return;
@@ -377,6 +380,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   void _showActiveLeaveNotice() {
     if (_leaveNoticeShown || !mounted) return;
     if (!_isGuest && (!_workersLoaded || !_timeOffLoaded)) return;
+    _autoMarkPlannedLeaves();
     final active = <Map<String, dynamic>>[];
     for (final worker in _workers) {
       final leave = _activePlannedTimeOffForWorker(worker);
@@ -433,6 +437,76 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   bool _isWorkerOnPlannedTimeOff(Map<String, dynamic> worker) {
     return _activePlannedTimeOffForWorker(worker) != null;
+  }
+
+  /// Automatically marks attendance as On Leave for workers assigned leave
+  /// today, so the admin never has to mark Present/Absent manually. Runs at
+  /// most once per day; payroll counts the day via the planned leave records.
+  Future<void> _autoMarkPlannedLeaves() async {
+    if (_isGuest || _autoMarkInProgress || _autoMarkDoneForToday) return;
+    if (!_workersLoaded || !_timeOffLoaded || !_attendanceLoaded) return;
+    _autoMarkInProgress = true;
+    _autoMarkDoneForToday = true;
+    try {
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
+      final marked = <Map<String, dynamic>>[];
+      for (final worker in _workers) {
+        final leave = _activePlannedTimeOffForWorker(worker);
+        if (leave == null) continue;
+        final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+            .toString()
+            .trim();
+        if (workerId.isEmpty) continue;
+        final alreadyMarked = _todayAttendance
+            .cast<Map<String, dynamic>?>()
+            .any((record) {
+          if (record == null) return false;
+          return _authenticatedRecordBelongsToWorker(record, worker);
+        });
+        if (alreadyMarked) continue;
+
+        final leaveType = TimeOffService.normalizeLeaveType(
+          (leave['action'] ?? leave['type'] ?? 'Sick Leave').toString(),
+        );
+        final attendanceRecord = <String, dynamic>{
+          'workerId': workerId,
+          'name': worker['name'] ?? 'Worker',
+          'workerName': worker['name'] ?? 'Worker',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? worker['role'] ?? 'Worker',
+          'contact': worker['phone'] ?? worker['contact'] ?? '',
+          'profileImage': worker['profileImage'] ?? '',
+          'attendanceDate': todayKey,
+          'status': 'Leave',
+          'type': leaveType,
+          'desc': 'auto_marked_on_leave'.tr(),
+          'source': 'auto_leave',
+        };
+        try {
+          await _firestore.saveAttendanceWithLeaveSync(
+            attendanceRecord: attendanceRecord,
+            workerId: workerId,
+          );
+          marked.add(attendanceRecord);
+        } catch (error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'AutoMarkPlannedLeave:$workerId',
+          );
+        }
+      }
+      if (marked.isNotEmpty && mounted) {
+        setState(() {
+          _todayAttendance = [..._todayAttendance, ...marked];
+        });
+      }
+    } finally {
+      _autoMarkInProgress = false;
+    }
   }
 
   bool _authenticatedRecordBelongsToWorker(
@@ -694,6 +768,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return '';
     }
 
+    // A worker assigned leave today is automatically On Leave and locked:
+    // the admin must not mark Present/Absent manually.
+    if (_isWorkerOnPlannedTimeOff(worker)) {
+      return 'Leave';
+    }
+
     final directStatus = worker['status']?.toString().trim() ?? '';
     if (_isGuest && directStatus.isNotEmpty && directStatus != '*****') {
       return directStatus;
@@ -928,9 +1008,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       if (!AttendanceService.isEligibleForAttendance(worker)) {
         return false;
       }
-      if (_isWorkerOnPlannedTimeOff(worker)) {
-        return false;
-      }
       final name = (worker['name'] ?? '').toString().toLowerCase();
       final role = (worker['position'] ?? worker['role'] ?? '')
           .toString()
@@ -972,7 +1049,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> get _visibleTodayAttendance {
     return _todayAttendance
         .where((record) => _attendanceBelongsToCurrentWorker(record))
-        .where((record) => !_isWorkerOnPlannedTimeOff(record))
         .toList();
   }
 
@@ -1075,13 +1151,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'worker_attendance'.tr(),
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: textDark,
-                                          fontFamily: 'SF Pro Display',
+                                      SizedBox(
+                                        height: 43,
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'worker_attendance'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: textDark,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -1121,13 +1203,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'today_attendance'.tr(),
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: textDark,
-                                          fontFamily: 'SF Pro Display',
+                                      SizedBox(
+                                        height: 43,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              'today_attendance'.tr(),
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: textDark,
+                                                fontFamily:
+                                                    'SF Pro Display',
+                                              ),
+                                            ),
+                                            _buildStatusFilterDropdown(),
+                                          ],
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -1200,6 +1295,138 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       data,
       defaultStatus: defaultStatus,
       titleKey: titleKey,
+    );
+  }
+
+  String _statusFilterLabel(String filterKey) {
+    switch (filterKey) {
+      case 'Present':
+        return 'present_tab'.tr();
+      case 'Absent':
+        return 'absent_tab'.tr();
+      case 'Leave':
+        return 'on_leave'.tr();
+      default:
+        return 'all_filter'.tr();
+    }
+  }
+
+  Widget _buildStatusFilterDropdown() {
+    return PopupMenuButton<String>(
+      tooltip: '',
+      onSelected: (val) {
+        setState(() {
+          _selectedStatusFilter = val;
+        });
+      },
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      color: const Color(0xFFFFFFFF),
+      elevation: 4,
+      itemBuilder: (context) {
+        final filters = [
+          {'value': 'All', 'label': 'all_filter'.tr()},
+          {'value': 'Present', 'label': 'present_tab'.tr()},
+          {'value': 'Absent', 'label': 'absent_tab'.tr()},
+          {'value': 'Leave', 'label': 'on_leave'.tr()},
+        ];
+        return filters.map((f) {
+          final bool selected = _selectedStatusFilter == f['value'];
+          return PopupMenuItem<String>(
+            value: f['value'],
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFF0247C4)
+                          : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                    color: selected
+                        ? const Color(0xFF0247C4)
+                        : Colors.transparent,
+                  ),
+                  child: selected
+                      ? const Icon(
+                          Icons.check,
+                          size: 12,
+                          color: Color(0xFFFFFFFF),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    f['label']!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: selected
+                          ? const Color(0xFF0247C4)
+                          : const Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList();
+      },
+      child: Container(
+        height: 43,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0247C4),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/filter.png',
+              width: 22,
+              height: 22,
+              color: const Color(0xFFFFFFFF),
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.filter_alt_outlined,
+                color: Color(0xFFFFFFFF),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _statusFilterLabel(_selectedStatusFilter),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.arrow_drop_down,
+              color: Color(0xFFFFFFFF),
+              size: 22,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2422,17 +2649,36 @@ class WorkerListItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E5EA),
+                color: currentStatus == 'Leave'
+                    ? const Color(0xFFFFF3E0)
+                    : const Color(0xFFE2E5EA),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text(
-                'Attendance marked',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (currentStatus == 'Leave') ...[
+                    const Icon(
+                      Icons.beach_access_rounded,
+                      size: 14,
+                      color: Color(0xFFB45309),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    currentStatus == 'Leave'
+                        ? 'on_leave'.tr()
+                        : 'attendance_marked'.tr(),
+                    style: TextStyle(
+                      color: currentStatus == 'Leave'
+                          ? const Color(0xFFB45309)
+                          : const Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

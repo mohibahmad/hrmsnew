@@ -19,17 +19,22 @@ class CustomTimeframeDropdown extends StatefulWidget {
       case 'Today':
         return 'today'.tr();
       case 'Week':
-        return 'week'.tr();
+      case 'This Week':
+        return 'this_week'.tr();
       case 'Month':
-        return 'month'.tr();
       case 'Monthly':
-        return 'monthly'.tr();
+      case 'This Month':
+        return 'this_month'.tr();
       case '3 Month':
+      case '3 Months':
         return '3_month'.tr();
       case '6 Month':
-        return '6_month'.tr();
+      case '6 Months':
+      case 'Last 6 Months':
+        return 'last_6_months'.tr();
       case 'Yearly':
-        return 'yearly_period'.tr();
+      case 'This Year':
+        return 'this_year'.tr();
       default:
         return period;
     }
@@ -46,7 +51,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
   OverlayEntry? _overlayEntry;
 
   List<String> get _options =>
-      widget.options ?? const ['Today', 'Week', 'Month', '6 Month', 'Yearly'];
+      widget.options ??
+      const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year'];
 
   void _toggleDropdown() {
     if (_isOpen) {
@@ -59,6 +65,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
   void _openDropdown() {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final size = renderBox.size;
+    final menuWidth = size.width;
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Stack(
@@ -73,11 +80,12 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             ),
           ),
           Positioned(
-            width: size.width,
+            width: menuWidth,
             child: CompositedTransformFollower(
               link: _layerLink,
               showWhenUnlinked: false,
-              offset: Offset(0, size.height),
+              targetAnchor: Alignment.bottomLeft,
+              followerAnchor: Alignment.topLeft,
               child: Material(
                 elevation: 4,
                 color: Colors.transparent,
@@ -139,7 +147,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                     option,
                                   ),
                                   style: TextStyle(
-                                    fontSize: 17.0,
+                                    fontSize: 14.5,
                                     color: isSelected
                                         ? const Color(0xFF0247C4)
                                         : Colors.grey.shade400,
@@ -193,10 +201,10 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          constraints: const BoxConstraints(minWidth: 90),
+          constraints: const BoxConstraints(minWidth: 125),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFF0247C4), 
+            color: const Color(0xFF0247C4),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(6),
               topRight: const Radius.circular(6),
@@ -205,7 +213,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             ),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Padding(
                 padding: const EdgeInsets.only(left: 6),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/worker_profile_service.dart';
 import 'package:image/image.dart' as img;
@@ -91,6 +92,34 @@ void main() {
     expect(pdf.isNotEmpty, isTrue);
     expect(countImageObjects(pdf), 0,
         reason: 'No stamp image should be embedded without a stamp URL');
+  });
+
+  testWidgets('fallback seal draws stars with vector paths, not text glyphs',
+      (tester) async {
+    await initLocalization(tester);
+    late Uint8List pdf;
+    await tester.runAsync(() async {
+      pdf = await generate(stampUrl: '');
+    });
+
+    final text = latin1.decode(pdf);
+    expect(text.contains('★'), isFalse,
+        reason: 'The ★ character must not be embedded as text (it has no '
+            'glyph in the embedded fonts and used to render blank)');
+
+    final content = StringBuffer();
+    final streamRe = RegExp(r'stream\r?\n(.*?)\r?\nendstream', dotAll: true);
+    for (final m in streamRe.allMatches(text)) {
+      try {
+        content.write(latin1.decode(
+          ZLibDecoder().decodeBytes(latin1.encode(m.group(1)!)),
+        ));
+      } catch (_) {
+        // Not a compressible stream (e.g. font files) - skip.
+      }
+    }
+    expect(RegExp(r'\bh f\b').hasMatch(content.toString()), isTrue,
+        reason: 'The seal must contain a closed, filled path for the star');
   });
 
   testWidgets('worker profile fits one page with realistic photo + long address',

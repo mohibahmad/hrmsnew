@@ -172,7 +172,9 @@ Map<String, String> validateWorkerData(
       workerData['currency'] = CurrencyUtils.normalize(currency);
     }
   } else {
-    workerData['currency'] = CurrencyUtils.defaultCode;
+    // No currency in the CSV: leave the field empty instead of forcing a
+    // default, so workers don't get a hardcoded currency in Firestore.
+    workerData.remove('currency');
   }
 
   final dobStr = workerData['dob']?.toString().trim() ?? '';

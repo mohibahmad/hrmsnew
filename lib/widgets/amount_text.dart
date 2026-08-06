@@ -43,17 +43,39 @@ class AmountText extends StatelessWidget {
       if (val == null) return input;
       final symbol = _extractSymbol(input);
       final abs = val.abs();
-      if (abs >= 1e12) return '$symbol${(val / 1e12).toStringAsFixed(1)}T';
-      if (abs >= 1e9) return '$symbol${(val / 1e9).toStringAsFixed(1)}B';
-      if (abs >= 1e6) return '$symbol${(val / 1e6).toStringAsFixed(1)}M';
-      if (abs >= 1e3) return '$symbol${(val / 1e3).toStringAsFixed(1)}K';
+
+      String fmtNum(double val, double divisor, String suffix) {
+        final n = val / divisor;
+        final formatted = (n == n.roundToDouble())
+            ? n.toInt().toString()
+            : n.toStringAsFixed(1);
+        final space = (symbol.isNotEmpty &&
+                !symbol.endsWith(' ') &&
+                !RegExp(r'[$\u00A3\u20AC\u00A5\u20B9]').hasMatch(symbol))
+            ? ' '
+            : '';
+        return symbol.isEmpty
+            ? '$formatted$suffix'
+            : '$symbol$space$formatted$suffix';
+      }
+
+      if (abs >= 1e12) return fmtNum(val, 1e12, 'T');
+      if (abs >= 1e9) return fmtNum(val, 1e9, 'B');
+      if (abs >= 1e6) return fmtNum(val, 1e6, 'M');
+      if (abs >= 1e3) return fmtNum(val, 1e3, 'K');
+
       final hasDecimals = val != val.roundToDouble();
       final formatted = NumberFormat.currency(
         locale: 'en_US',
         symbol: '',
         decimalDigits: hasDecimals ? 2 : 0,
       ).format(val);
-      return symbol + formatted.trim();
+      final space = (symbol.isNotEmpty &&
+              !symbol.endsWith(' ') &&
+              !RegExp(r'[$\u00A3\u20AC\u00A5\u20B9]').hasMatch(symbol))
+          ? ' '
+          : '';
+      return symbol.isEmpty ? formatted.trim() : '$symbol$space${formatted.trim()}';
     } catch (_) {
       return input;
     }

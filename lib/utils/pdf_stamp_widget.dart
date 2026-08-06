@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -37,8 +38,7 @@ pw.Widget buildCompanyAuthorization({
             child: pw.Image(stampImage, fit: pw.BoxFit.contain),
           )
         else
-          // Fallback company seal (double circle + VERIFIED). The VERIFIED
-          // text is intentionally drawn without a surrounding border box.
+          // Fallback HRMS official company seal (double concentric circle + VERIFIED badge).
           pw.SizedBox(
             width: 72,
             height: 72,
@@ -50,46 +50,77 @@ pw.Widget buildCompanyAuthorization({
                   height: 72,
                   decoration: pw.BoxDecoration(
                     shape: pw.BoxShape.circle,
-                    border: pw.Border.all(color: stampBlue, width: 2.5),
+                    border: pw.Border.all(color: stampBlue, width: 2.2),
                   ),
                 ),
                 pw.Container(
-                  width: 58,
-                  height: 58,
+                  width: 60,
+                  height: 60,
                   decoration: pw.BoxDecoration(
                     shape: pw.BoxShape.circle,
-                    border: pw.Border.all(color: stampBlue, width: 1.2),
+                    border: pw.Border.all(color: stampBlue, width: 1.0),
                   ),
                 ),
-                pw.Column(
-                  mainAxisAlignment: pw.MainAxisAlignment.center,
-                  children: [
-                    pw.Text(
-                      'VERIFIED',
-                      style: pw.TextStyle(
-                        fontSize: 7.5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: stampBlue,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      cleanName.toUpperCase(),
-                      maxLines: 1,
-                      style: pw.TextStyle(
-                        fontSize: 4.5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: stampBlue,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    if (companyId.trim().isNotEmpty)
+                pw.Container(
+                  width: 52,
+                  alignment: pw.Alignment.center,
+                  child: pw.Column(
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
+                    children: [
                       pw.Text(
-                        companyId.trim(),
-                        style: pw.TextStyle(fontSize: 3.5, color: stampBlue),
+                        'HRMS OFFICIAL',
+                        style: pw.TextStyle(
+                          fontSize: 4.8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: stampBlue,
+                          letterSpacing: 0.6,
+                        ),
                       ),
-                  ],
+                      pw.SizedBox(height: 1),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.center,
+                        children: [
+                          _drawStar(stampBlue, size: 6),
+                          pw.SizedBox(width: 2),
+                          pw.Text(
+                            'VERIFIED',
+                            style: pw.TextStyle(
+                              fontSize: 5.2,
+                              fontWeight: pw.FontWeight.bold,
+                              color: stampBlue,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          pw.SizedBox(width: 2),
+                          _drawStar(stampBlue, size: 6),
+                        ],
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        cleanName.toUpperCase(),
+                        maxLines: 2,
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(
+                          fontSize: 4.2,
+                          fontWeight: pw.FontWeight.bold,
+                          color: stampBlue,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      if (companyId.trim().isNotEmpty) ...[
+                        pw.SizedBox(height: 1),
+                        pw.Text(
+                          companyId.trim(),
+                          maxLines: 1,
+                          style: pw.TextStyle(
+                            fontSize: 3.5,
+                            color: stampBlue,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -123,5 +154,34 @@ pw.Widget buildCompanyAuthorization({
         ),
       ],
     ),
+  );
+}
+
+/// Draws a 5-pointed star with vector paths instead of a text glyph, because
+/// the ★/✩ characters are missing from the embedded PDF fonts (SF-Pro.ttf /
+/// Helvetica) and used to render as invisible blanks in the seal.
+pw.Widget _drawStar(PdfColor color, {double size = 6}) {
+  return pw.CustomPaint(
+    size: PdfPoint(size, size),
+    painter: (canvas, bounds) {
+      canvas.setColor(color);
+      final centerX = bounds.x / 2;
+      final centerY = bounds.y / 2;
+      final outer = bounds.x / 2;
+      final inner = outer * 0.45;
+      for (var i = 0; i < 10; i++) {
+        final radius = i.isEven ? outer : inner;
+        final angle = -math.pi / 2 + i * math.pi / 5;
+        final pointX = centerX + radius * math.cos(angle);
+        final pointY = centerY + radius * math.sin(angle);
+        if (i == 0) {
+          canvas.moveTo(pointX, pointY);
+        } else {
+          canvas.lineTo(pointX, pointY);
+        }
+      }
+      canvas.closePath();
+      canvas.fillPath();
+    },
   );
 }

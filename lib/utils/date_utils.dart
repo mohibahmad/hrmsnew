@@ -120,16 +120,20 @@ class AppDateUtils {
         return today;
       case 'Week':
       case 'Weekly':
+      case 'This Week':
         final weekday = today.weekday;
         return today.subtract(Duration(days: weekday - 1));
       case 'Month':
       case 'Monthly':
+      case 'This Month':
         return DateTime(today.year, today.month, 1);
       case '6 Month':
       case '6 Months':
       case '6 Monthly':
+      case 'Last 6 Months':
         return DateTime(today.year, today.month - 5, 1);
       case 'Yearly':
+      case 'This Year':
         return DateTime(today.year, 1, 1);
       default:
         return today;
@@ -143,17 +147,21 @@ class AppDateUtils {
         return today;
       case 'Week':
       case 'Weekly':
+      case 'This Week':
         final weekday = today.weekday;
         final start = today.subtract(Duration(days: weekday - 1));
         return start.add(const Duration(days: 6));
       case 'Month':
       case 'Monthly':
+      case 'This Month':
         return DateTime(now.year, now.month + 1, 0);
       case '6 Month':
       case '6 Months':
       case '6 Monthly':
+      case 'Last 6 Months':
         return DateTime(now.year, now.month + 1, 0);
       case 'Yearly':
+      case 'This Year':
         return DateTime(now.year, 12, 31);
       default:
         return today;

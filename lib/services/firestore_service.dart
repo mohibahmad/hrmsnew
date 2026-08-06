@@ -9,6 +9,7 @@ import 'dummy_data.dart';
 import 'error_reporter.dart';
 import 'time_off_service.dart';
 import 'upload_service.dart';
+import 'preferences_service.dart';
 
 class BulkWorkerResult {
   final int imported;
@@ -836,11 +837,17 @@ class FirestoreService {
               )
             : 'notif_title_expense'.tr(),
         'message': amount.isNotEmpty
-            ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$$amount'})
+            ? 'notif_msg_expense_amount'.tr(
+                namedArgs: {
+                  'amount': '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount'
+                },
+              )
             : 'notif_msg_expense'.tr(),
         'data': {
           'category': category,
-          'amount': amount.isNotEmpty ? '\$$amount' : '',
+          'amount': amount.isNotEmpty
+              ? '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount'
+              : '',
         },
       });
     } catch (error, stackTrace) {
@@ -1237,9 +1244,21 @@ class FirestoreService {
 
   Future<int> getMonthlyWorkingDays({DateTime? month}) async {
     final now = month ?? DateTime.now();
-    final year = now.year;
-    final m = now.month;
-    final daysInMonth = DateTime(year, m + 1, 0).day;
+    final workingDates = await getWorkingDates(
+      from: DateTime(now.year, now.month, 1),
+      toExclusive: DateTime(now.year, now.month + 1, 1),
+    );
+    return workingDates.length;
+  }
+
+  /// Returns the set of working dates in [from, toExclusive), honoring the
+  /// company's configured weekly working days and holiday dates.
+  Future<Set<DateTime>> getWorkingDates({
+    required DateTime from,
+    required DateTime toExclusive,
+  }) async {
+    final start = DateTime(from.year, from.month, from.day);
+    final end = DateTime(toExclusive.year, toExclusive.month, toExclusive.day);
     final coll = _holidays;
     var companyWorkingDays = <int>{
       DateTime.monday,
@@ -1250,10 +1269,14 @@ class FirestoreService {
       DateTime.saturday,
     };
     if (coll == null) {
-      return List.generate(
-        daysInMonth,
-        (index) => DateTime(year, m, index + 1),
-      ).where((date) => companyWorkingDays.contains(date.weekday)).length;
+      return {
+        for (
+          var date = start;
+          date.isBefore(end);
+          date = date.add(const Duration(days: 1))
+        )
+          if (companyWorkingDays.contains(date.weekday)) date,
+      };
     }
     try {
       final snap = await coll.get();
@@ -1269,9 +1292,12 @@ class FirestoreService {
       }
 
       final workingDates = <DateTime>{
-        for (int day = 1; day <= daysInMonth; day++)
-          if (companyWorkingDays.contains(DateTime(year, m, day).weekday))
-            DateTime(year, m, day),
+        for (
+          var date = start;
+          date.isBefore(end);
+          date = date.add(const Duration(days: 1))
+        )
+          if (companyWorkingDays.contains(date.weekday)) date,
       };
       final holidayDates = <DateTime>{};
       for (final doc in snap.docs) {
@@ -1281,21 +1307,23 @@ class FirestoreService {
         final hDay = int.tryParse((data['day'] ?? '').toString());
         final hMonthStr = (data['month'] ?? '').toString();
         final hMonth = _parseMonthString(hMonthStr);
-        if (_holidayAppliesToYear(data, year) &&
-            hMonth == m &&
-            hDay != null &&
-            hDay >= 1 &&
-            hDay <= daysInMonth) {
-          final hDate = DateTime(year, m, hDay);
-          if (workingDates.contains(hDate)) holidayDates.add(hDate);
+        if (hDay == null || hDay < 1 || hDay > 31) continue;
+        for (
+          var date = start;
+          date.isBefore(end);
+          date = date.add(const Duration(days: 1))
+        ) {
+          if (hMonth == date.month &&
+              hDay == date.day &&
+              _holidayAppliesToYear(data, date.year)) {
+            if (workingDates.contains(date)) holidayDates.add(date);
+            break;
+          }
         }
       }
-      return (workingDates.length - holidayDates.length).clamp(
-        0,
-        workingDates.length,
-      );
+      return workingDates.difference(holidayDates);
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'GetMonthlyWorkingDays');
+      ErrorReporter.report(error, stackTrace, context: 'GetWorkingDates');
       rethrow;
     }
   }
@@ -1753,28 +1781,74 @@ class FirestoreService {
   Future<void> cancelTimeOffWithWorkerBalance({
     required String timeOffId,
     required String workerId,
-    required Map<String, dynamic> balance,
   }) async {
     final timeOffColl = _timeoff;
     final workersColl = _workers;
     if (timeOffColl == null || workersColl == null) {
       throw StateError('No authenticated user');
     }
-    final batch = _db.batch();
-    batch.update(timeOffColl.doc(timeOffId), {
-      'status': 'Cancelled',
-      'cancelledAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+
+    final timeOffRef = timeOffColl.doc(timeOffId);
+    final workerRef = workersColl.doc(workerId);
+
+    await _db.runTransaction((transaction) async {
+      final timeOffSnapshot = await transaction.get(timeOffRef);
+      if (!timeOffSnapshot.exists) {
+        throw StateError('Time off record does not exist');
+      }
+      final timeOffData = (timeOffSnapshot.data() as Map<String, dynamic>?) ?? {};
+      final String leaveType = (timeOffData['action'] ?? timeOffData['type'] ?? '').toString();
+      final int requestedDays = int.tryParse(timeOffData['requestedDays']?.toString() ?? '0') ?? 0;
+
+      final leaveField = switch (TimeOffService.normalizeLeaveType(leaveType)) {
+        'Annual Leave' => 'annualLeave',
+        'Sick Leave' => 'sickLeave',
+        'Casual Leave' => 'casualLeave',
+        'Medical Leave' => 'medicalLeave',
+        _ => '',
+      };
+
+      transaction.update(timeOffRef, {
+        'status': 'Cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (leaveField.isNotEmpty && requestedDays > 0) {
+        final workerSnapshot = await transaction.get(workerRef);
+        if (workerSnapshot.exists) {
+          final workerData = (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
+          int currentBalance = 0;
+          final leaveBalances = workerData['leaveBalances'] as Map<String, dynamic>?;
+          if (leaveBalances != null && leaveBalances.containsKey(leaveField)) {
+            currentBalance = int.tryParse(leaveBalances[leaveField]?.toString() ?? '0') ?? 0;
+          } else {
+            currentBalance = switch (leaveField) {
+              'annualLeave' => int.tryParse((workerData['availableAnnualLeaves'] ?? workerData['annualLeaves'] ?? '0').toString()) ?? 0,
+              'sickLeave' => int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
+              'casualLeave' => int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
+              'medicalLeave' => int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
+              _ => 0,
+            };
+          }
+
+          final newBalance = currentBalance + requestedDays;
+
+          transaction.update(workerRef, {
+            'leaveBalances.$leaveField': newBalance,
+            if (leaveField == 'annualLeave') 'availableAnnualLeaves': newBalance.toString(),
+          });
+        }
+      }
     });
-    batch.set(workersColl.doc(workerId), balance, SetOptions(merge: true));
-    await batch.commit();
   }
 
   Future<String> saveTimeOffWithWorkerBalance({
     String? timeOffId,
     required Map<String, dynamic> record,
     required String workerId,
-    required Map<String, dynamic> balance,
+    required String leaveType,
+    required int requestedDays,
   }) async {
     Validators.validateTimeOff(record);
     final timeOffColl = _timeoff;
@@ -1783,15 +1857,94 @@ class FirestoreService {
       throw StateError('No authenticated user');
     }
     final isNew = timeOffId == null || timeOffId.isEmpty;
-    final timeOffRef = isNew ? timeOffColl.doc() : timeOffColl.doc(timeOffId);
-    final batch = _db.batch();
-    batch.set(timeOffRef, {
-      ...record,
-      if (isNew) 'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    batch.set(workersColl.doc(workerId), balance, SetOptions(merge: true));
-    await batch.commit();
+    
+    final leaveField = switch (TimeOffService.normalizeLeaveType(leaveType)) {
+      'Annual Leave' => 'annualLeave',
+      'Sick Leave' => 'sickLeave',
+      'Casual Leave' => 'casualLeave',
+      'Medical Leave' => 'medicalLeave',
+      _ => '',
+    };
+
+    if (leaveField.isEmpty) {
+      throw StateError('Invalid leave type: $leaveType');
+    }
+
+    final docId = isNew
+        ? '${workerId.replaceAll(RegExp(r'\s+'), '')}_${DateTime.now().millisecondsSinceEpoch}'
+        : timeOffId;
+    final timeOffRef = timeOffColl.doc(docId);
+    final workerRef = workersColl.doc(workerId);
+    await _db.runTransaction((transaction) async {
+      final workerSnapshot = await transaction.get(workerRef);
+      if (!workerSnapshot.exists) {
+        throw StateError('Worker does not exist');
+      }
+
+      final workerData = (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
+
+      String? oldLeaveField;
+      int oldDays = 0;
+      if (!isNew) {
+        final existingRecordSnapshot = await transaction.get(timeOffRef);
+        if (existingRecordSnapshot.exists) {
+          final oldRecordData = (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
+          final oldType = oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
+          oldLeaveField = switch (TimeOffService.normalizeLeaveType(oldType.toString())) {
+            'Annual Leave' => 'annualLeave',
+            'Sick Leave' => 'sickLeave',
+            'Casual Leave' => 'casualLeave',
+            'Medical Leave' => 'medicalLeave',
+            _ => null,
+          };
+          oldDays = TimeOffService.selectedDatesForRecord(oldRecordData).length;
+          if (oldDays == 0) {
+            oldDays = int.tryParse(oldRecordData['requestedDays']?.toString() ?? '0') ?? 0;
+          }
+        }
+      }
+
+      final Map<String, dynamic> leaveBalances = Map<String, dynamic>.from(
+        (workerData['leaveBalances'] as Map<String, dynamic>?) ?? {},
+      );
+
+      int getFieldBalance(String field) {
+        if (leaveBalances.containsKey(field)) {
+          return int.tryParse(leaveBalances[field]?.toString() ?? '0') ?? 0;
+        }
+        return switch (field) {
+          'annualLeave' => int.tryParse((workerData['availableAnnualLeaves'] ?? workerData['annualLeaves'] ?? '0').toString()) ?? 0,
+          'sickLeave' => int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
+          'casualLeave' => int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
+          'medicalLeave' => int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
+          _ => 0,
+        };
+      }
+
+      if (oldLeaveField != null && oldDays > 0) {
+        final currentOldVal = getFieldBalance(oldLeaveField);
+        leaveBalances[oldLeaveField] = currentOldVal + oldDays;
+      }
+
+      final currentNewVal = getFieldBalance(leaveField);
+      final updatedNewVal = (currentNewVal - requestedDays).clamp(0, 9999);
+      leaveBalances[leaveField] = updatedNewVal;
+
+      final Map<String, dynamic> workerUpdates = {
+        'leaveBalances': leaveBalances,
+      };
+      if (leaveBalances.containsKey('annualLeave')) {
+        workerUpdates['availableAnnualLeaves'] = leaveBalances['annualLeave'].toString();
+      }
+
+      transaction.update(workerRef, workerUpdates);
+
+      transaction.set(timeOffRef, {
+        ...record,
+        if (isNew) 'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    });
 
     if (isNew) {
       final name = (record['workerName'] ?? record['name'] ?? '').toString();

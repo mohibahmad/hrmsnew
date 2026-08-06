@@ -1,7 +1,20 @@
+import '../services/preferences_service.dart';
+
+String formatMoney(double amount, String symbol) {
+  return '$symbol${amount.toStringAsFixed(0)}';
+}
+
 class CurrencyUtils {
   CurrencyUtils._();
 
   static const String defaultCode = 'USD';
+
+  static String get companyCurrency =>
+      PreferencesService.cachedCompanyCurrency ?? defaultCode;
+
+  static String formatMoney(double amount, String symbol) {
+    return '$symbol${amount.toStringAsFixed(0)}';
+  }
 
   /// Short list of the most commonly used currencies, shown in dropdowns that
   /// should not overwhelm the user with every supported option.
@@ -46,7 +59,7 @@ class CurrencyUtils {
     'GBP': '£',
     'JPY': '¥',
     'INR': '₹',
-    'PKR': 'Rs',
+    'PKR': 'PKR',
     'RUB': '₽',
     'BRL': r'R$',
     'SAR': '﷼',
@@ -65,9 +78,9 @@ class CurrencyUtils {
 
   static String normalize(dynamic value) {
     final code = value?.toString().trim().toUpperCase() ?? '';
-    return supportedCodes.contains(code) ? code : defaultCode;
+    return supportedCodes.contains(code) ? code : companyCurrency;
   }
 
   static String symbolFor(dynamic value) =>
-      _symbols[normalize(value)] ?? _symbols[defaultCode]!;
+      _symbols[normalize(value)] ?? _symbols[companyCurrency]!;
 }

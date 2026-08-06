@@ -27,12 +27,14 @@ import '../widgets/amount_text.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
+  final bool isActive;
   final VoidCallback onProfileTap;
   final VoidCallback? onAssignTimeOff;
   final VoidCallback? onNotificationTap;
 
   const PayrollScreen({
     super.key,
+    this.isActive = true,
     required this.onLogout,
     required this.onProfileTap,
     this.onAssignTimeOff,
@@ -74,11 +76,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _attendanceFetchPending = false;
   Timer? _attendanceDebounce;
   bool _payDuePopupCheckInProgress = false;
-  bool _payDuePopupShown = false;
-  String? _lastPayDuePopupPeriod;
-  List<Map<String, dynamic>> _timeoffDocs = [];
-  List<Map<String, dynamic>> _workersFullList = [];
-  bool _payrollListenersStarted = false;
 
   bool get _isPayDate {
     return PayrollService.isPayDate(DateTime.now(), _salaryPaymentDay);
@@ -133,9 +130,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   void _scheduleAttendanceFetch() {
     _attendanceDebounce?.cancel();
-    // Short debounce so attendance marked on the worker attendance screen
-    // shows up here almost immediately, while a burst of writes still only
-    // triggers one recount.
+
     _attendanceDebounce = Timer(const Duration(milliseconds: 600), () {
       if (_isLoadingAttendance) {
         _attendanceFetchPending = true;
@@ -279,6 +274,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
         salaryDay = null;
       }
       companyCurrency = CurrencyUtils.normalize(profile?['currency']);
+      // If the profile doesn't have an explicit currency, fall back to cached
+      final rawProfileCurrency = profile?['currency']?.toString().trim();
+      if (companyCurrency == CurrencyUtils.defaultCode &&
+          (rawProfileCurrency == null || rawProfileCurrency.isEmpty)) {
+        final cached = PreferencesService.cachedCompanyCurrency;
+        if (cached != null && cached.isNotEmpty) {
+          companyCurrency = CurrencyUtils.normalize(cached);
+        }
+      } else {
+        // Cache the currency from profile for future use
+        PreferencesService.setCompanyCurrency(
+          companyCurrency,
+        ).catchError((_) {});
+      }
     }
     final savedMonth = PayrollService.parsePayrollPeriodLabel(
       savedPayrollPeriod,
@@ -581,6 +590,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   @override
   void didUpdateWidget(covariant PayrollScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _maybeShowPayDuePopup();
+    }
     if (!_initialized || !(_authService.currentUser?.isAnonymous ?? false)) {
       return;
     }
@@ -684,10 +696,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -772,20 +781,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  /// Shows a popup when the Payroll screen is opened during the window
-  /// around the configured pay date, listing workers whose pay is still due.
   Future<void> _maybeShowPayDuePopup() async {
-    if (_payDuePopupCheckInProgress ||
-        !_workersLoaded ||
-        !_payrollLoaded) {
+    if (!widget.isActive) return;
+    if (_payDuePopupCheckInProgress || !_workersLoaded || !_payrollLoaded) {
       return;
     }
+
     final now = DateTime.now();
     if (!PayrollService.isPayDateReminderDue(now, _salaryPaymentDay)) return;
 
     final nextPay = PayrollService.nextPayDate(now, _salaryPaymentDay);
 
-    final currentMonth = PayrollService.currentPayrollMonth(referenceDate: nextPay);
+    final currentMonth = PayrollService.currentPayrollMonth(
+      referenceDate: nextPay,
+    );
     final prevMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
 
     final currentUnpaidWorkers = PayrollService.combinePayroll(
@@ -813,8 +822,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     final todayDate = DateTime(now.year, now.month, now.day);
     final dueDayDate = DateTime(nextPay.year, nextPay.month, nextPay.day);
-    final isOverdue = todayDate.isAfter(dueDayDate) || prevUnpaidWorkers.isNotEmpty;
-    final isDueToday = todayDate.isAtSameMomentAs(dueDayDate) && prevUnpaidWorkers.isEmpty;
+    final isOverdue =
+        todayDate.isAfter(dueDayDate) || prevUnpaidWorkers.isNotEmpty;
+    final isDueToday = todayDate.isAtSameMomentAs(dueDayDate) &&
+        prevUnpaidWorkers.isEmpty;
 
     final String popupTitle = isOverdue
         ? 'overdue_payroll'.tr()
@@ -901,11 +912,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          headerIcon,
-                          color: Colors.white,
-                          size: 24,
-                        ),
+                        Icon(headerIcon, color: Colors.white, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -939,7 +946,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Salaries for $totalUnpaidCount worker(s) are due on $payDateText. Please process their payroll to ensure timely payment.',
+                            'Salaries for $totalUnpaidCount worker(s) are due on $payDateText. Please process their payroll to ensure timely payment.'
+                                .tr(),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -963,17 +971,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   color: const Color(0xFFFCA5A5),
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.error_outline,
                                     color: Color(0xFFDC2626),
                                     size: 16,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'Previous Payroll Overdue',
-                                    style: TextStyle(
+                                    'Previous Payroll Overdue'.tr(),
+                                    style: const TextStyle(
                                       color: Color(0xFFDC2626),
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
@@ -983,13 +991,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 ],
                               ),
                             ),
-                            ...activePrevUnpaid.map((w) =>
-                                _buildWorkerCardInPopup(
-                                  dialogContext,
-                                  w,
-                                  prevMonth,
-                                  isOverdue: true,
-                                )),
+                            ...activePrevUnpaid.map(
+                              (w) => _buildWorkerCardInPopup(
+                                dialogContext,
+                                w,
+                                prevMonth,
+                                isOverdue: true,
+                              ),
+                            ),
                             const SizedBox(height: 16),
                           ],
                           if (activeCurrentUnpaid.isNotEmpty) ...[
@@ -1006,13 +1015,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   ),
                                 ),
                               ),
-                            ...activeCurrentUnpaid.map((w) =>
-                                _buildWorkerCardInPopup(
-                                  dialogContext,
-                                  w,
-                                  currentMonth,
-                                  isOverdue: isOverdue,
-                                )),
+                            ...activeCurrentUnpaid.map(
+                              (w) => _buildWorkerCardInPopup(
+                                dialogContext,
+                                w,
+                                currentMonth,
+                                isOverdue: isOverdue,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -1027,12 +1037,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.of(dialogContext).pop(),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -1058,9 +1064,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF004FDE),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -1085,15 +1089,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
           },
         ),
       ),
-    );
-    _payDuePopupCheckInProgress = false;
+    ).whenComplete(() {
+      _payDuePopupCheckInProgress = false;
+    });
   }
 
   Future<void> _handlePayAll() async {
     if (_isRunningPayroll) return;
     setState(() => _isRunningPayroll = true);
     try {
-      final positionFilter = _selectedFilter != 'All' ? _selectedFilter : null;
+      final selected = _selectedFilter;
+      final isStatusFilter =
+          selected == 'All' ||
+          selected == 'Pay' ||
+          selected == 'Paid' ||
+          selected == 'Today';
+      final positionFilter = isStatusFilter ? null : selected;
       final summary = await SalaryDayScheduler().payAll(
         context,
         payrollMonth: _payrollMonth,
@@ -1224,6 +1235,131 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             ),
                           ),
                         ),
+                      PopupMenuButton<String>(
+                        tooltip: '',
+                        onSelected: (val) {
+                          setState(() {
+                            _selectedFilter = val;
+                          });
+                        },
+                        offset: const Offset(0, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: BorderSide(
+                            color: Colors.grey.shade200,
+                            width: 1,
+                          ),
+                        ),
+                        color: const Color(0xFFFFFFFF),
+                        elevation: 4,
+                        itemBuilder: (context) {
+                          final filters = [
+                            {'value': 'All', 'label': 'all_filter'.tr()},
+                            {'value': 'Pay', 'label': 'pay'.tr()},
+                            {'value': 'Paid', 'label': 'paid'.tr()},
+                          ];
+                          return filters.map((f) {
+                            final String currentVal =
+                                _selectedFilter == 'Pay' ||
+                                        _selectedFilter == 'Paid'
+                                    ? _selectedFilter
+                                    : 'All';
+                            final bool selected = currentVal == f['value'];
+                            return PopupMenuItem<String>(
+                              value: f['value'],
+                          height: 50,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: selected
+                                            ? const Color(0xFF0247C4)
+                                            : Colors.grey.shade300,
+                                        width: 2,
+                                      ),
+                                      color: selected
+                                          ? const Color(0xFF0247C4)
+                                          : Colors.transparent,
+                                    ),
+                                    child: selected
+                                        ? const Icon(
+                                            Icons.check,
+                                            size: 12,
+                                            color: Color(0xFFFFFFFF),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      f['label']!,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: selected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                        color: selected
+                                            ? const Color(0xFF0247C4)
+                                            : const Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList();
+                        },
+                        child: Container(
+                          height: 43,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0247C4),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/filter.png',
+                                width: 22,
+                                height: 22,
+                                color: const Color(0xFFFFFFFF),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedFilter == 'Pay'
+                                    ? 'pay'.tr()
+                                    : _selectedFilter == 'Paid'
+                                        ? 'paid'.tr()
+                                        : 'all_filter'.tr(),
+                                style: const TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                color: Color(0xFFFFFFFF),
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _isSalaryDaySaving
                             ? null
@@ -1320,13 +1456,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 ),
               ),
               const SizedBox(height: 2),
+
               // Show the pay period range based on the configured salary day.
-              // E.g. if salary day is 3, the period shows "3 Jul – 3 Aug".
+              // E.g. if salary day is 6, the period shows "6 Jul – 6 Aug" and
+              // the boundary day (6 Aug) belongs to the next cycle.
               Text(
                 _buildPayPeriodLabel(),
                 style: const TextStyle(
                   color: Color(0xFF64748B),
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                   fontFamily: 'SF Pro Display',
                 ),
@@ -1413,6 +1551,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   bool _matchesFilter(Map<String, dynamic> doc, String filter) {
     if (filter == 'All') return true;
+    if (filter == 'Pay') {
+      return doc['isPaid'] != true;
+    }
+    if (filter == 'Paid') {
+      return doc['isPaid'] == true;
+    }
     if (filter == 'Today') {
       return PayrollService.wasPaidOn(doc, DateTime.now());
     }
@@ -1518,10 +1662,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
@@ -1835,10 +1976,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
         data,
         companyCurrency: _companyCurrency,
       );
-      final double workerTaxRate = double.tryParse(
-            (data['taxRatePercent'] ?? '0.0').toString(),
-          ) ??
-          0.0;
+      final double workerTaxRate =
+          double.tryParse((data['taxRatePercent'] ?? '0.0').toString()) ?? 0.0;
       final calculation = PayrollService.calculatePayroll(
         salary: salary,
         totalWorkDays: totalWorkDays,
@@ -1864,19 +2003,25 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ? PayrollService.extractSalary(rawLeaveDeduction)
           : PayrollService.extractSalary(calculation['formattedLeaveDeduct']);
       final overtimeValue = PayrollService.extractSalary(overtime);
-      final subtotalBeforeTax = (grossSalary + overtimeValue - absentDeductionTotal - leaveDeductionTotal)
-          .clamp(0.0, double.infinity);
+      final subtotalBeforeTax =
+          (grossSalary +
+                  overtimeValue -
+                  absentDeductionTotal -
+                  leaveDeductionTotal)
+              .clamp(0.0, double.infinity);
       final taxDeductionTotal = workerTaxRate > 0
           ? (subtotalBeforeTax * (workerTaxRate / 100))
           : 0.0;
-      final totalDeductions = absentDeductionTotal + leaveDeductionTotal + taxDeductionTotal;
+      final totalDeductions =
+          absentDeductionTotal + leaveDeductionTotal + taxDeductionTotal;
       final netSalary = (grossSalary + overtimeValue - totalDeductions).clamp(
         0.0,
         double.infinity,
       );
 
-      final companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
-      
+      final companyProfile =
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+
       final logoUrl = companyProfile['profilePicUrl'] ?? '';
       final stampUrl = companyProfile['companyStampUrl'] ?? '';
 
@@ -1884,7 +2029,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final payPeriod = period.isNotEmpty
           ? period
           : PayrollService.payrollPeriodLabel(_payrollMonth);
-          
+
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: (data['name'] ?? '').toString(),
         email: (data['email'] ?? '').toString(),
@@ -1896,22 +2041,33 @@ class _PayrollScreenState extends State<PayrollScreen> {
         leaves: unpaidLeaves,
         overtimeAmount: AmountText.formatFull(overtime),
         salary: AmountText.formatFull(salary),
-        dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00').toString(),
+        dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00')
+            .toString(),
         grossPay: '$prefix${PayrollService.formatFullNumber(grossSalary)}',
-        overtimePay: (calculation['formattedOvertime'] ?? '${prefix}0.00').toString(),
-        absentDeduction: '$prefix${PayrollService.formatFullNumber(absentDeductionTotal)}',
-        leaveDeduction: '$prefix${PayrollService.formatFullNumber(leaveDeductionTotal)}',
-        taxDeduction: '$prefix${PayrollService.formatFullNumber(taxDeductionTotal)}',
-        taxRatePercent: workerTaxRate > 0 ? workerTaxRate.toStringAsFixed(1) : '',
-        totalDeductions: '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
+        overtimePay: (calculation['formattedOvertime'] ?? '${prefix}0.00')
+            .toString(),
+        absentDeduction:
+            '$prefix${PayrollService.formatFullNumber(absentDeductionTotal)}',
+        leaveDeduction:
+            '$prefix${PayrollService.formatFullNumber(leaveDeductionTotal)}',
+        taxDeduction:
+            '$prefix${PayrollService.formatFullNumber(taxDeductionTotal)}',
+        taxRatePercent: workerTaxRate > 0
+            ? workerTaxRate.toStringAsFixed(1)
+            : '',
+        totalDeductions:
+            '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
         netSalary: '$prefix${PayrollService.formatFullNumber(netSalary)}',
         currency: _companyCurrency,
-        companyName: CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']),
+        companyName: CompanyProfileHelper.companyNameOrFallback(
+          companyProfile['companyName'],
+        ),
         companyAddress: (companyProfile['address'] ?? '').toString(),
         companyEmail: (companyProfile['email'] ?? '').toString(),
         companyPhone: (companyProfile['phone'] ?? '').toString(),
         companyId: (companyProfile['companyId'] ?? '').toString(),
-        companyStampImageUrl: AuthService.companyStampNotifier.value?.isNotEmpty == true
+        companyStampImageUrl:
+            AuthService.companyStampNotifier.value?.isNotEmpty == true
             ? AuthService.companyStampNotifier.value
             : stampUrl,
         companyLogoUrl: AuthService.profilePicNotifier.value?.isNotEmpty == true
@@ -1919,7 +2075,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             : logoUrl,
         workerId: (data['workerId'] ?? '').toString(),
       );
-      
+
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),
         '_',
@@ -2507,14 +2663,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
         source: Color(0xFFFF7B00),
         replacement: Color(0xFF004FDE),
       ),
-    );
-  }
-
-  Widget _buildUnpaidLeavesIcon() {
-    return const Icon(
-      Icons.event_busy_rounded,
-      color: Color(0xFF004FDE),
-      size: 20,
     );
   }
 

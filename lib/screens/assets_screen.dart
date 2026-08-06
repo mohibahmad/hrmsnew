@@ -456,11 +456,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                 workerData['nationalId'])
                                             ?.toString();
                                     final workerDateOfJoining =
-                                        workerData['dateOfJoining']?.toString();
+                                        _adts(workerData['dateOfJoining']);
                                     final workerJoiningDate =
-                                        (workerData['joiningDate'] ??
-                                                workerData['dateOfJoining'])
-                                            ?.toString();
+                                        _adts(
+                                          workerData['joiningDate'] ??
+                                              workerData['dateOfJoining'],
+                                        );
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -476,13 +477,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'phone': workerPhone ?? '',
                                       'cnic': workerCnic ?? '',
                                       'dateOfJoining':
-                                          workerDateOfJoining ?? '',
+                                          workerDateOfJoining,
                                     };
                                     final firestoreAssetMap = <String, dynamic>{
                                       ...assetMap,
                                       'position': position,
                                       'type': assetType,
-                                      'dateOfJoining': workerJoiningDate ?? '',
+                                      'dateOfJoining': workerJoiningDate,
                                     };
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??
@@ -504,7 +505,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         'phone': workerPhone ?? '',
                                         'cnic': workerCnic ?? '',
                                         'dateOfJoining':
-                                            workerDateOfJoining ?? '',
+                                            workerDateOfJoining,
                                       };
                                       setState(() {
                                         _assets.insert(
@@ -1791,11 +1792,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                 workerData['nationalId'])
                                             ?.toString();
                                     final workerDateOfJoining =
-                                        workerData['dateOfJoining']?.toString();
+                                        _adts(workerData['dateOfJoining']);
                                     final workerJoiningDate =
-                                        (workerData['joiningDate'] ??
-                                                workerData['dateOfJoining'])
-                                            ?.toString();
+                                        _adts(
+                                          workerData['joiningDate'] ??
+                                              workerData['dateOfJoining'],
+                                        );
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -1811,13 +1813,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'phone': workerPhone ?? '',
                                       'cnic': workerCnic ?? '',
                                       'dateOfJoining':
-                                          workerDateOfJoining ?? '',
+                                          workerDateOfJoining,
                                     };
                                     final firestoreAssetMap = <String, dynamic>{
                                       ...assetMap,
                                       'position': position,
                                       'type': assetType,
-                                      'dateOfJoining': workerJoiningDate ?? '',
+                                      'dateOfJoining': workerJoiningDate,
                                     };
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??

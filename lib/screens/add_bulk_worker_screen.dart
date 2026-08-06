@@ -17,7 +17,6 @@ import '../services/bulk_worker_media_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
-import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/validators.dart';
 import '../utils/delete_dialog.dart';
@@ -27,6 +26,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../widgets/bulk_worker_edit_dialog.dart';
+import '../widgets/notification_bell.dart';
 
 class UploadProgress {
   final String phase;
@@ -44,8 +44,15 @@ class UploadProgress {
 
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
+  final VoidCallback? onNotificationTap;
+  final VoidCallback? onProfileTap;
 
-  const AddBulkWorkerScreen({super.key, this.onBack});
+  const AddBulkWorkerScreen({
+    super.key,
+    this.onBack,
+    this.onNotificationTap,
+    this.onProfileTap,
+  });
 
   @override
   AddBulkWorkerScreenState createState() => AddBulkWorkerScreenState();
@@ -198,7 +205,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               onTap: () => Navigator.pop(context, false),
                               behavior: HitTestBehavior.opaque,
                               child: Container(
-                                height: 48,
+                                height: 56,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF1F5F9),
@@ -222,7 +229,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               onTap: () => Navigator.pop(context, true),
                               behavior: HitTestBehavior.opaque,
                               child: Container(
-                                height: 48,
+                                height: 56,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEF4444),
@@ -1031,6 +1038,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final worker = _validWorkers[workerIndex];
     final currentValue = (worker[fieldKey] ?? '').toString();
     final label = kFieldLabels[fieldKey] ?? fieldKey;
+    final isLeavesField =
+        fieldKey == 'annualLeaves' ||
+        fieldKey == 'sickLeaves' ||
+        fieldKey == 'casualLeaves' ||
+        fieldKey == 'medicalLeaves';
 
     final existingEmails = <String>{};
     final existingNationalIds = <String>{};
@@ -1255,9 +1267,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             const EdgeInsets.symmetric(
                                               vertical: 14,
                                             ),
-                                        hintText: 'edit_cell_enter_value'.tr(
-                                          namedArgs: {'label': label},
-                                        ),
+                                        hintText: isLeavesField
+                                            ? '0'
+                                            : 'edit_cell_enter_value'.tr(
+                                                namedArgs: {'label': label},
+                                              ),
                                         hintStyle: const TextStyle(
                                           color: Color(0xFF9CA3AF),
                                           fontSize: 15,
@@ -1923,8 +1937,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         } else if (fieldKey == 'sickLeaves' ||
             fieldKey == 'casualLeaves' ||
             fieldKey == 'medicalLeaves') {
-          _validWorkers[workerIndex][fieldKey] =
-              (int.tryParse(result) ?? 0).toString();
+          _validWorkers[workerIndex][fieldKey] = (int.tryParse(result) ?? 0)
+              .toString();
         }
         _hasUnsavedChanges = true;
       });
@@ -2065,10 +2079,26 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             ],
           ),
 
-          if (_hasParsedFile &&
-              _validWorkers.isNotEmpty &&
-              _validWorkers.every((w) => !hasWorkerErrors(w)))
-            _buildSaveAllButton(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onNotificationTap != null) ...[
+                NotificationBell(onTap: widget.onNotificationTap!),
+                const SizedBox(width: 16),
+              ],
+              if (widget.onProfileTap != null) ...[
+                GestureDetector(
+                  onTap: widget.onProfileTap,
+                  child: const UserAvatar(),
+                ),
+                const SizedBox(width: 16),
+              ],
+              if (_hasParsedFile &&
+                  _validWorkers.isNotEmpty &&
+                  _validWorkers.every((w) => !hasWorkerErrors(w)))
+                _buildSaveAllButton(),
+            ],
+          ),
         ],
       ),
     );
@@ -2786,15 +2816,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       ),
     );
 
-    const documentFallback = SizedBox(
+    final documentFallback = SizedBox(
       width: 24,
       height: 24,
-      child: Center(
-        child: Icon(
-          Icons.description_outlined,
-          size: 18,
-          color: Color(0xFF64748B),
-        ),
+      child: Image.asset(
+        'assets/file.png',
+        width: 24,
+        height: 24,
+        fit: BoxFit.contain,
       ),
     );
 

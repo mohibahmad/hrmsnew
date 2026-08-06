@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ class PreferencesService {
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
   static const String _companyStampUrlKey = 'company_stamp_url';
+  static const String _companyCurrencyKey = 'company_currency';
   static const String _rateUsNeverShowKey = 'rate_us_never_show';
   static const String _rateUsRemindLaterKey = 'rate_us_remind_later';
   static const String _rateUsFirstExpenseKey = 'rate_us_first_expense';
@@ -32,6 +34,7 @@ class PreferencesService {
 
   static String? _cachedProfilePicUrl;
   static String? _cachedCompanyStampUrl;
+  static String? _cachedCompanyCurrency;
   static bool _cachedIsGuest = false;
   static bool _cachedIsPremium = false;
   static Directory? _guestDataDir;
@@ -45,6 +48,32 @@ class PreferencesService {
     return _guestDataDir!;
   }
 
+  static const String _localImagesDirName = 'company_images';
+
+  /// Copies image bytes into a permanent file inside the app's documents
+  /// directory (survives app restarts and OS temp-folder purges) and returns
+  /// the absolute file path. Returns `null` if the file could not be written.
+  ///
+  /// Used so the profile picture and company stamp picked with FilePicker
+  /// (which returns OS temp paths that iOS/macOS can delete at any time) keep
+  /// working for the whole app lifetime and every PDF download.
+  static Future<String?> persistImageLocally({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    if (bytes.isEmpty) return null;
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final imageDir = await Directory('${appDir.path}/$_localImagesDirName')
+          .create(recursive: true);
+      final file = File('${imageDir.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<File> _guestFile(String name) async {
     final dir = await _getGuestDataDir();
     return File('${dir.path}/$name');
@@ -54,6 +83,7 @@ class PreferencesService {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
     _cachedCompanyStampUrl = prefs.getString(_companyStampUrlKey);
+    _cachedCompanyCurrency = prefs.getString(_companyCurrencyKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
     _cachedIsPremium = prefs.getBool(_premiumKey) ?? false;
 
@@ -71,6 +101,7 @@ class PreferencesService {
 
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
   static String? get cachedCompanyStampUrl => _cachedCompanyStampUrl;
+  static String? get cachedCompanyCurrency => _cachedCompanyCurrency;
   static bool get cachedIsGuest => _cachedIsGuest;
 
   /// Last known premium status, read synchronously so the UI can render the
@@ -250,6 +281,26 @@ class PreferencesService {
 
     _cachedCompanyStampUrl = url;
     AuthService.companyStampNotifier.value = url;
+  }
+
+  static Future<void> setCompanyCurrency(String? currency) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (currency != null && currency.isNotEmpty) {
+      await prefs.setString(_companyCurrencyKey, currency);
+    } else {
+      await prefs.remove(_companyCurrencyKey);
+    }
+    _cachedCompanyCurrency = currency;
+  }
+
+  static Future<String?> getCompanyCurrency() async {
+    if (_cachedCompanyCurrency != null && _cachedCompanyCurrency!.isNotEmpty) {
+      return _cachedCompanyCurrency;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final c = prefs.getString(_companyCurrencyKey);
+    _cachedCompanyCurrency = c;
+    return c;
   }
 
   static Future<String?> getCompanyStampUrl() async {

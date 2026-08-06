@@ -19,6 +19,7 @@ import '../utils/guest_restriction.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/company_profile_helper.dart';
+import '../utils/date_utils.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
@@ -108,6 +109,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
+  double _prorationFactor = 1.0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
   int? _salaryDay;
@@ -134,8 +136,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _salaryStr =>
       PayrollService.currentSalaryDisplay(widget.workerData);
 
-  String get _currencyCode =>
-      CurrencyUtils.normalize(widget.workerData['currency']);
+  String get _currencyCode {
+    final companyCurr = PreferencesService.cachedCompanyCurrency;
+    if (companyCurr != null && companyCurr.isNotEmpty) {
+      return CurrencyUtils.normalize(companyCurr);
+    }
+    return CurrencyUtils.normalize(widget.workerData['currency']);
+  }
 
   DateTime get _payrollMonth =>
       DateTime(widget.payrollMonth.year, widget.payrollMonth.month, 1);
@@ -229,6 +236,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       absentDeductionPerDay: _absentDeductionCtrl.text,
       leaveDeductionPerDay: _leaveDeductionCtrl.text,
       salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
+      prorationFactor: _prorationFactor,
     );
 
     setState(() {
@@ -282,7 +290,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       _captureSavedValues();
     }
     try {
-      final profile = await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+      final profile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
+        _firestore,
+      );
       final dynamic rawSalaryDay = profile['salaryDay'];
       if (rawSalaryDay is num) {
         _salaryDay = rawSalaryDay.toInt();
@@ -309,11 +319,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              throw TimeoutException(
-                'working_days_timeout'.tr(),
-              );
+              throw TimeoutException('working_days_timeout'.tr());
             },
           );
+      await _computeProration(workingDays);
       if (!mounted) return;
       setState(() {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
@@ -364,6 +373,50 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         setState(() => _isAttendanceLoading = false);
         if (_savedValuesFingerprint.isEmpty) _captureSavedValues();
       }
+    }
+  }
+
+  /// Computes the proration factor for a worker who joined mid pay period so
+  /// they are never paid for days before their joining date. The pay period
+  /// stays fixed (salary day to salary day); only the amount is prorated.
+  Future<void> _computeProration(int workingDays) async {
+    _prorationFactor = 1.0;
+    try {
+      final joiningDate = AppDateUtils.dateFromValue(
+        widget.workerData['joiningDate'] ?? widget.workerData['dateOfJoining'],
+      );
+      if (joiningDate == null) return;
+      final periodReference = DateTime(
+        _payrollMonth.year,
+        _payrollMonth.month,
+        15,
+      );
+      final periodStart = PayrollService.payPeriodStart(
+        periodReference,
+        _salaryDay,
+      );
+      final periodEnd = PayrollService.payPeriodEnd(
+        periodReference,
+        _salaryDay,
+      );
+      Set<DateTime>? workingDates;
+      try {
+        workingDates = await _firestore.getWorkingDates(
+          from: periodStart,
+          toExclusive: periodEnd,
+        );
+      } catch (_) {
+        workingDates = null;
+      }
+      _prorationFactor = PayrollService.prorationFactor(
+        joiningDate: joiningDate,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        totalWorkDays: workingDays > 0 ? workingDays : 30,
+        workingDates: workingDates,
+      );
+    } catch (_) {
+      _prorationFactor = 1.0;
     }
   }
 
@@ -472,6 +525,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'netSalaryFormatted': _calculatedNet,
       'payPeriod': payPeriod,
       'payrollKey': payrollKey,
+      'prorationFactor': _prorationFactor,
       'paidAt': paidAt,
       'cancelledAt': null,
       'lastModified': now,
@@ -629,9 +683,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     // Resolve company info (name, logo, stamp, ...) from Firestore with
     // guest-data + cached profile-pic fallbacks, so the uploaded profile
     // image replaces the default app icon on the invoice.
-    final companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
-      _firestore,
-    );
+    final companyProfile =
+        await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
 
     final bytes = await compute(_generateInvoiceInIsolate, {
       'employeeName': _name,
@@ -659,7 +712,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'companyEmail': (companyProfile['email'] ?? '').toString(),
       'companyPhone': (companyProfile['phone'] ?? '').toString(),
       'companyId': (companyProfile['companyId'] ?? '').toString(),
-      'companyStampImageUrl': AuthService.companyStampNotifier.value?.isNotEmpty == true
+      'companyStampImageUrl':
+          AuthService.companyStampNotifier.value?.isNotEmpty == true
           ? AuthService.companyStampNotifier.value
           : (companyProfile['companyStampUrl'] ?? '').toString(),
       'companyLogoUrl': AuthService.profilePicNotifier.value?.isNotEmpty == true
@@ -1296,8 +1350,26 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Widget _buildEmployeeBanner() {
-    final firstDay = PayrollService.payPeriodStart(_payrollMonth, _salaryDay);
-    final lastDay = PayrollService.payPeriodEnd(_payrollMonth, _salaryDay);
+    final int? salaryDay = _salaryDay;
+    final DateTime firstDay;
+    final DateTime lastDay;
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+      firstDay = _payrollMonth;
+      lastDay = DateTime(_payrollMonth.year, _payrollMonth.month + 1, 0);
+    } else {
+      // The payroll month is the period that STARTS on the salary day of
+      // that month. The end boundary (next salary day) belongs to the next
+      // cycle, so it is displayed but excluded.
+      final clampedDay = PayrollService.effectiveSalaryDay(
+        _payrollMonth,
+        salaryDay,
+      );
+      firstDay = DateTime(_payrollMonth.year, _payrollMonth.month, clampedDay);
+      lastDay = PayrollService.payPeriodEnd(
+        firstDay.add(const Duration(days: 1)),
+        salaryDay,
+      );
+    }
     final monthFmt = DateFormat('MMM');
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '

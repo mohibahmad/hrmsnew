@@ -19,11 +19,12 @@ class PayrollService {
       return DateTime(referenceDate.year, referenceDate.month, 1);
     }
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    if (referenceDate.day >= effectiveDay) {
+    if (referenceDate.day > effectiveDay) {
       // Current period started on the salary day of this month.
       return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
     }
-    // Current period started on the salary day of the previous month.
+    // On the pay day itself the just-ended period is still the current one,
+    // so the period starts on the salary day of the previous month.
     final prevMonth = DateTime(referenceDate.year, referenceDate.month - 1, 1);
     return DateTime(
       prevMonth.year,
@@ -32,7 +33,8 @@ class PayrollService {
     );
   }
 
-  /// Returns the end date of the current pay period (the next salary day).
+  /// Returns the end boundary of the current pay period (the next salary day).
+  /// The boundary day itself belongs to the next cycle, so it is exclusive.
   static DateTime payPeriodEnd(DateTime referenceDate, int? salaryDay) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
       return DateTime(referenceDate.year, referenceDate.month + 1, 0);
@@ -40,7 +42,7 @@ class PayrollService {
     final start = payPeriodStart(referenceDate, salaryDay);
     final nextMonth = DateTime(start.year, start.month + 1, 1);
     final effectiveDayNextMonth = effectiveSalaryDay(nextMonth, salaryDay);
-    return DateTime(nextMonth.year, nextMonth.month, effectiveDayNextMonth).subtract(const Duration(days: 1));
+    return DateTime(nextMonth.year, nextMonth.month, effectiveDayNextMonth);
   }
 
   /// Returns the next pay date (the upcoming salary day).
@@ -61,15 +63,21 @@ class PayrollService {
   }
 
   /// Returns true when today is within `reminderDays` days before the next
-  /// pay date (but not on the pay date itself).
+  /// pay date, on the pay date itself, or after the pay date (overdue).
   static bool isPayDateReminderDue(
     DateTime referenceDate,
     int? salaryDay, {
     int reminderDays = 3,
   }) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return true;
-    final nextPay = nextPayDate(referenceDate, salaryDay);
+    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
     final today = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+
+    // If today is on or after the pay date, it's due/overdue.
+    if (today.day >= effectiveDay) return true;
+
+    // Otherwise check if within reminder days before the pay date.
+    final nextPay = nextPayDate(referenceDate, salaryDay);
     final payDay = DateTime(nextPay.year, nextPay.month, nextPay.day);
     final diff = payDay.difference(today).inDays;
     return diff <= reminderDays;
@@ -780,6 +788,7 @@ class PayrollService {
     String customDeduction = '',
     String salaryType = 'Monthly',
     double taxRatePercent = 0.0,
+    double prorationFactor = 1.0,
   }) {
     final enteredSalary = extractSalary(salary);
     final periodSalary = salaryType.trim().toLowerCase() == 'annual'
@@ -790,11 +799,48 @@ class PayrollService {
     final leaveVal = extractSalary(leaveDeduction);
     final customVal = extractSalary(customDeduction);
 
-    final subtotal = (periodSalary + overtimeVal - absentVal - leaveVal - customVal)
+    final subtotal = (periodSalary * prorationFactor +
+            overtimeVal -
+            absentVal -
+            leaveVal -
+            customVal)
         .clamp(0.0, double.infinity);
     final taxDeduction = taxRatePercent > 0 ? (subtotal * (taxRatePercent / 100)) : 0.0;
     final netSalary = subtotal - taxDeduction;
     return netSalary.clamp(0.0, double.infinity).toDouble();
+  }
+
+  /// Ratio of the pay period a worker was employed for. A worker who joined
+  /// on or before [periodStart] gets the full period (1.0). A worker who
+  /// joined after the period ended gets 0.0. Otherwise the ratio is
+  /// `working days from joining date to period end / totalWorkDays`.
+  /// When [workingDates] is not provided the ratio falls back to calendar
+  /// days so proration never breaks on missing data.
+  static double prorationFactor({
+    DateTime? joiningDate,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required int totalWorkDays,
+    Set<DateTime>? workingDates,
+  }) {
+    final join = joiningDate == null
+        ? null
+        : DateTime(joiningDate.year, joiningDate.month, joiningDate.day);
+    final start = DateTime(periodStart.year, periodStart.month, periodStart.day);
+    final end = DateTime(periodEnd.year, periodEnd.month, periodEnd.day);
+    if (join == null || !join.isAfter(start)) return 1.0;
+    if (!join.isBefore(end)) return 0.0;
+    if (totalWorkDays <= 0) return 1.0;
+
+    int availableDays;
+    if (workingDates != null && workingDates.isNotEmpty) {
+      availableDays = workingDates.where((date) => !date.isBefore(join)).length;
+    } else {
+      final totalDays = end.difference(start).inDays;
+      final elapsedBeforeJoin = join.difference(start).inDays;
+      availableDays = totalDays > 0 ? (totalDays - elapsedBeforeJoin) : totalDays;
+    }
+    return (availableDays / totalWorkDays).clamp(0.0, 1.0).toDouble();
   }
 
   static Map<String, dynamic> calculatePayroll({
@@ -808,6 +854,7 @@ class PayrollService {
     String leaveDeductionPerDay = '',
     String salaryType = 'Monthly',
     double taxRatePercent = 0.0,
+    double prorationFactor = 1.0,
   }) {
     final rawSalaryVal = extractSalary(salary);
     final periodSalary = salaryType.trim().toLowerCase() == 'annual'
@@ -833,7 +880,7 @@ class PayrollService {
         .clamp(0, totalWorkDaysVal)
         .toInt();
 
-    final grossSalary = periodSalary;
+    final grossSalary = periodSalary * prorationFactor;
 
     final overtimePay = customOvertimeAmount;
 

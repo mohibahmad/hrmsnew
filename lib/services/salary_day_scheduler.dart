@@ -21,6 +21,7 @@ import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/company_profile_helper.dart';
+import '../utils/date_utils.dart';
 import '../widgets/amount_text.dart';
 
 class AutoPayrollResult {
@@ -46,6 +47,7 @@ class AutoPayrollResult {
   final String position;
   final String salaryType;
   final String? imageUrl;
+  double prorationFactor;
 
   AutoPayrollResult({
     this.workerId = '',
@@ -70,6 +72,7 @@ class AutoPayrollResult {
     this.position = '',
     this.salaryType = 'Monthly',
     this.imageUrl,
+    this.prorationFactor = 1.0,
   });
 
   AutoPayrollResult copy() => AutoPayrollResult(
@@ -95,6 +98,7 @@ class AutoPayrollResult {
     position: position,
     salaryType: salaryType,
     imageUrl: imageUrl,
+    prorationFactor: prorationFactor,
   );
 }
 
@@ -424,6 +428,45 @@ class SalaryDayScheduler {
       return null;
     }
 
+    // Pay period boundaries + proration for workers who joined mid-period.
+    int? salaryDay;
+    try {
+      final rawDay = companyProfile?['salaryDay'] ??
+          companyProfile?['salaryPaymentDay'];
+      final parsedDay = rawDay is num
+          ? rawDay.toInt()
+          : int.tryParse(rawDay?.toString() ?? '');
+      salaryDay = (parsedDay != null && parsedDay >= 1 && parsedDay <= 31)
+          ? parsedDay
+          : await _loadSalaryDay(context);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SalaryDayProration');
+      salaryDay = null;
+    }
+    final periodReference = DateTime(
+      effectivePayrollMonth.year,
+      effectivePayrollMonth.month,
+      15,
+    );
+    final periodStart = PayrollService.payPeriodStart(
+      periodReference,
+      salaryDay,
+    );
+    final periodEnd = PayrollService.payPeriodEnd(
+      periodReference,
+      salaryDay,
+    );
+    Set<DateTime>? workingDates;
+    try {
+      workingDates = await firestoreService.getWorkingDates(
+        from: periodStart,
+        toExclusive: periodEnd,
+      );
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SalaryDayWorkingDates');
+      workingDates = null;
+    }
+
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
       final worker = workers[i];
@@ -442,6 +485,17 @@ class SalaryDayScheduler {
       final attendance = attendanceResults[i];
       final attendanceError = (attendance['_error'] ?? '').toString();
 
+      final joiningDate = AppDateUtils.dateFromValue(
+        worker['joiningDate'] ?? worker['dateOfJoining'],
+      );
+      final prorationFactor = PayrollService.prorationFactor(
+        joiningDate: joiningDate,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        totalWorkDays: workDays,
+        workingDates: workingDates,
+      );
+
       if (!isGuest && attendanceError.isNotEmpty) {
         results.add(
           AutoPayrollResult(
@@ -456,6 +510,7 @@ class SalaryDayScheduler {
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
             salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
+            prorationFactor: prorationFactor,
             imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
                 ? (worker['profileImage'] ?? '').toString()
                 : null,
@@ -501,6 +556,7 @@ class SalaryDayScheduler {
             overtimeAmount: overtimeAmount,
             absentDeductionPerDay: absentDeductionPerDay,
             salaryType: salaryType,
+            prorationFactor: prorationFactor,
           );
           netSalary = calc['formattedNet'] as String? ?? '0';
           rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
@@ -512,6 +568,7 @@ class SalaryDayScheduler {
             absentDeduction: absentDeductionTotal.toString(),
             customDeduction: '0',
             salaryType: salaryType,
+            prorationFactor: prorationFactor,
           );
           final currency = PayrollService.getCurrencyPrefix(salaryStr);
           final prefix = currency.isNotEmpty ? '$currency ' : '';
@@ -543,6 +600,7 @@ class SalaryDayScheduler {
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
             salaryType: salaryType,
+            prorationFactor: prorationFactor,
             imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
                 ? (worker['profileImage'] ?? '').toString()
                 : null,
@@ -573,6 +631,7 @@ class SalaryDayScheduler {
           totalWorkDays: workDays.toString(),
           position: (worker['position'] ?? '').toString(),
           salaryType: salaryType,
+          prorationFactor: prorationFactor,
           imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
               ? (worker['profileImage'] ?? '').toString()
               : null,
@@ -841,6 +900,7 @@ class SalaryDayScheduler {
             'netSalary': r.netSalary,
             'netSalaryAmount': r.rawNetSalaryValue,
             'netSalaryFormatted': r.netSalary,
+            'prorationFactor': r.prorationFactor,
             'payrollKey': payrollKey,
             'payPeriod': '${summary.periodLabel}-01',
             'cancelledAt': null,
@@ -956,6 +1016,7 @@ class SalaryDayScheduler {
         'netSalary': r.netSalary,
         'netSalaryAmount': r.rawNetSalaryValue,
         'netSalaryFormatted': r.netSalary,
+        'prorationFactor': r.prorationFactor,
         'payrollKey': payrollKey,
         'payPeriod': payPeriodDate,
         'cancelledAt': null,
@@ -1096,7 +1157,7 @@ class SalaryDayScheduler {
             (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
                 .clamp(0, workDays)
                 .toDouble();
-        final grossSalary = rawSalary;
+        final grossSalary = rawSalary * r.prorationFactor;
         final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
         final absentDeductionTotal = PayrollService.extractSalary(
           r.absentDeduction,
@@ -2988,6 +3049,7 @@ class SalaryDayScheduler {
         leaveDeduction: '0',
         customDeduction: deductionVal,
         salaryType: r.salaryType,
+        prorationFactor: r.prorationFactor,
       );
       final currency = PayrollService.getCurrencyPrefix(r.salary);
       final p = currency.isNotEmpty ? '$currency ' : '';

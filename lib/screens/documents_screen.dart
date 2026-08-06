@@ -1001,10 +1001,14 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF000000),
-                                            borderRadius: BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF000000).withValues(alpha: 0.25),
+                                                color: const Color(
+                                                  0xFF000000,
+                                                ).withValues(alpha: 0.25),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 2),
                                               ),
@@ -1043,7 +1047,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF000000),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1062,10 +1068,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
-                                              colorFilter: const ColorFilter.mode(
-                                                Colors.white,
-                                                BlendMode.srcIn,
-                                              ),
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -1115,10 +1122,14 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF000000),
-                                            borderRadius: BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF000000).withValues(alpha: 0.25),
+                                                color: const Color(
+                                                  0xFF000000,
+                                                ).withValues(alpha: 0.25),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 2),
                                               ),
@@ -1157,7 +1168,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF000000),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1176,10 +1189,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
-                                              colorFilter: const ColorFilter.mode(
-                                                Colors.white,
-                                                BlendMode.srcIn,
-                                              ),
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -1304,7 +1318,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   ),
                                 ),
                               ],
-
                             ],
                           ),
                         ),

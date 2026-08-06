@@ -371,6 +371,28 @@ class TimeOffService {
     return (total - used).clamp(0, total).toInt();
   }
 
+  static int getLeaveBalance(Map<String, dynamic> worker, String type) {
+    final leaveBalances = worker['leaveBalances'] as Map<String, dynamic>?;
+    final fieldName = switch (normalizeLeaveType(type)) {
+      'Annual Leave' => 'annualLeave',
+      'Sick Leave' => 'sickLeave',
+      'Casual Leave' => 'casualLeave',
+      'Medical Leave' => 'medicalLeave',
+      _ => '',
+    };
+    if (fieldName.isEmpty) return 0;
+    if (leaveBalances != null && leaveBalances.containsKey(fieldName)) {
+      return int.tryParse(leaveBalances[fieldName]?.toString() ?? '0') ?? 0;
+    }
+    return switch (fieldName) {
+      'annualLeave' => int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0,
+      'sickLeave' => int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0,
+      'casualLeave' => int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0,
+      'medicalLeave' => int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0,
+      _ => 0,
+    };
+  }
+
   /// Reads the configured (assigned) balance for one of the four core leave
   /// types. Each type has its own independent balance, so a type that is not
   /// configured (0) never falls back to another type's allowance.
@@ -378,10 +400,11 @@ class TimeOffService {
     Map<String, dynamic> worker,
     String type,
   ) {
-    switch (normalizeLeaveType(type)) {
+    final normType = normalizeLeaveType(type);
+    switch (normType) {
       case 'Annual Leave':
-        final annual = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        return annual > 0 ? annual : configuredPaidLeaveAllowance(worker);
+        final annualLimit = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+        return annualLimit > 0 ? annualLimit : configuredPaidLeaveAllowance(worker);
       case 'Sick Leave':
         return int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
       case 'Casual Leave':
@@ -437,6 +460,22 @@ class TimeOffService {
     return (limit - used).clamp(0, limit).toInt();
   }
 
+  static int totalAvailableLeaves(Map<String, dynamic> worker) {
+    final leaveBalances = worker['leaveBalances'] as Map<String, dynamic>?;
+    if (leaveBalances != null) {
+      final annual = int.tryParse(leaveBalances['annualLeave']?.toString() ?? '0') ?? 0;
+      final sick = int.tryParse(leaveBalances['sickLeave']?.toString() ?? '0') ?? 0;
+      final casual = int.tryParse(leaveBalances['casualLeave']?.toString() ?? '0') ?? 0;
+      final medical = int.tryParse(leaveBalances['medicalLeave']?.toString() ?? '0') ?? 0;
+      return annual + sick + casual + medical;
+    }
+    final annual = int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0;
+    final sick = int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0;
+    final casual = int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0;
+    final medical = int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0;
+    return annual + sick + casual + medical;
+  }
+
   /// True when the worker can no longer be assigned ANY leave — i.e. every
   /// leave type (Annual / Sick / Casual / Medical) has 0 remaining balance.
   /// The status flips to "Limit Reached" when the worker has no remaining balance.
@@ -444,11 +483,9 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
   ) {
-    if (worker['canAssignTimeOff'] == false) return true;
-
     const types = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Medical Leave'];
     for (final type in types) {
-      if (remainingForType(worker, timeOffRecords, type) > 0) {
+      if (getLeaveBalance(worker, type) > 0) {
         return false;
       }
     }
@@ -493,7 +530,12 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
     required DateTime month,
+    DateTime? referenceDate,
   }) {
+    // Assigned leave only counts once the leave day has arrived: future
+    // dates must not leak into the current payroll's Paid Leave record.
+    final now = referenceDate ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
@@ -512,9 +554,12 @@ class TimeOffService {
       )) {
         continue;
       }
-      final dates = selectedDatesForRecord(
-        record,
-      ).where((date) => date.year == month.year && date.month == month.month);
+      final dates = selectedDatesForRecord(record).where(
+        (date) =>
+            date.year == month.year &&
+            date.month == month.month &&
+            !date.isAfter(today),
+      );
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);
       } else if (isUnpaidRecord(record)) {

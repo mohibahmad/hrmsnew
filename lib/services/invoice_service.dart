@@ -6,6 +6,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
+import 'auth_service.dart';
+import 'preferences_service.dart';
 import '../utils/currency_utils.dart';
 import '../utils/file_opener.dart';
 import '../utils/pdf_stamp_widget.dart';
@@ -116,9 +118,40 @@ class InvoiceService {
     } catch (_) {
       logoImage = null;
     }
-    final companyStampBytes = await _loadCompanyStampBytes(
+    var companyStampBytes = await _loadCompanyStampBytes(
       companyStampImageUrl,
     );
+    if (companyStampBytes == null || companyStampBytes.isEmpty) {
+      final notifierUrl = AuthService.companyStampNotifier.value?.trim() ?? '';
+      if (notifierUrl.isNotEmpty) {
+        companyStampBytes = await _loadCompanyStampBytes(notifierUrl);
+      }
+    }
+    if (companyStampBytes == null || companyStampBytes.isEmpty) {
+      try {
+        final prefUrl = await PreferencesService.getCompanyStampUrl();
+        if (prefUrl != null && prefUrl.trim().isNotEmpty) {
+          companyStampBytes = await _loadCompanyStampBytes(prefUrl.trim());
+        }
+      } catch (_) {}
+    }
+    if (companyStampBytes == null || companyStampBytes.isEmpty) {
+      try {
+        final guest = await PreferencesService.getGuestProfileData();
+        final guestStamp = (guest?['companyStampUrl'] ??
+                guest?['stampUrl'] ??
+                guest?['companyStamp'] ??
+                guest?['companySignature'] ??
+                guest?['signatureUrl'] ??
+                guest?['signature'] ??
+                '')
+            .toString()
+            .trim();
+        if (guestStamp.isNotEmpty) {
+          companyStampBytes = await _loadCompanyStampBytes(guestStamp);
+        }
+      } catch (_) {}
+    }
     final companyStampImage = companyStampBytes == null
         ? null
         : pw.MemoryImage(companyStampBytes);

@@ -284,7 +284,7 @@ void main() {
     await initLocalization(tester);
     await tester.runAsync(() async {
       final cases = <String, String>{
-        'PKR': 'Rs',
+        'PKR': 'PKR',
         'USD': r'$',
         'INR': '₹',
         'EUR': '€',
@@ -315,7 +315,7 @@ void main() {
       final bytes = await generateInvoice(currency: 'PKR', salary: '100000');
       final text = pdfText(bytes);
       expect(
-        text.contains('Rs'),
+        text.contains('PKR'),
         isTrue,
         reason: 'PKR symbol missing in invoice text: "$text"',
       );

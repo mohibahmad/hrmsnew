@@ -12,15 +12,18 @@ import '../utils/premium_gate.dart';
 import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 import '../utils/delete_dialog.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
-import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/currency_utils.dart';
+import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
 import '../services/worker_profile_service.dart';
+import '../utils/date_utils.dart';
 import 'package:provider/provider.dart';
 
 String? _safeOptionalString(dynamic value) {
@@ -35,6 +38,12 @@ DateTime? _workerDateTime(dynamic value) {
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
   return null;
+}
+
+String? _workerDateText(dynamic value) {
+  if (value == null) return null;
+  final date = AppDateUtils.dateFromValue(value);
+  return date != null ? AppDateUtils.formatDate(date) : value.toString();
 }
 
 void main() {
@@ -454,13 +463,45 @@ class WorkersScreenState extends State<WorkersScreen> {
   final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey =
       GlobalKey<AddBulkWorkerScreenState>();
 
+  bool get isAddingWorker => _isAddingWorker;
+  bool get isAddingBulkWorker => _isAddingBulkWorker;
+
   bool get hasUnsavedBulkChanges =>
       _isAddingBulkWorker &&
       _bulkWorkerKey.currentState?.hasUnsavedChanges == true;
 
+  bool get hasUnsavedChanges =>
+      _isAddingWorker ||
+      (_isAddingBulkWorker &&
+          _bulkWorkerKey.currentState?.hasUnsavedChanges == true);
+
   Future<bool> confirmDiscardBulkChanges() async {
     if (!hasUnsavedBulkChanges) return true;
     return _bulkWorkerKey.currentState?.confirmDiscard() ?? true;
+  }
+
+  Future<bool> confirmDiscardChanges() async {
+    if (!hasUnsavedChanges) return true;
+    if (_isAddingWorker) {
+      final shouldDiscard = await UnsavedChangesDialog.show(context);
+      if (shouldDiscard) {
+        setState(() {
+          _isAddingWorker = false;
+          _workerToEdit = null;
+        });
+      }
+      return shouldDiscard;
+    }
+    if (_isAddingBulkWorker) {
+      final shouldDiscard = await confirmDiscardBulkChanges();
+      if (shouldDiscard) {
+        setState(() {
+          _isAddingBulkWorker = false;
+        });
+      }
+      return shouldDiscard;
+    }
+    return true;
   }
 
   @override
@@ -1503,18 +1544,12 @@ class _WorkerProfilePreviewDialogState
       final email = _v(worker, 'email');
       final phone = _v(worker, 'phone');
       final profileImage = _safeOptionalString(worker['profileImage']);
-      final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
       final salaryAmount = _v(worker, 'salaryAmount');
-      final rawSalary = salaryAmount.isNotEmpty
-          ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
-          : '';
-      final salary = rawSalary.isNotEmpty
-          ? AmountText.formatFull(rawSalary)
-          : '';
       Map<String, dynamic> companyProfile = const {};
       try {
-        companyProfile =
-            await context.read<FirestoreService>().getUserProfile() ?? const {};
+        companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
+          context.read<FirestoreService>(),
+        );
       } catch (e) {
         if (mounted) {
           FlashySnackBar.show(
@@ -1525,23 +1560,18 @@ class _WorkerProfilePreviewDialogState
         }
         return;
       }
-      final companyName =
-          (companyProfile['businessName'] ??
-                  companyProfile['companyName'] ??
-                  '')
-              .toString()
-              .trim();
-      if (companyName.isEmpty) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'error_occurred'
-                .tr(namedArgs: {'error': 'Company name is required'}),
-            isError: true,
-          );
-        }
-        return;
-      }
+      final companyCurr = companyProfile['currency']?.toString().trim() ?? PreferencesService.cachedCompanyCurrency;
+      final currSymbol = CurrencyUtils.symbolFor(companyCurr);
+      final rawSalaryStr = salaryAmount.trim();
+      final salaryToFormat = rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
+          ? '$currSymbol $rawSalaryStr'
+          : rawSalaryStr;
+      final salary = salaryToFormat.isNotEmpty
+          ? AmountText.formatCompact(salaryToFormat)
+          : '';
+      final companyName = CompanyProfileHelper.companyNameOrFallback(
+        (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '').toString(),
+      );
       final companyId =
           (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
               .toString();
@@ -1559,7 +1589,7 @@ class _WorkerProfilePreviewDialogState
           LocalizationHelper.localizeExperience(_v(worker, 'experienceLevel')),
         ),
         gender: _na(_localizedGender(_v(worker, 'gender'))),
-        joiningDate: _na(_v(worker, 'joiningDate')),
+        joiningDate: _na(_workerDateText(worker['joiningDate']) ?? ''),
         salary: salary,
         education: _na(
           LocalizationHelper.localizeEducation(_v(worker, 'education')),
@@ -1568,7 +1598,7 @@ class _WorkerProfilePreviewDialogState
           LocalizationHelper.localizeSalaryType(_v(worker, 'salaryType')),
         ),
         religion: _na(_v(worker, 'religion')),
-        dateOfBirth: _na(_v(worker, 'dob')),
+        dateOfBirth: _na(_workerDateText(worker['dob']) ?? ''),
         relationshipStatus: _na(
           _localizedRelationshipStatus(_v(worker, 'relationshipStatus')),
         ),
@@ -1578,8 +1608,7 @@ class _WorkerProfilePreviewDialogState
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
         companyName: companyName,
         companyId: companyId,
-        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
-            .toString(),
+        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '').toString(),
       ).timeout(const Duration(seconds: 30));
 
       final safeName = name
@@ -1636,13 +1665,15 @@ class _WorkerProfilePreviewDialogState
     final email = _v(worker, 'email');
     final phone = _v(worker, 'phone');
     final profileImage = _safeOptionalString(worker['profileImage']);
-    final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
     final salaryAmount = _v(worker, 'salaryAmount');
-    final rawSalary = salaryAmount.isNotEmpty
-        ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
-        : '';
-    final salary = rawSalary.isNotEmpty
-        ? AmountText.formatCompact(rawSalary)
+    final companyCurr = PreferencesService.cachedCompanyCurrency;
+    final currSymbol = CurrencyUtils.symbolFor(companyCurr);
+    final rawSalaryStr = salaryAmount.trim();
+    final salaryToFormat = rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
+        ? '$currSymbol $rawSalaryStr'
+        : rawSalaryStr;
+    final salary = salaryToFormat.isNotEmpty
+        ? AmountText.formatCompact(salaryToFormat)
         : '';
 
     return Dialog(
@@ -1885,7 +1916,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.calendar_month,
                           'joining_date'.tr(),
-                          _na(_v(worker, 'joiningDate')),
+                          _na(_workerDateText(worker['joiningDate']) ?? ''),
                         ),
                       ),
                       _buildRow(
@@ -1926,7 +1957,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.cake,
                           'date_of_birth'.tr(),
-                          _na(_v(worker, 'dob')),
+                          _na(_workerDateText(worker['dob']) ?? ''),
                         ),
                         _buildInfoCard(
                           Icons.favorite,

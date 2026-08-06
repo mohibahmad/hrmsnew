@@ -282,7 +282,7 @@ class Worker {
     _addNumericField(map, 'leavesUsed', leavesUsed, forUpdate);
 
     _addDateOnlyField(map, 'dob', dob, forUpdate);
-    _addDateOnlyField(map, 'joiningDate', joiningDate, forUpdate);
+    _addDateTimestampField(map, 'joiningDate', joiningDate, forUpdate);
 
     if (!forUpdate) {
       if (createdAt != null) {
@@ -331,6 +331,24 @@ class Worker {
   ) {
     if (value != null) {
       map[key] = _addDateOnly(value);
+    } else if (forUpdate) {
+      map[key] = FieldValue.delete();
+    }
+  }
+
+  /// Serializes a date-only business value as a Firestore [Timestamp]
+  /// (local-midnight, matching the convention used for `attendanceDate`) so it
+  /// can be range-queried and compared in Firestore.
+  static void _addDateTimestampField(
+    Map<String, dynamic> map,
+    String key,
+    DateTime? value,
+    bool forUpdate,
+  ) {
+    if (value != null) {
+      map[key] = Timestamp.fromDate(
+        DateTime(value.year, value.month, value.day),
+      );
     } else if (forUpdate) {
       map[key] = FieldValue.delete();
     }

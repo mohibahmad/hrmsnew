@@ -98,6 +98,9 @@ class CompanyProfileHelper {
           (profile['companyStampUrl'] ??
                   profile['stampUrl'] ??
                   profile['companyStamp'] ??
+                  profile['companySignature'] ??
+                  profile['signatureUrl'] ??
+                  profile['signature'] ??
                   '')
               .toString()
               .trim();
@@ -109,6 +112,9 @@ class CompanyProfileHelper {
           (guestProfile['companyStampUrl'] ??
                   guestProfile['stampUrl'] ??
                   guestProfile['companyStamp'] ??
+                  guestProfile['companySignature'] ??
+                  guestProfile['signatureUrl'] ??
+                  guestProfile['signature'] ??
                   '')
               .toString()
               .trim();

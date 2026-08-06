@@ -7,6 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
+import 'auth_service.dart';
+import 'preferences_service.dart';
 import '../utils/file_opener.dart';
 import '../utils/pdf_stamp_widget.dart';
 import 'package:pdf/pdf.dart';
@@ -53,11 +55,42 @@ class WorkerProfileService {
     // which caused "type 'Future<Uint8List?>' is not a subtype of type 'Uint8List?'" cast error.
     final rawProfileBytes = await _loadImageBytes(profileImageUrl);
 
-    // Load stamp — if user hasn't uploaded one, pass null (no fallback icon)
+    // Load stamp/signature: user uploaded stamp -> cached notifier -> preferences -> guest profile
     Uint8List? rawStampBytes;
     final stampSource = (companyStampImageUrl ?? '').trim();
     if (stampSource.isNotEmpty) {
       rawStampBytes = await _loadImageBytes(stampSource);
+    }
+    if (rawStampBytes == null || rawStampBytes.isEmpty) {
+      final notifierUrl = AuthService.companyStampNotifier.value?.trim() ?? '';
+      if (notifierUrl.isNotEmpty) {
+        rawStampBytes = await _loadImageBytes(notifierUrl);
+      }
+    }
+    if (rawStampBytes == null || rawStampBytes.isEmpty) {
+      try {
+        final prefUrl = await PreferencesService.getCompanyStampUrl();
+        if (prefUrl != null && prefUrl.trim().isNotEmpty) {
+          rawStampBytes = await _loadImageBytes(prefUrl.trim());
+        }
+      } catch (_) {}
+    }
+    if (rawStampBytes == null || rawStampBytes.isEmpty) {
+      try {
+        final guest = await PreferencesService.getGuestProfileData();
+        final guestStamp = (guest?['companyStampUrl'] ??
+                guest?['stampUrl'] ??
+                guest?['companyStamp'] ??
+                guest?['companySignature'] ??
+                guest?['signatureUrl'] ??
+                guest?['signature'] ??
+                '')
+            .toString()
+            .trim();
+        if (guestStamp.isNotEmpty) {
+          rawStampBytes = await _loadImageBytes(guestStamp);
+        }
+      } catch (_) {}
     }
 
     final profileBytes = _compressImageForPdf(rawProfileBytes);
@@ -108,7 +141,10 @@ class WorkerProfileService {
         height: decoded.height > decoded.width ? _maxPdfImageDimension : null,
         interpolation: img.Interpolation.linear,
       );
-      return Uint8List.fromList(img.encodeJpg(resized, quality: 80));
+      if (decoded.hasAlpha) {
+        return Uint8List.fromList(img.encodePng(resized));
+      }
+      return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
     } catch (_) {
       return bytes;
     }

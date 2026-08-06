@@ -37,7 +37,7 @@ void main() {
 
   group('AmountText.formatCompact', () {
     test('keeps symbols and compacts large values', () {
-      expect(AmountText.formatCompact(r'$ 50,000'), r'$50.0K');
+      expect(AmountText.formatCompact(r'$ 50,000'), r'$50K');
     });
   });
 }

@@ -32,17 +32,17 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class LeaveColors {
-  static const Color annual = Color(0xFFF59E0B);   // Vibrant Amber
+  static const Color annual = Color(0xFFF59E0B); // Vibrant Amber
   static const Color annualBg = Color(0xFFFFFBEB); // Soft Amber Tint
 
-  static const Color sick = Color(0xFFEF4444);     // Vibrant Red
-  static const Color sickBg = Color(0xFFFEF2F2);   // Soft Red Tint
+  static const Color sick = Color(0xFFEF4444); // Vibrant Red
+  static const Color sickBg = Color(0xFFFEF2F2); // Soft Red Tint
 
-  static const Color casual = Color(0xFF3B82F6);   // Vibrant Blue
+  static const Color casual = Color(0xFF3B82F6); // Vibrant Blue
   static const Color casualBg = Color(0xFFEFF6FF); // Soft Blue Tint
 
-  static const Color medical = Color(0xFF10B981);  // Vibrant Emerald Green
-  static const Color medicalBg = Color(0xFFECFDF5);// Soft Green Tint
+  static const Color medical = Color(0xFF10B981); // Vibrant Emerald Green
+  static const Color medicalBg = Color(0xFFECFDF5); // Soft Green Tint
 
   static Color getColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
@@ -55,9 +55,9 @@ class LeaveColors {
 
   static Color getTextColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
-    if (lower.contains('annual')) return const Color(0xFFD97706);  // Deep Amber
-    if (lower.contains('sick')) return const Color(0xFFDC2626);    // Deep Red
-    if (lower.contains('casual')) return const Color(0xFF1D4ED8);  // Deep Blue
+    if (lower.contains('annual')) return const Color(0xFFD97706); // Deep Amber
+    if (lower.contains('sick')) return const Color(0xFFDC2626); // Deep Red
+    if (lower.contains('casual')) return const Color(0xFF1D4ED8); // Deep Blue
     if (lower.contains('medical')) return const Color(0xFF047857); // Deep Green
     return const Color(0xFF1E293B);
   }
@@ -484,15 +484,52 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   bool get _usesPaidAllowance => _isGuest || _isPaidLeave;
 
+  int _baseAvailableDaysForType(String type) {
+    if (_selectedWorker == null) return 0;
+    final dbBalance = TimeOffService.getLeaveBalance(
+      _selectedWorkerForService,
+      type,
+    );
+
+    if (_editingRecord != null) {
+      final originalType = TimeOffService.leaveType(_editingRecord!);
+      final originalDaysCount = TimeOffService.selectedDatesForRecord(
+        _editingRecord!,
+      ).length;
+
+      final normType = TimeOffService.normalizeLeaveType(type);
+      final normOriginalType = TimeOffService.normalizeLeaveType(originalType);
+
+      if (normType == normOriginalType) {
+        return (dbBalance + originalDaysCount).clamp(0, 9999);
+      }
+    }
+    return dbBalance.clamp(0, 9999);
+  }
+
+  int _availableDaysForType(String type) {
+    final base = _baseAvailableDaysForType(type);
+    final normType = TimeOffService.normalizeLeaveType(type);
+    final currentlySelected =
+        (TimeOffService.normalizeLeaveType(_timeOffType) == normType)
+        ? _selectedDates.length
+        : 0;
+    return (base - currentlySelected).clamp(0, 9999);
+  }
+
+  int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
+
+  int get _availableDays => _availableDaysForType(_timeOffType);
+
   bool get _requestedDaysExceedAvailable =>
-      _usesPaidAllowance && _selectedDaysCount > _availableDays;
+      _usesPaidAllowance && _selectedDaysCount > _baseAvailableDays;
 
   int get _requestedDays =>
       _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
 
   int get _remainingDaysAfterRequest {
-    if (!_isGuest && !_isPaidLeave) return _availableDays;
-    return _availableDays - _requestedDays;
+    if (!_isGuest && !_isPaidLeave) return _baseAvailableDays;
+    return _baseAvailableDays - _requestedDays;
   }
 
   String get _selectedDatesSummary {
@@ -502,62 +539,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final remaining = dates.length - 3;
     return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
   }
-
-  int _availableDaysForType(String type) {
-    if (_selectedWorker == null) return 0;
-    final worker = _selectedWorkerForService;
-
-    final annualLimit =
-        int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-
-    int limit = 0;
-    final normType = TimeOffService.normalizeLeaveType(type);
-    if (normType == 'Sick Leave') {
-      limit = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
-      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
-    } else if (normType == 'Medical Leave') {
-      limit = int.tryParse(worker['medicalLeaves']?.toString() ?? '0') ?? 0;
-      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
-    } else if (normType == 'Casual Leave') {
-      limit = int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
-      if (limit <= 0 && annualLimit > 0) limit = annualLimit;
-    } else if (normType == 'Annual Leave') {
-      limit = annualLimit > 0 ? annualLimit : TimeOffService.configuredPaidLeaveAllowance(worker);
-    } else {
-      return 999;
-    }
-
-    int used = 0;
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
-        .toString()
-        .trim();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-
-    for (final record in _timeoffRecords) {
-      if (!TimeOffService.isActiveRecord(record)) continue;
-      if (_editingId != null && record['id']?.toString() == _editingId)
-        continue;
-      if (TimeOffService.normalizeLeaveType(
-            record['action']?.toString() ?? '',
-          ) ==
-          normType) {
-        final recWorkerId = (record['workerId'] ?? '').toString().trim();
-        final recEmail = (record['email'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-
-        if ((workerId.isNotEmpty && workerId == recWorkerId) ||
-            (workerEmail.isNotEmpty && workerEmail == recEmail)) {
-          used += TimeOffService.selectedDatesForRecord(record).length;
-        }
-      }
-    }
-
-    return (limit - used).clamp(0, limit);
-  }
-
-  int get _availableDays => _availableDaysForType(_timeOffType);
 
   @override
   void dispose() {
@@ -594,20 +575,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       ),
 
                       const Spacer(),
-                      _buildLeaveLegendItem(
-                        'Annual Leave',
-                        LeaveColors.annual,
-                      ),
+                      _buildLeaveLegendItem('Annual Leave', LeaveColors.annual),
                       const SizedBox(width: 16),
-                      _buildLeaveLegendItem(
-                        'Sick Leave',
-                        LeaveColors.sick,
-                      ),
+                      _buildLeaveLegendItem('Sick Leave', LeaveColors.sick),
                       const SizedBox(width: 16),
-                      _buildLeaveLegendItem(
-                        'Casual Leave',
-                        LeaveColors.casual,
-                      ),
+                      _buildLeaveLegendItem('Casual Leave', LeaveColors.casual),
                       const SizedBox(width: 16),
                       _buildLeaveLegendItem(
                         'Medical Leave',
@@ -840,11 +812,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                           Container(
                             height: 48,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF004FDE),
+                            ),
                             child: Row(
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                   onPressed: () => Navigator.pop(context),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
@@ -879,17 +857,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                         radius: 24,
                                         backgroundColor: Colors.blue.shade100,
                                         child: Text(
-                                          (_selectedWorker!['name'] ?? 'U').toString()[0].toUpperCase(),
-                                          style: const TextStyle(color: Color(0xFF004FDE), fontWeight: FontWeight.bold),
+                                          (_selectedWorker!['name'] ?? 'U')
+                                              .toString()[0]
+                                              .toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Color(0xFF004FDE),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              (_selectedWorker!['name'] ?? '').toString(),
+                                              (_selectedWorker!['name'] ?? '')
+                                                  .toString(),
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
@@ -900,18 +885,26 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                             const SizedBox(height: 4),
                                             Row(
                                               children: [
-                                                const Icon(Icons.email, size: 12, color: Colors.grey),
+                                                const Icon(
+                                                  Icons.email,
+                                                  size: 12,
+                                                  color: Colors.grey,
+                                                ),
                                                 const SizedBox(width: 4),
                                                 Expanded(
                                                   child: Text(
-                                                    (_selectedWorker!['email'] ?? '').toString(),
+                                                    (_selectedWorker!['email'] ??
+                                                            '')
+                                                        .toString(),
                                                     style: const TextStyle(
                                                       fontSize: 13,
                                                       color: Colors.grey,
-                                                      fontFamily: 'SF Pro Display',
+                                                      fontFamily:
+                                                          'SF Pro Display',
                                                     ),
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               ],
@@ -927,7 +920,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                   children: [
                                     Expanded(
                                       child: _buildTimeOffMetricCard(
-                                        icon: const Icon(Icons.category, color: Color(0xFF004FDE), size: 20),
+                                        icon: const Icon(
+                                          Icons.category,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
+                                        ),
                                         title: 'time_off_type'.tr(),
                                         value: _timeOffType,
                                       ),
@@ -935,7 +932,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: _buildTimeOffMetricCard(
-                                        icon: const Icon(Icons.event_available, color: Color(0xFF004FDE), size: 20),
+                                        icon: const Icon(
+                                          Icons.event_available,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
+                                        ),
                                         title: 'available_annual_leave'.tr(),
                                         value: '$_availableDays',
                                       ),
@@ -947,7 +948,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                   children: [
                                     Expanded(
                                       child: _buildTimeOffMetricCard(
-                                        icon: const Icon(Icons.event, color: Color(0xFF004FDE), size: 20),
+                                        icon: const Icon(
+                                          Icons.event,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
+                                        ),
                                         title: 'requested_days'.tr(),
                                         value: '$_requestedDays',
                                       ),
@@ -955,7 +960,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: _buildTimeOffMetricCard(
-                                        icon: const Icon(Icons.check_circle_outline, color: Color(0xFF004FDE), size: 20),
+                                        icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
+                                        ),
                                         title: 'selected_days'.tr(),
                                         value: '$_selectedDaysCount',
                                       ),
@@ -967,7 +976,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                   children: [
                                     Expanded(
                                       child: _buildTimeOffMetricCard(
-                                        icon: const Icon(Icons.pie_chart, color: Color(0xFF004FDE), size: 20),
+                                        icon: const Icon(
+                                          Icons.pie_chart,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
+                                        ),
                                         title: 'remaining_days'.tr(),
                                         value: '$_remainingDaysAfterRequest',
                                       ),
@@ -975,9 +988,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: InkWell(
-                                        onTap: () => _showSelectedDatesListDialog(context),
+                                        onTap: () =>
+                                            _showSelectedDatesListDialog(
+                                              context,
+                                            ),
                                         child: _buildTimeOffMetricCard(
-                                          icon: const Icon(Icons.date_range, color: Color(0xFF004FDE), size: 20),
+                                          icon: const Icon(
+                                            Icons.date_range,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
                                           title: 'selected_dates'.tr(),
                                           value: _selectedDatesSummary,
                                         ),
@@ -988,14 +1008,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFFFFFF),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
+                                    border: Border.all(
+                                      color: const Color(0xFFE8E8E8),
+                                      width: 1.2,
+                                    ),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -1004,10 +1031,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                             height: 32,
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFF8F9FA),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: const Color(0xFFEEEEEE)),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: const Color(0xFFEEEEEE),
+                                              ),
                                             ),
-                                            child: const Center(child: Icon(Icons.notes, color: Color(0xFF004FDE), size: 16)),
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.notes,
+                                                color: Color(0xFF004FDE),
+                                                size: 16,
+                                              ),
+                                            ),
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
@@ -1023,7 +1059,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        _notesController.text.trim().isEmpty ? 'N/A' : _notesController.text,
+                                        _notesController.text.trim().isEmpty
+                                            ? 'N/A'
+                                            : _notesController.text,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: Color(0xFF0F172A),
@@ -1138,10 +1176,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   return _leaveTypeOptions.map((option) {
                     final label = option['labelKey']!.tr();
                     final typeVal = option['value']!;
-                    var avail = _availableDaysForType(typeVal);
-                    if (typeVal == _timeOffType) {
-                      avail = (avail - _selectedDates.length).clamp(0, avail);
-                    }
+                    final avail = _availableDaysForType(typeVal);
                     final displayLabel =
                         (_selectedWorker != null && avail < 999)
                         ? '$label ($avail)'
@@ -1165,10 +1200,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 items: _leaveTypeOptions.map((option) {
                   final label = option['labelKey']!.tr();
                   final typeVal = option['value']!;
-                  var avail = _availableDaysForType(typeVal);
-                  if (typeVal == _timeOffType) {
-                    avail = (avail - _selectedDates.length).clamp(0, avail);
-                  }
+                  final avail = _availableDaysForType(typeVal);
                   final displayLabel = (_selectedWorker != null && avail < 999)
                       ? '$label ($avail)'
                       : label;
@@ -1461,9 +1493,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _lastDragDate = current;
 
             final candidate = Set<DateTime>.from(_selectionBeforeDrag);
-            final isDragRemoving = _selectionBeforeDrag.contains(_dragAnchorDate);
+            final isDragRemoving = _selectionBeforeDrag.contains(
+              _dragAnchorDate,
+            );
             var exceededAvailableDays = false;
-            for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
+            for (final date in TimeOffService.inclusiveDateRange(
+              anchor,
+              current,
+            )) {
               if (_isNonWorkingDate(date)) continue;
               if (isDragRemoving) {
                 candidate.remove(date);
@@ -1981,48 +2018,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'workerAvatar': _selectedWorker!['profileImage'] ?? '',
       };
 
-      final projectedRecords =
-          _timeoffRecords
-              .where((record) => record['id']?.toString() != _editingId)
-              .map(Map<String, dynamic>.from)
-              .toList()
-            ..add({...recordMap, 'id': _editingId ?? 'pending_time_off'});
-      final serviceWorker = _selectedWorkerForService;
-      final usedLeaveDays = isGuest
-          ? TimeOffService.leaveDaysUsedForWorker(
-              _selectedWorker!,
-              projectedRecords,
-            )
-          : TimeOffService.paidDaysUsedForWorker(
-              serviceWorker,
-              projectedRecords,
-            );
-      final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
-        isGuest ? _selectedWorker! : serviceWorker,
-      );
-      final remainingPaidDays = (totalPaidDays - usedLeaveDays).clamp(
-        0,
-        totalPaidDays,
-      );
-
-      final perTypeUsed = isGuest
-          ? <String, int>{
-              'Sick Leave': 0,
-              'Casual Leave': 0,
-              'Medical Leave': 0,
-              'Annual Leave': 0,
-            }
-          : TimeOffService.paidDaysUsedForWorkerByType(
-              serviceWorker,
-              projectedRecords,
-            );
-
-      final balanceUpdate = <String, dynamic>{
-        'availableAnnualLeaves': remainingPaidDays.toString(),
-        'leavesUsed': usedLeaveDays.toString(),
-        'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
-        'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
-        'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
+      final leaveField = switch (TimeOffService.normalizeLeaveType(
+        _timeOffType,
+      )) {
+        'Annual Leave' => 'annualLeave',
+        'Sick Leave' => 'sickLeave',
+        'Casual Leave' => 'casualLeave',
+        'Medical Leave' => 'medicalLeave',
+        _ => '',
       };
 
       if (isGuest) {
@@ -2045,7 +2048,46 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase(),
         );
         if (workerIdx != -1) {
-          DummyData.workers[workerIdx].addAll(balanceUpdate);
+          final currentMap = Map<String, dynamic>.from(
+            DummyData.workers[workerIdx]['leaveBalances'] as Map? ??
+                {
+                  'annualLeave':
+                      int.tryParse(
+                        (DummyData.workers[workerIdx]['availableAnnualLeaves'] ??
+                                DummyData.workers[workerIdx]['annualLeaves'] ??
+                                '0')
+                            .toString(),
+                      ) ??
+                      0,
+                  'sickLeave':
+                      int.tryParse(
+                        (DummyData.workers[workerIdx]['sickLeaves'] ?? '0')
+                            .toString(),
+                      ) ??
+                      0,
+                  'casualLeave':
+                      int.tryParse(
+                        (DummyData.workers[workerIdx]['casualLeaves'] ?? '0')
+                            .toString(),
+                      ) ??
+                      0,
+                  'medicalLeave':
+                      int.tryParse(
+                        (DummyData.workers[workerIdx]['medicalLeaves'] ?? '0')
+                            .toString(),
+                      ) ??
+                      0,
+                },
+          );
+          final currentVal =
+              int.tryParse(currentMap[leaveField]?.toString() ?? '0') ?? 0;
+          final updatedVal = (currentVal - _requestedDays).clamp(0, 999);
+          currentMap[leaveField] = updatedVal;
+          DummyData.workers[workerIdx]['leaveBalances'] = currentMap;
+          if (leaveField == 'annualLeave') {
+            DummyData.workers[workerIdx]['availableAnnualLeaves'] = updatedVal
+                .toString();
+          }
         }
         await DummyData.saveToPrefs();
       } else {
@@ -2053,13 +2095,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           timeOffId: _editingId,
           record: recordMap,
           workerId: workerId,
-          balance: balanceUpdate,
+          leaveType: _timeOffType,
+          requestedDays: _requestedDays,
         );
       }
 
       if (mounted) {
         setState(() {
-          _selectedWorker = {..._selectedWorker!, ...balanceUpdate};
+          _selectedDates.clear();
+          _startDate = DateTime.now();
+          _endDate = DateTime.now();
+          _notesController.clear();
+          _timeOffType = 'Annual Leave';
         });
         await _loadTimeoffForSelectedWorker();
         if (!mounted) return;
@@ -2090,120 +2137,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  Future<void> _handleCancelTimeOff() async {
-    if (_isLoading || _editingId == null || _selectedWorker == null) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final cancelledRecordId = _editingId!;
-      final projectedRecords = _timeoffRecords.map((record) {
-        if (record['id']?.toString() != cancelledRecordId) {
-          return Map<String, dynamic>.from(record);
-        }
-        return {
-          ...record,
-          'status': 'Cancelled',
-          'cancelledAt': DateTime.now(),
-        };
-      }).toList();
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-      final serviceWorker = _selectedWorkerForService;
-      final usedLeaveDays = isGuest
-          ? TimeOffService.leaveDaysUsedForWorker(
-              _selectedWorker!,
-              projectedRecords,
-            )
-          : TimeOffService.paidDaysUsedForWorker(
-              serviceWorker,
-              projectedRecords,
-            );
-      final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
-        isGuest ? _selectedWorker! : serviceWorker,
-      );
-
-      final perTypeUsed = isGuest
-          ? <String, int>{
-              'Sick Leave': 0,
-              'Casual Leave': 0,
-              'Medical Leave': 0,
-              'Annual Leave': 0,
-            }
-          : TimeOffService.paidDaysUsedForWorkerByType(
-              serviceWorker,
-              projectedRecords,
-            );
-
-      final balanceUpdate = <String, dynamic>{
-        'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
-            .clamp(0, totalPaidDays)
-            .toString(),
-        'leavesUsed': usedLeaveDays.toString(),
-        'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
-        'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
-        'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
-      };
-
-      final workerId =
-          (_selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '')
-              .toString()
-              .trim();
-      if (isGuest) {
-        final recordIndex = DummyData.timeoff.indexWhere(
-          (record) => record['id']?.toString() == cancelledRecordId,
-        );
-        if (recordIndex != -1) {
-          DummyData.timeoff[recordIndex] = {
-            ...DummyData.timeoff[recordIndex],
-            'status': 'Cancelled',
-            'cancelledAt': DateTime.now(),
-          };
-        }
-        final workerIndex = DummyData.workers.indexWhere((worker) {
-          final id = (worker['id'] ?? '').toString().trim();
-          if (workerId.isNotEmpty && id.isNotEmpty) return workerId == id;
-          return (worker['email'] ?? '').toString().trim().toLowerCase() ==
-              (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
-        });
-        if (workerIndex != -1) {
-          DummyData.workers[workerIndex].addAll(balanceUpdate);
-        }
-        await DummyData.saveToPrefs();
-      } else {
-        if (workerId.isEmpty) {
-          throw StateError('Missing worker id');
-        }
-        await _firestore.cancelTimeOffWithWorkerBalance(
-          timeOffId: cancelledRecordId,
-          workerId: workerId,
-          balance: balanceUpdate,
-        );
-      }
-
-      if (!mounted) return;
-      FlashySnackBar.show(
-        context,
-        message: 'time_off_cancelled_for_worker'.tr(
-          namedArgs: {
-            'name': (_selectedWorker!['name'] ?? 'worker_fallback'.tr())
-                .toString(),
-          },
-        ),
-      );
-      widget.onBack();
-      return;
-    } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'time_off_cancel_failed'.tr(),
-          isError: true,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -2529,10 +2462,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                           padding: EdgeInsets.all(24),
                           child: Text(
                             'No dates selected',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
                           ),
                         )
                       : ListView.separated(
@@ -2599,7 +2529,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: LeaveColors.getBgColor(_timeOffType),
+                                        color: LeaveColors.getBgColor(
+                                          _timeOffType,
+                                        ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -2607,7 +2539,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          color: LeaveColors.getColor(_timeOffType),
+                                          color: LeaveColors.getColor(
+                                            _timeOffType,
+                                          ),
                                         ),
                                       ),
                                     ),

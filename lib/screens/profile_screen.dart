@@ -264,6 +264,8 @@ class _ProfileBodyState extends State<ProfileBody> {
           _clearCompanyStamp = false;
           AuthService.profilePicNotifier.value = profileImage;
           AuthService.companyStampNotifier.value = companyStamp;
+          // Cache company currency in SharedPreferences for fast access
+          PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
           _isLoading = false;
         });
       } else {
@@ -548,6 +550,8 @@ class _ProfileBodyState extends State<ProfileBody> {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
       String? downloadUrl;
       String? stampDownloadUrl;
+      String? cachedLocalPicPath;
+      String? cachedLocalStampPath;
 
       if (!isGuest) {
         if (_newProfileImageBytes != null || _newProfileImagePath != null) {
@@ -593,6 +597,11 @@ class _ProfileBodyState extends State<ProfileBody> {
               SettableMetadata(contentType: 'image/jpeg'),
             );
             downloadUrl = await uploadedRef.getDownloadURL();
+            cachedLocalPicPath = await PreferencesService.persistImageLocally(
+              bytes: compressedBytes,
+              fileName:
+                  'company_logo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
           } catch (error, stackTrace) {
             ErrorReporter.report(
               error,
@@ -634,6 +643,11 @@ class _ProfileBodyState extends State<ProfileBody> {
             ),
           );
           stampDownloadUrl = await uploadedStampRef.getDownloadURL();
+          cachedLocalStampPath = await PreferencesService.persistImageLocally(
+            bytes: stampBytes,
+            fileName:
+                'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$stampFormat',
+          );
         }
 
         await _firestore.updateUserProfile({
@@ -651,6 +665,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             'companyStampUrl': '',
         });
         profileSaved = true;
+        // Cache company currency for offline/fast access
+        PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
 
         if (downloadUrl != null) {
           _profilePicUrl = downloadUrl;
@@ -665,7 +681,11 @@ class _ProfileBodyState extends State<ProfileBody> {
               context: 'UpdateAuthProfileImage',
             );
           });
-          PreferencesService.setProfilePicUrl(downloadUrl).catchError((error, stackTrace) {
+          PreferencesService.setProfilePicUrl(
+            cachedLocalPicPath?.isNotEmpty == true
+                ? cachedLocalPicPath
+                : downloadUrl,
+          ).catchError((error, stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
@@ -676,7 +696,15 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (stampDownloadUrl != null || _clearCompanyStamp) {
           _companyStampUrl = stampDownloadUrl;
           AuthService.companyStampNotifier.value = stampDownloadUrl;
-          PreferencesService.setCompanyStampUrl(stampDownloadUrl).catchError((_) {});
+          if (stampDownloadUrl != null) {
+            PreferencesService.setCompanyStampUrl(
+              cachedLocalStampPath?.isNotEmpty == true
+                  ? cachedLocalStampPath
+                  : stampDownloadUrl,
+            ).catchError((_) {});
+          } else {
+            PreferencesService.setCompanyStampUrl(null).catchError((_) {});
+          }
           _newCompanyStampBytes = null;
           _clearCompanyStamp = false;
         }
@@ -705,10 +733,27 @@ class _ProfileBodyState extends State<ProfileBody> {
         }
       } else {
         if (_newProfileImageBytes != null) {
-          final base64String = base64Encode(_newProfileImageBytes!);
-          downloadUrl = 'data:image/png;base64,$base64String';
+          final localPath = await PreferencesService.persistImageLocally(
+            bytes: _newProfileImageBytes!,
+            fileName: 'company_logo.png',
+          );
+          downloadUrl = localPath ??
+              'data:image/png;base64,${base64Encode(_newProfileImageBytes!)}';
         } else if (_newProfileImagePath != null) {
-          downloadUrl = _newProfileImagePath;
+          Uint8List? pickedBytes;
+          try {
+            pickedBytes = await File(_newProfileImagePath!).readAsBytes();
+          } catch (_) {}
+          if (pickedBytes != null && pickedBytes.isNotEmpty) {
+            downloadUrl =
+                await PreferencesService.persistImageLocally(
+                      bytes: pickedBytes,
+                      fileName: 'company_logo.png',
+                    ) ??
+                    _newProfileImagePath;
+          } else {
+            downloadUrl = _newProfileImagePath;
+          }
         }
 
         if (downloadUrl != null) {
@@ -723,8 +768,12 @@ class _ProfileBodyState extends State<ProfileBody> {
 
         if (_newCompanyStampBytes != null) {
           final stampFormat = _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
-          final base64String = base64Encode(_newCompanyStampBytes!);
-          _companyStampUrl = 'data:image/$stampFormat;base64,$base64String';
+          final localPath = await PreferencesService.persistImageLocally(
+            bytes: _newCompanyStampBytes!,
+            fileName: 'company_stamp.$stampFormat',
+          );
+          _companyStampUrl = localPath ??
+              'data:image/$stampFormat;base64,${base64Encode(_newCompanyStampBytes!)}';
           AuthService.companyStampNotifier.value = _companyStampUrl;
           try {
             await PreferencesService.setCompanyStampUrl(_companyStampUrl);
