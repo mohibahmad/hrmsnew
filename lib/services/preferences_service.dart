@@ -11,6 +11,7 @@ class PreferencesService {
   static const String _guestKey = 'is_guest';
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
+  static const String _profilePicLocalPathKey = 'profile_pic_local_path';
   static const String _companyStampUrlKey = 'company_stamp_url';
   static const String _companyCurrencyKey = 'company_currency';
   static const String _rateUsNeverShowKey = 'rate_us_never_show';
@@ -50,13 +51,13 @@ class PreferencesService {
 
   static const String _localImagesDirName = 'company_images';
 
-  /// Copies image bytes into a permanent file inside the app's documents
-  /// directory (survives app restarts and OS temp-folder purges) and returns
-  /// the absolute file path. Returns `null` if the file could not be written.
-  ///
-  /// Used so the profile picture and company stamp picked with FilePicker
-  /// (which returns OS temp paths that iOS/macOS can delete at any time) keep
-  /// working for the whole app lifetime and every PDF download.
+  
+  
+  
+  
+  
+  
+  
   static Future<String?> persistImageLocally({
     required Uint8List bytes,
     required String fileName,
@@ -104,9 +105,9 @@ class PreferencesService {
   static String? get cachedCompanyCurrency => _cachedCompanyCurrency;
   static bool get cachedIsGuest => _cachedIsGuest;
 
-  /// Last known premium status, read synchronously so the UI can render the
-  /// correct upgrade state immediately (avoids flashing the upgrade card for
-  /// premium users on app start while the Firestore status loads).
+  
+  
+  
   static bool get cachedIsPremium => _cachedIsPremium;
 
   static Future<void> setLoggedIn(bool value) async {
@@ -262,6 +263,20 @@ class PreferencesService {
 
     _cachedProfilePicUrl = url;
     AuthService.profilePicNotifier.value = url;
+  }
+
+  static Future<void> setProfilePicLocalPath(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (path != null && path.isNotEmpty) {
+      await prefs.setString(_profilePicLocalPathKey, path);
+    } else {
+      await prefs.remove(_profilePicLocalPathKey);
+    }
+  }
+
+  static Future<String?> getProfilePicLocalPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_profilePicLocalPathKey);
   }
 
   static Future<String?> getProfilePicUrl() async {

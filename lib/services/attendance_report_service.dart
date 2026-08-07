@@ -64,10 +64,10 @@ class AttendanceReportService {
       _ => today,
     };
 
-    // The report covers the whole selected period (week = Mon..Sun, month =
-    // 1st..last day, etc.) rather than ending at today, so the exported
-    // period label and the date range it implies are complete. Records for
-    // future days simply don't exist yet, so nothing phantom is counted.
+    
+    
+    
+    
     final end = switch (normalizedPeriod) {
       'Today' => today,
       'Week' => start.add(const Duration(days: 6)),

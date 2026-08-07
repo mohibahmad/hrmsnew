@@ -16,10 +16,10 @@ class BulkWorkerResult {
   final int skipped;
   final List<String> skipReasons;
 
-  /// Client-side row identifiers (e.g. `clientRowId`) that were skipped by
-  /// the server-side duplicate/validation re-check. The caller can use these
-  /// to clean up media files that were uploaded for rows that never made it
-  /// into Firestore.
+  
+  
+  
+  
   final List<String> skippedClientRowIds;
   BulkWorkerResult({
     required this.imported,
@@ -227,10 +227,10 @@ class FirestoreService {
     }
   }
 
-  /// Fetches the current user's profile and rethrows any network/permission
-  /// errors. Returns `null` only when the server successfully confirms the
-  /// document does not exist. This lets callers distinguish a real "missing
-  /// account" from a temporary Firebase/network failure.
+  
+  
+  
+  
   Future<Map<String, dynamic>?> getUserProfileOrThrow() async {
     if (isTesting) return {'isPremium': false, 'hasDummyData': false};
     final doc = _userDoc;
@@ -500,10 +500,10 @@ class FirestoreService {
     await coll.doc(id).update(leaveData);
   }
 
-  /// Updates only the provided fields on a worker document. Unlike
-  /// [updateWorker], this does NOT send the whole cached worker object, so a
-  /// stale in-memory copy can never overwrite fields that were changed by
-  /// another screen/process after this screen loaded.
+  
+  
+  
+  
   Future<void> updateWorkerFields(
     String id,
     Map<String, dynamic> fields,
@@ -519,10 +519,10 @@ class FirestoreService {
     );
   }
 
-  /// Applies a leave-policy allowance to many workers in Firestore batches
-  /// (450 writes per batch). This is a controlled operation so a mid-way
-  /// network failure does not leave the company with a partially applied
-  /// policy. Returns the number of workers successfully updated.
+  
+  
+  
+  
   Future<int> applyLeavePolicyToWorkers({
     required List<Map<String, dynamic>> workers,
     required int annualLeaveDays,
@@ -535,8 +535,8 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) return 0;
 
-    // Index active time-off records once so we can compute each worker's
-    // already-used paid days without an O(workers × records) scan.
+    
+    
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
     final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
     for (final record in timeOffRecords) {
@@ -674,9 +674,9 @@ class FirestoreService {
     return updated;
   }
 
-  /// Fetches all time-off records once (for policy application / balance
-  /// recalculation). Throws on network/permission errors so callers can
-  /// abort the operation instead of applying a policy with wrong balances.
+  
+  
+  
   Future<List<Map<String, dynamic>>> getTimeoffOnce() async {
     final coll = _timeoff;
     if (coll == null) return const [];
@@ -779,7 +779,10 @@ class FirestoreService {
     return await coll.get();
   }
 
-  Future<bool> hasDuplicateWorker({
+  /// Finds which identity field (email or national ID) already exists on
+  /// another worker, using the same normalization rules enforced on save.
+  /// Returns null when no duplicate is found.
+  Future<DuplicateWorkerField?> findDuplicateWorkerField({
     required String? email,
     required String? nationalId,
     String? excludeId,
@@ -787,35 +790,18 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) throw StateError('No authenticated user');
 
-    final normalizedEmail = (email ?? '').trim().toLowerCase();
-    final normalizedNationalId = (nationalId ?? '')
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[\s-]+'), '');
-
-    if (normalizedEmail.isNotEmpty) {
-      final emailQuery = await coll
-          .where('email', isEqualTo: normalizedEmail)
-          .limit(1)
-          .get();
-      for (final doc in emailQuery.docs) {
-        if (excludeId != null && doc.id == excludeId) continue;
-        return true;
-      }
-    }
-
-    if (normalizedNationalId.isNotEmpty) {
-      final nationalIdQuery = await coll
-          .where('nationalId', isEqualTo: normalizedNationalId)
-          .limit(1)
-          .get();
-      for (final doc in nationalIdQuery.docs) {
-        if (excludeId != null && doc.id == excludeId) continue;
-        return true;
-      }
-    }
-
-    return false;
+    final snapshot = await coll.get();
+    final existingWorkers = snapshot.docs.map(
+      (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+    );
+    return WorkerIdentity.duplicateField(
+      <String, dynamic>{
+        if (email != null) 'email': email,
+        if (nationalId != null) 'nationalId': nationalId,
+      },
+      existingWorkers,
+      excludeId: excludeId,
+    );
   }
 
   Future<String> addExpense(Map<String, dynamic> expense) async {
@@ -979,23 +965,23 @@ class FirestoreService {
     await coll.doc(id).delete();
   }
 
-  /// Atomically saves an attendance record together with its attendance-
-  /// managed time-off record and the worker leave balance in a single
-  /// Firestore batch. Attendance, time-off, and balance therefore always
-  /// change together: either all of them persist or none of them do, so a
-  /// failure after commit can never leave the modules disagreeing.
-  ///
-  /// * [attendanceId] empty => creates a new attendance document (using the
-  ///   deterministic `{workerId}_{yyyy-MM-dd}` id when a worker id is known).
-  /// * [timeOffRecord] provided => upserts the attendance-managed time-off
-  ///   record ([timeOffId] may be empty to create a new one).
-  /// * [deleteTimeOff] with a [timeOffId] => deletes the time-off record.
-  /// * [balance] provided with a [workerId] => updates the worker leave
-  ///   balance in the same batch.
-  ///
-  /// The attendance notification is sent only after the batch commits, on a
-  /// best-effort basis, so a notification failure never fails the attendance
-  /// operation itself.
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   Future<AttendanceLeaveSyncResult> saveAttendanceWithLeaveSync({
     required Map<String, dynamic> attendanceRecord,
     String? attendanceId,
@@ -1251,8 +1237,8 @@ class FirestoreService {
     return workingDates.length;
   }
 
-  /// Returns the set of working dates in [from, toExclusive), honoring the
-  /// company's configured weekly working days and holiday dates.
+  
+  
   Future<Set<DateTime>> getWorkingDates({
     required DateTime from,
     required DateTime toExclusive,
@@ -1397,9 +1383,9 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  /// Real-time attendance stream scoped to a date range on `attendanceDate`
-  /// so screens that only care about a short period (e.g. today) do not pull
-  /// the whole company history into memory.
+  
+  
+  
   Stream<QuerySnapshot> attendanceStreamForPeriod({
     required DateTime start,
     required DateTime end,
@@ -1695,7 +1681,7 @@ class FirestoreService {
     await batch.commit();
   }
 
-  Future<void> cancelPayrollRecord({
+Future<void> cancelPayrollRecord({
     required String payrollId,
     required String payrollKey,
   }) async {
@@ -1710,9 +1696,15 @@ class FirestoreService {
                   .where('payrollKey', isEqualTo: payrollKey.trim())
                   .get())
               .docs;
-    final batch = _db.batch();
+final batch = _db.batch();
     batch.update(payrollColl.doc(payrollId), {
-      'status': 'Cancelled',
+      'status': 'Unpaid',
+      'isPaid': false,
+      'paid': false,
+      'paymentStatus': 'unpaid',
+      'paidAt': FieldValue.delete(),
+      'paidOn': FieldValue.delete(),
+      'paymentDate': FieldValue.delete(),
       'cancelledAt': FieldValue.serverTimestamp(),
       'lastModified': FieldValue.serverTimestamp(),
     });

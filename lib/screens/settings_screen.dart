@@ -388,9 +388,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // Returns the global bounds of a widget so the native share sheet can be
-  // anchored near the tapped control (required on macOS/iPadOS, otherwise the
-  // share sheet appears at a wrong/default location).
+  
+  
+  
   Rect? _shareOrigin(GlobalKey key) {
     final context = key.currentContext;
     if (context == null) return null;

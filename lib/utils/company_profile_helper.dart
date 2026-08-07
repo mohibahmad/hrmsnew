@@ -3,7 +3,7 @@ import '../services/preferences_service.dart';
 import '../services/auth_service.dart';
 
 class CompanyProfileHelper {
-  /// Resolves a possibly-empty company name to the invoice default.
+  
   static String companyNameOrFallback(String? value) {
     final trimmed = (value ?? '').trim();
     return trimmed.isEmpty ? 'HRMS Company' : trimmed;
@@ -28,7 +28,7 @@ class CompanyProfileHelper {
       guestProfile = null;
     }
 
-    // Company Name
+    
     final companyName =
         (profile?['businessName'] ??
                 profile?['companyName'] ??
@@ -38,7 +38,7 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    // Company ID
+    
     final companyId =
         (profile?['companyId'] ??
                 profile?['businessId'] ??
@@ -48,10 +48,10 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    // PROFILE PICTURE URL
+    
     String profilePicUrl = '';
 
-    // Try from profile (Firestore)
+    
     if (profile != null) {
       profilePicUrl =
           (profile['profilePic'] ??
@@ -63,7 +63,7 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    // If not found, try guest profile
+    
     if (profilePicUrl.isEmpty && guestProfile != null) {
       profilePicUrl =
           (guestProfile['profilePic'] ??
@@ -75,7 +75,7 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    // Try preferences
+    
     if (profilePicUrl.isEmpty) {
       try {
         profilePicUrl = (await PreferencesService.getProfilePicUrl() ?? '')
@@ -83,16 +83,16 @@ class CompanyProfileHelper {
       } catch (_) {}
     }
 
-    // CRITICAL: Always use the notifier as the source of truth
+    
     final notifierPic = AuthService.profilePicNotifier.value ?? '';
     if (notifierPic.isNotEmpty) {
       profilePicUrl = notifierPic;
     }
 
-    // COMPANY STAMP URL
+    
     String companyStampUrl = '';
 
-    // Try from profile (Firestore)
+    
     if (profile != null) {
       companyStampUrl =
           (profile['companyStampUrl'] ??
@@ -106,7 +106,7 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    // If not found, try guest profile
+    
     if (companyStampUrl.isEmpty && guestProfile != null) {
       companyStampUrl =
           (guestProfile['companyStampUrl'] ??
@@ -120,7 +120,7 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    // Try preferences
+    
     if (companyStampUrl.isEmpty) {
       try {
         companyStampUrl = (await PreferencesService.getCompanyStampUrl() ?? '')
@@ -128,23 +128,25 @@ class CompanyProfileHelper {
       } catch (_) {}
     }
 
-    // CRITICAL: Always use the notifier as the source of truth
-    final notifierStamp = AuthService.companyStampNotifier.value ?? '';
-    if (notifierStamp.isNotEmpty) {
-      companyStampUrl = notifierStamp;
+    
+    if (companyStampUrl.isEmpty) {
+      final notifierStamp = AuthService.companyStampNotifier.value ?? '';
+      if (notifierStamp.isNotEmpty) {
+        companyStampUrl = notifierStamp;
+      }
     }
 
-    // Address
+    
     final address = (profile?['address'] ?? guestProfile?['address'] ?? '')
         .toString()
         .trim();
 
-    // Email
+    
     final email = (profile?['email'] ?? guestProfile?['email'] ?? '')
         .toString()
         .trim();
 
-    // Phone
+    
     final phone =
         (profile?['contact1'] ??
                 profile?['phone'] ??
@@ -154,7 +156,7 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    // Salary Day
+    
     final rawSalaryDay = profile?['salaryPaymentDay'] ??
         profile?['salaryDay'] ??
         guestProfile?['salaryPaymentDay'] ??

@@ -509,7 +509,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       var cleanValue = value.split('?').first;
       cleanValue = Uri.decodeComponent(cleanValue);
       final name = cleanValue.split('/').last.trim();
-      // Strip the upload ID prefix like "1722840000000000_1_"
+      
       final cleaned = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
       return cleaned.isNotEmpty ? cleaned : 'cv';
     } catch (_) {
@@ -1240,7 +1240,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                               if (_isCvUploaded ||
                                   (_existingCv != null &&
                                       _existingCv!.isNotEmpty)) ...[
-                                // Download button
+                                
                                 GestureDetector(
                                   onTap: () => _downloadFile(
                                     _existingCv,
@@ -1279,7 +1279,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Edit button
+                                
                                 GestureDetector(
                                   onTap: () => _pickFile('cv'),
                                   child: Container(
@@ -1787,7 +1787,7 @@ String _cleanDocumentFileName(String rawName) {
     name = name.split('/').last;
   }
   name = name.trim();
-  // Strip the upload ID prefix like "1722840000000000_1_"
+  
   name = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
   name = name.replaceFirst(RegExp(r'^\d+[_-]*'), '');
   name = name.replaceAll(RegExp(r'_+'), ' ');
@@ -2088,10 +2088,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
     final previewWidth = size.width > 720
         ? (size.width * 0.85).clamp(450.0, 720.0)
         : size.width;
-    // Give the preview area a definite height so the inner ListView /
-    // SingleChildScrollView always gets bounded constraints and scrolls.
-    // Cap it against the available space below the header to avoid overflow
-    // on short windows.
+    
+    
+    
+    
     final maxPreviewHeight = (size.height * 0.9 - 70).clamp(160.0, 640.0);
     final previewHeight = (size.height * 0.8)
         .clamp(160.0, maxPreviewHeight)

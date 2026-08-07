@@ -63,6 +63,7 @@ class AddPayrollScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
+  final bool readOnly;
 
   const AddPayrollScreen({
     super.key,
@@ -71,6 +72,7 @@ class AddPayrollScreen extends StatefulWidget {
     this.onNotificationTap,
     this.onProfileTap,
     this.onBack,
+    this.readOnly = false,
   });
 
   @override
@@ -106,7 +108,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool _isAttendanceLoading = true;
   bool _attendanceVerified = false;
   Object? _attendanceLoadError;
-  bool _showNotifications = false;
+bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
   double _prorationFactor = 1.0;
@@ -188,6 +190,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
+
+    PreferencesService.getCompanySalaryDay().then((day) {
+      if (mounted && _salaryDay == null && day != null) {
+        setState(() => _salaryDay = day);
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _fetchMonthlyAttendance(),
@@ -300,20 +308,73 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         _salaryDay = int.tryParse(rawSalaryDay.toString());
       }
       _salaryDay ??= await PreferencesService.getCompanySalaryDay();
-      final results = await _firestore
-          .getWorkerMonthlyAttendance(
-            _email,
-            workerId: _workerId,
-            month: _payrollMonth,
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException(
-                'Attendance request timed out. Please check your connection and retry.',
-              );
-            },
-          );
+
+      final now = DateTime.now();
+      final currentPeriodStart = PayrollService.payPeriodStart(now, _salaryDay);
+      final currentPeriodEnd = PayrollService.payPeriodEnd(now, _salaryDay);
+
+      final startMonth1 = DateTime(
+        currentPeriodStart.year,
+        currentPeriodStart.month,
+        1,
+      );
+      final startMonth2 = DateTime(
+        currentPeriodEnd.year,
+        currentPeriodEnd.month,
+        1,
+      );
+
+      final futures = <Future<Map<String, int>>>[];
+      futures.add(
+        _firestore
+            .getWorkerMonthlyAttendance(
+              _email,
+              workerId: _workerId,
+              month: startMonth1,
+            )
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                throw TimeoutException(
+                  'Attendance request timed out. Please check your connection and retry.',
+                );
+              },
+            ),
+      );
+      if (startMonth2.isAfter(startMonth1)) {
+        futures.add(
+          _firestore
+              .getWorkerMonthlyAttendance(
+                _email,
+                workerId: _workerId,
+                month: startMonth2,
+              )
+              .timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  throw TimeoutException(
+                    'Attendance request timed out. Please check your connection and retry.',
+                  );
+                },
+              ),
+        );
+      }
+      final allResults = await Future.wait(futures);
+      final results = <String, int>{
+        'absents': 0,
+        'paidLeaves': 0,
+        'unpaidLeaves': 0,
+        'leaves': 0,
+      };
+      for (final r in allResults) {
+        results['absents'] = (results['absents'] ?? 0) + (r['absents'] ?? 0);
+        results['paidLeaves'] =
+            (results['paidLeaves'] ?? 0) + (r['paidLeaves'] ?? 0);
+        results['unpaidLeaves'] =
+            (results['unpaidLeaves'] ?? 0) + (r['unpaidLeaves'] ?? 0);
+        results['leaves'] = (results['leaves'] ?? 0) + (r['leaves'] ?? 0);
+      }
+
       final workingDays = await _firestore
           .getMonthlyWorkingDays(month: _payrollMonth)
           .timeout(
@@ -332,10 +393,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         _unpaidLeavesCtrl.text = _unpaidLeaves.toString();
         _leavesCtrl.text = (results['leaves'] ?? 0).toString();
 
-        // The payroll screen seeds a fresh (unpaid) worker with '0' work days,
-        // so treat both an empty field and a literal '0' as "not yet filled"
-        // and let the real working-days count take over. Otherwise saving a
-        // brand-new payroll fails with "work days must be greater than zero".
         final currentWorkDays = _workDaysCtrl.text.trim();
         if ((currentWorkDays.isEmpty || currentWorkDays == '0') &&
             workingDays > 0) {
@@ -376,9 +433,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
   }
 
-  /// Computes the proration factor for a worker who joined mid pay period so
-  /// they are never paid for days before their joining date. The pay period
-  /// stays fixed (salary day to salary day); only the amount is prorated.
   Future<void> _computeProration(int workingDays) async {
     _prorationFactor = 1.0;
     try {
@@ -386,11 +440,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         widget.workerData['joiningDate'] ?? widget.workerData['dateOfJoining'],
       );
       if (joiningDate == null) return;
-      final periodReference = DateTime(
-        _payrollMonth.year,
-        _payrollMonth.month,
-        15,
-      );
+      final now = DateTime.now();
+      final periodReference = DateTime(now.year, now.month, 15);
       final periodStart = PayrollService.payPeriodStart(
         periodReference,
         _salaryDay,
@@ -628,7 +679,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
   }
 
-  Future<void> _handleCancelPayroll() async {
+Future<void> _handleCancelPayroll() async {
     if (_isSaving ||
         _isCancellingPayroll ||
         widget.workerData['hasPayrollRecord'] != true) {
@@ -640,10 +691,41 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         .trim();
     setState(() => _isCancellingPayroll = true);
     try {
-      await _firestore.cancelPayrollRecord(
-        payrollId: payrollId,
-        payrollKey: payrollKey,
-      );
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        final guestPayroll =
+            (await PreferencesService.getGuestPayroll()) ??
+            <Map<String, dynamic>>[];
+        final idx = guestPayroll.indexWhere((p) {
+          return (p['payrollKey'] ?? '').toString() == payrollKey ||
+              (p['id'] ?? '').toString() == payrollId;
+        });
+        if (idx != -1) {
+          guestPayroll[idx] = {
+            ...guestPayroll[idx],
+            'status': 'Unpaid',
+            'isPaid': false,
+            'paid': false,
+            'paymentStatus': 'unpaid',
+          }..remove('paidAt');
+          guestPayroll[idx].remove('paidOn');
+          guestPayroll[idx].remove('paymentDate');
+          await PreferencesService.setGuestPayroll(guestPayroll);
+        }
+        final expenseIndex = DummyData.expenses.indexWhere(
+          (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+        );
+        if (expenseIndex != -1) {
+          DummyData.expenses.removeAt(expenseIndex);
+        }
+        await DummyData.saveToPrefs();
+        if (mounted) setState(() {});
+      } else {
+        await _firestore.cancelPayrollRecord(
+          payrollId: payrollId,
+          payrollKey: payrollKey,
+        );
+      }
       if (!mounted) return;
       FlashySnackBar.show(
         context,
@@ -680,9 +762,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         'payroll_${_name.replaceAll(' ', '_')}'
         '_${payPeriod.replaceAll('/', '-')}.pdf';
 
-    // Resolve company info (name, logo, stamp, ...) from Firestore with
-    // guest-data + cached profile-pic fallbacks, so the uploaded profile
-    // image replaces the default app icon on the invoice.
     final companyProfile =
         await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
 
@@ -1243,6 +1322,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Widget _buildPayrollDataHeader() {
+    final hasRecord = widget.workerData['hasPayrollRecord'] == true;
+    final showEditButtons = !widget.readOnly;
+    final showCancelButton = hasRecord && !_isCancellingPayroll;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1256,7 +1339,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         ),
         Row(
           children: [
-            if (widget.workerData['hasPayrollRecord'] == true) ...[
+            if (showEditButtons && hasRecord) ...[
               OutlinedButton(
                 onPressed: _isSaving || _isCancellingPayroll
                     ? null
@@ -1297,13 +1380,56 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                       ),
               ),
             ],
-            if (widget.workerData['hasPayrollRecord'] != true ||
-                _hasUnsavedChanges) ...[
-              if (widget.workerData['hasPayrollRecord'] == true)
-                const SizedBox(width: 10),
+            if (showCancelButton && widget.readOnly) ...[
+              OutlinedButton(
+                onPressed: () async {
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
+                  final confirmed = await DeleteDialog.show(
+                    context: context,
+                    title: 'cancel_payroll'.tr(),
+                    content: 'cancel_payroll_confirm'.tr(
+                      namedArgs: {'name': _name},
+                    ),
+                    confirmButtonText: 'cancel_payroll',
+                  );
+                  if (confirmed) _handleCancelPayroll();
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFE53935),
+                  side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _isCancellingPayroll
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE53935),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'cancel_payroll'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ],
+            if (showEditButtons &&
+                (hasRecord != true || _hasUnsavedChanges)) ...[
+              if (hasRecord) const SizedBox(width: 10),
               ElevatedButton(
-                onPressed:
-                    _isSaving || _isCancellingPayroll || _isAttendanceLoading
+                onPressed: _isSaving || _isCancellingPayroll
                     ? null
                     : () {
                         final isGuest =
@@ -1326,19 +1452,17 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: _isSaving || _isAttendanceLoading
+                child: _isSaving
                     ? const SizedBox(
-                        width: 20,
                         height: 20,
+                        width: 20,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
                         ),
                       )
                     : Text(
-                        widget.workerData['hasPayrollRecord'] == true
-                            ? 'save_changes'.tr()
-                            : 'save_payroll'.tr(),
+                        hasRecord ? 'save_changes'.tr() : 'save_payroll'.tr(),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
               ),
@@ -1353,27 +1477,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     final int? salaryDay = _salaryDay;
     final DateTime firstDay;
     final DateTime lastDay;
+    final now = DateTime.now();
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      firstDay = _payrollMonth;
-      lastDay = DateTime(_payrollMonth.year, _payrollMonth.month + 1, 0);
+      firstDay = DateTime(now.year, now.month, 1);
+      lastDay = DateTime(now.year, now.month + 1, 0);
     } else {
-      // The payroll month is the period that STARTS on the salary day of
-      // that month. The end boundary (next salary day) belongs to the next
-      // cycle, so it is displayed but excluded.
-      final clampedDay = PayrollService.effectiveSalaryDay(
-        _payrollMonth,
-        salaryDay,
-      );
-      firstDay = DateTime(_payrollMonth.year, _payrollMonth.month, clampedDay);
-      lastDay = PayrollService.payPeriodEnd(
-        firstDay.add(const Duration(days: 1)),
-        salaryDay,
-      );
+      firstDay = PayrollService.payPeriodStart(now, salaryDay);
+      lastDay = PayrollService.payPeriodEnd(now, salaryDay);
     }
     final monthFmt = DateFormat('MMM');
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '
-        '${monthFmt.format(lastDay)} ${lastDay.day}, ${_payrollMonth.year}';
+        '${monthFmt.format(lastDay)} ${lastDay.day}, ${lastDay.year}';
 
     return Container(
       width: double.infinity,
@@ -1549,6 +1664,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   '0',
                   _overtimeAmountCtrl,
                   isCurrency: true,
+                  readOnly: widget.readOnly,
                 ),
               ),
             ],
@@ -1564,6 +1680,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   '0',
                   _absentDeductionCtrl,
                   isCurrency: true,
+                  readOnly: widget.readOnly,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1620,9 +1737,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         TextField(
           controller: controller,
           readOnly: readOnly,
-          mouseCursor: readOnly
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.text,
+          mouseCursor: SystemMouseCursors.basic,
           onChanged: readOnly ? null : (_) => _handleEditableValueChanged(),
           keyboardType: isCurrency
               ? const TextInputType.numberWithOptions(decimal: true)
@@ -1638,7 +1753,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 ]
               : null,
           decoration: InputDecoration(
-            hintText: readOnly ? null : hint,
+            hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -1650,7 +1765,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: focusedBorderColor ?? _primaryBlue),
+              borderSide: BorderSide(color: focusedBorderColor ?? _borderLight),
             ),
             hoverColor: Colors.transparent,
             filled: readOnly,

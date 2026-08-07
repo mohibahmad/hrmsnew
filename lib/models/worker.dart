@@ -20,9 +20,9 @@ double? _safeDouble(dynamic value) {
   return double.tryParse(text);
 }
 
-/// Parses a whole-number value (leave days are always integers). Also handles
-/// legacy data where leave counts were accidentally stored as doubles (e.g.
-/// `0.0`) by truncating the decimal part instead of producing `null`.
+
+
+
 int? _safeInt(dynamic value) {
   if (value == null) return null;
   if (value is int) return value;
@@ -32,8 +32,8 @@ int? _safeInt(dynamic value) {
   return num.tryParse(text)?.toInt();
 }
 
-/// Parses a timestamp (e.g. `createdAt`) preserving the exact instant. Only
-/// used for timestamps, never for date-only business values.
+
+
 DateTime? _safeTimestamp(dynamic value) {
   if (value == null) return null;
   if (value is Timestamp) return value.toDate().toUtc();
@@ -58,14 +58,14 @@ DateTime? _safeBusinessDate(dynamic value) {
 
   if (parsed == null) return null;
 
-  // Normalize to a UTC-anchored midnight using the parsed calendar fields
-  // (year/month/day). This strips any local offset so callers reading
-  // `.year/.month/.day` always get the intended calendar date.
+  
+  
+  
   return DateTime.utc(parsed.year, parsed.month, parsed.day);
 }
 
-/// Serializes a date-only business value to the canonical `YYYY-MM-DD` form
-/// so it is timezone-agnostic inside Firestore.
+
+
 String _addDateOnly(DateTime value) {
   final y = value.year.toString().padLeft(4, '0');
   final m = value.month.toString().padLeft(2, '0');
@@ -83,10 +83,10 @@ bool? _safeNullableBool(dynamic value) {
   return null;
 }
 
-/// Canonicalizes a worker status case-insensitively. Unknown non-empty statuses
-/// (e.g. `Terminated`, `Archived`, `Deleted`) are preserved, never silently
-/// turned into `Active`, so payroll/attendance/assets eligibility rules that
-/// exclude former workers continue to work.
+
+
+
+
 String _normalizeWorkerStatus(dynamic value) {
   final raw = value?.toString().trim() ?? '';
   if (raw.isEmpty) return 'Active';
@@ -219,13 +219,16 @@ class Worker {
       ),
       profileImage: _safeNullableString(data['profileImage']),
       frontId: _safeNullableString(
-        data['frontId'] ??
+        data['idFront'] ??
+            data['frontId'] ??
             data['front_id'] ??
-            data['idFront'] ??
             data['id_front'],
       ),
       backId: _safeNullableString(
-        data['backId'] ?? data['back_id'] ?? data['idBack'] ?? data['id_back'],
+        data['idBack'] ??
+            data['backId'] ??
+            data['back_id'] ??
+            data['id_back'],
       ),
       cv: _safeNullableString(data['cv']),
       createdAt: _safeTimestamp(data['createdAt']),
@@ -255,10 +258,9 @@ class Worker {
     _addStringField(map, 'experienceLevel', experienceLevel, forUpdate);
     _addStringField(map, 'education', education, forUpdate);
     _addStringField(map, 'salaryType', salaryType, forUpdate);
-    _addStringField(map, 'leavePolicy', leavePolicy, forUpdate);
     _addStringField(map, 'profileImage', profileImage, forUpdate);
-    _addStringField(map, 'frontId', frontId, forUpdate);
-    _addStringField(map, 'backId', backId, forUpdate);
+    _addStringField(map, 'idFront', frontId, forUpdate);
+    _addStringField(map, 'idBack', backId, forUpdate);
     _addStringField(map, 'cv', cv, forUpdate);
     _addStringField(map, 'status', status, forUpdate);
 
@@ -336,9 +338,9 @@ class Worker {
     }
   }
 
-  /// Serializes a date-only business value as a Firestore [Timestamp]
-  /// (local-midnight, matching the convention used for `attendanceDate`) so it
-  /// can be range-queried and compared in Firestore.
+  
+  
+  
   static void _addDateTimestampField(
     Map<String, dynamic> map,
     String key,

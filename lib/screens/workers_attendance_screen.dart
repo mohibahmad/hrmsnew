@@ -441,9 +441,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return _activePlannedTimeOffForWorker(worker) != null;
   }
 
-  /// Automatically marks attendance as On Leave for workers assigned leave
-  /// today, so the admin never has to mark Present/Absent manually. Runs at
-  /// most once per day; payroll counts the day via the planned leave records.
+  
+  
+  
   Future<void> _autoMarkPlannedLeaves() async {
     if (_isGuest || _autoMarkInProgress || _autoMarkDoneForToday) return;
     if (!_workersLoaded || !_timeOffLoaded || !_attendanceLoaded) return;
@@ -718,9 +718,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         ? <String, int>{'Sick Leave': 0, 'Casual Leave': 0, 'Medical Leave': 0, 'Annual Leave': 0}
         : TimeOffService.paidDaysUsedForWorkerByType(worker, projectedRecords);
 
-    // Per-type balance sync: the exact leave type that was applied gets -1,
-    // and editing the attendance record back to Present restores +1 to that
-    // SAME type (never a different one).
+    
+    
+    
     final Map<String, dynamic> perTypeBalances = Map<String, dynamic>.from(
       (worker['leaveBalances'] as Map<String, dynamic>?) ?? {},
     );
@@ -753,8 +753,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       };
     }
 
-    // Make sure every paid type is present so attendance-marked leave never
-    // zeroes the untouched types when the map is first created.
+    
+    
     const allBalanceFields = [
       'annualLeave',
       'sickLeave',
@@ -765,8 +765,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       perTypeBalances.putIfAbsent(field, () => balanceFor(field));
     }
 
-    // Restore the previously applied type when the record is removed or its
-    // type changes.
+    
+    
     final previousType = existing != null
         ? (existing['type'] ?? existing['action'] ?? '').toString()
         : '';
@@ -775,7 +775,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       perTypeBalances[previousField] = balanceFor(previousField) + 1;
     }
 
-    // Deduct the newly applied type.
+    
     final newField = balanceFieldFor(leaveType);
     if (shouldHaveLeave && newField.isNotEmpty) {
       perTypeBalances[newField] =
@@ -835,8 +835,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return '';
     }
 
-    // A worker assigned leave today is automatically On Leave and locked:
-    // the admin must not mark Present/Absent manually.
+    
+    
     if (_isWorkerOnPlannedTimeOff(worker)) {
       return 'Leave';
     }
@@ -1384,8 +1384,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Widget _buildStatusFilterDropdown() {
-    // Keep the opened menu the exact width of the trigger button so the
-    // dropdown aligns perfectly instead of being wider than the button.
+    
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final width = _statusFilterButtonKey.currentContext?.size?.width;

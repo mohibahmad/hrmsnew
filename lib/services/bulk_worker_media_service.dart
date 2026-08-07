@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../services/upload_service.dart';
 
 String mediaFieldName(String field) {

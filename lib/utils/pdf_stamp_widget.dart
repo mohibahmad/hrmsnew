@@ -2,15 +2,15 @@ import 'dart:math' as math;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// Shared company "authorization" block used by every PDF generator
-/// (payroll invoice, worker profile, policies, leave policy) so the stamp and
-/// signature always sit in the same position and look identical across
-/// documents.
-///
-/// This mirrors the payroll invoice layout: the stamp image (or the fallback
-/// company seal) on the left, and the company name / "Authorized Signatory"
-/// line on the right. Callers should wrap it in a right-aligned `Align` at the
-/// bottom of the page content, exactly like the payroll invoice does.
+
+
+
+
+
+
+
+
+
 pw.Widget buildCompanyAuthorization({
   required String companyName,
   required String companyId,
@@ -28,17 +28,17 @@ pw.Widget buildCompanyAuthorization({
   return pw.SizedBox(
     width: width,
     child: pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.end,
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
         if (stampImage != null)
           pw.Container(
             width: 66,
-            height: 54,
+            height: 66,
             alignment: pw.Alignment.center,
             child: pw.Image(stampImage, fit: pw.BoxFit.contain),
           )
         else
-          // Fallback HRMS official company seal (double concentric circle + VERIFIED badge).
+          
           pw.SizedBox(
             width: 72,
             height: 72,
@@ -157,9 +157,9 @@ pw.Widget buildCompanyAuthorization({
   );
 }
 
-/// Draws a 5-pointed star with vector paths instead of a text glyph, because
-/// the ★/✩ characters are missing from the embedded PDF fonts (SF-Pro.ttf /
-/// Helvetica) and used to render as invisible blanks in the seal.
+
+
+
 pw.Widget _drawStar(PdfColor color, {double size = 6}) {
   return pw.CustomPaint(
     size: PdfPoint(size, size),

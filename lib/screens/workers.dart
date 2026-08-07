@@ -9,7 +9,6 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
 import '../utils/premium_gate.dart';
-import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../widgets/unsaved_changes_dialog.dart';
@@ -44,400 +43,6 @@ String? _workerDateText(dynamic value) {
   if (value == null) return null;
   final date = AppDateUtils.dateFromValue(value);
   return date != null ? AppDateUtils.formatDate(date) : value.toString();
-}
-
-void main() {
-  runApp(const WorkerManagementApp());
-}
-
-class WorkerManagementApp extends StatelessWidget {
-  const WorkerManagementApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'worker_management'.tr(),
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFFF9FAFC),
-        useMaterial3: false,
-      ),
-      home: const MainLayoutScreen(),
-    );
-  }
-}
-
-class MainLayoutScreen extends StatefulWidget {
-  const MainLayoutScreen({super.key});
-
-  @override
-  State<MainLayoutScreen> createState() => _MainLayoutScreenState();
-}
-
-class _MainLayoutScreenState extends State<MainLayoutScreen> {
-  int _currentMenuIndex = 1;
-  bool _isPremium = false;
-  bool _isOpeningSubscription = false;
-  late AuthService _authService;
-
-  final Color sidebarBlue = const Color(0xFF0B50C3);
-  final Color activeTabBlue = const Color(0xFF4C84E0);
-
-  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey =
-      GlobalKey<AddBulkWorkerScreenState>();
-
-  Future<void> _navigateTo(int index) async {
-    if (index == _currentMenuIndex) return;
-    if (_currentMenuIndex == 2 &&
-        _bulkWorkerKey.currentState?.hasUnsavedChanges == true) {
-      final shouldPop = await _bulkWorkerKey.currentState!.confirmDiscard();
-      if (!mounted || !shouldPop) return;
-    }
-    if (!mounted) return;
-    setState(() => _currentMenuIndex = index);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _loadPremiumStatus();
-  }
-
-  Future<void> _loadPremiumStatus() async {
-    try {
-      final isPremium = await PreferencesService.isPremium();
-      if (!mounted) return;
-      setState(() {
-        _isPremium = isPremium;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isPremium = false;
-      });
-    }
-  }
-
-  Future<void> _openSubscriptionDialog() async {
-    if (_isOpeningSubscription) return;
-    _isOpeningSubscription = true;
-    try {
-      await showDialog<bool>(
-        context: context,
-        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-        builder: (context) => const SubscriptionDialog(),
-      );
-      if (!mounted) return;
-      final isPremium = await PreferencesService.isPremium();
-      if (!mounted) return;
-      setState(() {
-        _isPremium = isPremium;
-      });
-    } finally {
-      _isOpeningSubscription = false;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          Container(
-            width: 270,
-            color: sidebarBlue,
-            child: Column(
-              children: [
-                if (!(_authService.currentUser?.isAnonymous ?? false) &&
-                    !_isPremium)
-                  GestureDetector(
-                    onTap: _openSubscriptionDialog,
-                    child: Container(
-                      width: 238,
-                      margin: const EdgeInsets.only(
-                        top: 16,
-                        left: 16,
-                        right: 16,
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: Color(0xFFFFFFFF),
-                          width: 1.0,
-                        ),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/premium_bg.png'),
-                          fit: BoxFit.cover,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0xFFFFFFFF),
-                            blurRadius: 0.5,
-                            spreadRadius: 0.0,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                'assets/premium_icon.png',
-                                width: 28,
-                                height: 28,
-                                fit: BoxFit.contain,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'upgrade_pro'.tr(),
-                                style: TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          _buildCheckItem('unlock_all_features'.tr()),
-                          _buildCheckItem('no_commitment'.tr()),
-                          _buildCheckItem('cancel_anytime'.tr()),
-                          const SizedBox(height: 10),
-                          Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.centerRight,
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                height: 46,
-                                padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 52,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF000000),
-                                  borderRadius: BorderRadius.circular(23),
-                                  border: Border.all(
-                                    color: Color(0xFFFFFFFF),
-                                    width: 1.0,
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'get_to_pro'.tr(),
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                    Text(
-                                      'subscribe_now'.tr(),
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Positioned(
-                                right: -5,
-                                top: -3,
-                                bottom: -3,
-                                child: Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFFFFFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Image.asset(
-                                    "assets/right_back_arrow.png",
-                                    width: 20,
-                                    height: 20,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-
-                _buildNavItem(
-                  Icons.grid_view_rounded,
-                  'sidebar_dashboard'.tr(),
-                  _currentMenuIndex == 0,
-                  onTap: () => _navigateTo(0),
-                ),
-                _buildNavItem(
-                  Icons.people_alt,
-                  'sidebar_workers'.tr(),
-                  _currentMenuIndex == 1,
-                  onTap: () => _navigateTo(1),
-                ),
-                _buildNavItem(
-                  Icons.engineering,
-                  'sidebar_workforce'.tr(),
-                  false,
-                  hasDropdown: true,
-                ),
-                _buildNavItem(
-                  Icons.receipt_long,
-                  'sidebar_expenses'.tr(),
-                  false,
-                ),
-                _buildNavItem(Icons.settings, 'sidebar_settings'.tr(), false),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: IndexedStack(
-              index: _currentMenuIndex,
-              children: [
-                DashboardWorkerList(
-                  onAddWorker: () => setState(() => _currentMenuIndex = 1),
-                  onAddBulkWorker: () => setState(() => _currentMenuIndex = 2),
-                ),
-                AddNewWorkerFlow(
-                  onBack: () => setState(() => _currentMenuIndex = 0),
-                ),
-                AddBulkWorkerScreen(
-                  key: _bulkWorkerKey,
-                  onBack: () => setState(() => _currentMenuIndex = 0),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCheckItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            'assets/tick_icon.svg',
-            width: 14,
-            height: 10,
-            color: Color(0xFFFFFFFF),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String title,
-    bool isActive, {
-    bool hasDropdown = false,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        alignment: Alignment.centerLeft,
-        children: [
-          Container(
-            height: 46,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: isActive ? activeTabBlue : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(icon, color: Color(0xFFFFFFFF), size: 22),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      title,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 18,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                  if (hasDropdown)
-                    const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Color(0xFFFFFFFF),
-                      size: 20,
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (isActive)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: Container(
-                  height: 26,
-                  width: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(4),
-                      bottomRight: Radius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class WorkersScreen extends StatefulWidget {
@@ -1296,6 +901,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               offset: const Offset(0, 40),
               onSelected: (value) {
                 if (value == 'preview') {
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
                   showDialog(
                     context: context,
                     barrierColor: const Color(
@@ -1581,7 +1192,7 @@ class _WorkerProfilePreviewDialogState
         email: email,
         phone: phone,
         fatherHusbandName: _na(_v(worker, 'fatherName')),
-        position: _v(worker, 'position'),
+        position: _v(worker, 'position').split(' ').map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}').join(' '),
         nationalId: _na(_v(worker, 'nationalId')),
         attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
         workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
@@ -1938,27 +1549,18 @@ class _WorkerProfilePreviewDialogState
                       ),
                       _buildRow(
                         _buildInfoCard(
-                          Icons.money,
-                          'salary_type'.tr(),
-                          _na(
-                            LocalizationHelper.localizeSalaryType(
-                              _v(worker, 'salaryType'),
-                            ),
-                          ),
-                        ),
-                        _buildInfoCard(
                           Icons.art_track,
                           'religion_title'.tr(),
                           _na(_v(worker, 'religion')),
                           assetImage: 'assets/religion.png',
                         ),
-                      ),
-                      _buildRow(
                         _buildInfoCard(
                           Icons.cake,
                           'date_of_birth'.tr(),
                           _na(_workerDateText(worker['dob']) ?? ''),
                         ),
+                      ),
+                      _buildRow(
                         _buildInfoCard(
                           Icons.favorite,
                           'relationship_status'.tr(),
@@ -1968,14 +1570,11 @@ class _WorkerProfilePreviewDialogState
                             ),
                           ),
                         ),
-                      ),
-                      _buildRow(
                         _buildInfoCard(
                           Icons.home,
                           'address'.tr(),
                           _na(_v(worker, 'address')),
                         ),
-                        const SizedBox.shrink(),
                       ),
                     ],
                   ),

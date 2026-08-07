@@ -547,9 +547,9 @@ class UploadService {
     return false;
   }
 
-  /// Best-effort deletion of a file previously uploaded to Firebase
-  /// Storage. URLs that do not point at Firebase Storage (e.g. external
-  /// links pasted by the user) are ignored.
+  
+  
+  
   static Future<void> deleteByUrl(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null ||
@@ -565,9 +565,9 @@ class UploadService {
       await FirebaseStorage.instance.ref(path).delete();
     } catch (error, stackTrace) {
       final message = error.toString().toLowerCase();
-      // "GTMSessionFetcher was already running" means the file is currently
-      // being uploaded/downloaded. The old file might not exist yet or is
-      // in use. Treat this as a non-fatal condition.
+      
+      
+      
       if (message.contains('already running') ||
           message.contains('object-not-found') ||
           message.contains('not found') ||

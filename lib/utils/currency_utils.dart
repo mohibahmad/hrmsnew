@@ -7,6 +7,16 @@ String formatMoney(double amount, String symbol) {
 class CurrencyUtils {
   CurrencyUtils._();
 
+  /// Returns a plain number string without a trailing ".0".
+  /// e.g. 50000.0 -> "50000", "50000.5" -> "50000.5", 50000 -> "50000".
+  static String amountText(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (RegExp(r'^-?\d+\.0+$').hasMatch(text)) {
+      return text.replaceAll(RegExp(r'\.0+$'), '');
+    }
+    return text;
+  }
+
   static const String defaultCode = 'USD';
 
   static String get companyCurrency =>
@@ -16,8 +26,8 @@ class CurrencyUtils {
     return '$symbol${amount.toStringAsFixed(0)}';
   }
 
-  /// Short list of the most commonly used currencies, shown in dropdowns that
-  /// should not overwhelm the user with every supported option.
+  
+  
   static const List<String> commonCodes = [
     'USD',
     'EUR',

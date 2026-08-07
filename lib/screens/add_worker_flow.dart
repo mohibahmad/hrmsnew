@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/validators.dart';
+import '../utils/currency_utils.dart';
 import '../utils/leave_balance_helper.dart';
 import '../services/upload_service.dart';
 import '../services/error_reporter.dart';
@@ -26,7 +27,6 @@ import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
-import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
@@ -120,9 +120,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type2Controller = TextEditingController(text: 'On-Site');
 
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
-  final _educationController = TextEditingController(text: 'Bachelors');
-  final _salaryTypeController = TextEditingController(text: 'Monthly');
-  final _currencyController = TextEditingController(text: 'USD');
+  final _educationController = TextEditingController(text: 'Bachelor');
   final _salaryAmountController = TextEditingController();
   final _leavePolicyController = TextEditingController(text: 'Standard');
   final _annualLeavesController = TextEditingController();
@@ -170,15 +168,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (_type2Controller.text.trim() != 'On-Site') return true;
     if (_experienceLevelController.text.trim() != 'Mid-Level') return true;
     if (_educationController.text.trim() != 'Bachelor') return true;
-    if (_salaryTypeController.text.trim() != 'Monthly') return true;
-    if (CurrencyUtils.normalize(_currencyController.text) != 'USD') return true;
     if (_salaryAmountController.text.trim().isNotEmpty) return true;
     if (_leavePolicyController.text.trim() != 'Standard') return true;
     if (_annualLeavesController.text.trim().isNotEmpty) return true;
     if (_sickLeavesController.text.trim().isNotEmpty) return true;
     if (_casualLeavesController.text.trim().isNotEmpty) return true;
     if (_medicalLeavesController.text.trim().isNotEmpty) return true;
-    if ((_joiningDate ?? '').trim().isNotEmpty) return true;
+    if ((_joiningDate ?? '').trim().isNotEmpty &&
+        _joiningDate != AppDateUtils.formatDate(DateTime.now())) {
+      return true;
+    }
     if (_frontIdBytes != null) return true;
     if (_backIdBytes != null) return true;
     if (_cvBytes != null) return true;
@@ -384,20 +383,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
       _educationController.text =
           (widget.workerToEdit!['education'] ?? 'Bachelor').toString();
+      if (_educationController.text.trim() == 'Bachelors') {
+        _educationController.text = 'Bachelor';
+      }
       if (_educationController.text.isEmpty)
         _educationController.text = 'Bachelor';
 
-      _salaryTypeController.text =
-          (widget.workerToEdit!['salaryType'] ?? 'Monthly').toString();
-      if (_salaryTypeController.text.isEmpty)
-        _salaryTypeController.text = 'Monthly';
-
-      _currencyController.text = CurrencyUtils.normalize(
-        widget.workerToEdit!['currency'],
+      _salaryAmountController.text = CurrencyUtils.amountText(
+        widget.workerToEdit!['salaryAmount'],
       );
-
-      _salaryAmountController.text =
-          (widget.workerToEdit!['salaryAmount'] ?? '').toString();
 
       _leavePolicyController.text =
           (widget.workerToEdit!['leavePolicy'] ?? 'Standard').toString();
@@ -460,6 +454,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvName = _cleanFileName(_existingCvUrl!);
       }
       _joiningDate = _workerDateText(widget.workerToEdit!['joiningDate']);
+    } else {
+      _joiningDate = AppDateUtils.formatDate(DateTime.now());
     }
   }
 
@@ -520,8 +516,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _type2Controller.addListener(_onControllerChanged);
     _experienceLevelController.addListener(_onControllerChanged);
     _educationController.addListener(_onControllerChanged);
-    _salaryTypeController.addListener(_onControllerChanged);
-    _currencyController.addListener(_onControllerChanged);
     _salaryAmountController.addListener(_onControllerChanged);
     _leavePolicyController.addListener(_onControllerChanged);
     _annualLeavesController.addListener(_onControllerChanged);
@@ -796,21 +790,24 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return false;
     }
 
-    final salaryType = _salaryTypeController.text.trim();
-    if (salaryType.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_select_salary_type'.tr(),
-        isError: true,
-      );
-      return false;
-    }
-
     final salaryAmount = double.tryParse(salaryText);
     if (salaryAmount == null || !salaryAmount.isFinite || salaryAmount <= 0) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_salary_amount'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    if (salaryAmount < Validators.minSalaryAmount) {
+      FlashySnackBar.show(
+        context,
+        message: 'salary_min_amount_error'.tr(
+          namedArgs: {
+            'amount': Validators.minSalaryAmount.toStringAsFixed(0),
+          },
+        ),
         isError: true,
       );
       return false;
@@ -860,15 +857,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         );
         return false;
       }
-    }
-
-    if (!CurrencyUtils.isSupported(_currencyController.text)) {
-      FlashySnackBar.show(
-        context,
-        message: 'invalid_currency_value'.tr(),
-        isError: true,
-      );
-      return false;
     }
 
     if (joiningDateText.isEmpty) {
@@ -1163,20 +1151,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         (edit['experienceLevel'] ?? 'Mid-Level').toString().trim()) {
       return true;
     }
-    if (_educationController.text.trim() !=
-        (edit['education'] ?? 'Bachelor').toString().trim()) {
+    String normalizeEducation(String value) {
+      final trimmed = value.trim();
+      return trimmed == 'Bachelors' ? 'Bachelor' : trimmed;
+    }
+
+    if (normalizeEducation(_educationController.text) !=
+        normalizeEducation((edit['education'] ?? 'Bachelor').toString())) {
       return true;
     }
-    if (_salaryTypeController.text.trim() !=
-        (edit['salaryType'] ?? 'Monthly').toString().trim()) {
-      return true;
-    }
-    if (CurrencyUtils.normalize(_currencyController.text) !=
-        CurrencyUtils.normalize(edit['currency'])) {
-      return true;
-    }
-    if (_salaryAmountController.text.trim() !=
-        (edit['salaryAmount'] ?? '').toString().trim()) {
+    if (CurrencyUtils.amountText(_salaryAmountController.text) !=
+        CurrencyUtils.amountText(edit['salaryAmount'])) {
       return true;
     }
     if (_leavePolicyController.text.trim() !=
@@ -1252,11 +1237,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   Future<void> _saveWorker() async {
     if (_isSaving) return;
 
-    final name = _nameController.text.trim();
+    final name = Validators.titleCase(_nameController.text);
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
-    final religion = _religionController.text.trim();
+    final religion = Validators.capitalizeFirst(_religionController.text);
+    final position = Validators.titleCase(_positionController.text);
     final address = _addressController.text.trim();
 
     final allFieldsEmpty =
@@ -1306,6 +1292,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    if (!Validators.isValidPhone(phone)) {
+      FlashySnackBar.show(
+        context,
+        message: 'validation_invalid_phone'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (email.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1319,6 +1314,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (Validators.isPlaceholderEmailDomain(email)) {
+      FlashySnackBar.show(
+        context,
+        message: 'validation_invalid_email_domain'.tr(),
         isError: true,
       );
       return;
@@ -1412,18 +1416,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           return;
         }
       } else {
-        final isDuplicate = await _firestore.hasDuplicateWorker(
+        final duplicateField = await _firestore.findDuplicateWorkerField(
           email: email,
           nationalId: nationalId,
           excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
         );
-        if (isDuplicate && mounted) {
+        if (duplicateField != null && mounted) {
           setState(() => _isSaving = false);
-          FlashySnackBar.show(
-            context,
-            message: 'duplicate_email_or_national_id'.tr(),
-            isError: true,
-          );
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          };
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
           return;
         }
       }
@@ -1546,11 +1551,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
       final data = <String, dynamic>{
         'name': name,
-        'fatherName': _fatherNameController.text.trim(),
+        'fatherName': Validators.titleCase(_fatherNameController.text),
         'email': WorkerIdentity.normalizeEmail(email),
         'phone': phone,
         'nationalId': _nationalIdController.text.trim(),
-        'religion': _religionController.text.trim(),
+        'religion': religion,
         'dob': isGuest
             ? _dobController.text.trim()
             : AppDateUtils.formatDate(dob),
@@ -1560,21 +1565,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'type1': _type1Controller.text.isNotEmpty
             ? _type1Controller.text
             : 'Full-Time',
-        'position': _positionController.text.isNotEmpty
-            ? _positionController.text.trim()
-            : 'Employee',
+        'position': position.isNotEmpty ? position : 'Employee',
         'type2': _type2Controller.text.isNotEmpty
             ? _type2Controller.text
             : 'On-Site',
         'experienceLevel': _experienceLevelController.text.trim(),
         'education': _educationController.text.trim(),
-        'salaryType': _salaryTypeController.text.trim(),
         'salaryAmount':
             double.tryParse(
               _salaryAmountController.text.trim().replaceAll(',', ''),
             ) ??
             0.0,
-        'leavePolicy': _leavePolicyController.text.trim(),
         'annualLeaves': int.tryParse(_annualLeavesController.text.trim()) ?? 0,
         'availableAnnualLeaves':
             int.tryParse(_annualLeavesController.text.trim()) ?? 0,
@@ -1589,29 +1590,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                 DateTime(joiningDate.year, joiningDate.month, joiningDate.day),
               ),
         'profileImage': profileImageUrl,
-
-        'frontId': frontIdUrl,
-        'backId': backIdUrl,
-
-        'front_id': frontIdUrl,
-        'back_id': backIdUrl,
         'idFront': frontIdUrl,
         'idBack': backIdUrl,
-        'id_front': frontIdUrl,
-        'id_back': backIdUrl,
-
         'cv': cvUrl,
         'payroll_initialized': true,
       };
 
-      final annualLeaveTotal =
-          int.tryParse(_annualLeavesController.text.trim()) ?? 0;
-
       if (!isEditing) {
-        data.addAll({
-          'leavesUsed': '0',
-          'availableAnnualLeaves': annualLeaveTotal.toString(),
-        });
+        data['leavesUsed'] = 0;
+        data['availableAnnualLeaves'] =
+            int.tryParse(_annualLeavesController.text.trim()) ?? 0;
       } else if (!isGuest) {
         data.remove('leavesUsed');
         data.remove('availableAnnualLeaves');
@@ -1804,6 +1792,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    if (!Validators.isValidPhone(phone)) {
+      FlashySnackBar.show(
+        context,
+        message: 'validation_invalid_phone'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (email.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1817,6 +1814,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (Validators.isPlaceholderEmailDomain(email)) {
+      FlashySnackBar.show(
+        context,
+        message: 'validation_invalid_email_domain'.tr(),
         isError: true,
       );
       return;
@@ -1911,17 +1917,18 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           return;
         }
       } else {
-        final isDuplicate = await _firestore.hasDuplicateWorker(
+        final duplicateField = await _firestore.findDuplicateWorkerField(
           email: email,
           nationalId: nationalId,
           excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
         );
-        if (isDuplicate && mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'duplicate_email_or_national_id'.tr(),
-            isError: true,
-          );
+        if (duplicateField != null && mounted) {
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          };
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
           return;
         }
       }
@@ -1951,13 +1958,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       } else {
         rawName = path.split('/').last;
       }
-      // Strip the upload ID prefix like "1722840000000000_1_"
+
       rawName = rawName.replaceFirst(RegExp(r'^\d+_\d+_'), '');
       return rawName;
     } catch (_) {
       final name = url.split('/').last.split('?').first;
       final decoded = Uri.decodeComponent(name);
-      // Strip the upload ID prefix like "1722840000000000_1_"
+
       return decoded.replaceFirst(RegExp(r'^\d+_\d+_'), '');
     }
   }
@@ -1978,8 +1985,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _type2Controller.dispose();
     _experienceLevelController.dispose();
     _educationController.dispose();
-    _salaryTypeController.dispose();
-    _currencyController.dispose();
     _salaryAmountController.dispose();
     _leavePolicyController.dispose();
     _annualLeavesController.dispose();
@@ -2207,8 +2212,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         type2Controller: _type2Controller,
                         experienceLevelController: _experienceLevelController,
                         educationController: _educationController,
-                        salaryTypeController: _salaryTypeController,
-                        currencyController: _currencyController,
                         salaryAmountController: _salaryAmountController,
                         leavePolicyController: _leavePolicyController,
                         annualLeavesController: _annualLeavesController,
@@ -3272,8 +3275,6 @@ class ExperienceFormSection extends StatefulWidget {
   final TextEditingController type2Controller;
   final TextEditingController experienceLevelController;
   final TextEditingController educationController;
-  final TextEditingController salaryTypeController;
-  final TextEditingController currencyController;
   final TextEditingController salaryAmountController;
   final TextEditingController leavePolicyController;
   final TextEditingController annualLeavesController;
@@ -3292,8 +3293,6 @@ class ExperienceFormSection extends StatefulWidget {
     required this.type2Controller,
     required this.experienceLevelController,
     required this.educationController,
-    required this.salaryTypeController,
-    required this.currencyController,
     required this.salaryAmountController,
     required this.leavePolicyController,
     required this.annualLeavesController,
@@ -3346,8 +3345,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       LocalizationHelper.localizeExperience(value);
   String _localizeEducation(String value) =>
       LocalizationHelper.localizeEducation(value);
-  String _localizeSalaryType(String value) =>
-      LocalizationHelper.localizeSalaryType(value);
 
   void _parseSelectedDate({bool includeLocalizedMonth = false}) {
     final dateStr = widget.selectedJoiningDate?.trim() ?? '';
@@ -3914,17 +3911,11 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildDropdownField(
-                            label: 'salary_type_label'.tr(),
-                            selectedValue: widget.salaryTypeController.text,
-                            hint: 'enter_your_salary_type'.tr(),
-                            items: const ['Monthly', 'Hourly', 'Contract'],
-                            itemLabelBuilder: (val) => _localizeSalaryType(val),
-                            onChanged: (val) {
-                              if (val != null) {
-                                widget.salaryTypeController.text = val;
-                              }
-                            },
+                          child: _buildInputField(
+                            'annual_leaves_days'.tr(),
+                            '0',
+                            controller: widget.annualLeavesController,
+                            isLeaves: true,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -3943,18 +3934,18 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'annual_leaves_days'.tr(),
+                            'sick_leaves_days'.tr(),
                             '0',
-                            controller: widget.annualLeavesController,
+                            controller: widget.sickLeavesController,
                             isLeaves: true,
                           ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'sick_leaves_days'.tr(),
+                            'casual_leaves_days'.tr(),
                             '0',
-                            controller: widget.sickLeavesController,
+                            controller: widget.casualLeavesController,
                             isLeaves: true,
                           ),
                         ),
@@ -3965,21 +3956,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'casual_leaves_days'.tr(),
-                            '0',
-                            controller: widget.casualLeavesController,
-                            isLeaves: true,
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          child: _buildInputField(
                             'medical_leaves_days'.tr(),
                             '0',
                             controller: widget.medicalLeavesController,
                             isLeaves: true,
                           ),
                         ),
+                        const SizedBox(width: 24),
+                        const Expanded(child: SizedBox()),
                       ],
                     ),
                   ],
@@ -4369,7 +4353,7 @@ class DocumentationSection extends StatelessWidget {
       } catch (_) {
         sourceName = existingUrl.split('?').first.split('/').last;
       }
-      // Strip the upload ID prefix like "1722840000000000_1_"
+
       sourceName = sourceName.replaceFirst(RegExp(r'^\d+_\d+_'), '');
     }
     final lowerSourceName = sourceName.toLowerCase();
@@ -4527,7 +4511,7 @@ class DocumentationSection extends StatelessWidget {
             children: [
               Text(
                 'upload'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
@@ -4581,7 +4565,7 @@ class DocumentationSection extends StatelessWidget {
               child: isImage
                   ? Center(
                       child: AspectRatio(
-                        aspectRatio: 1 / 1.414, // A4 page ratio like PDF
+                        aspectRatio: 1 / 1.414,
                         child: Container(
                           color: Colors.white,
                           child: cvBytes != null
@@ -4646,7 +4630,7 @@ class DocumentationSection extends StatelessWidget {
                                     existingCvUrl!.isNotEmpty)))
                           Center(
                             child: AspectRatio(
-                              aspectRatio: 1 / 1.414, // A4 page ratio like PDF
+                              aspectRatio: 1 / 1.414,
                               child: IgnorePointer(
                                 child: DocPreview(
                                   docBytes: cvBytes,
@@ -4759,14 +4743,42 @@ Widget _buildInputField(
               ? [
                   FilteringTextInputFormatter.allow(
                     isAmount
-                        ? RegExp(r'^\d*\.?\d*')
+                        ? RegExp(r'[\d,.]')
                         : (isNationalId
                               ? RegExp(r'^[\d-]*')
                               : isContact
                               ? RegExp(r'[0-9+\-\s()]')
                               : RegExp(r'^\d*')),
                   ),
-                  if (isAmount) LengthLimitingTextInputFormatter(15),
+                  if (isAmount) ...[
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      final digits = newValue.text.replaceAll(',', '');
+                      if (!RegExp(r'^\d*\.?\d*$').hasMatch(digits)) {
+                        return oldValue;
+                      }
+                      final parts = digits.split('.');
+                      final intPart = parts[0];
+                      // max 12 digits before decimal
+                      if (intPart.length > 12) return oldValue;
+                      // max 2 digits after decimal
+                      if (parts.length > 1 && parts[1].length > 2) return oldValue;
+                      final decPart = parts.length > 1 ? '.${parts[1]}' : '';
+                      final buffer = StringBuffer();
+                      for (int i = 0; i < intPart.length; i++) {
+                        if (i > 0 && (intPart.length - i) % 3 == 0) {
+                          buffer.write(',');
+                        }
+                        buffer.write(intPart[i]);
+                      }
+                      return TextEditingValue(
+                        text: '$buffer$decPart',
+                        selection: TextSelection.collapsed(
+                          offset: '$buffer$decPart'.length,
+                        ),
+                      );
+                    }),
+                  ],
                   if (isContact) LengthLimitingTextInputFormatter(20),
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
                   if (isLeaves) ...[
@@ -4935,8 +4947,6 @@ class _DocPreviewState extends State<DocPreview> {
     final isDocx = (widget.docName ?? '').toLowerCase().endsWith('.docx');
     var bytes = widget.docBytes;
 
-    // When editing a worker, only the URL is stored in Firestore.
-    // Download the bytes so the DOC/DOCX content can be extracted.
     if (bytes == null && widget.docUrl != null && widget.docUrl!.isNotEmpty) {
       try {
         final url = widget.docUrl!;

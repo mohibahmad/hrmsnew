@@ -19,11 +19,68 @@ class ValidationException implements Exception {
 class Validators {
   Validators._();
 
-  static final RegExp _email = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+  /// Minimum allowed salary amount for a real worker.
+  static const double minSalaryAmount = 1000;
+
+  static final RegExp _email = RegExp(
+    r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+    r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
+    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$",
+  );
+
+  static final RegExp _phoneDigitsOnly = RegExp(r'\d');
+
+  /// Validates that a phone number is not all zeros (e.g., '000000').
+  static bool isValidPhone(String? value) {
+    if (value == null) return false;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return false;
+    final digits = trimmed.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.isEmpty) return false;
+    // Reject if all digits are the same (e.g., '000000', '111111')
+    if (digits.split('').every((d) => d == digits[0])) return false;
+    return true;
+  }
 
   static bool isValidEmail(String? value) {
     if (value == null) return false;
     return _email.hasMatch(value.trim());
+  }
+
+  static const Set<String> placeholderEmailDomains = {'example.com'};
+
+  static bool isPlaceholderEmailDomain(String email) {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return false;
+    final atIndex = trimmed.lastIndexOf('@');
+    if (atIndex < 0 || atIndex == trimmed.length - 1) return false;
+    final domain = trimmed.substring(atIndex + 1).toLowerCase();
+    return placeholderEmailDomains.contains(domain);
+  }
+
+  static bool hasWhitespace(String? value) {
+    if (value == null) return false;
+    return value.contains(RegExp(r'\s'));
+  }
+
+  /// Capitalizes the first letter of each word, lowercasing the rest.
+  /// e.g. "Flutter developer" -> "Flutter Developer", "islam" -> "Islam".
+  static String titleCase(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return trimmed;
+    return trimmed
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
+  }
+
+  /// Capitalizes only the first letter of the whole string.
+  /// e.g. "islam" -> "Islam", "christianity" -> "Christianity".
+  static String capitalizeFirst(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return trimmed;
+    return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
   }
 
   static final RegExp _companyId = RegExp(r'^[A-Z0-9-]+$');
@@ -43,9 +100,6 @@ class Validators {
     return null;
   }
 
-  /// A national ID is valid when it contains at least 6 digits after removing
-  /// separators like spaces and dashes (e.g. Pakistan CNIC `37405-1234567-1`).
-  /// Short or non-numeric values (e.g. `348`) are rejected.
   static bool isValidNationalId(String? value) {
     final cleaned = (value ?? '').replaceAll(_nationalIdSeparators, '');
     if (cleaned.isEmpty || cleaned.length < 6) return false;
@@ -105,6 +159,16 @@ class Validators {
       throw ValidationException(
         'invalid_currency_value'.tr(),
         field: 'currency',
+      );
+    }
+
+    final salary = parseAmount(w['salaryAmount']);
+    if (salary != null && salary < minSalaryAmount) {
+      throw ValidationException(
+        'salary_min_amount_error'.tr(
+          namedArgs: {'amount': minSalaryAmount.toStringAsFixed(0)},
+        ),
+        field: 'salaryAmount',
       );
     }
   }

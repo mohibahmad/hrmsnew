@@ -180,9 +180,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     Set<DateTime> _selectionBeforeDrag = {};
     final GlobalKey _calendarHeaderKey = GlobalKey();
 
-    // Measures the real rendered height of everything above the day grid
-    // (month nav + weekday labels + spacers) so tap/drag hit-testing maps to
-    // the exact cell under the pointer.
+    
+    
+    
     double _measuredHeaderHeight() {
       final context = _calendarHeaderKey.currentContext;
       if (context == null) return 0;
@@ -198,15 +198,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final availableWidth = dialogWidth - (padding * 2);
       final cellWidth = (availableWidth - (gap * 6)) / 7;
       final cellHeight = cellWidth;
-      // Columns are separated by SizedBox(width: 8) and rows by
-      // SizedBox(height: 8), so each cell occupies cellSize + gap on both
-      // axes. Ignoring the gaps shifts taps one cell ahead horizontally (and
-      // maps the last Saturday column outside the grid, making it dead).
+      
+      
+      
+      
       final colPitch = cellWidth + gap;
       final rowPitch = cellHeight + gap;
       final measuredHeader = _measuredHeaderHeight();
-      // Fall back to an accurate constant layout (month row + 10 + labels + 12)
-      // if the header hasn't laid out yet.
+      
+      
       final headerHeight =
           measuredHeader > 0 ? measuredHeader : 18.0 + 10.0 + 12.0 + 30.0;
       final adjustedDy = position.dy - headerHeight;
@@ -378,7 +378,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   d.day == date.day,
                             );
                             if (isAlreadySelected) {
-                              // Tapping an already-selected date removes it.
+                              
                               selectedDates.removeWhere(
                                 (d) =>
                                     d.year == date.year &&
@@ -386,8 +386,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     d.day == date.day,
                               );
                             } else {
-                              // A single tap selects just that one date; use
-                              // drag to select a whole range instead.
+                              
+                              
                               selectedDates.add(date);
                             }
                           });
@@ -415,9 +415,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 calendarDate,
                               )
                             : null,
-                        // A drag that starts on an already-selected date is a
-                        // removal drag: the dragged-over cells should appear
-                        // cleared (not highlighted blue like an add).
+                        
+                        
+                        
                         isDragRemoving:
                             _dragMoved &&
                             _dragAnchorDate != null &&
@@ -736,10 +736,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 d.month == date.month &&
                 d.day == date.day,
           );
-          // During a removal drag the dragged-over cells are already removed
-          // from selectedDates, so showing them as a blue "preview" would look
-          // like they are being added. Skip the preview so they render as
-          // plain unselected cells.
+          
+          
+          
+          
           final isDragPreview =
               dragRange.contains(date) && !isDragRemoving;
           rowChildren.add(
@@ -1033,11 +1033,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     }
 
-    // Count the actual attendance records (day-level totals) inside the
-    // selected period, so the Present/Absent/Leave cards match the raw
-    // Firebase data for Weekly, Monthly, etc. A worker can appear on multiple
-    // days, so each record is counted once. For 'Today' this equals the
-    // per-worker count since a worker has at most one record per day.
+    
+    
+    
+    
+    
     final counts = AttendanceService.countRecordsByStatus(
       periodAttendance,
       _timeOffRecords,
@@ -1050,19 +1050,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _attendanceRequestId = 0;
   bool _streamSnapshotDelivered = false;
 
-  /// Keeps a live subscription to attendance docs within the current
-  /// timeframe so that marking Present/Absent/Leave on the worker attendance
-  /// screen (or anywhere else) is reflected here immediately, without needing
-  /// to leave and re-enter the screen. The subscription is recreated whenever
-  /// the timeframe changes so the stream always matches the visible period.
+  
+  
+  
+  
+  
   void _subscribeAttendanceStream(DateTime start, DateTime end, int requestId) {
     _attendanceSub?.cancel();
     _attendanceSub = _firestore
         .attendanceStreamForPeriod(start: start, end: end)
         .listen(
           (snapshot) {
-            // Guard against a snapshot from a previous timeframe/request
-            // arriving after a newer subscription was started.
+            
+            
             if (!mounted || requestId != _attendanceRequestId) return;
             setState(() {
               _rawAttendanceDocs = snapshot.docs
@@ -1078,11 +1078,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _refreshAttendancePreview();
           },
           onError: (e) {
-            // If the real-time stream dies (network drop, transient
-            // permission hiccup), fall back to a one-shot re-fetch so the
-            // screen never silently shows stale attendance. Without this,
-            // newly marked Present/Absent/Leave only appears after the user
-            // manually re-selects a timeframe.
+            
+            
+            
+            
+            
             ErrorReporter.report(
               e,
               StackTrace.current,
@@ -1149,8 +1149,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               requestedPeriod != _selectedTimeframe) {
             return;
           }
-          // The live stream already delivered a fresher snapshot for this
-          // request; don't let this (older) one-shot response clobber it.
+          
+          
           if (_streamSnapshotDelivered) return;
           setState(() {
             _rawAttendanceDocs = snapshot.docs
@@ -1259,7 +1259,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
-    // Workers with no attendance record still need to show (placeholder status).
+    
     if (AppDateUtils.attendanceRecordDate(doc) == null) return true;
     return AppDateUtils.isAttendanceRecordWithinPeriod(doc, _selectedTimeframe);
   }
@@ -1821,6 +1821,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
     final previewPeriod = _selectedTimeframe;
     _attendancePreviewNotifier?.dispose();
     final filteredRecordsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
@@ -2092,40 +2097,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildStatusText(Map<String, dynamic> worker) {
     final status = (worker['status'] ?? '').toString();
 
-    if (_selectedTimeframe == 'Today') {
-      Color textColor;
-      if (status == 'Present') {
-        textColor = greenPresent;
-      } else if (status == 'Absent') {
-        textColor = redAbsent;
-      } else if (status == 'Leave') {
-        textColor = orangeLeave;
-      } else {
-        textColor = Colors.grey;
-      }
-
-      return Text(
-        status.isEmpty ? '-' : status.toLowerCase().tr(),
-        style: TextStyle(
-          color: textColor,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'SF Pro Display',
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      );
+    Color textColor;
+    if (status == 'Present') {
+      textColor = greenPresent;
+    } else if (status == 'Absent') {
+      textColor = redAbsent;
+    } else if (status == 'Leave') {
+      textColor = orangeLeave;
+    } else {
+      textColor = Colors.grey;
     }
 
-    return const Text(
-      '*****',
+    return Text(
+      status.isEmpty ? '-' : status.toLowerCase().tr(),
       style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: Color(0xFF1E293B),
-        letterSpacing: 4,
+        color: textColor,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
         fontFamily: 'SF Pro Display',
       ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 

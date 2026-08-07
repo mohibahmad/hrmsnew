@@ -59,7 +59,7 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
-  static const double _tableContentWidth = 3922;
+  static const double _tableContentWidth = 3628;
   static const double _rowHeight = 65.0;
 
   late AuthService _authService;
@@ -456,7 +456,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'type2': '',
         'experienceLevel': '',
         'education': '',
-        'salaryType': '',
         'salaryAmount': '',
         'leavePolicy': '',
         'annualLeaves': '',
@@ -1269,9 +1268,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             ),
                                         hintText: isLeavesField
                                             ? '0'
-                                            : 'edit_cell_enter_value'.tr(
-                                                namedArgs: {'label': label},
-                                              ),
+                                            : isMediaField
+                                                ? mediaFieldHint(fieldKey)
+                                                : 'edit_cell_enter_value'.tr(
+                                                    namedArgs: {
+                                                      'label': label,
+                                                    },
+                                                  ),
                                         hintStyle: const TextStyle(
                                           color: Color(0xFF9CA3AF),
                                           fontSize: 15,
@@ -1705,32 +1708,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       } else {
                                         Navigator.of(ctx).pop('On-Site');
                                       }
-                                    } else if (fieldKey == 'salaryType') {
-                                      final normalized = val
-                                          .toLowerCase()
-                                          .trim();
-                                      const valid = {
-                                        'monthly',
-                                        'hourly',
-                                        'contract',
-                                      };
-                                      if (normalized.isEmpty) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'edit_cell_cannot_be_empty'.tr();
-                                        });
-                                      } else if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_salary_type'
-                                                  .tr();
-                                        });
-                                      } else {
-                                        final display =
-                                            normalized[0].toUpperCase() +
-                                            normalized.substring(1);
-                                        Navigator.of(ctx).pop(display);
-                                      }
                                     } else if (fieldKey == 'salaryAmount') {
                                       final amount = Validators.parseAmount(
                                         val,
@@ -1940,6 +1917,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           _validWorkers[workerIndex][fieldKey] = (int.tryParse(result) ?? 0)
               .toString();
         }
+        // Recompute missing columns so that a column the user has now filled
+        // for every worker no longer appears in the missing-columns banner.
+        _missingColumns = _missingColumns
+            .where((field) => _validWorkers.any(
+                (w) => (w[field] ?? '').toString().trim().isEmpty))
+            .toList();
         _hasUnsavedChanges = true;
       });
       await _revalidateSingleWorker(workerIndex);
@@ -2363,7 +2346,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           _buildHeaderCell('contact_number'.tr(), 130, fieldKey: 'phone'),
           _buildHeaderCell('email_address'.tr(), 150, fieldKey: 'email'),
           _buildHeaderCell('job_position'.tr(), 130, fieldKey: 'position'),
-          _buildHeaderCell('salary_type'.tr(), 130, fieldKey: 'salaryType'),
           _buildHeaderCell('salary_amount'.tr(), 130, fieldKey: 'salaryAmount'),
           _buildHeaderCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
           _buildHeaderCell(
@@ -2415,12 +2397,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
           _buildHeaderCell(
             'profile_image_url'.tr(),
-            130,
+            110,
             fieldKey: 'profileImage',
           ),
-          _buildHeaderCell('front_id_image_url'.tr(), 130, fieldKey: 'frontId'),
-          _buildHeaderCell('back_id_image_url'.tr(), 130, fieldKey: 'backId'),
-          _buildHeaderCell('cv_url'.tr(), 130, fieldKey: 'cv'),
+          _buildHeaderCell('front_id_image_url'.tr(), 110, fieldKey: 'frontId'),
+          _buildHeaderCell('back_id_image_url'.tr(), 110, fieldKey: 'backId'),
+          _buildHeaderCell('cv_url'.tr(), 110, fieldKey: 'cv'),
         ],
       ),
     );
@@ -2467,13 +2449,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             130,
             hasError: hasFieldError(worker, 'position'),
             fieldKey: 'position',
-            workerIndex: index,
-          ),
-          _buildDataCell(
-            worker['salaryType']?.toString() ?? '',
-            130,
-            hasError: hasFieldError(worker, 'salaryType'),
-            fieldKey: 'salaryType',
             workerIndex: index,
           ),
           _buildDataCell(
@@ -2597,28 +2572,28 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
           _buildDataCell(
             worker['profileImage']?.toString() ?? '',
-            130,
+            110,
             hasError: hasFieldError(worker, 'profileImage'),
             fieldKey: 'profileImage',
             workerIndex: index,
           ),
           _buildDataCell(
             worker['frontId']?.toString() ?? '',
-            130,
+            110,
             hasError: hasFieldError(worker, 'frontId'),
             fieldKey: 'frontId',
             workerIndex: index,
           ),
           _buildDataCell(
             worker['backId']?.toString() ?? '',
-            130,
+            110,
             hasError: hasFieldError(worker, 'backId'),
             fieldKey: 'backId',
             workerIndex: index,
           ),
           _buildDataCell(
             worker['cv']?.toString() ?? '',
-            130,
+            110,
             hasError: hasFieldError(worker, 'cv'),
             fieldKey: 'cv',
             workerIndex: index,
@@ -2820,7 +2795,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       width: 24,
       height: 24,
       child: Image.asset(
-        'assets/file.png',
+        'assets/resume.png',
         width: 24,
         height: 24,
         fit: BoxFit.contain,

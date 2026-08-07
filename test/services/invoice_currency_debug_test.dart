@@ -9,21 +9,21 @@ import 'package:hrms/utils/currency_utils.dart';
 
 import '../helpers/localization.dart';
 
-/// Extracts the plain text rendered into a PDF.
-///
-/// The invoice embeds SF-Pro.ttf, and dart_pdf encodes every character as a
-/// 2-byte *glyph code* (CIDFontType2), so raw text operators do not carry
-/// Unicode values. To recover readable text we resolve each font's
-/// /ToUnicode CMap (glyph code -> Unicode) and decode the hex strings with it.
-/// When no CMap is available (e.g. non-embedded fonts) we fall back to
-/// treating the codes as UTF-16BE.
+
+
+
+
+
+
+
+
 String pdfText(List<int> bytes) {
   final buffer = StringBuffer();
-  // latin1 keeps every byte addressable 1:1 while we search for stream blocks.
+  
   final data = latin1.decode(Uint8List.fromList(bytes));
 
-  // Font resource name (e.g. F5) -> font object number, from the page's
-  // /Resources /Font dictionary: << /F5 5 0 R /F10 10 0 R >>.
+  
+  
   final fontObjByResource = <String, int>{};
   for (final m in RegExp(r'/Font\s*<<(.*?)>>', dotAll: true).allMatches(data)) {
     for (final fr in RegExp(
@@ -33,8 +33,8 @@ String pdfText(List<int> bytes) {
     }
   }
 
-  // Each font dict object carries its own /ToUnicode reference
-  // (e.g. font object 5 -> ToUnicode object 7).
+  
+  
   final fontObjToToUnicode = <int, int>{};
   final objectRe = RegExp(r'(\d+)\s+\d+\s+obj(.*?)endobj', dotAll: true);
   for (final om in objectRe.allMatches(data)) {
@@ -45,7 +45,7 @@ String pdfText(List<int> bytes) {
     }
   }
 
-  // ToUnicode object number -> glyph code -> Unicode string.
+  
   final toUnicodeMaps = <int, Map<int, String>>{};
   for (final toUnicodeObj in fontObjToToUnicode.values.toSet()) {
     final objMatch = RegExp(
@@ -64,7 +64,7 @@ String pdfText(List<int> bytes) {
       );
       toUnicodeMaps[toUnicodeObj] = _parseToUnicodeMap(latin1.decode(inflated));
     } catch (_) {
-      // Not a compressible stream - skip.
+      
     }
   }
 
@@ -80,15 +80,15 @@ String pdfText(List<int> bytes) {
         toUnicodeMaps,
       );
     } catch (_) {
-      // Not a compressible stream (e.g. font files) - skip.
+      
     }
   }
   return buffer.toString();
 }
 
-/// Scans one decompressed content stream and appends the shown text, tracking
-/// the active font (BT ... /F5 14 Tf) so hex strings decode with the right
-/// /ToUnicode map.
+
+
+
 void _extractContentText(
   String content,
   StringBuffer buffer,
@@ -147,8 +147,8 @@ Map<int, String>? _cmapFor(
   return toUnicodeMaps[toUnicodeObj];
 }
 
-/// Decodes a hex string from a content stream. With a /ToUnicode map each
-/// 4-hex-digit group is a glyph code; without one we fall back to UTF-16BE.
+
+
 String _decodeHex(String hex, Map<int, String>? cmap) {
   final clean = hex.replaceAll(RegExp(r'\s'), '');
   if (clean.isEmpty || clean.length.isOdd) return '';
@@ -165,8 +165,8 @@ String _decodeHex(String hex, Map<int, String>? cmap) {
   return out.toString();
 }
 
-/// Parses a /ToUnicode CMap (beginbfchar / beginbfrange) into a
-/// glyph-code -> Unicode-string map.
+
+
 Map<int, String> _parseToUnicodeMap(String cmap) {
   final map = <int, String>{};
 
@@ -186,7 +186,7 @@ Map<int, String> _parseToUnicodeMap(String cmap) {
     dotAll: true,
   ).allMatches(cmap)) {
     final body = m.group(1)!;
-    // Sequential form: <lo> <hi> <dst> (dst advances by one per code).
+    
     for (final r in RegExp(
       r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>',
     ).allMatches(body)) {
@@ -197,7 +197,7 @@ Map<int, String> _parseToUnicodeMap(String cmap) {
         map[code] = String.fromCharCode(dst + (code - lo));
       }
     }
-    // Explicit array form: <lo> <hi> [<d0> <d1> ...]
+    
     for (final a in RegExp(
       r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*\[(.*?)\]',
       dotAll: true,
@@ -213,7 +213,7 @@ Map<int, String> _parseToUnicodeMap(String cmap) {
   return map;
 }
 
-/// Decodes a CMap dst string: one hex byte, or UTF-16BE for longer values.
+
 String _hexStringToText(String hex) {
   if (hex.length == 2) {
     return String.fromCharCode(int.parse(hex, radix: 16));

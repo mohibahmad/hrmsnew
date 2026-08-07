@@ -57,19 +57,19 @@ class InvoiceService {
     String terms = 'Standard payroll terms apply.',
     String workerId = '',
   }) async {
-    // Callers pass the currency either as an ISO code ('USD') or as an
-    // already-rendered symbol ('$', 'Rs', ...). Always normalize to the symbol
-    // here so every amount cell renders consistently (previously the per-day
-    // "Rate" cells printed the raw code, e.g. 'USD 227.27', while the Total
-    // cells printed '$ 5000.00').
+    
+    
+    
+    
+    
     final detectedCurrency = _displayCurrency(
       currency.isEmpty ? _detectCurrency(salary) : currency,
     );
     final pdf = pw.Document();
 
-    // Helvetica (the pdf default) has almost no Unicode coverage, so symbols
-    // like ₹/₽ or non-Latin names render as missing glyphs. Embed the app's
-    // SF-Pro.ttf like the other PDF services do.
+    
+    
+    
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
@@ -77,9 +77,9 @@ class InvoiceService {
       regularFont = pw.Font.ttf(fontData);
       boldFont = pw.Font.ttf(fontData);
     } catch (e) {
-      // Fall back to Helvetica, but say why: with a stale asset bundle
-      // (e.g. the app was started before assets/fonts/ was bundled) the
-      // font is missing and currency symbols like €/₹/₽ render as tofu.
+      
+      
+      
       debugPrint(
         'InvoiceService: could not load assets/fonts/SF-Pro.ttf for the '
         'PDF invoice (falling back to Helvetica): $e',
@@ -100,20 +100,17 @@ class InvoiceService {
 
     pw.MemoryImage? logoImage;
     try {
-      // Use company profile picture if provided, otherwise fall back to app_icon.png
       if (companyLogoUrl != null && companyLogoUrl.isNotEmpty) {
-        final logoBytes = await _loadCompanyStampBytes(companyLogoUrl);
+        final logoBytes = await _loadCompanyLogoBytes(companyLogoUrl);
         if (logoBytes != null) {
           logoImage = pw.MemoryImage(logoBytes);
         }
       }
       if (logoImage == null) {
         final byteData = await rootBundle.load('assets/app_icon.png');
-        final rawBytes = byteData.buffer.asUint8List(
-          byteData.offsetInBytes,
-          byteData.lengthInBytes,
+        logoImage = pw.MemoryImage(
+          byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
         );
-        logoImage = pw.MemoryImage(rawBytes);
       }
     } catch (_) {
       logoImage = null;
@@ -773,8 +770,11 @@ class InvoiceService {
     }
 
     final value = _parseValue(trimmed).abs();
-
-    return '$prefix ${value.toStringAsFixed(2)}';
+    final formatted = value.toStringAsFixed(2).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+    return '$prefix $formatted';
   }
 
   static String _perDayRate(
@@ -789,10 +789,10 @@ class InvoiceService {
       return _money('0', defaultCurrency: defaultCurrency);
     }
     final rate = amount / days;
-    // Round the per-day rate DOWN to 2 decimals so it agrees with the daily
-    // rate shown on the Basic Salary row (e.g. 454.55 / 2 -> 227.27 instead of
-    // 227.28), keeping the table's numbers consistent. The small epsilon
-    // guards against binary-float drift (0.29 * 100 == 28.9999...).
+    
+    
+    
+    
     final roundedRate = ((rate * 100) + 1e-9).floorToDouble() / 100;
     return _money(
       roundedRate.toStringAsFixed(2),
@@ -814,9 +814,9 @@ class InvoiceService {
     return prefix[0].toUpperCase() + prefix.substring(1);
   }
 
-  /// Currencies whose symbols use the Arabic script, which neither Helvetica
-  /// nor the embedded SF-Pro.ttf can render. Their ISO code is printed in the
-  /// PDF instead of the symbol (د.إ etc.) so amounts never show blank/tofu.
+  
+  
+  
   static const Set<String> _arabicScriptCurrencies = {
     'AED',
     'SAR',
@@ -833,11 +833,11 @@ class InvoiceService {
     'ر.ع.': 'OMR',
   };
 
-  /// Maps a currency code (e.g. 'USD', 'PKR') or an already-rendered symbol
-  /// (e.g. '$', 'Rs', '€') to the form used in the PDF. Raw ISO codes are
-  /// never printed inside amount cells (they become symbols); Arabic-script
-  /// currencies keep their ISO code; unsupported strings (like 'Rs') are kept
-  /// as-is.
+  
+  
+  
+  
+  
   static String _displayCurrency(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return 'Rs';
@@ -853,9 +853,9 @@ class InvoiceService {
   }
 
   static double _parseValue(String formatted) {
-    // Currency symbols can contain dots ('د.إ', 'ر.ع.', ...), so only parse
-    // the portion starting at the first digit; otherwise 'د.إ 5,000' would
-    // parse as 0.5.
+    
+    
+    
     final trimmed = formatted.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
     final numericPart =
@@ -908,32 +908,75 @@ class InvoiceService {
 
   static bool _isValidPdfImageBytes(Uint8List bytes) {
     if (bytes.lengthInBytes < 4) return false;
-    // PNG: 0x89 0x50 0x4E 0x47
+    
     if (bytes[0] == 0x89 &&
         bytes[1] == 0x50 &&
         bytes[2] == 0x4E &&
         bytes[3] == 0x47) {
       return true;
     }
-    // JPEG: 0xFF 0xD8
+    
     if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
       return true;
     }
-    // GIF
+    
     if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) {
       return true;
     }
-    // WebP / RIFF
+    
     if (bytes.lengthInBytes >= 12) {
       final riff = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
       final webp = ascii.decode(bytes.sublist(8, 12), allowInvalid: true);
       if (riff == 'RIFF' && webp == 'WEBP') return true;
     }
-    // BMP
+    
     if (bytes[0] == 0x42 && bytes[1] == 0x4D) {
       return true;
     }
     return false;
+  }
+
+  static Future<Uint8List?> _loadCompanyLogoBytes(String? source) async {
+    // 1. Try dedicated local path (device-stored, works offline, no size issues)
+    try {
+      final localPath = await PreferencesService.getProfilePicLocalPath();
+      if (localPath != null && localPath.isNotEmpty) {
+        final localBytes = await _readCompanyStampFile(File(localPath));
+        if (localBytes != null && localBytes.isNotEmpty) {
+          final decoded = img.decodeImage(localBytes);
+          if (decoded != null) return Uint8List.fromList(img.encodePng(decoded));
+          if (_isValidPdfImageBytes(localBytes)) return localBytes;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to passed URL (Firebase or data URI)
+    final value = source?.trim() ?? '';
+    if (value.isEmpty) return null;
+    try {
+      Uint8List? bytes;
+      if (value.startsWith('data:')) {
+        final separator = value.indexOf(',');
+        if (separator > 0) {
+          final encoded = value.substring(separator + 1).replaceAll(RegExp(r'\s+'), '');
+          if (encoded.isNotEmpty) bytes = base64Decode(encoded);
+        }
+      } else {
+        final uri = Uri.tryParse(value);
+        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+          bytes = await _downloadCompanyStamp(uri);
+        } else if (uri != null && uri.scheme == 'file') {
+          bytes = await _readCompanyStampFile(File.fromUri(uri));
+        } else {
+          bytes = await _readCompanyStampFile(File(value));
+        }
+      }
+      if (bytes == null || bytes.isEmpty) return null;
+      final decoded = img.decodeImage(bytes);
+      if (decoded != null) return Uint8List.fromList(img.encodePng(decoded));
+      if (_isValidPdfImageBytes(bytes)) return bytes;
+    } catch (_) {}
+    return null;
   }
 
   static Future<Uint8List?> _loadCompanyStampBytes(String? source) async {

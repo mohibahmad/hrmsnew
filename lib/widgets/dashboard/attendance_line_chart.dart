@@ -6,8 +6,8 @@ import '../../services/auth_service.dart';
 import '../../utils/chart_utils.dart';
 import '../custom_timeframe_dropdown.dart';
 
-/// Picks a label spacing (1 = every point, 2 = every other point, ...) so
-/// that day-level series (a full month has ~28-31 points) remain readable.
+
+
 int _labelStepFor(int count) {
   if (count <= 8) return 1;
   if (count <= 16) return 2;
@@ -143,9 +143,9 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                           0.01) {
                                         return false;
                                       }
-                                      // Keep grid lines aligned with the
-                                      // (spaced) bottom labels so long series
-                                      // (e.g. a month of days) stay readable.
+                                      
+                                      
+                                      
                                       final idx = value.round();
                                       final labelStep = _labelStepFor(
                                         chartData.labels.length,
@@ -210,10 +210,10 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                               idx >= chartData.labels.length) {
                                             return const SizedBox.shrink();
                                           }
-                                          // Show a label only every N steps so
-                                          // day-level series don't crowd the
-                                          // axis; always keep the first and
-                                          // last label visible.
+                                          
+                                          
+                                          
+                                          
                                           final labelStep = _labelStepFor(
                                             chartData.labels.length,
                                           );

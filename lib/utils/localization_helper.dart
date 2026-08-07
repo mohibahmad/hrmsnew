@@ -187,9 +187,9 @@ class LocalizationHelper {
         case 'legal':
           return 'legal'.tr();
         default:
-          // Unknown words (e.g. custom positions like "real state") are
-          // title-cased so "real state" shows as "Real State" instead of
-          // staying lowercase.
+          
+          
+          
           if (w.isEmpty) return w;
           return w[0].toUpperCase() + w.substring(1);
       }
@@ -206,7 +206,9 @@ class LocalizationHelper {
       case 'intermediate':
         return 'intermediate'.tr();
       case 'Bachelor':
+      case 'Bachelors':
       case 'bachelor':
+      case 'bachelors':
         return 'bachelor'.tr();
       case 'Master':
       case 'master':

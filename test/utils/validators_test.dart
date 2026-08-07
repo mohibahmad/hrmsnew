@@ -45,4 +45,66 @@ void main() {
       expect(Validators.isValidEmail('a@b.c d'), isFalse);
     });
   });
+
+  group('Validators.isPlaceholderEmailDomain', () {
+    test('rejects the placeholder @example.com domain', () {
+      expect(
+        Validators.isPlaceholderEmailDomain('worker@example.com'),
+        isTrue,
+      );
+    });
+
+    test('accepts real email domains', () {
+      expect(
+        Validators.isPlaceholderEmailDomain('worker@gmail.com'),
+        isFalse,
+      );
+      expect(
+        Validators.isPlaceholderEmailDomain('john.doe@company.co.uk'),
+        isFalse,
+      );
+    });
+
+    test('handles case-insensitive domains and malformed input', () {
+      expect(
+        Validators.isPlaceholderEmailDomain('Worker@EXAMPLE.com'),
+        isTrue,
+      );
+      expect(Validators.isPlaceholderEmailDomain('plainaddress'), isFalse);
+      expect(Validators.isPlaceholderEmailDomain(''), isFalse);
+    });
+  });
+
+  group('Validators.isValidPhone', () {
+    test('accepts valid phone numbers', () {
+      expect(Validators.isValidPhone('+1 234 567 8900'), isTrue);
+      expect(Validators.isValidPhone('1234567890'), isTrue);
+      expect(Validators.isValidPhone('03001234567'), isTrue);
+      expect(Validators.isValidPhone('+92 300 1234567'), isTrue);
+    });
+
+    test('rejects all-zeros phone numbers', () {
+      expect(Validators.isValidPhone('000000'), isFalse);
+      expect(Validators.isValidPhone('00000000000'), isFalse);
+      expect(Validators.isValidPhone('000 000 0000'), isFalse);
+    });
+
+    test('rejects all-same-digit phone numbers', () {
+      expect(Validators.isValidPhone('111111'), isFalse);
+      expect(Validators.isValidPhone('2222222222'), isFalse);
+      expect(Validators.isValidPhone('9999999999'), isFalse);
+    });
+
+    test('rejects empty and null values', () {
+      expect(Validators.isValidPhone(''), isFalse);
+      expect(Validators.isValidPhone(null), isFalse);
+      expect(Validators.isValidPhone('   '), isFalse);
+    });
+
+    test('accepts phone numbers with mixed digits', () {
+      expect(Validators.isValidPhone('123450'), isTrue);
+      expect(Validators.isValidPhone('012345'), isTrue);
+      expect(Validators.isValidPhone('123000'), isTrue);
+    });
+  });
 }

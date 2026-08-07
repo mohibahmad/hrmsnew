@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -93,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case 3:
         return PayrollScreen(
-          isActive: _selectedIndex == 3 && !_showAssignTimeOff && !_showProfile && !_showWorkersAttendance && !_showNotifications,
+          isActive: _getStackIndex() == 3 && !_showAssignTimeOff && !_showProfile && !_showWorkersAttendance && !_showNotifications,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onAssignTimeOff: () {
@@ -211,8 +210,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _allTimeoffDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
-  // Start from the last known premium status so premium users never see a
-  // flash of the upgrade card while the Firestore status is loading.
+  
+  
   bool _isPremium = PreferencesService.cachedIsPremium;
   bool _dashboardReady = false;
   bool _initialized = false;
@@ -260,8 +259,8 @@ class _HomeScreenState extends State<HomeScreen> {
         await PreferencesService.setPremium(isPremium);
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'loadPremiumStatus');
-        // Keep the last known status instead of dropping to non-premium on a
-        // transient network error, so premium users don't get the upgrade card.
+        
+        
         isPremium = PreferencesService.cachedIsPremium;
       }
     }
@@ -844,12 +843,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final isGuest =
         (_authService.currentUser?.isAnonymous ?? false) ||
         PreferencesService.cachedIsGuest;
-    // Use raw attendance docs for chart — combineAttendance() picks only 1
-    // record per worker (the latest), which loses historical records needed
-    // for the yearly/6-month charts.
+    
+    
+    
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
 
-    // Build a set of valid worker identifiers to skip orphaned records
+    
     final workersList = isGuest ? DummyData.workers : _workersDocs;
     final validWorkerIds = <String>{};
     final validEmails = <String>{};
@@ -861,11 +860,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return rawDocs.where((attendance) {
-      // Filter out absent/leave statuses
+      
       final s = (attendance['status'] ?? '').toString().trim().toLowerCase();
       if (s == 'absent' || s == 'a' || s == 'leave' || s == 'l') return false;
 
-      // Only include records that belong to existing workers
+      
       if (workersList.isNotEmpty) {
         final rId = (attendance['workerId'] ?? attendance['id'] ?? '').toString().trim();
         final rEmail = (attendance['email'] ?? '').toString().trim().toLowerCase();
@@ -875,7 +874,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!belongsToWorker) return false;
       }
 
-      // Filter by date range
+      
       final date =
           AppDateUtils.attendanceRecordDate(attendance) ?? DateTime.now();
       return DashboardChartService.isDateWithinPeriod(date, period);

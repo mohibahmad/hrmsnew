@@ -10,8 +10,8 @@ import '../helpers/localization.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Distinctive dimensions (57x23) so we can tell the uploaded company logo
-  // apart from the bundled app icon inside the generated PDF.
+  
+  
   Uint8List makeLogo({int width = 57, int height = 23}) {
     final image = img.Image(width: width, height: height);
     img.fill(image, color: img.ColorRgb8(20, 90, 200));

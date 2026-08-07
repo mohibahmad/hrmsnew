@@ -24,7 +24,6 @@ String fieldHint(String fieldKey) {
     'type2': 'hint_enter_type2',
     'experienceLevel': 'hint_enter_experience',
     'education': 'hint_enter_education',
-    'salaryType': 'hint_enter_salary_type',
     'salaryAmount': 'hint_enter_salary_amount',
     'annualLeaves': 'hint_enter_annual_leaves',
     'sickLeaves': 'hint_enter_sick_leaves',
@@ -35,6 +34,18 @@ String fieldHint(String fieldKey) {
     'frontId': 'hint_enter_front_id',
     'backId': 'hint_enter_back_id',
     'cv': 'hint_enter_cv',
+  };
+  final key = hintKeys[fieldKey];
+  return key != null ? key.tr() : '';
+}
+
+/// Hint shown *inside* the text field for media (image / file) columns.
+String mediaFieldHint(String fieldKey) {
+  const hintKeys = <String, String>{
+    'profileImage': 'hint_media_profile_image',
+    'frontId': 'hint_media_front_id',
+    'backId': 'hint_media_back_id',
+    'cv': 'hint_media_cv',
   };
   final key = hintKeys[fieldKey];
   return key != null ? key.tr() : '';
@@ -204,9 +215,7 @@ void showCupertinoDatePickerDialog({
                         ),
                         if (fieldKey == 'dob')
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Row(
                               children: [
                                 const Icon(
@@ -287,9 +296,8 @@ void showCupertinoDatePickerDialog({
                                         selected.isAfter(DateTime.now())) {
                                       FlashySnackBar.show(
                                         ctx,
-                                        message:
-                                            'joining_date_cannot_be_future'
-                                                .tr(),
+                                        message: 'joining_date_cannot_be_future'
+                                            .tr(),
                                         isError: true,
                                       );
                                       return;
@@ -473,8 +481,7 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
   if (fieldKey == 'type1' ||
       fieldKey == 'type2' ||
       fieldKey == 'experienceLevel' ||
-      fieldKey == 'education' ||
-      fieldKey == 'salaryType') {
+      fieldKey == 'education') {
     return [LengthLimitingTextInputFormatter(50)];
   }
   if (fieldKey == 'address') {
@@ -505,7 +512,16 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
   if (fieldKey == 'salaryAmount') {
     return [
       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-      LengthLimitingTextInputFormatter(15),
+      TextInputFormatter.withFunction((oldValue, newValue) {
+        if (newValue.text.isEmpty) return newValue;
+        final parts = newValue.text.split('.');
+        final intPart = parts[0];
+        // max 12 digits before decimal
+        if (intPart.length > 12) return oldValue;
+        // max 2 digits after decimal
+        if (parts.length > 1 && parts[1].length > 2) return oldValue;
+        return newValue;
+      }),
     ];
   }
   return null;

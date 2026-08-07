@@ -11,20 +11,14 @@ class PayrollService {
     return DateTime(reference.year, reference.month, 1);
   }
 
-  /// Returns the start date of the current pay period based on the configured
-  /// salary day. E.g. if salary day is 3, the pay period runs from the 3rd of
-  /// the previous month to the 3rd of the current month.
   static DateTime payPeriodStart(DateTime referenceDate, int? salaryDay) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
       return DateTime(referenceDate.year, referenceDate.month, 1);
     }
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
     if (referenceDate.day > effectiveDay) {
-      // Current period started on the salary day of this month.
       return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
     }
-    // On the pay day itself the just-ended period is still the current one,
-    // so the period starts on the salary day of the previous month.
     final prevMonth = DateTime(referenceDate.year, referenceDate.month - 1, 1);
     return DateTime(
       prevMonth.year,
@@ -33,8 +27,6 @@ class PayrollService {
     );
   }
 
-  /// Returns the end boundary of the current pay period (the next salary day).
-  /// The boundary day itself belongs to the next cycle, so it is exclusive.
   static DateTime payPeriodEnd(DateTime referenceDate, int? salaryDay) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
       return DateTime(referenceDate.year, referenceDate.month + 1, 0);
@@ -45,7 +37,6 @@ class PayrollService {
     return DateTime(nextMonth.year, nextMonth.month, effectiveDayNextMonth);
   }
 
-  /// Returns the next pay date (the upcoming salary day).
   static DateTime nextPayDate(DateTime referenceDate, int? salaryDay) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
       return DateTime(referenceDate.year, referenceDate.month + 1, 0);
@@ -62,8 +53,6 @@ class PayrollService {
     );
   }
 
-  /// Returns true when today is within `reminderDays` days before the next
-  /// pay date, on the pay date itself, or after the pay date (overdue).
   static bool isPayDateReminderDue(
     DateTime referenceDate,
     int? salaryDay, {
@@ -72,18 +61,13 @@ class PayrollService {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return true;
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
     final today = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
-
-    // If today is on or after the pay date, it's due/overdue.
     if (today.day >= effectiveDay) return true;
-
-    // Otherwise check if within reminder days before the pay date.
     final nextPay = nextPayDate(referenceDate, salaryDay);
     final payDay = DateTime(nextPay.year, nextPay.month, nextPay.day);
     final diff = payDay.difference(today).inDays;
     return diff <= reminderDays;
   }
 
-  /// Returns true when today IS the pay date.
   static bool isPayDate(DateTime referenceDate, int? salaryDay) {
     if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return false;
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
@@ -121,26 +105,73 @@ class PayrollService {
     return date.day > lastDay - reminderDays;
   }
 
+  static DateTime previousPayrollCheckMonth(
+    DateTime activeMonth,
+    int? salaryDay, {
+    DateTime? referenceDate,
+  }) {
+    final reference = referenceDate ?? DateTime.now();
+    final todayDate = DateTime(reference.year, reference.month, reference.day);
+    final activePeriodEnd = payPeriodEnd(activeMonth, salaryDay);
+    return !todayDate.isBefore(activePeriodEnd)
+        ? activeMonth
+        : DateTime(activeMonth.year, activeMonth.month - 1, 1);
+  }
+
+  static bool workerJoinedBeforePeriodEnd(
+    Map<String, dynamic> worker,
+    DateTime month,
+    int? salaryDay,
+  ) {
+    final joiningDate = _parseDate(
+      worker['joiningDate'] ?? worker['dateOfJoining'],
+    );
+    if (joiningDate == null) return true;
+    final periodEnd = payPeriodEnd(month, salaryDay);
+    return joiningDate.isBefore(periodEnd);
+  }
+
   
-  
-  static bool allWorkersPaidForMonth(
+  static bool allWorkersHavePayrollRecords(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
-    DateTime month,
-  ) {
-    final activeWorkers = workersList
+    DateTime month, {
+    int? salaryDay,
+    bool allowUndatedRecords = false,
+  }) {
+    final expectedWorkers = workersList
         .where(isWorkerEligibleForPayroll)
+        .where(
+          (worker) => workerJoinedBeforePeriodEnd(worker, month, salaryDay),
+        )
         .toList();
-    if (activeWorkers.isEmpty) return true;
+    if (expectedWorkers.isEmpty) return true;
 
     final combined = combinePayroll(
-      activeWorkers,
+      expectedWorkers,
       rawPayrollDocs,
       month: month,
+      allowUndatedRecords: allowUndatedRecords,
+      salaryDay: salaryDay,
     );
 
-    return combined.length == activeWorkers.length &&
-        combined.every((worker) => worker['isPaid'] == true);
+    return combined.every((worker) => worker['hasPayrollRecord'] == true);
+  }
+
+  
+  static bool hasUnpaidWorkers(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs,
+    DateTime month, {
+    int? salaryDay,
+  }) {
+    final combined = combinePayroll(
+      workersList,
+      rawPayrollDocs,
+      month: month,
+      salaryDay: salaryDay,
+    );
+    return combined.any((worker) => worker['isPaid'] != true);
   }
 
   static int unpaidWorkerCountForMonth(
@@ -306,9 +337,6 @@ class PayrollService {
       return workerEmail == recordEmail;
     }
 
-    
-    
-    
     if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) ||
         recordEmail.isNotEmpty) {
       return false;
@@ -338,11 +366,16 @@ class PayrollService {
     DateTime? month,
     bool allowUndatedRecords = false,
     String? companyCurrency,
+    int? salaryDay,
   }) {
     final targetMonth = month ?? DateTime.now();
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final activeWorkers = workersList
         .where(isWorkerEligibleForPayroll)
+        .where(
+          (worker) =>
+              workerJoinedBeforePeriodEnd(worker, targetMonth, salaryDay),
+        )
         .map(Map<String, dynamic>.from)
         .toList();
 
@@ -583,9 +616,6 @@ class PayrollService {
     return null;
   }
 
-  
-  
-  
   static DateTime? payrollPaymentDate(Map<String, dynamic> record) {
     for (final key in [
       'paidAt',
@@ -640,9 +670,6 @@ class PayrollService {
 
   static double extractSalary(String salaryStr) {
     if (salaryStr.isEmpty) return 0;
-    // Currency symbols can themselves contain dots ('د.إ', 'ر.ع.', ...) which
-    // would otherwise leak into the numeric parse ('د.إ 5000' -> '.5000' -> 0.5
-    // instead of 5000). Parse only the portion starting at the first digit.
     final trimmed = salaryStr.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
     final numericPart =
@@ -665,24 +692,19 @@ class PayrollService {
     final lastComma = cleaned.lastIndexOf(',');
     if (lastDot >= 0 && lastComma >= 0) {
       if (lastComma > lastDot) {
-        
         cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
       } else {
-        
         cleaned = cleaned.replaceAll(',', '');
       }
     } else if (lastComma >= 0) {
       final commaCount = ','.allMatches(cleaned).length;
       final digitsAfterComma = cleaned.length - lastComma - 1;
       if (commaCount > 1 || digitsAfterComma == 3) {
-        
         cleaned = cleaned.replaceAll(',', '');
       } else {
-        
         cleaned = cleaned.replaceAll(',', '.');
       }
     } else if ('.'.allMatches(cleaned).length > 1) {
-      
       cleaned = cleaned.replaceAll('.', '');
     }
     return (double.tryParse(cleaned) ?? 0) * multiplier;
@@ -810,12 +832,6 @@ class PayrollService {
     return netSalary.clamp(0.0, double.infinity).toDouble();
   }
 
-  /// Ratio of the pay period a worker was employed for. A worker who joined
-  /// on or before [periodStart] gets the full period (1.0). A worker who
-  /// joined after the period ended gets 0.0. Otherwise the ratio is
-  /// `working days from joining date to period end / totalWorkDays`.
-  /// When [workingDates] is not provided the ratio falls back to calendar
-  /// days so proration never breaks on missing data.
   static double prorationFactor({
     DateTime? joiningDate,
     required DateTime periodStart,
@@ -886,7 +902,7 @@ class PayrollService {
 
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
-        : dailyRate;
+        : 0.0;
     final leaveRate = leaveDeductionPerDay.trim().isNotEmpty
         ? customLeaveDeduction
         : dailyRate;
@@ -945,5 +961,4 @@ class PayrollService {
       'formattedNet': _fmt(netSalary, p),
     };
   }
-
 }

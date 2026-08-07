@@ -87,9 +87,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   String _normalizedValue(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
-  /// Records created when attendance is marked as "Leave" from the worker
-  /// attendance screen. They exist only to keep the leave balance in sync, so
-  /// they must not appear here as if they were pre-planned time off.
+  
+  
+  
   bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
     return (record['source'] ?? '').toString().trim().toLowerCase() ==
         'attendance';
@@ -126,9 +126,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return (total - used).clamp(0, total).toInt();
   }
 
-  /// Returns a copy of a worker row with any merged time-off record fields
-  /// removed, so tapping "Assign" always opens a fresh (new leave) form
-  /// instead of editing the worker's most recent saved leave.
+  
+  
+  
   Map<String, dynamic> _docForNewLeave(Map<String, dynamic> doc) {
     return {...doc}
       ..remove('action')
@@ -216,8 +216,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             (recordWorkerId.isEmpty && email.isNotEmpty && tEmail == email) ||
             (email.isEmpty && name.isNotEmpty && tName == name);
       }).toList();
-      // Keep attendance-managed leave in the balance math so the remaining
-      // allowance shown on the Time Off screen is still accurate.
+      
+      
       final balanceRecords = _rawTimeoffDocs.where((record) {
         if (!TimeOffService.isActiveRecord(record)) return false;
         final recordWorkerId = (record['workerId'] ?? '').toString().trim();
@@ -251,9 +251,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         continue;
       }
 
-      // Show each worker only once. If a worker has multiple time-off
-      // records, pick the most recent one (by start date) so the worker
-      // never appears duplicated in the list.
+      
+      
+      
       final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
         ..sort((a, b) {
           final aStart = TimeOffService.parseDate(a['startDate']);
@@ -318,11 +318,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return;
     }
 
-    // Two parallel groupings: `*All` includes every active record (used for
-    // leave-balance math, so attendance-marked leave still counts against the
-    // allowance) while `recordsByWorkerId`/`legacyRecordsByEmail` only hold
-    // pre-planned time off (used for the visible list). This keeps the screen
-    // free of attendance-screen leave marks without inflating the balance.
+    
+    
+    
+    
+    
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
     final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
     final allRecordsByWorkerId = <String, List<Map<String, dynamic>>>{};
@@ -399,9 +399,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         continue;
       }
 
-      // Show each worker only once. If a worker has multiple time-off
-      // records, pick the most recent one (by start date) so the worker
-      // never appears duplicated in the list.
+      
+      
+      
       final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
         ..sort((a, b) {
           final aStart = TimeOffService.parseDate(a['startDate']);
@@ -1098,9 +1098,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   showGuestRestrictionDialog(context);
                                   return;
                                 }
-                                // Limit Reached (or a non-assignable worker)
-                                // opens the full leave preview instead of a
-                                // fresh assignment form.
+                                
+                                
+                                
                                 if (isLimitReached ||
                                     doc['canAssignTimeOff'] == false) {
                                   _showTimeOffDataDialog(context, doc, index);
@@ -1197,8 +1197,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
     final totalLeaveDays = workerRecords.fold<int>(
       0,
-      (sum, record) =>
-          sum + TimeOffService.selectedDatesForRecord(record).length,
+      (total, record) =>
+          total + TimeOffService.selectedDatesForRecord(record).length,
     );
     final String selectedDays = totalLeaveDays.toString();
 
@@ -1227,7 +1227,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         child: Center(
           child: Container(
             width: dialogWidth,
-            height: 440,
+            height: 520,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
@@ -1427,6 +1427,95 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               ),
                             ],
                           ),
+                          if (workerRecords.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Leave Records',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF334155),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...workerRecords.map((record) {
+                              final recordType =
+                                  TimeOffService.leaveType(record);
+                              final recordDates =
+                                  TimeOffService.selectedDatesForRecord(
+                                    record,
+                                  );
+                              final typeColor =
+                                  LeaveColors.getColor(recordType);
+                              final typeBg =
+                                  LeaveColors.getBgColor(recordType);
+                              final dateStr = recordDates.isEmpty
+                                  ? ''
+                                  : recordDates.length == 1
+                                      ? DateFormat('dd MMM yyyy')
+                                          .format(recordDates.first)
+                                      : '${DateFormat('dd MMM').format(recordDates.first)} – ${DateFormat('dd MMM yyyy').format(recordDates.last)}';
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: typeBg,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: typeColor.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: typeColor,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        recordType,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        dateStr,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF475569),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${recordDates.length} ${'days'.tr()}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF334155),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
                         ],
                       ),
                     ),
@@ -1451,7 +1540,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             (wEmail.isNotEmpty && wEmail == rEmail);
       }).toList();
 
-      // Pick the most recent record (last one added / highest id)
+      
       Map<String, dynamic>? latestRecord;
       if (activeRecords.isNotEmpty) {
         latestRecord = activeRecords.reduce((a, b) {
@@ -1461,229 +1550,21 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       }
 
-      // Merge: worker doc fields first (contains quotas), then record fields
-      // (contains action, selectedDates, id for editing)
-      final mergedWorker = latestRecord != null
-          ? {...data, ...latestRecord}
-          : data;
+      
+      
+      final mergedWorker = <String, dynamic>{...data};
+      if (latestRecord != null) {
+        mergedWorker.addAll(latestRecord);
+        mergedWorker.remove('selectedDates');
+        mergedWorker.remove('startDate');
+        mergedWorker.remove('endDate');
+      }
 
       setState(() {
         _isAssigningTimeOff = true;
         _workerForTimeOff = mergedWorker;
       });
     }
-  }
-
-  /// Popup shown when the HR taps a single leave date in the preview.
-  /// Contains: leave date, number of leave days, leave type, leave status and
-  /// any notes/reason attached to the record.
-  void _showLeaveDateDetailDialog(
-    BuildContext context,
-    Map<String, dynamic> record,
-    DateTime date,
-  ) {
-    final String type = TimeOffService.leaveType(record);
-    final int totalDays = TimeOffService.selectedDatesForRecord(record).length;
-    final String notes = (record['notes'] ?? '').toString();
-
-    final Color typeColor = LeaveColors.getColor(type);
-    final Color typeBg = LeaveColors.getBgColor(type);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Container(
-          width: 380,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: const BoxDecoration(color: Color(0xFF004FDE)),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.event_available,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'leave_date'.tr(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLeaveDetailRow(
-                      icon: Icons.calendar_today,
-                      label: 'leave_date'.tr(),
-                      value: DateFormat('dd/MM/yyyy (EEEE)').format(date),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildLeaveDetailRow(
-                      icon: Icons.event_available,
-                      label: 'number_of_leave_days'.tr(),
-                      value: '$totalDays ${'days'.tr()}',
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: typeBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Icon(
-                            Icons.beach_access,
-                            color: typeColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'leave_type'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: typeColor,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  type,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFFFFFFF),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (notes.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      _buildLeaveDetailRow(
-                        icon: Icons.notes,
-                        label: 'notes_label'.tr(),
-                        value: notes,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLeaveDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE5EEFC),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(icon, color: const Color(0xFF004FDE), size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: valueColor ?? const Color(0xFF000000),
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildWorkerPreviewHeader({
@@ -1916,7 +1797,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             vertical: 8,
                           ),
                           itemCount: datesWithTypes.length,
-                          separatorBuilder: (_, __) => const Divider(
+                          separatorBuilder: (_, _) => const Divider(
                             height: 1,
                             color: Color(0xFFEEEEEE),
                           ),

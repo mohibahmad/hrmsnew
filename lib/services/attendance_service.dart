@@ -18,9 +18,9 @@ class AttendanceService {
     'archived',
   };
 
-  /// Whether the worker may still receive new attendance marks. Inactive,
-  /// terminated, deleted, and archived workers stay in historical reports
-  /// but must not appear in the new attendance marking list.
+  
+  
+  
   static bool isEligibleForAttendance(Map<String, dynamic> worker) {
     final status = (worker['status'] ?? 'Active')
         .toString()
@@ -292,11 +292,11 @@ class AttendanceService {
     return combined;
   }
 
-  /// Day-level Present/Absent/Leave totals for a list of attendance records,
-  /// counting every record once (a worker can appear on multiple days). A
-  /// worker with an approved time-off on the record's date counts as Leave
-  /// (never Present), matching the attendance screen cards and the home
-  /// dashboard overview.
+  
+  
+  
+  
+  
   static Map<String, int> countRecordsByStatus(
     List<Map<String, dynamic>> records,
     List<Map<String, dynamic>> timeOffRecords,

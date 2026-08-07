@@ -7,7 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../utils/svg_fill_color_mapper.dart';
 import '../custom_timeframe_dropdown.dart';
 
-// Fixed colors for known leave types + fallback palette for custom ones
+
 const _knownTypeColors = <String, Color>{
   'Casual Leave': Color(0xFF84A9FF),
   'Sick Leave': Color(0xFFFF4A5E),
@@ -46,7 +46,7 @@ class LeaveTypesPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ── Collect counts for every leave type found in the data ──
+    
     final counts = <String, int>{};
     for (final att in leaveDocs) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
@@ -59,11 +59,11 @@ class LeaveTypesPieChart extends StatelessWidget {
     final int total = counts.values.fold(0, (s, v) => s + v);
     final bool reallyEmpty = isEmpty || total == 0;
 
-    // Build ordered list of types (most common first)
+    
     final sortedTypes = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Assign colors
+    
     int fallbackIdx = 0;
     final typeColors = <String, Color>{};
     for (final entry in sortedTypes) {
@@ -72,20 +72,20 @@ class LeaveTypesPieChart extends StatelessWidget {
           _fallbackPalette[fallbackIdx++ % _fallbackPalette.length];
     }
 
-    // Build percent values per type
+    
     final typePercents = <String, double>{};
     for (final entry in sortedTypes) {
       typePercents[entry.key] = (entry.value / total) * 100;
     }
 
-    // Build sweep angles (start at 108° to match original)
+    
     const double startAngle = 108;
     final sweeps = <String, double>{};
     for (final entry in sortedTypes) {
       sweeps[entry.key] = (typePercents[entry.key]! / 100) * 360;
     }
 
-    // Mid angles for callout lines
+    
     final midAngles = <String, double>{};
     double runningAngle = startAngle;
     for (final entry in sortedTypes) {
@@ -201,7 +201,7 @@ class LeaveTypesPieChart extends StatelessWidget {
     Map<String, Color> typeColors,
     Map<String, double> typePercents,
   ) {
-    // Pair them into rows of 2
+    
     final rows = <Widget>[];
     for (int i = 0; i < sortedTypes.length; i += 2) {
       if (i > 0) rows.add(const SizedBox(height: 12));

@@ -4,8 +4,8 @@ import 'package:hrms/widgets/amount_text.dart';
 void main() {
   group('AmountText.formatFull', () {
     test('parses Arabic-script symbols with dots correctly (AED)', () {
-      // The 'د.إ' symbol contains a dot; before the fix the dot leaked into
-      // the numeric parse and turned 5000 into 0.5.
+      
+      
       expect(AmountText.formatFull('د.إ 5000'), 'د.إ5,000');
       expect(
         AmountText.formatFull('د.إ 300000000000000.0'),

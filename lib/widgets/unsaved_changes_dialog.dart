@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-/// A modal dialog that prompts the user to confirm discarding unsaved changes.
+
 class UnsavedChangesDialog {
   static Future<bool> show(BuildContext context) async {
     final result = await showGeneralDialog<bool>(

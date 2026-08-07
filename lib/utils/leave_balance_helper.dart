@@ -19,9 +19,9 @@ class LeaveBalanceHelper {
   static int _toInt(dynamic v) => int.tryParse(v?.toString() ?? '0') ?? 0;
 
   
-  /// Renders a leave-days value (int, string, or legacy double like `0.0`) as a
-  /// whole-number string, e.g. for input fields and PDFs, so a zero allowance
-  /// shows as `0` instead of `0.0`.
+  
+  
+  
   static String leaveDaysText(dynamic value) {
     final text = (value ?? '').toString().trim();
     if (text.isEmpty) return '';

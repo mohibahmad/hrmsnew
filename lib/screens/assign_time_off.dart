@@ -32,17 +32,17 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class LeaveColors {
-  static const Color annual = Color(0xFFF59E0B); // Vibrant Amber
-  static const Color annualBg = Color(0xFFFFFBEB); // Soft Amber Tint
+  static const Color annual = Color(0xFFF59E0B); 
+  static const Color annualBg = Color(0xFFFFFBEB); 
 
-  static const Color sick = Color(0xFFEF4444); // Vibrant Red
-  static const Color sickBg = Color(0xFFFEF2F2); // Soft Red Tint
+  static const Color sick = Color(0xFFEF4444); 
+  static const Color sickBg = Color(0xFFFEF2F2); 
 
-  static const Color casual = Color(0xFF3B82F6); // Vibrant Blue
-  static const Color casualBg = Color(0xFFEFF6FF); // Soft Blue Tint
+  static const Color casual = Color(0xFF3B82F6); 
+  static const Color casualBg = Color(0xFFEFF6FF); 
 
-  static const Color medical = Color(0xFF10B981); // Vibrant Emerald Green
-  static const Color medicalBg = Color(0xFFECFDF5); // Soft Green Tint
+  static const Color medical = Color(0xFF10B981); 
+  static const Color medicalBg = Color(0xFFECFDF5); 
 
   static Color getColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
@@ -55,10 +55,10 @@ class LeaveColors {
 
   static Color getTextColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
-    if (lower.contains('annual')) return const Color(0xFFD97706); // Deep Amber
-    if (lower.contains('sick')) return const Color(0xFFDC2626); // Deep Red
-    if (lower.contains('casual')) return const Color(0xFF1D4ED8); // Deep Blue
-    if (lower.contains('medical')) return const Color(0xFF047857); // Deep Green
+    if (lower.contains('annual')) return const Color(0xFFD97706); 
+    if (lower.contains('sick')) return const Color(0xFFDC2626); 
+    if (lower.contains('casual')) return const Color(0xFF1D4ED8); 
+    if (lower.contains('medical')) return const Color(0xFF047857); 
     return const Color(0xFF1E293B);
   }
 
@@ -87,7 +87,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     'Medical Leave',
   ];
 
-  // Inner calendar grid width: 7 day cells (50px) + 6 gaps (4px).
+  
   static const double _calendarContentWidth = 7 * 50 + 6 * 4;
 
   late AuthService _authService;
@@ -129,7 +129,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
   List<Map<String, dynamic>> _timeoffRecords = [];
-  // When editing an existing time-off record, this holds the original record data
+  
   Map<String, dynamic>? _editingRecord;
   List<Map<String, dynamic>> _holidays = [];
   Set<int> _companyWorkingDays = {
@@ -215,11 +215,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _resetFormFields() {
-    // Use _editingRecord if present (this survives worker stream updates),
-    // otherwise fall back to _selectedWorker fields (initial load path).
+    
+    
     final source = _editingRecord ?? _selectedWorker;
     if (source != null && (source['action'] ?? '').toString().isNotEmpty) {
-      // Edit mode: read id from the record, not the worker doc
+      
       _editingId = (_editingRecord?['id'] ?? source['id'])?.toString();
       _timeOffType = source['action'].toString();
       _selectedDates = TimeOffService.selectedDatesForRecord(source).toSet();
@@ -310,8 +310,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
             if (widget.initialWorker != null) {
-              // Look up the actual worker by workerId/email (not by id, since
-              // initialWorker.id may be a time-off record id in edit mode).
+              
+              
               final initWorkerId = (widget.initialWorker!['workerId'] ?? '')
                   .toString()
                   .trim();
@@ -341,8 +341,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             } else {
               _selectedWorker = null;
             }
-            // Re-apply editing id and form state that may have been
-            // loaded from the original record before the worker stream arrived.
+            
+            
             if (_editingRecord != null) {
               _editingId = _editingRecord!['id']?.toString();
             }
@@ -841,7 +841,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 30), // Balance spacing
+                                const SizedBox(width: 30), 
                               ],
                             ),
                           ),
@@ -1438,17 +1438,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     const cellExtent = 54.0;
     const calendarWidth = 7 * cellExtent;
     const containerWidth = calendarWidth + 32;
-    // Each calendar renders 374px of grid + 32px padding + 2px border = 408px.
+    
     const calendarOuterWidth = _calendarContentWidth + 32.0 + 2.0;
-    const naturalRowWidth = calendarOuterWidth * 2 + 24.0; // 840
+    const naturalRowWidth = calendarOuterWidth * 2 + 24.0; 
     return LayoutBuilder(
       builder: (context, constraints) {
         final double gridScale = constraints.maxWidth < naturalRowWidth
             ? constraints.maxWidth / naturalRowWidth
             : 1.0;
 
-        // Convert a pointer position from the (possibly scaled) widget space
-        // back into the unscaled calendar space used by the drag hit-testing.
+        
+        
         Offset toGridSpace(Offset pos) => gridScale == 1.0
             ? pos
             : Offset(pos.dx / gridScale, pos.dy / gridScale);
@@ -1507,7 +1507,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               } else {
                 if (candidate.contains(date)) continue;
 
-                // Check if already assigned
+                
                 if (_selectedWorker != null) {
                   final savedLeave = TimeOffService.activeLeaveForWorker(
                     _selectedWorker!,
@@ -1518,7 +1518,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   if (savedLeave != null) continue;
                 }
 
-                if (_usesPaidAllowance && candidate.length >= _availableDays) {
+                if (_usesPaidAllowance && candidate.length >= _baseAvailableDays) {
                   if (!_isGuest) exceededAvailableDays = true;
                   break;
                 }
@@ -1669,9 +1669,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       }
     }
 
-    if (!isRemoving &&
-        _usesPaidAllowance &&
-        _selectedDates.length >= _availableDays) {
+    if (!isRemoving && _usesPaidAllowance && _availableDays <= 0) {
       FlashySnackBar.show(
         context,
         message: 'requested_leaves_exceed_available'.tr(),

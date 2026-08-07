@@ -20,7 +20,6 @@ const List<String> kRequiredFields = [
   'type2',
   'experienceLevel',
   'education',
-  'salaryType',
   'salaryAmount',
   'annualLeaves',
   'joiningDate',
@@ -45,7 +44,6 @@ const Map<String, String> kFieldKeys = {
   'type2': 'field_work_model',
   'experienceLevel': 'field_experience_level',
   'education': 'field_education',
-  'salaryType': 'field_salary_type',
   'currency': 'field_currency',
   'salaryAmount': 'field_salary_amount',
   'annualLeaves': 'field_annual_leaves',
@@ -80,7 +78,6 @@ const Map<String, String> kHeaderMap = {
   'work model': 'type2',
   'experience level': 'experienceLevel',
   'education': 'education',
-  'salary type': 'salaryType',
   'salary amount': 'salaryAmount',
   'leave policy': 'leavePolicy',
   'annual leaves': 'annualLeaves',
@@ -94,8 +91,10 @@ const Map<String, String> kHeaderMap = {
   'profile pic': 'profileImage',
   'image url': 'profileImage',
   'front id image url': 'frontId',
+  'front id image': 'frontId',
   'front id': 'frontId',
   'back id image url': 'backId',
+  'back id image': 'backId',
   'back id': 'backId',
   'cv url': 'cv',
   'cv': 'cv',
@@ -105,8 +104,7 @@ const Map<String, String> kHeaderMap = {
 bool isAtLeast18(DateTime dob) {
   final now = DateTime.now();
   int age = now.year - dob.year;
-  if (now.month < dob.month ||
-      (now.month == dob.month && now.day < dob.day)) {
+  if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
     age--;
   }
   return age >= 18;
@@ -164,6 +162,14 @@ Map<String, String> validateWorkerData(
     }
   }
 
+  // Auto-format name fields: title case and trim extra spaces.
+  for (final field in ['name', 'fatherName']) {
+    final raw = workerData[field]?.toString() ?? '';
+    if (raw.isNotEmpty) {
+      workerData[field] = Validators.titleCase(raw);
+    }
+  }
+
   final currency = workerData['currency']?.toString().trim() ?? '';
   if (currency.isNotEmpty) {
     if (!CurrencyUtils.isSupported(currency)) {
@@ -172,8 +178,6 @@ Map<String, String> validateWorkerData(
       workerData['currency'] = CurrencyUtils.normalize(currency);
     }
   } else {
-    // No currency in the CSV: leave the field empty instead of forcing a
-    // default, so workers don't get a hardcoded currency in Firestore.
     workerData.remove('currency');
   }
 
@@ -208,8 +212,8 @@ Map<String, String> validateWorkerData(
     final normalized = experienceLevel.toLowerCase();
     const valid = {'fresher', 'junior', 'mid-level', 'mid level', 'senior'};
     if (!valid.contains(normalized)) {
-      fieldErrors['experienceLevel'] =
-          'validation_invalid_experience_level'.tr();
+      fieldErrors['experienceLevel'] = 'validation_invalid_experience_level'
+          .tr();
     } else {
       workerData['experienceLevel'] = normalized == 'fresher'
           ? 'Fresher'
@@ -237,8 +241,8 @@ Map<String, String> validateWorkerData(
     final normalized = relationshipStatus.toLowerCase();
     const valid = {'single', 'married'};
     if (!valid.contains(normalized)) {
-      fieldErrors['relationshipStatus'] =
-          'validation_invalid_relationship'.tr();
+      fieldErrors['relationshipStatus'] = 'validation_invalid_relationship'
+          .tr();
     } else {
       workerData['relationshipStatus'] =
           normalized[0].toUpperCase() + normalized.substring(1);
@@ -284,21 +288,24 @@ Map<String, String> validateWorkerData(
     }
   }
 
-  final salaryType = workerData['salaryType']?.toString().trim() ?? '';
-  if (salaryType.isNotEmpty) {
-    final normalized = salaryType.toLowerCase();
-    const valid = {'monthly', 'hourly', 'contract'};
-    if (!valid.contains(normalized)) {
-      fieldErrors['salaryType'] = 'validation_invalid_salary_type'.tr();
-    } else {
-      workerData['salaryType'] =
-          normalized[0].toUpperCase() + normalized.substring(1);
-    }
-  }
+   final position = workerData['position']?.toString().trim() ?? '';
+   if (position.isNotEmpty) {
+     workerData['position'] = Validators.titleCase(position);
+   }
 
-  final leavePolicy = workerData['leavePolicy']?.toString().trim() ?? '';
-  if (leavePolicy.isEmpty) {
-    workerData['leavePolicy'] = 'Standard';
+   final religion = workerData['religion']?.toString().trim() ?? '';
+   if (religion.isNotEmpty) {
+     workerData['religion'] = Validators.capitalizeFirst(religion);
+   }
+
+   final leavePolicy = workerData['leavePolicy']?.toString().trim() ?? '';
+   if (leavePolicy.isEmpty) {
+     workerData['leavePolicy'] = 'Standard';
+   }
+
+  final phone = workerData['phone']?.toString().trim() ?? '';
+  if (phone.isNotEmpty && !Validators.isValidPhone(phone)) {
+    fieldErrors['phone'] = 'validation_invalid_phone'.tr();
   }
 
   final email = WorkerIdentity.normalizeEmail(workerData['email']);
@@ -308,6 +315,10 @@ Map<String, String> validateWorkerData(
     }
   } else if (!Validators.isValidEmail(email)) {
     fieldErrors['email'] = 'validation_invalid_email'.tr();
+  } else if (Validators.hasWhitespace(email)) {
+    fieldErrors['email'] = 'validation_invalid_email'.tr();
+  } else if (Validators.isPlaceholderEmailDomain(email)) {
+    fieldErrors['email'] = 'validation_invalid_email_domain'.tr();
   } else {
     workerData['email'] = email;
     if (existingEmails.contains(email) || csvEmails.contains(email)) {
@@ -317,7 +328,8 @@ Map<String, String> validateWorkerData(
 
   final rawNationalId = workerData['nationalId']?.toString().trim() ?? '';
   final nationalId = WorkerIdentity.normalizeNationalId(rawNationalId);
-  if (rawNationalId.isNotEmpty && !Validators.isValidNationalId(rawNationalId)) {
+  if (rawNationalId.isNotEmpty &&
+      !Validators.isValidNationalId(rawNationalId)) {
     fieldErrors['nationalId'] = 'validation_invalid_national_id'.tr();
   } else if (nationalId.isNotEmpty &&
       (existingNationalIds.contains(nationalId) ||
@@ -325,18 +337,21 @@ Map<String, String> validateWorkerData(
     fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
   }
 
-  final salaryText = workerData['salaryAmount']?.toString().trim() ?? '';
-  if (salaryText.isNotEmpty) {
-    final amount = Validators.parseAmount(salaryText);
-    if (amount == null) {
-      fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
-    } else if (amount <= 0) {
-      fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
-    }
-  }
+   final salaryText = workerData['salaryAmount']?.toString().trim() ?? '';
+   if (salaryText.isNotEmpty) {
+     final amount = Validators.parseAmount(salaryText);
+     if (amount == null) {
+       fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
+     } else if (amount <= 0) {
+       fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
+     } else if (amount < Validators.minSalaryAmount) {
+       fieldErrors['salaryAmount'] = 'salary_min_amount_error'.tr(
+         namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
+       );
+     }
+   }
 
-  final annualLeavesText =
-      workerData['annualLeaves']?.toString().trim() ?? '';
+  final annualLeavesText = workerData['annualLeaves']?.toString().trim() ?? '';
   if (annualLeavesText.isNotEmpty) {
     final annualLeaves = int.tryParse(annualLeavesText);
     if (annualLeaves == null || annualLeaves < 0 || annualLeaves > 366) {
@@ -351,9 +366,6 @@ Map<String, String> validateWorkerData(
   }
   workerData['leavesUsed'] = '0';
 
-  // Sick, casual, and medical leaves are optional allowances (like annual
-  // leaves) but each gets its own dedicated balance so a worker can have
-  // separate Assigned/Used/Remaining numbers per leave type.
   for (final key in ['sickLeaves', 'casualLeaves', 'medicalLeaves']) {
     final text = workerData[key]?.toString().trim() ?? '';
     if (text.isEmpty) {
@@ -369,8 +381,7 @@ Map<String, String> validateWorkerData(
     }
   }
 
-  final joiningDateText =
-      workerData['joiningDate']?.toString().trim() ?? '';
+  final joiningDateText = workerData['joiningDate']?.toString().trim() ?? '';
   if (joiningDateText.isNotEmpty) {
     final joiningDate = AppDateUtils.parseDateString(joiningDateText);
     if (joiningDate == null) {
@@ -393,13 +404,10 @@ Map<String, String> validateWorkerData(
 }
 
 ({int missing, int invalidDob, int invalidGender, int duplicate})
-validationCounts(
-  List<Map<String, dynamic>> workers,
-) {
+validationCounts(List<Map<String, dynamic>> workers) {
   final requiredMessage = 'validation_required'.tr();
   final duplicateEmailMessage = 'validation_duplicate_email'.tr();
-  final duplicateNationalIdMessage =
-      'validation_duplicate_national_id'.tr();
+  final duplicateNationalIdMessage = 'validation_duplicate_national_id'.tr();
 
   int missing = 0;
   int invalidDob = 0;

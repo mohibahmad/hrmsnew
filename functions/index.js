@@ -330,9 +330,9 @@ exports.confirmPasswordResetOtp = onCall(
       throw new HttpsError("internal", "Unable to reset the password.");
     }
 
-    // The password is already changed at this point. Revocation and reset
-    // document cleanup are best-effort housekeeping and must not turn a
-    // successful password change into a false failure shown to the user.
+    
+    
+    
     await getAuth().revokeRefreshTokens(result.uid).catch((error) => {
       logger.warn("Password changed but token revocation failed", error);
     });

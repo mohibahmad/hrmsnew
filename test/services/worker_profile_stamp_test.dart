@@ -115,7 +115,7 @@ void main() {
           ZLibDecoder().decodeBytes(latin1.encode(m.group(1)!)),
         ));
       } catch (_) {
-        // Not a compressible stream (e.g. font files) - skip.
+        
       }
     }
     expect(RegExp(r'\bh f\b').hasMatch(content.toString()), isTrue,

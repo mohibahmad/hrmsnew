@@ -393,9 +393,9 @@ class TimeOffService {
     };
   }
 
-  /// Reads the configured (assigned) balance for one of the four core leave
-  /// types. Each type has its own independent balance, so a type that is not
-  /// configured (0) never falls back to another type's allowance.
+  
+  
+  
   static int configuredLimitForType(
     Map<String, dynamic> worker,
     String type,
@@ -416,9 +416,9 @@ class TimeOffService {
     }
   }
 
-  /// Remaining (unused) days for a single leave type. Only active records of
-  /// that exact type are counted, so assigning Medical Leave never touches the
-  /// Sick / Casual / Annual balances.
+  
+  
+  
   static int remainingForType(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
@@ -476,9 +476,9 @@ class TimeOffService {
     return annual + sick + casual + medical;
   }
 
-  /// True when the worker can no longer be assigned ANY leave — i.e. every
-  /// leave type (Annual / Sick / Casual / Medical) has 0 remaining balance.
-  /// The status flips to "Limit Reached" when the worker has no remaining balance.
+  
+  
+  
   static bool isWorkerLimitReached(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
@@ -532,8 +532,8 @@ class TimeOffService {
     required DateTime month,
     DateTime? referenceDate,
   }) {
-    // Assigned leave only counts once the leave day has arrived: future
-    // dates must not leak into the current payroll's Paid Leave record.
+    
+    
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
@@ -558,7 +558,7 @@ class TimeOffService {
         (date) =>
             date.year == month.year &&
             date.month == month.month &&
-            !date.isAfter(today),
+            date.isBefore(today),
       );
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);

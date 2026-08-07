@@ -264,7 +264,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _clearCompanyStamp = false;
           AuthService.profilePicNotifier.value = profileImage;
           AuthService.companyStampNotifier.value = companyStamp;
-          // Cache company currency in SharedPreferences for fast access
+          
           PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
           _isLoading = false;
         });
@@ -665,7 +665,7 @@ class _ProfileBodyState extends State<ProfileBody> {
             'companyStampUrl': '',
         });
         profileSaved = true;
-        // Cache company currency for offline/fast access
+        
         PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
 
         if (downloadUrl != null) {
@@ -692,6 +692,10 @@ class _ProfileBodyState extends State<ProfileBody> {
               context: 'CacheProfileImage',
             );
           });
+          if (cachedLocalPicPath != null && cachedLocalPicPath.isNotEmpty) {
+            PreferencesService.setProfilePicLocalPath(cachedLocalPicPath)
+                .catchError((_) {});
+          }
         }
         if (stampDownloadUrl != null || _clearCompanyStamp) {
           _companyStampUrl = stampDownloadUrl;

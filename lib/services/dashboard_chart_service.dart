@@ -221,7 +221,7 @@ class DashboardChartService {
       }
 
       final type = _attendanceLeaveType(attendance);
-      // Show all leave types in chart (not just predefined paid types)
+      
       if (type.isEmpty) continue;
 
       final normalized = <String, dynamic>{

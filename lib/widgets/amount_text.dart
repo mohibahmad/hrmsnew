@@ -8,11 +8,11 @@ class AmountText extends StatelessWidget {
 
   const AmountText(this.amount, {super.key, this.style, this.textAlign});
 
-  /// Extracts the currency prefix (everything before the first digit) from a
-  /// formatted amount. Unlike the old regex, this keeps multi-character
-  /// symbols intact (e.g. 'د.إ', 'ر.ع.', 'CA$') instead of truncating them at
-  /// the first '.'. The prefix is also excluded from numeric parsing so a
-  /// symbol's dot (as in 'د.إ') never turns 5000 into 0.5.
+  
+  
+  
+  
+  
   static String _numericPart(String input) {
     final trimmed = input.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
