@@ -12,12 +12,22 @@ String? _safeNullableString(dynamic value) {
 
 double? _safeDouble(dynamic value) {
   if (value == null) return null;
-  if (value is double) return value;
-  if (value is int) return value.toDouble();
-  if (value is num) return value.toDouble();
-  final text = value.toString().trim();
-  if (text.isEmpty) return null;
-  return double.tryParse(text);
+  double? result;
+  if (value is double) {
+    result = value;
+  } else if (value is int) {
+    result = value.toDouble();
+  } else if (value is num) {
+    result = value.toDouble();
+  } else {
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    // NOTE: double.tryParse('NaN'/'Infinity') returns NaN/Infinity, not null.
+    result = double.tryParse(text);
+  }
+  // Firestore rejects non-finite doubles (NaN/Infinity) with invalid-argument.
+  if (result != null && !result.isFinite) return null;
+  return result;
 }
 
 
@@ -318,7 +328,7 @@ class Worker {
     num? value,
     bool forUpdate,
   ) {
-    if (value != null) {
+    if (value != null && value.isFinite) {
       map[key] = value;
     } else if (forUpdate) {
       map[key] = FieldValue.delete();

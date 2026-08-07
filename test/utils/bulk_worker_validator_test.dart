@@ -143,6 +143,20 @@ void main() {
       expect(errors['email'], 'validation_invalid_email_domain'.tr());
     });
 
+    testWidgets('rejects a literal @example.com (no local part)', (tester) async {
+      await initLocalization(tester);
+      final worker = _validWorker()..['email'] = '@example.com';
+      final errors = _validate(worker);
+      expect(errors.containsKey('email'), isTrue);
+    });
+
+    testWidgets('rejects @example (no local part, no TLD)', (tester) async {
+      await initLocalization(tester);
+      final worker = _validWorker()..['email'] = '@example';
+      final errors = _validate(worker);
+      expect(errors.containsKey('email'), isTrue);
+    });
+
     testWidgets('accepts a real email domain', (tester) async {
       await initLocalization(tester);
       final worker = _validWorker()..['email'] = 'john@gmail.com';

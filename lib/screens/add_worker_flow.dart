@@ -4370,6 +4370,7 @@ class DocumentationSection extends StatelessWidget {
         (existingUrl?.startsWith('data:image') ?? false);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         height: 280,

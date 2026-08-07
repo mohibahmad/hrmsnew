@@ -2091,11 +2091,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     'workType':
                                                         workerData['type1'] ??
                                                         'Full Time',
-                                                    'type': type,
-                                                    'desc': desc,
                                                     'profileImage':
                                                         workerData['profileImage'],
                                                   };
+                                                  if (type != null) {
+                                                    attendanceData['type'] = type;
+                                                  }
+                                                  if (desc != null && desc.isNotEmpty) {
+                                                    attendanceData['desc'] = desc;
+                                                  }
                                                   final attendanceId =
                                                       (todayRecord['id'] ?? '')
                                                           .toString()

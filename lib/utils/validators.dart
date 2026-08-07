@@ -110,6 +110,8 @@ class Validators {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return required ? 'email_is_required'.tr() : null;
     if (!isValidEmail(trimmed)) return 'enter_valid_email'.tr();
+    // Reject placeholder / example domains (e.g. x@example.com) too.
+    if (isPlaceholderEmailDomain(trimmed)) return 'enter_valid_email'.tr();
     return null;
   }
 

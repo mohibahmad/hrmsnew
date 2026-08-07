@@ -61,7 +61,7 @@ String readableSaveError(Object error) {
     }
   }
   if (message.isEmpty) return 'bulk_media_unknown_error'.tr();
-  return message.length > 220 ? '${message.substring(0, 220)}…' : message;
+  return message;
 }
 
 Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
@@ -73,24 +73,33 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   final prepared = workers
       .map((worker) => Map<String, dynamic>.from(worker))
       .toList();
-  const mediaFields = ['profileImage', 'frontId', 'backId', 'cv'];
+  // Records map each stored worker-map key to its logical media field.
+  // Worker.toMap() stores the front/back ID images under idFront / idBack,
+  // while profileImage and cv keep their own key names.
+  const mediaFields = <({String key, String field})>[
+    (key: 'profileImage', field: 'profileImage'),
+    (key: 'idFront', field: 'frontId'),
+    (key: 'idBack', field: 'backId'),
+    (key: 'cv', field: 'cv'),
+  ];
   const uploadBatchSize = 8;
 
   var totalMedia = 0;
   for (final worker in workers) {
-    for (final field in mediaFields) {
-      final value = (worker[field] ?? '').toString().trim();
+    for (final m in mediaFields) {
+      final value = (worker[m.key] ?? '').toString().trim();
       if (value.isNotEmpty) totalMedia++;
     }
   }
 
   final embeddedFiles = <UploadFile>[];
-  final embeddedTargets = <({int workerIndex, String field})>[];
+  final embeddedTargets = <({int workerIndex, String key})>[];
   final remoteItems =
       <
-        int,
+        (int, String),
         ({
           int workerIndex,
+          String key,
           String field,
           String url,
           String folder,
@@ -101,8 +110,10 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
 
   for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
     final worker = prepared[workerIndex];
-    for (final field in mediaFields) {
-      final value = (worker[field] ?? '').toString().trim();
+    for (final m in mediaFields) {
+      final field = m.field;
+      final key = m.key;
+      final value = (worker[key] ?? '').toString().trim();
       final isEmbeddedFile =
           value.startsWith('data:') && value.contains(';base64,');
       final uri = Uri.tryParse(value);
@@ -121,7 +132,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         continue;
       }
 
-      final storedName = (worker['${field}_name'] ?? '').toString().trim();
+      final storedName = (worker['${key}_name'] ?? '').toString().trim();
       final folder = field == 'profileImage'
           ? 'profile_images'
           : field == 'cv'
@@ -158,18 +169,18 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
             mimeType: mimeType,
           ),
         );
-        embeddedTargets.add((workerIndex: workerIndex, field: field));
+        embeddedTargets.add((workerIndex: workerIndex, key: key));
       } else {
-        final key =
-            workerIndex * mediaFields.length + mediaFields.indexOf(field);
-        remoteItems[key] = (
+        final remoteKey = (workerIndex, key);
+        remoteItems[remoteKey] = (
           workerIndex: workerIndex,
+          key: key,
           field: field,
           url: value,
           folder: folder,
           fallbackName: storedName.isNotEmpty
               ? storedName
-              : '${field}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
+              : '${key}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
           fallbackMime: field == 'cv' ? 'application/pdf' : 'image/jpeg',
         );
       }
@@ -214,7 +225,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     final embedResults = await uploadBatch(embeddedFiles);
     for (var i = 0; i < embedResults.length; i++) {
       final t = embeddedTargets[i];
-      prepared[t.workerIndex][t.field] = embedResults[i].url;
+      prepared[t.workerIndex][t.key] = embedResults[i].url;
     }
   }
 
@@ -225,7 +236,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     var nextIndex = 0;
     Object? firstError;
 
-    Future<void> processItem(int key) async {
+    Future<void> processItem((int, String) key) async {
       final item = remoteItems[key]!;
       UploadFile? downloaded;
       try {
@@ -256,7 +267,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       }
       final results = await uploadBatch([file]);
       final result = results.first;
-      prepared[item.workerIndex][item.field] = result.url!;
+      prepared[item.workerIndex][item.key] = result.url!;
     }
 
     Future<void> worker() async {
@@ -284,8 +295,8 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     final rowId = (worker['clientRowId'] ?? '').toString().trim();
     if (rowId.isEmpty) continue;
     final urls = <String>[];
-    for (final field in mediaFields) {
-      final value = (worker[field] ?? '').toString().trim();
+    for (final m in mediaFields) {
+      final value = (worker[m.key] ?? '').toString().trim();
       if (value.isNotEmpty && value.startsWith('http')) {
         urls.add(value);
       }

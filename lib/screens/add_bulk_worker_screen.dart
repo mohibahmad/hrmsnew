@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,6 +28,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../widgets/bulk_worker_edit_dialog.dart';
 import '../widgets/notification_bell.dart';
+
+/// Formats a numeric salary value with thousands separators
+/// (e.g. 50000 -> "50,000"). Returns '' for empty/invalid input.
+String _formatSalaryWithCommas(dynamic value) {
+  final text = (value ?? '').toString().trim();
+  if (text.isEmpty) return '';
+  final cleaned = text.replaceAll(',', '');
+  final amount = double.tryParse(cleaned);
+  if (amount == null || !amount.isFinite) return '';
+  return NumberFormat('#,##0.##', 'en_US').format(amount);
+}
 
 class UploadProgress {
   final String phase;
@@ -1507,8 +1519,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       final normalizedEmail =
                                           WorkerIdentity.normalizeEmail(val);
                                       if (!Validators.isValidEmail(
-                                        normalizedEmail,
-                                      )) {
+                                            normalizedEmail,
+                                          ) ||
+                                          Validators.isPlaceholderEmailDomain(
+                                            normalizedEmail,
+                                          )) {
                                         setDialogState(() {
                                           dialogError =
                                               'validation_invalid_email'.tr();
@@ -2452,7 +2467,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             workerIndex: index,
           ),
           _buildDataCell(
-            worker['salaryAmount']?.toString() ?? '',
+            _formatSalaryWithCommas(worker['salaryAmount']),
             130,
             hasError: hasFieldError(worker, 'salaryAmount'),
             fieldKey: 'salaryAmount',

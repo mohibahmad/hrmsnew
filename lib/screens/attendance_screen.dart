@@ -2095,6 +2095,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildStatusText(Map<String, dynamic> worker) {
+    // When a period other than Today is selected in the timeframe dropdown,
+    // hide the daily status and show a placeholder instead.
+    if (_selectedTimeframe != 'Today') {
+      return const Text(
+        '******',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'SF Pro Display',
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
     final status = (worker['status'] ?? '').toString();
 
     Color textColor;

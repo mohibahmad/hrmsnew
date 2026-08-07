@@ -54,6 +54,11 @@ class FirestoreService {
     if (normalized.containsKey('currency')) {
       normalized['currency'] = CurrencyUtils.normalize(normalized['currency']);
     }
+    // Firestore rejects non-finite doubles (NaN / Infinity) with an
+    // invalid-argument error, so drop any such fields before writing.
+    normalized.removeWhere(
+      (key, value) => value is num && !value.isFinite,
+    );
     return normalized;
   }
 
@@ -322,11 +327,7 @@ class FirestoreService {
       } catch (e) {
         skipped++;
         if (clientRowId.isNotEmpty) skippedClientRowIds.add(clientRowId);
-        final errorText = e.toString();
-        final safeError = errorText.length <= 100
-            ? errorText
-            : errorText.substring(0, 100);
-        skipReasons.add('Validation error: $safeError');
+        skipReasons.add('Validation error: ${e.toString()}');
         continue;
       }
     }
