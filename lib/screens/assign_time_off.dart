@@ -32,17 +32,17 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class LeaveColors {
-  static const Color annual = Color(0xFFF59E0B); 
-  static const Color annualBg = Color(0xFFFFFBEB); 
+  static const Color annual = Color(0xFFF59E0B);
+  static const Color annualBg = Color(0xFFFFFBEB);
 
-  static const Color sick = Color(0xFFEF4444); 
-  static const Color sickBg = Color(0xFFFEF2F2); 
+  static const Color sick = Color(0xFFEF4444);
+  static const Color sickBg = Color(0xFFFEF2F2);
 
-  static const Color casual = Color(0xFF3B82F6); 
-  static const Color casualBg = Color(0xFFEFF6FF); 
+  static const Color casual = Color(0xFF3B82F6);
+  static const Color casualBg = Color(0xFFEFF6FF);
 
-  static const Color medical = Color(0xFF10B981); 
-  static const Color medicalBg = Color(0xFFECFDF5); 
+  static const Color medical = Color(0xFF10B981);
+  static const Color medicalBg = Color(0xFFECFDF5);
 
   static Color getColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
@@ -55,10 +55,10 @@ class LeaveColors {
 
   static Color getTextColor(String leaveType) {
     final lower = leaveType.toLowerCase().trim();
-    if (lower.contains('annual')) return const Color(0xFFD97706); 
-    if (lower.contains('sick')) return const Color(0xFFDC2626); 
-    if (lower.contains('casual')) return const Color(0xFF1D4ED8); 
-    if (lower.contains('medical')) return const Color(0xFF047857); 
+    if (lower.contains('annual')) return const Color(0xFFD97706);
+    if (lower.contains('sick')) return const Color(0xFFDC2626);
+    if (lower.contains('casual')) return const Color(0xFF1D4ED8);
+    if (lower.contains('medical')) return const Color(0xFF047857);
     return const Color(0xFF1E293B);
   }
 
@@ -87,7 +87,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     'Medical Leave',
   ];
 
-  
   static const double _calendarContentWidth = 7 * 50 + 6 * 4;
 
   late AuthService _authService;
@@ -129,7 +128,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
   List<Map<String, dynamic>> _timeoffRecords = [];
-  
+
   Map<String, dynamic>? _editingRecord;
   List<Map<String, dynamic>> _holidays = [];
   Set<int> _companyWorkingDays = {
@@ -215,11 +214,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _resetFormFields() {
-    
-    
     final source = _editingRecord ?? _selectedWorker;
     if (source != null && (source['action'] ?? '').toString().isNotEmpty) {
-      
       _editingId = (_editingRecord?['id'] ?? source['id'])?.toString();
       _timeOffType = source['action'].toString();
       _selectedDates = TimeOffService.selectedDatesForRecord(source).toSet();
@@ -310,8 +306,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
             if (widget.initialWorker != null) {
-              
-              
               final initWorkerId = (widget.initialWorker!['workerId'] ?? '')
                   .toString()
                   .trim();
@@ -341,8 +335,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             } else {
               _selectedWorker = null;
             }
-            
-            
+
             if (_editingRecord != null) {
               _editingId = _editingRecord!['id']?.toString();
             }
@@ -841,7 +834,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 30), 
+                                const SizedBox(width: 30),
                               ],
                             ),
                           ),
@@ -1438,17 +1431,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     const cellExtent = 54.0;
     const calendarWidth = 7 * cellExtent;
     const containerWidth = calendarWidth + 32;
-    
+
     const calendarOuterWidth = _calendarContentWidth + 32.0 + 2.0;
-    const naturalRowWidth = calendarOuterWidth * 2 + 24.0; 
+    const naturalRowWidth = calendarOuterWidth * 2 + 24.0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final double gridScale = constraints.maxWidth < naturalRowWidth
             ? constraints.maxWidth / naturalRowWidth
             : 1.0;
 
-        
-        
         Offset toGridSpace(Offset pos) => gridScale == 1.0
             ? pos
             : Offset(pos.dx / gridScale, pos.dy / gridScale);
@@ -1507,7 +1498,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               } else {
                 if (candidate.contains(date)) continue;
 
-                
                 if (_selectedWorker != null) {
                   final savedLeave = TimeOffService.activeLeaveForWorker(
                     _selectedWorker!,
@@ -1518,7 +1508,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   if (savedLeave != null) continue;
                 }
 
-                if (_usesPaidAllowance && candidate.length >= _baseAvailableDays) {
+                if (_usesPaidAllowance &&
+                    candidate.length >= _baseAvailableDays) {
                   if (!_isGuest) exceededAvailableDays = true;
                   break;
                 }
@@ -1660,11 +1651,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         excludingRecordId: _editingId,
       );
       if (savedLeave != null) {
-        FlashySnackBar.show(
-          context,
-          message: 'worker_already_on_leave_date'.tr(),
-          isError: true,
-        );
+        final savedDates = TimeOffService.selectedDatesForRecord(
+          savedLeave,
+        ).map(_dateOnly).toSet();
+        savedDates.remove(selectedDate);
+        setState(() {
+          _editingRecord = Map<String, dynamic>.from(savedLeave);
+          _editingId = savedLeave['id']?.toString();
+          _timeOffType = TimeOffService.normalizeLeaveType(
+            TimeOffService.leaveType(savedLeave),
+          );
+          _notesController.text = savedLeave['notes']?.toString() ?? '';
+          _selectedDates = savedDates;
+          _syncSelectionBounds();
+        });
         return;
       }
     }
@@ -1729,15 +1729,47 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ? const Color(0xFFFFFFFF)
               : Colors.black);
 
-    final String tooltipMessage = savedType != null
-        ? '${savedType.replaceAll(' Leave', '')} - ${DateFormat('dd/MM/yyyy').format(date!)}'
-        : (date != null ? DateFormat('dd/MM/yyyy').format(date) : '');
+    // Every date cell previews the currently selected dropdown type. Dates
+    // already saved in Firebase keep their persisted leave type instead.
+    final tooltipType = savedType ?? _timeOffType;
+    final tooltipOption = _leaveTypeOptions
+        .cast<Map<String, String>?>()
+        .firstWhere(
+          (option) => option?['value'] == tooltipType,
+          orElse: () => null,
+        );
+    final tooltipTypeLabel = tooltipOption?['labelKey']?.tr() ?? tooltipType;
+    final tooltipDate = date == null
+        ? ''
+        : DateFormat('dd/MM/yyyy').format(date);
+    final tooltipMessage = '$tooltipTypeLabel\n$tooltipDate';
+    final tooltipColor = LeaveColors.getColor(tooltipType);
 
     return Center(
       child: Tooltip(
         message: tooltipMessage,
         preferBelow: false,
         waitDuration: const Duration(milliseconds: 400),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: tooltipColor,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: tooltipColor.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        textStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'SF Pro Display',
+          height: 1.35,
+        ),
+        textAlign: TextAlign.center,
         child: SizedBox(
           width: 50,
           height: 50,
@@ -1941,6 +1973,43 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         message: 'guest_action_not_allowed'.tr(),
         isError: true,
       );
+      return;
+    }
+
+    if (_selectedDates.isEmpty && _editingId != null) {
+      setState(() => _isLoading = true);
+      try {
+        final workerIdentity =
+            _selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '';
+        final workerId = workerIdentity.toString().trim();
+        if (workerId.isEmpty) throw StateError('Missing worker id');
+        await _firestore.cancelTimeOffWithWorkerBalance(
+          timeOffId: _editingId!,
+          workerId: workerId,
+        );
+        if (!mounted) return;
+        await _loadTimeoffForSelectedWorker();
+        if (!mounted) return;
+        FlashySnackBar.show(
+          context,
+          message: 'update_time_off_success'.tr(
+            namedArgs: {
+              'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
+            },
+          ),
+        );
+        widget.onBack();
+      } catch (_) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'assign_time_off_failed'.tr(),
+            isError: true,
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
       return;
     }
 

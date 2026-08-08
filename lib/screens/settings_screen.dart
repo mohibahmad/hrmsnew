@@ -11,7 +11,6 @@ import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
-import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
 import 'package:provider/provider.dart';
@@ -62,31 +61,318 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetPassword(BuildContext context) async {
-    final email = _authService.currentUser?.email;
-    if (email != null && email.isNotEmpty) {
-      final emailSent = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-      );
-      if (emailSent == true && context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'password_reset_sent'.tr(),
-          title: 'success'.tr(),
+    final emailController = TextEditingController(
+      text: _authService.currentUser?.email ?? '',
+    );
+    final formKey = GlobalKey<FormState>();
+    var isSending = false;
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'ResetPasswordDialog',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 350),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const SizedBox(),
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
         );
-      }
-    } else {
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'no_email_found_for_account'.tr(),
-          isError: true,
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 12 * animation.value,
+                  sigmaY: 12 * animation.value,
+                ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: Container(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: StatefulBuilder(
+                  builder: (dialogContext, setDialogState) {
+                    Future<void> sendResetLink() async {
+                      if (isSending ||
+                          !(formKey.currentState?.validate() ?? false)) {
+                        return;
+                      }
+                      final email = emailController.text.trim().toLowerCase();
+                      setDialogState(() => isSending = true);
+                      var sent = false;
+                      String? errorMessage;
+                      try {
+                        await _authService.sendPasswordResetEmail(email);
+                        sent = true;
+                      } on FirebaseAuthException catch (error) {
+                        switch (error.code) {
+                          case 'user-not-found':
+                            sent = true;
+                            break;
+                          case 'invalid-email':
+                            errorMessage = 'email_invalid'.tr();
+                            break;
+                          case 'too-many-requests':
+                            errorMessage = 'too_many_requests'.tr();
+                            break;
+                          case 'network-request-failed':
+                          case 'network-error':
+                          case 'unavailable':
+                            errorMessage = 'network_error'.tr();
+                            break;
+                          default:
+                            errorMessage = 'password_reset_failed'.tr();
+                        }
+                      } catch (_) {
+                        errorMessage = 'unexpected_error'.tr();
+                      }
+
+                      if (!dialogContext.mounted) return;
+                      if (sent) {
+                        Navigator.of(dialogContext).pop();
+                        if (context.mounted) {
+                          FlashySnackBar.show(
+                            context,
+                            title: 'success'.tr(),
+                            message: 'check_email_reset_link'.tr(
+                              namedArgs: {'email': email},
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      setDialogState(() => isSending = false);
+                      if (errorMessage != null && context.mounted) {
+                        FlashySnackBar.show(
+                          context,
+                          message: errorMessage,
+                          isError: true,
+                        );
+                      }
+                    }
+
+                    return Dialog(
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        width: 430,
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF000000)
+                                  .withValues(alpha: 0.15),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0247C4)
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.lock_reset_rounded,
+                                      color: Color(0xFF0247C4),
+                                      size: 28,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      'reset_password'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: isSending
+                                        ? null
+                                        : () => Navigator.of(dialogContext).pop(),
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'reset_password_email_desc'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  height: 1.4,
+                                  color: Color(0xFF64748B),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'email_label'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF111827),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: emailController,
+                                enabled: !isSending,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.done,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                onFieldSubmitted: (_) => sendResetLink(),
+                                decoration: InputDecoration(
+                                  hintText: 'email_hint'.tr(),
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: SvgPicture.asset(
+                                      'assets/email.svg',
+                                      width: 20,
+                                      height: 20,
+                                      colorFilter: const ColorFilter.mode(
+                                        Color(0xFF0247C4),
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF0247C4),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  final email = value?.trim() ?? '';
+                                  if (email.isEmpty) return 'email_required'.tr();
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(email)) {
+                                    return 'email_invalid'.tr();
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: isSending
+                                          ? null
+                                          : () => Navigator.of(dialogContext).pop(),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF475569),
+                                        side: const BorderSide(
+                                          color: Color(0xFFCBD5E1),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: Text('cancel'.tr()),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: isSending ? null : sendResetLink,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF0247C4),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      child: isSending
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text('send_reset_link'.tr()),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         );
-      }
-    }
+      },
+    );
+
+    // showGeneralDialog completes as soon as the route is popped, while its
+    // reverse animation can still be using the text field for a few frames.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    emailController.dispose();
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
     if (_isDeletingAccount) return;
+    final usesPasswordProvider =
+        _authService.currentUserUsesPasswordProvider;
+    final deletePasswordController = TextEditingController();
+    final deleteFormKey = GlobalKey<FormState>();
 
     final confirm = await showGeneralDialog<bool>(
       context: context,
@@ -138,9 +424,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ],
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                    child: Form(
+                      key: deleteFormKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                         Container(
                           width: 64,
                           height: 64,
@@ -178,6 +466,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 1.4,
                           ),
                         ),
+                        if (usesPasswordProvider) ...[
+                          const SizedBox(height: 20),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'password_label'.tr(),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF111827),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: deletePasswordController,
+                            obscureText: true,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              if (deleteFormKey.currentState?.validate() ??
+                                  false) {
+                                Navigator.pop(context, true);
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'password_hint'.tr(),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: Color(0xFF0247C4),
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF0247C4),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            validator: (value) =>
+                                (value == null || value.isEmpty)
+                                ? 'password_required'.tr()
+                                : null,
+                          ),
+                        ],
                         const SizedBox(height: 28),
                         Row(
                           children: [
@@ -212,7 +561,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: MouseRegion(
                                 cursor: SystemMouseCursors.click,
                                 child: GestureDetector(
-                                  onTap: () => Navigator.pop(context, true),
+                                  onTap: () {
+                                    if (usesPasswordProvider &&
+                                        !(deleteFormKey.currentState
+                                                ?.validate() ??
+                                            false)) {
+                                      return;
+                                    }
+                                    Navigator.pop(context, true);
+                                  },
                                   behavior: HitTestBehavior.opaque,
                                   child: Container(
                                     height: 48,
@@ -245,7 +602,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -256,6 +614,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
+    final deletionPassword = deletePasswordController.text;
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    deletePasswordController.dispose();
     if (confirm != true || !context.mounted) return;
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -274,7 +635,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (user == null) {
       FlashySnackBar.show(
         context,
-        message: 'failed_to_delete_account'.tr(
+        message: 'failed_delete_account'.tr(
           namedArgs: {'error': 'user-not-found'},
         ),
         isError: true,
@@ -286,6 +647,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     var profileMarkedDeleted = false;
 
     try {
+      await _authService.reauthenticateForAccountDeletion(
+        password: usesPasswordProvider ? deletionPassword : null,
+      );
       await _firestore.deleteUserData();
       profileMarkedDeleted = true;
       await user.delete();
@@ -316,9 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_delete_account'.tr(
-            namedArgs: {'error': error.code},
-          ),
+          message: _deleteAccountErrorMessage(error),
           isError: true,
         );
       }
@@ -334,7 +696,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_delete_account'.tr(
+          message: 'failed_delete_account'.tr(
             namedArgs: {'error': error.runtimeType.toString()},
           ),
           isError: true,
@@ -342,6 +704,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _isDeletingAccount = false);
+    }
+  }
+
+  String _deleteAccountErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'wrong_password'.tr();
+      case 'password-required':
+        return 'password_required'.tr();
+      case 'too-many-requests':
+        return 'too_many_requests'.tr();
+      case 'network-request-failed':
+      case 'network-error':
+      case 'unavailable':
+        return 'network_error'.tr();
+      case 'canceled':
+      case 'popup-closed-by-user':
+      case 'reauthentication-cancelled':
+        return 'cancelled'.tr();
+      default:
+        return 'failed_delete_account'.tr(
+          namedArgs: {'error': error.code},
+        );
     }
   }
 

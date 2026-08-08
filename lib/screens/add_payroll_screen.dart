@@ -60,8 +60,10 @@ Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
   final DateTime payrollMonth;
+  final int? salaryDay;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onPayrollSaved;
   final VoidCallback? onBack;
   final bool readOnly;
 
@@ -69,8 +71,10 @@ class AddPayrollScreen extends StatefulWidget {
     super.key,
     required this.workerData,
     required this.payrollMonth,
+    this.salaryDay,
     this.onNotificationTap,
     this.onProfileTap,
+    this.onPayrollSaved,
     this.onBack,
     this.readOnly = false,
   });
@@ -108,7 +112,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool _isAttendanceLoading = true;
   bool _attendanceVerified = false;
   Object? _attendanceLoadError;
-bool _showNotifications = false;
+  bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
   double _prorationFactor = 1.0;
@@ -152,6 +156,11 @@ bool _showNotifications = false;
   @override
   void initState() {
     super.initState();
+    final configuredDay = widget.salaryDay;
+    _salaryDay =
+        configuredDay != null && configuredDay >= 1 && configuredDay <= 31
+        ? configuredDay
+        : null;
   }
 
   @override
@@ -285,12 +294,50 @@ bool _showNotifications = false;
     }
   }
 
+  bool get _isPaidRecord =>
+      widget.workerData['hasPayrollRecord'] == true &&
+      widget.workerData['isPaid'] == true;
+
+  // A paid payroll opened via the edit icon is already in edit/correction mode.
+  bool get _canEditInputs => !widget.readOnly;
+
+  // The pay period shown/used for this record. For a paid payroll we always
+  // keep the saved payPeriodStart/payPeriodEnd from the payroll document —
+  // never recomputed from the current salary schedule. For Payable/Unpaid
+  // payrolls we calculate from the current salary schedule.
+  (DateTime, DateTime) get _currentPayPeriod {
+    if (_isPaidRecord) {
+      final savedStart = widget.workerData['payPeriodStart'];
+      final savedEnd = widget.workerData['payPeriodEnd'];
+      final start = AppDateUtils.dateFromValue(savedStart);
+      final end = AppDateUtils.dateFromValue(savedEnd);
+      if (start != null && end != null) {
+        return (start, end);
+      }
+    }
+    return (
+      PayrollService.payPeriodStart(_payrollMonth, _salaryDay),
+      PayrollService.payPeriodEnd(_payrollMonth, _salaryDay),
+    );
+  }
+
   Future<void> _fetchMonthlyAttendance() async {
     if (_email.trim().isEmpty && _workerId.trim().isEmpty) {
       if (mounted) {
         setState(() => _isAttendanceLoading = false);
         _captureSavedValues();
       }
+      return;
+    }
+    if (_isPaidRecord) {
+      if (!mounted) return;
+      setState(() {
+        _attendanceVerified = true;
+        _attendanceLoadError = null;
+        _isAttendanceLoading = false;
+      });
+      _recalc();
+      _captureSavedValues();
       return;
     }
     if (widget.workerData['hasPayrollRecord'] == true &&
@@ -309,9 +356,14 @@ bool _showNotifications = false;
       }
       _salaryDay ??= await PreferencesService.getCompanySalaryDay();
 
-      final now = DateTime.now();
-      final currentPeriodStart = PayrollService.payPeriodStart(now, _salaryDay);
-      final currentPeriodEnd = PayrollService.payPeriodEnd(now, _salaryDay);
+      final currentPeriodStart = PayrollService.payPeriodStart(
+        _payrollMonth,
+        _salaryDay,
+      );
+      final currentPeriodEnd = PayrollService.payPeriodEnd(
+        _payrollMonth,
+        _salaryDay,
+      );
 
       final startMonth1 = DateTime(
         currentPeriodStart.year,
@@ -440,16 +492,11 @@ bool _showNotifications = false;
         widget.workerData['joiningDate'] ?? widget.workerData['dateOfJoining'],
       );
       if (joiningDate == null) return;
-      final now = DateTime.now();
-      final periodReference = DateTime(now.year, now.month, 15);
       final periodStart = PayrollService.payPeriodStart(
-        periodReference,
+        _payrollMonth,
         _salaryDay,
       );
-      final periodEnd = PayrollService.payPeriodEnd(
-        periodReference,
-        _salaryDay,
-      );
+      final periodEnd = PayrollService.payPeriodEnd(_payrollMonth, _salaryDay);
       Set<DateTime>? workingDates;
       try {
         workingDates = await _firestore.getWorkingDates(
@@ -497,11 +544,12 @@ bool _showNotifications = false;
     final absentsText = _absentsCtrl.text.trim();
     final leavesText = _leavesCtrl.text.trim();
     final salaryText = _salaryStr.trim();
+    final salaryAmount = PayrollService.extractSalary(salaryText);
 
     if (workDaysText.isEmpty &&
         absentsText.isEmpty &&
         leavesText.isEmpty &&
-        (salaryText.isEmpty || salaryText == r'$ 0')) {
+        (salaryText.isEmpty || salaryAmount <= 0)) {
       FlashySnackBar.show(
         context,
         message: 'please_fill_all_fields'.tr(),
@@ -518,7 +566,7 @@ bool _showNotifications = false;
     ];
 
     for (final (value, message, isCurrency) in validators) {
-      if (value.isEmpty || (isCurrency && value == r'$ 0')) {
+      if (value.isEmpty || (isCurrency && salaryAmount <= 0)) {
         FlashySnackBar.show(context, message: message, isError: true);
         return;
       }
@@ -534,12 +582,12 @@ bool _showNotifications = false;
     }
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final now = DateTime.now();
-    final payPeriod = _payrollMonth;
     final payrollIdentity = _workerId.trim().isNotEmpty
         ? _workerId.trim()
         : _email.trim().toLowerCase();
+    final (periodStart, periodEnd) = _currentPayPeriod;
     final payrollKey =
-        '${payrollIdentity}_${PayrollService.payrollPeriodLabel(payPeriod)}';
+        '${payrollIdentity}_${PayrollService.periodDateKey(periodStart)}_${PayrollService.periodDateKey(periodEnd)}';
     final netAmount =
         (_calcResult['netSalary'] as num?)?.toDouble() ??
         PayrollService.extractSalary(_calculatedNet);
@@ -557,11 +605,11 @@ bool _showNotifications = false;
       'contact': _phone,
       'status': 'Paid',
       'profileImage': _profileImage,
-      'totalWorkDays': _workDaysCtrl.text.trim(),
-      'absents': _absentsCtrl.text.trim(),
+      'totalWorkDays': int.tryParse(_workDaysCtrl.text.trim()) ?? 0,
+      'absents': int.tryParse(_absentsCtrl.text.trim()) ?? 0,
       'paidLeaves': _paidLeaves,
-      'unpaidLeaves': _unpaidLeaves.toString(),
-      'leaves': _leavesCtrl.text.trim(),
+      'unpaidLeaves': _unpaidLeaves,
+      'leaves': int.tryParse(_leavesCtrl.text.trim()) ?? 0,
       'overtimeAmount': PayrollService.extractSalary(_overtimeAmountCtrl.text),
       'absentDeduction': PayrollService.extractSalary(
         _absentDeductionCtrl.text,
@@ -571,10 +619,14 @@ bool _showNotifications = false;
       'salary': _salaryStr,
       'currency': _currencyCode,
       'salaryType': (widget.workerData['salaryType'] ?? 'Monthly').toString(),
+      'salaryPaymentDay': _salaryDay,
       'netSalary': _calculatedNet,
       'netSalaryAmount': netAmount,
       'netSalaryFormatted': _calculatedNet,
-      'payPeriod': payPeriod,
+      'payPeriod': periodEnd,
+      'payPeriodStart': periodStart,
+      'payPeriodEnd': periodEnd,
+      'dueDate': periodEnd,
       'payrollKey': payrollKey,
       'prorationFactor': _prorationFactor,
       'paidAt': paidAt,
@@ -675,11 +727,12 @@ bool _showNotifications = false;
     }
     if (mounted) setState(() => _isSaving = false);
     if (mounted) {
+      widget.onPayrollSaved?.call();
       widget.onBack?.call();
     }
   }
 
-Future<void> _handleCancelPayroll() async {
+  Future<void> _handleCancelPayroll() async {
     if (_isSaving ||
         _isCancellingPayroll ||
         widget.workerData['hasPayrollRecord'] != true) {
@@ -791,13 +844,9 @@ Future<void> _handleCancelPayroll() async {
       'companyEmail': (companyProfile['email'] ?? '').toString(),
       'companyPhone': (companyProfile['phone'] ?? '').toString(),
       'companyId': (companyProfile['companyId'] ?? '').toString(),
-      'companyStampImageUrl':
-          AuthService.companyStampNotifier.value?.isNotEmpty == true
-          ? AuthService.companyStampNotifier.value
-          : (companyProfile['companyStampUrl'] ?? '').toString(),
-      'companyLogoUrl': AuthService.profilePicNotifier.value?.isNotEmpty == true
-          ? AuthService.profilePicNotifier.value
-          : (companyProfile['profilePicUrl'] ?? '').toString(),
+      'companyStampImageUrl': (companyProfile['companyStampUrl'] ?? '')
+          .toString(),
+      'companyLogoUrl': (companyProfile['profilePicUrl'] ?? '').toString(),
       'workerId': _workerId,
     });
 
@@ -1324,6 +1373,8 @@ Future<void> _handleCancelPayroll() async {
   Widget _buildPayrollDataHeader() {
     final hasRecord = widget.workerData['hasPayrollRecord'] == true;
     final showEditButtons = !widget.readOnly;
+    final showSaveButton =
+        showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
     final showCancelButton = hasRecord && !_isCancellingPayroll;
 
     return Row(
@@ -1425,8 +1476,7 @@ Future<void> _handleCancelPayroll() async {
                       ),
               ),
             ],
-            if (showEditButtons &&
-                (hasRecord != true || _hasUnsavedChanges)) ...[
+            if (showSaveButton) ...[
               if (hasRecord) const SizedBox(width: 10),
               ElevatedButton(
                 onPressed: _isSaving || _isCancellingPayroll
@@ -1462,7 +1512,13 @@ Future<void> _handleCancelPayroll() async {
                         ),
                       )
                     : Text(
-                        hasRecord ? 'save_changes'.tr() : 'save_payroll'.tr(),
+                        _isPaidRecord
+                            ? (_hasUnsavedChanges
+                                  ? 'save_correction'.tr()
+                                  : 'save'.tr())
+                            : (hasRecord
+                                  ? 'save_changes'.tr()
+                                  : 'save_payroll'.tr()),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
               ),
@@ -1474,17 +1530,7 @@ Future<void> _handleCancelPayroll() async {
   }
 
   Widget _buildEmployeeBanner() {
-    final int? salaryDay = _salaryDay;
-    final DateTime firstDay;
-    final DateTime lastDay;
-    final now = DateTime.now();
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      firstDay = DateTime(now.year, now.month, 1);
-      lastDay = DateTime(now.year, now.month + 1, 0);
-    } else {
-      firstDay = PayrollService.payPeriodStart(now, salaryDay);
-      lastDay = PayrollService.payPeriodEnd(now, salaryDay);
-    }
+    final (firstDay, lastDay) = _currentPayPeriod;
     final monthFmt = DateFormat('MMM');
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '
@@ -1664,7 +1710,7 @@ Future<void> _handleCancelPayroll() async {
                   '0',
                   _overtimeAmountCtrl,
                   isCurrency: true,
-                  readOnly: widget.readOnly,
+                  readOnly: !_canEditInputs,
                 ),
               ),
             ],
@@ -1680,7 +1726,7 @@ Future<void> _handleCancelPayroll() async {
                   '0',
                   _absentDeductionCtrl,
                   isCurrency: true,
-                  readOnly: widget.readOnly,
+                  readOnly: !_canEditInputs,
                 ),
               ),
               const SizedBox(width: 8),

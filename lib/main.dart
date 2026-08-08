@@ -34,14 +34,18 @@ Future<void> main() async {
 
         await PreferencesService.initFromPrefs();
 
-        final cachedUrl = PreferencesService.cachedProfilePicUrl;
-        if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
-          AuthService.profilePicNotifier.value = cachedUrl;
-        }
+        // Local image caches belong to guest mode only. Authenticated company
+        // branding is loaded from that user's Firebase profile after sign-in.
+        if (PreferencesService.cachedIsGuest) {
+          final cachedUrl = PreferencesService.cachedProfilePicUrl;
+          if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
+            AuthService.profilePicNotifier.value = cachedUrl;
+          }
 
-        final cachedStamp = PreferencesService.cachedCompanyStampUrl;
-        if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
-          AuthService.companyStampNotifier.value = cachedStamp;
+          final cachedStamp = PreferencesService.cachedCompanyStampUrl;
+          if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
+            AuthService.companyStampNotifier.value = cachedStamp;
+          }
         }
 
         await Firebase.initializeApp(

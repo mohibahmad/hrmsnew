@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -142,6 +143,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   bool _isEditing = false;
   bool _initialized = false;
   int _profileLoadToken = 0;
+  StreamSubscription<Map<String, dynamic>?>? _profileSub;
   String? _profilePicUrl;
   String? _companyStampUrl;
   Uint8List? _newCompanyStampBytes;
@@ -168,6 +170,21 @@ class _ProfileBodyState extends State<ProfileBody> {
     if (_initialized && !isGuest) return;
     _initialized = true;
     _loadProfile();
+    if (!isGuest) {
+      _profileSub = _firestore.userProfileStream.listen(
+        (profile) {
+          if (!mounted || _isEditing) return;
+          _applyAuthenticatedProfile(profile);
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'ProfileStream',
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -187,6 +204,7 @@ class _ProfileBodyState extends State<ProfileBody> {
 
   @override
   void dispose() {
+    _profileSub?.cancel();
     _businessNameController.dispose();
     _companyIdController.dispose();
     _emailController.dispose();
@@ -205,6 +223,44 @@ class _ProfileBodyState extends State<ProfileBody> {
   String? _profileImageText(dynamic value) {
     final text = _profileText(value).trim();
     return text.isEmpty ? null : text;
+  }
+
+  void _applyAuthenticatedProfile(Map<String, dynamic>? profile) {
+    if (!mounted) return;
+    if (profile == null) {
+      setState(() {
+        _profilePicUrl = null;
+        _companyStampUrl = null;
+        AuthService.profilePicNotifier.value = null;
+        AuthService.companyStampNotifier.value = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final normalizedCurrency = CurrencyUtils.normalize(profile['currency']);
+    final profileImage = _profileImageText(profile['profilePic']);
+    final companyStamp = _profileImageText(profile['companyStampUrl']);
+    setState(() {
+      _businessNameController.text = _profileText(profile['businessName']);
+      _companyIdController.text = _profileText(profile['companyId']);
+      _emailController.text = _profileText(
+        profile['email'],
+        fallback: _authService.currentUser?.email ?? '',
+      );
+      _currencyController.text = normalizedCurrency;
+      _contact1Controller.text = _profileText(profile['contact1']);
+      _contact2Controller.text = _profileText(profile['contact2']);
+      _addressController.text = _profileText(profile['address']);
+      _profilePicUrl = profileImage;
+      _companyStampUrl = companyStamp;
+      _newCompanyStampBytes = null;
+      _clearCompanyStamp = false;
+      AuthService.profilePicNotifier.value = profileImage;
+      AuthService.companyStampNotifier.value = companyStamp;
+      PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -241,40 +297,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       final profile = await _firestore.getUserProfile();
       if (!mounted || loadToken != _profileLoadToken) return;
 
-      if (profile != null) {
-        final storedCurrency = profile['currency'];
-
-        final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
-        final profileImage = _profileImageText(profile['profilePic']);
-        final companyStamp = _profileImageText(profile['companyStampUrl']);
-        setState(() {
-          _businessNameController.text = _profileText(profile['businessName']);
-          _companyIdController.text = _profileText(profile['companyId']);
-          _emailController.text = _profileText(
-            profile['email'],
-            fallback: _authService.currentUser?.email ?? '',
-          );
-          _currencyController.text = normalizedCurrency;
-          _contact1Controller.text = _profileText(profile['contact1']);
-          _contact2Controller.text = _profileText(profile['contact2']);
-          _addressController.text = _profileText(profile['address']);
-          _profilePicUrl = profileImage;
-          _companyStampUrl = companyStamp;
-          _newCompanyStampBytes = null;
-          _clearCompanyStamp = false;
-          AuthService.profilePicNotifier.value = profileImage;
-          AuthService.companyStampNotifier.value = companyStamp;
-          
-          PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _profilePicUrl = AuthService.profilePicNotifier.value;
-          _companyStampUrl = AuthService.companyStampNotifier.value;
-          _isLoading = false;
-        });
-      }
+      _applyAuthenticatedProfile(profile);
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'LoadProfile');
       if (!mounted || loadToken != _profileLoadToken) return;

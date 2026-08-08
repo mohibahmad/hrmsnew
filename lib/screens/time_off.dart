@@ -87,6 +87,16 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   String _normalizedValue(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
+  String _localizedLeaveType(String type) {
+    return switch (TimeOffService.normalizeLeaveType(type)) {
+      'Annual Leave' => 'annual_leave'.tr(),
+      'Sick Leave' => 'sick_leave_type'.tr(),
+      'Casual Leave' => 'casual_leave_type'.tr(),
+      'Medical Leave' => 'medical_leave_type'.tr(),
+      final value => value,
+    };
+  }
+
   
   
   
@@ -753,19 +763,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildFilterTabs() {
-    final defaultPositions = [
-      'designer'.tr(),
-      'developer'.tr(),
-      'software_engineer'.tr(),
-      'sales'.tr(),
-      'hr'.tr(),
-      'finance'.tr(),
-      'marketing'.tr(),
-      'operations'.tr(),
-      'it_support'.tr(),
-      'product'.tr(),
-      'research'.tr(),
-    ];
+    const defaultPositions = LocalizationHelper.defaultJobPositions;
     final actualPositions = <String>{};
     final positionNormalizer = <String, String>{};
     for (final w in _workersList) {
@@ -1185,20 +1183,28 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final String email = (data['email'] ?? '').toString();
     final String notes = (data['notes'] ?? '').toString();
 
-    final String workerId = (data['id'] ?? data['workerId'] ?? '').toString();
+    final String workerId = (data['workerId'] ?? data['id'] ?? '')
+        .toString()
+        .trim();
+    final normalizedEmail = email.trim().toLowerCase();
     final workerRecords = _rawTimeoffDocs.where((d) {
       if (!TimeOffService.isActiveRecord(d)) return false;
-      final recWorkerId = (d['workerId'] ?? '').toString();
-      final recEmail = (d['email'] ?? '').toString();
+      final recWorkerId = (d['workerId'] ?? '').toString().trim();
+      final recEmail = (d['email'] ?? '').toString().trim().toLowerCase();
       if (workerId.isNotEmpty && workerId == recWorkerId) return true;
-      if (email.isNotEmpty && email == recEmail) return true;
+      if (normalizedEmail.isNotEmpty && normalizedEmail == recEmail) {
+        return true;
+      }
       return false;
     }).toList();
 
-    final totalLeaveDays = workerRecords.fold<int>(
+    final leaveDatesByType = TimeOffService.leaveDatesByTypeForWorker(
+      data,
+      workerRecords,
+    );
+    final totalLeaveDays = leaveDatesByType.values.fold<int>(
       0,
-      (total, record) =>
-          total + TimeOffService.selectedDatesForRecord(record).length,
+      (total, dates) => total + dates.length,
     );
     final String selectedDays = totalLeaveDays.toString();
 
@@ -1206,11 +1212,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.92 : 460.0;
 
     final List<Map<String, dynamic>> allDatesWithTypes = [];
-    for (final record in workerRecords) {
-      final recordType = TimeOffService.leaveType(record);
-      final recordDates = TimeOffService.selectedDatesForRecord(record);
-      for (final date in recordDates) {
-        allDatesWithTypes.add({'date': date, 'type': recordType});
+    for (final entry in leaveDatesByType.entries) {
+      for (final date in entry.value) {
+        allDatesWithTypes.add({'date': date, 'type': entry.key});
       }
     }
     allDatesWithTypes.sort(
@@ -1354,7 +1358,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'Available Leave Days',
+                                  title: 'available_leave_days'.tr(),
                                   value:
                                       '${TimeOffService.totalAvailableLeaves(data)}',
                                 ),
@@ -1372,8 +1376,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'requested_days'.tr(),
-                                  value:
-                                      '${data['requestedDays'] ?? selectedDays}',
+                                  value: selectedDays,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1386,7 +1389,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   ),
                                   title: 'remaining_days'.tr(),
                                   value:
-                                      '${TimeOffService.remainingPaidLeave(data, _rawTimeoffDocs)}',
+                                      '${TimeOffService.totalAvailableLeaves(data)}',
                                 ),
                               ),
                             ],
@@ -1430,7 +1433,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           if (workerRecords.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Text(
-                              'Leave Records',
+                              'leave_records'.tr(),
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -1450,12 +1453,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   LeaveColors.getColor(recordType);
                               final typeBg =
                                   LeaveColors.getBgColor(recordType);
+                              final localeName = context.locale.toString();
                               final dateStr = recordDates.isEmpty
                                   ? ''
                                   : recordDates.length == 1
-                                      ? DateFormat('dd MMM yyyy')
+                                      ? DateFormat.yMMMd(localeName)
                                           .format(recordDates.first)
-                                      : '${DateFormat('dd MMM').format(recordDates.first)} – ${DateFormat('dd MMM yyyy').format(recordDates.last)}';
+                                      : '${DateFormat.MMMd(localeName).format(recordDates.first)} – ${DateFormat.yMMMd(localeName).format(recordDates.last)}';
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 6),
                                 padding: const EdgeInsets.symmetric(
@@ -1481,7 +1485,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        recordType,
+                                        _localizedLeaveType(recordType),
                                         style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -1529,7 +1533,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
 
     if (result == 'edit' && mounted) {
-      final wId = (data['id'] ?? data['workerId'] ?? '').toString().trim();
+      final wId = (data['workerId'] ?? data['id'] ?? '').toString().trim();
       final wEmail = (data['email'] ?? '').toString().trim().toLowerCase();
 
       final activeRecords = _rawTimeoffDocs.where((r) {
@@ -1555,9 +1559,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       final mergedWorker = <String, dynamic>{...data};
       if (latestRecord != null) {
         mergedWorker.addAll(latestRecord);
-        mergedWorker.remove('selectedDates');
-        mergedWorker.remove('startDate');
-        mergedWorker.remove('endDate');
       }
 
       setState(() {
@@ -1717,6 +1718,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     String workerName, [
     String? leaveType,
   ]) {
+    final typeCounts = <String, int>{};
+    for (final item in datesWithTypes) {
+      final rawType = (item['type'] ?? leaveType ?? '').toString();
+      final normalizedType = TimeOffService.normalizeLeaveType(rawType);
+      if (normalizedType.isEmpty) continue;
+      typeCounts[normalizedType] = (typeCounts[normalizedType] ?? 0) + 1;
+    }
+    const typeOrder = [
+      'Annual Leave',
+      'Sick Leave',
+      'Casual Leave',
+      'Medical Leave',
+    ];
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -1754,7 +1769,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Selected Dates (${datesWithTypes.length} ${'total_leaves'.tr()})',
+                        'selected_dates_count_title'.tr(
+                          namedArgs: {'count': '${datesWithTypes.length}'},
+                        ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -1776,6 +1793,41 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   ],
                 ),
               ),
+              if (typeCounts.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  color: const Color(0xFFF8FAFC),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: typeOrder.where(typeCounts.containsKey).map((type) {
+                      final color = LeaveColors.getColor(type);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: LeaveColors.getBgColor(type),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          '${_localizedLeaveType(type)}: ${typeCounts[type]}',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1783,7 +1835,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       ? Padding(
                           padding: const EdgeInsets.all(24),
                           child: Text(
-                            'No dates selected'.tr(),
+                            'no_dates_selected'.tr(),
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.grey,
@@ -1808,7 +1860,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             final effectiveType = (type?.isNotEmpty == true)
                                 ? type
                                 : leaveType;
-                            final String displayType = effectiveType ?? '';
+                            final String displayType = effectiveType == null
+                                ? ''
+                                : _localizedLeaveType(effectiveType);
+                            final localeName = context.locale.toString();
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Row(
@@ -1833,23 +1888,31 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(
-                                      DateFormat('dd/MM/yyyy').format(date),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat('EEEE').format(date),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF666666),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          DateFormat.yMMMd(localeName)
+                                              .format(date),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                        Text(
+                                          DateFormat.EEEE(localeName)
+                                              .format(date),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF666666),
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   if (displayType.isNotEmpty) ...[

@@ -1386,6 +1386,18 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     if (!_validateExperienceData()) return;
 
+    final validatedSalaryAmount = double.tryParse(
+      _salaryAmountController.text.trim().replaceAll(',', ''),
+    );
+    if (validatedSalaryAmount == null || validatedSalaryAmount <= 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_salary_amount'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     final joiningDate = _parseWorkerDate(_joiningDate);
     if (joiningDate == null) return;
 
@@ -1571,11 +1583,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             : 'On-Site',
         'experienceLevel': _experienceLevelController.text.trim(),
         'education': _educationController.text.trim(),
-        'salaryAmount':
-            double.tryParse(
-              _salaryAmountController.text.trim().replaceAll(',', ''),
-            ) ??
-            0.0,
+        'salaryAmount': validatedSalaryAmount,
         'annualLeaves': int.tryParse(_annualLeavesController.text.trim()) ?? 0,
         'availableAnnualLeaves':
             int.tryParse(_annualLeavesController.text.trim()) ?? 0,

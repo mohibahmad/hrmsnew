@@ -339,6 +339,46 @@ class TimeOffService {
     return result;
   }
 
+  static Map<String, List<DateTime>> leaveDatesByTypeForWorker(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> timeOffRecords,
+  ) {
+    final result = <String, Set<DateTime>>{
+      'Annual Leave': <DateTime>{},
+      'Sick Leave': <DateTime>{},
+      'Casual Leave': <DateTime>{},
+      'Medical Leave': <DateTime>{},
+    };
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+    for (final record in timeOffRecords) {
+      if (!isActiveRecord(record) || !isPaidRecord(record)) continue;
+      if (!_belongsToWorker(
+        record,
+        workerId: workerId,
+        workerEmail: workerEmail,
+        workerName: workerName,
+      )) {
+        continue;
+      }
+      final type = normalizeLeaveType(
+        (record['action'] ?? record['type'] ?? '').toString(),
+      );
+      final dates = result[type];
+      if (dates == null) continue;
+      dates.addAll(selectedDatesForRecord(record));
+    }
+
+    return {
+      for (final entry in result.entries)
+        entry.key: entry.value.toList()..sort(),
+    };
+  }
+
   static int configuredPaidLeaveAllowance(Map<String, dynamic> worker) {
     final rawAnnual = worker['annualLeaves'];
     final annual = rawAnnual is num

@@ -377,19 +377,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 
   Widget _buildFilterTabs() {
-    final defaultPositions = [
-      'designer'.tr(),
-      'developer'.tr(),
-      'software_engineer'.tr(),
-      'sales'.tr(),
-      'hr'.tr(),
-      'finance'.tr(),
-      'marketing'.tr(),
-      'operations'.tr(),
-      'it_support'.tr(),
-      'product'.tr(),
-      'research'.tr(),
-    ];
+    const defaultPositions = LocalizationHelper.defaultJobPositions;
     final actualPositions = <String>{};
     final positionNormalizer = <String, String>{};
     for (final w in _allWorkers) {
@@ -418,7 +406,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      ...positionsToShow.map((p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)}),
+      ...positionsToShow.map(
+        (p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)},
+      ),
     ];
     return Container(
       width: double.infinity,

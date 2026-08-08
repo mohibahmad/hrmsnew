@@ -135,6 +135,22 @@ void main() {
     });
   });
 
+  group('validateWorkerData salary amount', () {
+    testWidgets('rejects an empty salary amount', (tester) async {
+      await initLocalization(tester);
+      final worker = _validWorker()..['salaryAmount'] = '';
+      final errors = _validate(worker);
+      expect(errors.containsKey('salaryAmount'), isTrue);
+    });
+
+    testWidgets('rejects a zero salary amount', (tester) async {
+      await initLocalization(tester);
+      final worker = _validWorker()..['salaryAmount'] = '0';
+      final errors = _validate(worker);
+      expect(errors.containsKey('salaryAmount'), isTrue);
+    });
+  });
+
   group('validateWorkerData email domain', () {
     testWidgets('rejects @example.com placeholder email domain', (tester) async {
       await initLocalization(tester);

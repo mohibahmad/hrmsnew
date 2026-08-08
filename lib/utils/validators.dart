@@ -165,7 +165,13 @@ class Validators {
     }
 
     final salary = parseAmount(w['salaryAmount']);
-    if (salary != null && salary < minSalaryAmount) {
+    if (salary == null || !salary.isFinite || salary <= 0) {
+      throw ValidationException(
+        'please_enter_salary_amount'.tr(),
+        field: 'salaryAmount',
+      );
+    }
+    if (salary < minSalaryAmount) {
       throw ValidationException(
         'salary_min_amount_error'.tr(
           namedArgs: {'amount': minSalaryAmount.toStringAsFixed(0)},

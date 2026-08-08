@@ -55,7 +55,7 @@ class DashboardChartService {
 
       final rawValue = valueOf(record);
       final value = (rawValue.isFinite && rawValue > 0)
-          ? rawValue.clamp(0, 1000000000.0).toDouble()
+          ? rawValue
           : 0.0;
       if (value == 0) continue;
 
@@ -143,7 +143,7 @@ class DashboardChartService {
     final currentValue = now ?? DateTime.now();
     final start = AppDateUtils.periodStart(period, currentValue);
     final end = AppDateUtils.periodEnd(period, currentValue);
-    
+
     final target = _dateOnly(date);
     return !target.isBefore(_dateOnly(start)) && !target.isAfter(_dateOnly(end));
   }
@@ -172,12 +172,6 @@ class DashboardChartService {
     return leaveDays;
   }
 
-  
-  
-  
-  
-  
-  
   static List<Map<String, dynamic>> mergedLeaveDaysForPeriod({
     required List<Map<String, dynamic>> timeOffRecords,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -186,8 +180,7 @@ class DashboardChartService {
     List<Map<String, dynamic>> workers = const [],
   }) {
     final merged = <String, Map<String, dynamic>>{};
-    
-    
+
     final identityIndex = workers.isEmpty
         ? null
         : _buildWorkerIdentityIndex(workers);
@@ -221,7 +214,7 @@ class DashboardChartService {
       }
 
       final type = _attendanceLeaveType(attendance);
-      
+
       if (type.isEmpty) continue;
 
       final normalized = <String, dynamic>{
@@ -259,10 +252,6 @@ class DashboardChartService {
     return 'Annual Leave';
   }
 
-  
-  
-  
-  
   static Map<String, String> _buildWorkerIdentityIndex(
     List<Map<String, dynamic>> workers,
   ) {
@@ -303,7 +292,6 @@ class DashboardChartService {
     return index;
   }
 
-  
   static String _canonicalWorkerKey(
     Map<String, dynamic> record,
     Map<String, String> index,

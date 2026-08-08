@@ -42,7 +42,7 @@ class PayrollService {
       return DateTime(referenceDate.year, referenceDate.month + 1, 0);
     }
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    if (referenceDate.day < effectiveDay) {
+    if (referenceDate.day <= effectiveDay) {
       return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
     }
     final nextMonth = DateTime(referenceDate.year, referenceDate.month + 1, 1);
@@ -53,19 +53,72 @@ class PayrollService {
     );
   }
 
+  static DateTime payrollDueDate(DateTime payrollMonth, int? salaryDay) {
+    return payPeriodEnd(payrollMonth, salaryDay);
+  }
+
+  static bool isPayrollReminderDueForPeriod(
+    DateTime referenceDate,
+    DateTime payrollMonth,
+    int? salaryDay, {
+    int reminderDays = 3,
+  }) {
+    final today = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      referenceDate.day,
+    );
+    final dueDate = payrollDueDate(payrollMonth, salaryDay);
+    return !today.isBefore(dueDate.subtract(Duration(days: reminderDays)));
+  }
+
+  static bool isPayrollPeriodDue(
+    DateTime referenceDate,
+    DateTime payrollMonth,
+    int? salaryDay,
+  ) {
+    final today = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      referenceDate.day,
+    );
+    return !today.isBefore(payrollDueDate(payrollMonth, salaryDay));
+  }
+
+  static DateTime latestOpenPayrollMonth(
+    DateTime referenceDate,
+    int? salaryDay,
+  ) {
+    final calendarMonth = currentPayrollMonth(referenceDate: referenceDate);
+    return isPayrollPeriodDue(referenceDate, calendarMonth, salaryDay)
+        ? nextPayrollMonth(calendarMonth)
+        : calendarMonth;
+  }
+
   static bool isPayDateReminderDue(
     DateTime referenceDate,
     int? salaryDay, {
     int reminderDays = 3,
   }) {
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return true;
+    final today = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      referenceDate.day,
+    );
+    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+      // No salary day configured: the current calendar month is the pay
+      // period, and the month end is the due date.
+      final dueDate = DateTime(referenceDate.year, referenceDate.month + 1, 0);
+      return dueDate.difference(today).inDays <= reminderDays;
+    }
     final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    final today = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
     if (today.day >= effectiveDay) return true;
-    final nextPay = nextPayDate(referenceDate, salaryDay);
-    final payDay = DateTime(nextPay.year, nextPay.month, nextPay.day);
-    final diff = payDay.difference(today).inDays;
-    return diff <= reminderDays;
+    final dueDate = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      effectiveDay,
+    );
+    return dueDate.difference(today).inDays <= reminderDays;
   }
 
   static bool isPayDate(DateTime referenceDate, int? salaryDay) {
@@ -76,6 +129,11 @@ class PayrollService {
 
   static String payrollPeriodLabel(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  /// Renders a date as `yyyy-MM-dd` for use inside period-based payroll keys.
+  static String _pad2(int n) => n.toString().padLeft(2, '0');
+  static String periodDateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${_pad2(d.month)}-${_pad2(d.day)}';
 
   static DateTime? parsePayrollPeriodLabel(dynamic value) {
     final match = RegExp(
@@ -131,7 +189,6 @@ class PayrollService {
     return joiningDate.isBefore(periodEnd);
   }
 
-  
   static bool allWorkersHavePayrollRecords(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
@@ -158,7 +215,6 @@ class PayrollService {
     return combined.every((worker) => worker['hasPayrollRecord'] == true);
   }
 
-  
   static bool hasUnpaidWorkers(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
@@ -172,6 +228,43 @@ class PayrollService {
       salaryDay: salaryDay,
     );
     return combined.any((worker) => worker['isPaid'] != true);
+  }
+
+  /// Canonical current-period query used by reminders and Pay All.
+  static List<Map<String, dynamic>> unpaidWorkersForPeriod(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    required DateTime month,
+    int? salaryDay,
+    bool allowUndatedRecords = false,
+    String? companyCurrency,
+  }) {
+    return combinePayroll(
+      workersList,
+      rawPayrollDocs,
+      month: month,
+      salaryDay: salaryDay,
+      allowUndatedRecords: allowUndatedRecords,
+      companyCurrency: companyCurrency,
+    ).where((worker) => worker['isPaid'] != true).toList();
+  }
+
+  static bool allWorkersPaidForPeriod(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    required DateTime month,
+    int? salaryDay,
+    bool allowUndatedRecords = false,
+    String? companyCurrency,
+  }) {
+    return unpaidWorkersForPeriod(
+      workersList,
+      rawPayrollDocs,
+      month: month,
+      salaryDay: salaryDay,
+      allowUndatedRecords: allowUndatedRecords,
+      companyCurrency: companyCurrency,
+    ).isEmpty;
   }
 
   static int unpaidWorkerCountForMonth(
@@ -226,6 +319,19 @@ class PayrollService {
   }
 
   static bool isPayrollRecordPaid(Map<String, dynamic> record) {
+    final explicitSalaryValues = [
+      record['salaryAmount'],
+      record['salary'],
+      record['baseSalary'],
+      record['grossSalary'],
+    ].where(_hasValue).toList();
+    if (explicitSalaryValues.isNotEmpty &&
+        explicitSalaryValues.every(
+          (value) => extractSalary(value.toString()) <= 0,
+        )) {
+      return false;
+    }
+
     if (_isTruthy(record['isPaid']) || _isTruthy(record['paid'])) {
       return true;
     }
@@ -410,19 +516,22 @@ class PayrollService {
           .trim();
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final identity = workerId.isNotEmpty ? workerId : email;
-      final canonicalPayrollKey = identity.isEmpty
+      final newPayrollKey = identity.isEmpty
+          ? ''
+          : '${identity}_${periodDateKey(payPeriodStart(targetMonth, salaryDay))}_${periodDateKey(payPeriodEnd(targetMonth, salaryDay))}'
+                .toLowerCase();
+      final legacyPayrollKey = identity.isEmpty
           ? ''
           : '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
+      final canonicalKeys = <String>{newPayrollKey, legacyPayrollKey}
+        ..remove('');
 
-      final canonicalRecord = canonicalPayrollKey.isEmpty
+      final canonicalRecord = canonicalKeys.isEmpty
           ? null
           : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
-              (record) =>
-                  (record?['payrollKey'] ?? '')
-                      .toString()
-                      .trim()
-                      .toLowerCase() ==
-                  canonicalPayrollKey,
+              (record) => canonicalKeys.contains(
+                (record?['payrollKey'] ?? '').toString().trim().toLowerCase(),
+              ),
               orElse: () => null,
             );
       final canonicalRecordMovedOut =
@@ -443,9 +552,9 @@ class PayrollService {
         final aKey = (a['payrollKey'] ?? '').toString().trim().toLowerCase();
         final bKey = (b['payrollKey'] ?? '').toString().trim().toLowerCase();
         final aIsCanonical =
-            canonicalPayrollKey.isNotEmpty && aKey == canonicalPayrollKey;
+            canonicalKeys.isNotEmpty && canonicalKeys.contains(aKey);
         final bIsCanonical =
-            canonicalPayrollKey.isNotEmpty && bKey == canonicalPayrollKey;
+            canonicalKeys.isNotEmpty && canonicalKeys.contains(bKey);
 
         if (aIsCanonical != bIsCanonical) {
           return bIsCanonical ? 1 : -1;
@@ -498,7 +607,7 @@ class PayrollService {
             companyCurrencyCode == null || historicalNetSalary.isEmpty
             ? historicalNetSalary
             : formatAmountInCurrency(historicalNetSalary, companyCurrencyCode);
-        
+
         final paid = isPayrollRecordPaid(payrollRecord);
 
         combined.add({
@@ -605,6 +714,23 @@ class PayrollService {
       if (parsed != null) return parsed;
     }
     final payrollKey = (record['payrollKey'] ?? '').toString();
+    // New period-range format: identity_YYYY-MM-DD_YYYY-MM-DD (end date wins).
+    final dateRangeMatch = RegExp(
+      r'(\d{4})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})$',
+    ).firstMatch(payrollKey);
+    if (dateRangeMatch != null) {
+      final year = int.tryParse(dateRangeMatch.group(4)!);
+      final month = int.tryParse(dateRangeMatch.group(5)!);
+      final day = int.tryParse(dateRangeMatch.group(6)!);
+      if (year != null &&
+          month != null &&
+          day != null &&
+          month >= 1 &&
+          month <= 12) {
+        return DateTime(year, month, day);
+      }
+    }
+    // Legacy month format: identity_YYYY-MM.
     final periodMatch = RegExp(r'(\d{4})-(\d{2})$').firstMatch(payrollKey);
     if (periodMatch != null) {
       final year = int.tryParse(periodMatch.group(1)!);
@@ -672,8 +798,9 @@ class PayrollService {
     if (salaryStr.isEmpty) return 0;
     final trimmed = salaryStr.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
-    final numericPart =
-        firstDigit == null ? trimmed : trimmed.substring(firstDigit.start);
+    final numericPart = firstDigit == null
+        ? trimmed
+        : trimmed.substring(firstDigit.start);
     final suffix = RegExp(
       r'([KMBT])\s*$',
       caseSensitive: false,
@@ -821,13 +948,16 @@ class PayrollService {
     final leaveVal = extractSalary(leaveDeduction);
     final customVal = extractSalary(customDeduction);
 
-    final subtotal = (periodSalary * prorationFactor +
-            overtimeVal -
-            absentVal -
-            leaveVal -
-            customVal)
-        .clamp(0.0, double.infinity);
-    final taxDeduction = taxRatePercent > 0 ? (subtotal * (taxRatePercent / 100)) : 0.0;
+    final subtotal =
+        (periodSalary * prorationFactor +
+                overtimeVal -
+                absentVal -
+                leaveVal -
+                customVal)
+            .clamp(0.0, double.infinity);
+    final taxDeduction = taxRatePercent > 0
+        ? (subtotal * (taxRatePercent / 100))
+        : 0.0;
     final netSalary = subtotal - taxDeduction;
     return netSalary.clamp(0.0, double.infinity).toDouble();
   }
@@ -842,7 +972,11 @@ class PayrollService {
     final join = joiningDate == null
         ? null
         : DateTime(joiningDate.year, joiningDate.month, joiningDate.day);
-    final start = DateTime(periodStart.year, periodStart.month, periodStart.day);
+    final start = DateTime(
+      periodStart.year,
+      periodStart.month,
+      periodStart.day,
+    );
     final end = DateTime(periodEnd.year, periodEnd.month, periodEnd.day);
     if (join == null || !join.isAfter(start)) return 1.0;
     if (!join.isBefore(end)) return 0.0;
@@ -854,7 +988,9 @@ class PayrollService {
     } else {
       final totalDays = end.difference(start).inDays;
       final elapsedBeforeJoin = join.difference(start).inDays;
-      availableDays = totalDays > 0 ? (totalDays - elapsedBeforeJoin) : totalDays;
+      availableDays = totalDays > 0
+          ? (totalDays - elapsedBeforeJoin)
+          : totalDays;
     }
     return (availableDays / totalWorkDays).clamp(0.0, 1.0).toDouble();
   }
@@ -909,8 +1045,11 @@ class PayrollService {
     final absentDeduction = absentDays * absentRate;
     final leaveDeduction = leaveDays * leaveRate;
 
-    final subtotalBeforeTax = (grossSalary + overtimePay - absentDeduction - leaveDeduction)
-        .clamp(0.0, double.infinity);
+    final subtotalBeforeTax =
+        (grossSalary + overtimePay - absentDeduction - leaveDeduction).clamp(
+          0.0,
+          double.infinity,
+        );
     final taxDeduction = taxRatePercent > 0
         ? (subtotalBeforeTax * (taxRatePercent / 100))
         : 0.0;

@@ -12,8 +12,9 @@ class CompanyProfileHelper {
   static Future<Map<String, dynamic>> getCompanyProfileWithFirestore(
     FirestoreService? firestore,
   ) async {
+    final isGuest = PreferencesService.cachedIsGuest;
     Map<String, dynamic>? profile;
-    if (firestore != null) {
+    if (!isGuest && firestore != null) {
       try {
         profile = await firestore.getUserProfile();
       } catch (_) {
@@ -22,10 +23,12 @@ class CompanyProfileHelper {
     }
 
     Map<String, String>? guestProfile;
-    try {
-      guestProfile = await PreferencesService.getGuestProfileData();
-    } catch (_) {
-      guestProfile = null;
+    if (isGuest) {
+      try {
+        guestProfile = await PreferencesService.getGuestProfileData();
+      } catch (_) {
+        guestProfile = null;
+      }
     }
 
     
@@ -53,14 +56,7 @@ class CompanyProfileHelper {
 
     
     if (profile != null) {
-      profilePicUrl =
-          (profile['profilePic'] ??
-                  profile['profilePicUrl'] ??
-                  profile['photoUrl'] ??
-                  profile['companyLogoUrl'] ??
-                  '')
-              .toString()
-              .trim();
+      profilePicUrl = (profile['profilePic'] ?? '').toString().trim();
     }
 
     
@@ -76,7 +72,7 @@ class CompanyProfileHelper {
     }
 
     
-    if (profilePicUrl.isEmpty) {
+    if (isGuest && profilePicUrl.isEmpty) {
       try {
         profilePicUrl = (await PreferencesService.getProfilePicUrl() ?? '')
             .trim();
@@ -84,9 +80,11 @@ class CompanyProfileHelper {
     }
 
     
-    final notifierPic = AuthService.profilePicNotifier.value ?? '';
-    if (notifierPic.isNotEmpty) {
-      profilePicUrl = notifierPic;
+    if (isGuest) {
+      final notifierPic = AuthService.profilePicNotifier.value ?? '';
+      if (notifierPic.isNotEmpty) {
+        profilePicUrl = notifierPic;
+      }
     }
 
     
@@ -94,16 +92,7 @@ class CompanyProfileHelper {
 
     
     if (profile != null) {
-      companyStampUrl =
-          (profile['companyStampUrl'] ??
-                  profile['stampUrl'] ??
-                  profile['companyStamp'] ??
-                  profile['companySignature'] ??
-                  profile['signatureUrl'] ??
-                  profile['signature'] ??
-                  '')
-              .toString()
-              .trim();
+      companyStampUrl = (profile['companyStampUrl'] ?? '').toString().trim();
     }
 
     
@@ -121,7 +110,7 @@ class CompanyProfileHelper {
     }
 
     
-    if (companyStampUrl.isEmpty) {
+    if (isGuest && companyStampUrl.isEmpty) {
       try {
         companyStampUrl = (await PreferencesService.getCompanyStampUrl() ?? '')
             .trim();
@@ -129,7 +118,7 @@ class CompanyProfileHelper {
     }
 
     
-    if (companyStampUrl.isEmpty) {
+    if (isGuest && companyStampUrl.isEmpty) {
       final notifierStamp = AuthService.companyStampNotifier.value ?? '';
       if (notifierStamp.isNotEmpty) {
         companyStampUrl = notifierStamp;
@@ -167,7 +156,7 @@ class CompanyProfileHelper {
     } else if (rawSalaryDay != null) {
       salaryDay = int.tryParse(rawSalaryDay.toString());
     }
-    if (salaryDay == null) {
+    if (isGuest && salaryDay == null) {
       try {
         salaryDay = await PreferencesService.getCompanySalaryDay();
       } catch (_) {}

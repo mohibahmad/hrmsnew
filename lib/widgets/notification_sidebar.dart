@@ -56,10 +56,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
-      
-      
-      
-      
+
       var backfilled = false;
       for (var i = 0; i < _notifications.length; i++) {
         final id = _notifications[i]['id']?.toString();
@@ -294,6 +291,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           bgColor: const Color(0xFFF3EEFF),
           label: 'notif_payroll'.tr(),
           iconAsset: 'assets/payroll_icon.svg',
+        );
+      case 'payroll_due':
+        return _NotifStyle(
+          icon: Icons.info_rounded,
+          color: const Color(0xFFEF4444),
+          bgColor: const Color(0xFFFFECEC),
+          label: 'notif_info'.tr(),
         );
       case 'time_off_added':
         return _NotifStyle(
@@ -791,21 +795,21 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     child: Center(
                       child: style.iconAsset != null
                           ? (style.iconAsset!.endsWith('.png')
-                              ? Image.asset(
-                                  style.iconAsset!,
-                                  width: 22,
-                                  height: 22,
-                                  color: style.color,
-                                )
-                              : SvgPicture.asset(
-                                  style.iconAsset!,
-                                  width: 22,
-                                  height: 22,
-                                  colorFilter: ColorFilter.mode(
-                                    style.color,
-                                    BlendMode.srcIn,
-                                  ),
-                                ))
+                                ? Image.asset(
+                                    style.iconAsset!,
+                                    width: 22,
+                                    height: 22,
+                                    color: style.color,
+                                  )
+                                : SvgPicture.asset(
+                                    style.iconAsset!,
+                                    width: 22,
+                                    height: 22,
+                                    colorFilter: ColorFilter.mode(
+                                      style.color,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ))
                           : Icon(style.icon, size: 22, color: style.color),
                     ),
                   ),

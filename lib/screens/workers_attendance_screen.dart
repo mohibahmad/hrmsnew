@@ -574,27 +574,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return usedDates.length;
   }
 
-  int _remainingPaidLeave(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> records, {
-    String? excludingRecordId,
-  }) {
-    if (_isGuest) {
-      return TimeOffService.remainingPaidLeave(
-        worker,
-        records,
-        excludingRecordId: excludingRecordId,
-      );
-    }
-    final allowance = TimeOffService.configuredPaidLeaveAllowance(worker);
-    final used = _paidLeaveDaysUsedForWorker(
-      worker,
-      records,
-      excludingRecordId: excludingRecordId,
-    );
-    return (allowance - used).clamp(0, allowance).toInt();
-  }
-
   Map<String, dynamic>? _attendanceManagedTimeOffForWorker(
     Map<String, dynamic> worker,
     DateTime date,
@@ -662,10 +641,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final existingId = (existing?['id'] ?? '').toString().trim();
     final hasTimeOffChange = shouldHaveLeave || existingId.isNotEmpty;
 
-    if (shouldHaveLeave &&
-        existing == null &&
-        _remainingPaidLeave(worker, _timeOffRecords) <= 0) {
-      return false;
+    if (shouldHaveLeave) {
+      final existingType = TimeOffService.normalizeLeaveType(
+        (existing?['type'] ?? existing?['action'] ?? '').toString(),
+      );
+      final selectedType = TimeOffService.normalizeLeaveType(leaveType);
+      final isKeepingExistingType =
+          existing != null && existingType == selectedType;
+      if (!isKeepingExistingType &&
+          TimeOffService.getLeaveBalance(worker, selectedType) <= 0) {
+        return false;
+      }
     }
 
     final projectedRecords = _timeOffRecords
@@ -711,7 +697,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       });
     }
 
-    final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(worker);
     final usedLeaveDays = _paidLeaveDaysUsedForWorker(worker, projectedRecords);
 
     final perTypeUsed = _isGuest
@@ -783,9 +768,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
 
     final balanceUpdate = <String, dynamic>{
-      'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
-          .clamp(0, totalPaidDays)
-          .toString(),
+      'availableAnnualLeaves':
+          (perTypeBalances['annualLeave'] ?? 0).toString(),
       'leavesUsed': usedLeaveDays.toString(),
       'annualLeavesUsed': (perTypeUsed['Annual Leave'] ?? 0).toString(),
       'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
@@ -1663,7 +1647,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
     final canSelectLeave =
         todayRecord['status'] == 'Leave' ||
-        _remainingPaidLeave(workerData, _timeOffRecords) > 0;
+        TimeOffService.totalAvailableLeaves(workerData) > 0;
 
     const validStatuses = {'Present', 'Absent', 'Leave'};
 
@@ -1702,8 +1686,24 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             'Casual Leave',
             'Medical Leave',
           };
+          bool canSelectLeaveType(String type) {
+            final isCurrentAttendanceLeave =
+                todayRecord['status'] == 'Leave' && initialType == type;
+            return isCurrentAttendanceLeave ||
+                TimeOffService.getLeaveBalance(workerData, type) > 0;
+          }
+
+          String firstAvailableLeaveType() {
+            return leaveTypes.firstWhere(
+              canSelectLeaveType,
+              orElse: () => 'Annual Leave',
+            );
+          }
+
           String selectedLeaveType = selectedStatus == 'Leave'
-              ? (leaveTypes.contains(initialType) ? initialType : 'Sick Leave')
+              ? (leaveTypes.contains(initialType)
+                    ? initialType
+                    : firstAvailableLeaveType())
               : (absentTypes.contains(initialType)
                     ? initialType
                     : 'Without Notice');
@@ -1716,11 +1716,35 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 {'value': 'Other', 'key': 'absent_other'},
               ];
             }
-            return const [
-              {'value': 'Annual Leave', 'key': 'annual_leave'},
-              {'value': 'Sick Leave', 'key': 'sick_leave_type'},
-              {'value': 'Casual Leave', 'key': 'casual_leave_type'},
-              {'value': 'Medical Leave', 'key': 'medical_leave_type'},
+            return [
+              {
+                'value': 'Annual Leave',
+                'key': 'annual_leave',
+                'disabled': canSelectLeaveType('Annual Leave')
+                    ? 'false'
+                    : 'true',
+              },
+              {
+                'value': 'Sick Leave',
+                'key': 'sick_leave_type',
+                'disabled': canSelectLeaveType('Sick Leave')
+                    ? 'false'
+                    : 'true',
+              },
+              {
+                'value': 'Casual Leave',
+                'key': 'casual_leave_type',
+                'disabled': canSelectLeaveType('Casual Leave')
+                    ? 'false'
+                    : 'true',
+              },
+              {
+                'value': 'Medical Leave',
+                'key': 'medical_leave_type',
+                'disabled': canSelectLeaveType('Medical Leave')
+                    ? 'false'
+                    : 'true',
+              },
             ];
           }
 
@@ -1846,7 +1870,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 setDialogState(() {
                                                   selectedStatus = 'Leave';
                                                   selectedLeaveType =
-                                                      'Sick Leave';
+                                                      firstAvailableLeaveType();
                                                 });
                                               }
                                             : null,
@@ -2457,7 +2481,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 currentStatus: _getWorkerStatus(entry.value),
                 isHoliday: isHoliday,
                 canMarkLeave:
-                    _remainingPaidLeave(entry.value, _timeOffRecords) > 0,
+                    TimeOffService.totalAvailableLeaves(entry.value) > 0,
                 onMarkAttendance: (status) {
                   final isGuest =
                       _authService.currentUser?.isAnonymous ?? false;

@@ -298,54 +298,76 @@ class SalaryDayScheduler {
       companyProfile?['currency'],
     );
 
-    if (!isGuest) {
-      try {
+    int? salaryDay;
+    try {
+      final rawDay =
+          companyProfile?['salaryDay'] ?? companyProfile?['salaryPaymentDay'];
+      final parsedDay = rawDay is num
+          ? rawDay.toInt()
+          : int.tryParse(rawDay?.toString() ?? '');
+      salaryDay = (parsedDay != null && parsedDay >= 1 && parsedDay <= 31)
+          ? parsedDay
+          : (isGuest
+                ? await PreferencesService.getCompanySalaryDay()
+                : null);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SalaryDayPeriod');
+      salaryDay = null;
+    }
+
+    try {
+      final List<Map<String, dynamic>> existingPayroll;
+      if (isGuest) {
+        existingPayroll = List<Map<String, dynamic>>.from(DummyData.payroll);
+      } else {
         final payrollSnapshot = await firestoreService.payrollStream.first
             .timeout(const Duration(seconds: 20));
-        final existingPayroll = payrollSnapshot.docs
+        existingPayroll = payrollSnapshot.docs
             .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
             .toList();
-        workers = workers.where((worker) {
-          return !existingPayroll.any(
-            (record) => _isPaidPayrollForWorker(
-              record: record,
-              worker: worker,
-              month: effectivePayrollMonth,
-            ),
-          );
-        }).toList();
-      } catch (error, stackTrace) {
-        ErrorReporter.report(
-          error,
-          stackTrace,
-          context: 'SalaryDayExistingPayrollCheck',
-        );
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'error_occurred'.tr(
-              namedArgs: {'error': error.toString()},
-            ),
-            isError: true,
-          );
-        }
-        return null;
       }
 
-      if (workers.isEmpty) {
-        await _markRunComplete(
-          periodLabel,
-          isGuest: false,
-          userId: authService.currentUser?.uid,
+      final unpaidWorkers = PayrollService.unpaidWorkersForPeriod(
+        workers,
+        existingPayroll,
+        month: effectivePayrollMonth,
+        salaryDay: salaryDay,
+        allowUndatedRecords: isGuest,
+        companyCurrency: companyCurrency,
+      );
+      final unpaidIdentities = unpaidWorkers
+          .map(_payrollWorkerIdentity)
+          .where((identity) => identity.isNotEmpty)
+          .toSet();
+      workers = workers
+          .where(
+            (worker) =>
+                unpaidIdentities.contains(_payrollWorkerIdentity(worker)),
+          )
+          .toList();
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'SalaryDayExistingPayrollCheck',
+      );
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'error_occurred'.tr(namedArgs: {'error': error.toString()}),
+          isError: true,
         );
-        if (context.mounted && !autoMode) {
-          FlashySnackBar.show(
-            context,
-            message: 'all_workers_already_paid'.tr(),
-          );
-        }
-        return null;
       }
+      return null;
+    }
+
+    if (workers.isEmpty) {
+      await _markRunComplete(
+        periodLabel,
+        isGuest: isGuest,
+        userId: authService.currentUser?.uid,
+      );
+      return null;
     }
 
     final eligibleWorkerCount = workers.length;
@@ -403,11 +425,7 @@ class SalaryDayScheduler {
         month: effectivePayrollMonth,
       );
     } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'SalaryDayWorkingDays',
-      );
+      ErrorReporter.report(error, stackTrace, context: 'SalaryDayWorkingDays');
       if (context.mounted) {
         FlashySnackBar.show(
           context,
@@ -431,21 +449,6 @@ class SalaryDayScheduler {
       return null;
     }
 
-    
-    int? salaryDay;
-    try {
-      final rawDay = companyProfile?['salaryDay'] ??
-          companyProfile?['salaryPaymentDay'];
-      final parsedDay = rawDay is num
-          ? rawDay.toInt()
-          : int.tryParse(rawDay?.toString() ?? '');
-      salaryDay = (parsedDay != null && parsedDay >= 1 && parsedDay <= 31)
-          ? parsedDay
-          : await _loadSalaryDay(context);
-    } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'SalaryDayProration');
-      salaryDay = null;
-    }
     final periodReference = DateTime(
       effectivePayrollMonth.year,
       effectivePayrollMonth.month,
@@ -455,10 +458,7 @@ class SalaryDayScheduler {
       periodReference,
       salaryDay,
     );
-    final periodEnd = PayrollService.payPeriodEnd(
-      periodReference,
-      salaryDay,
-    );
+    final periodEnd = PayrollService.payPeriodEnd(periodReference, salaryDay);
     Set<DateTime>? workingDates;
     try {
       workingDates = await firestoreService.getWorkingDates(
@@ -487,6 +487,28 @@ class SalaryDayScheduler {
           int.tryParse(totalWorkDays) ?? (autoWorkDays > 0 ? autoWorkDays : 30);
       final attendance = attendanceResults[i];
       final attendanceError = (attendance['_error'] ?? '').toString();
+
+      if (PayrollService.extractSalary(salaryStr) <= 0) {
+        results.add(
+          AutoPayrollResult(
+            workerId: workerId,
+            workerName: name,
+            email: email,
+            netSalary: '0',
+            success: false,
+            error: 'please_enter_salary'.tr(),
+            salary: salaryStr,
+            currency: companyCurrency,
+            totalWorkDays: totalWorkDays,
+            position: (worker['position'] ?? '').toString(),
+            salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
+            imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
+                ? (worker['profileImage'] ?? '').toString()
+                : null,
+          ),
+        );
+        continue;
+      }
 
       final joiningDate = AppDateUtils.dateFromValue(
         worker['joiningDate'] ?? worker['dateOfJoining'],
@@ -541,9 +563,6 @@ class SalaryDayScheduler {
               .toString()
               .trim();
 
-          
-          
-          
           absentDeductionTotal =
               PayrollService.extractSalary(absentDeductionPerDay) * absents;
           final effectiveDays = workDays - absents - unpaidLeaves;
@@ -560,14 +579,13 @@ class SalaryDayScheduler {
           );
           netSalary = calc['formattedNet'] as String? ?? '0';
           rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
-          leaveDeductionTotal = (calc['leaveDeduction'] as num?)?.toDouble() ?? 0;
+          leaveDeductionTotal =
+              (calc['leaveDeduction'] as num?)?.toDouble() ?? 0;
         } else {
           final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
               .toString()
               .trim();
-          
-          
-          
+
           final enteredSalary = PayrollService.extractSalary(salaryStr);
           final periodSalary = salaryType.trim().toLowerCase() == 'annual'
               ? enteredSalary / 12
@@ -685,10 +703,7 @@ class SalaryDayScheduler {
       );
       committedSummary = filteredSummary;
       if (!context.mounted) return null;
-      FlashySnackBar.show(
-        context,
-        message: 'processing_payroll'.tr(),
-      );
+      FlashySnackBar.show(context, message: 'processing_payroll'.tr());
       try {
         committedCount = await _commitPayrollRun(
           filteredSummary,
@@ -858,6 +873,18 @@ class SalaryDayScheduler {
     final prefs = await SharedPreferences.getInstance();
     final key = _lastRunPreferenceKey(isGuest: isGuest, userId: userId);
     await prefs.setString(key, periodLabel);
+  }
+
+  String _payrollWorkerIdentity(Map<String, dynamic> worker) {
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    if (workerId.isNotEmpty) return 'id:${workerId.toLowerCase()}';
+    final email = (worker['email'] ?? worker['workerEmail'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return email.isEmpty ? '' : 'email:$email';
   }
 
   bool _isPaidPayrollForWorker({
@@ -1162,14 +1189,8 @@ class SalaryDayScheduler {
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
       final salaryDayForPdf = await _loadSalaryDay(context);
-      final periodStart = PayrollService.payPeriodStart(
-        now,
-        salaryDayForPdf,
-      );
-      final periodEnd = PayrollService.payPeriodEnd(
-        now,
-        salaryDayForPdf,
-      );
+      final periodStart = PayrollService.payPeriodStart(now, salaryDayForPdf);
+      final periodEnd = PayrollService.payPeriodEnd(now, salaryDayForPdf);
       final periodDisplay =
           '${_formatPdfDate(periodStart)} – ${_formatPdfDate(periodEnd)}';
 
@@ -1199,13 +1220,12 @@ class SalaryDayScheduler {
         );
         final totalDeductions =
             PayrollService.extractSalary(r.customDeduction) +
-                absentDeductionTotal +
-                leaveDeductionTotal;
-        final netSalary =
-            (grossSalary +
-                    overtimeAmt -
-                    totalDeductions)
-                .clamp(0.0, double.infinity);
+            absentDeductionTotal +
+            leaveDeductionTotal;
+        final netSalary = (grossSalary + overtimeAmt - totalDeductions).clamp(
+          0.0,
+          double.infinity,
+        );
         final currency = PayrollService.getCurrencySymbol(r.currency);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
@@ -1219,7 +1239,10 @@ class SalaryDayScheduler {
           leaves: deductibleLeaves.toString(),
           overtimeAmount: _invoiceMoney(overtimeAmt, currency),
           salary: r.salary,
-          dailyRate: _invoiceMoney(workDays > 0 ? grossSalary / workDays : 0.0, currency),
+          dailyRate: _invoiceMoney(
+            workDays > 0 ? grossSalary / workDays : 0.0,
+            currency,
+          ),
           grossPay: _invoiceMoney(grossSalary, currency),
           overtimePay: _invoiceMoney(overtimeAmt, currency),
           absentDeduction: _invoiceMoney(absentDeductionTotal, currency),
@@ -1234,12 +1257,9 @@ class SalaryDayScheduler {
           companyEmail: (companyProfile['email'] ?? '').toString(),
           companyPhone: (companyProfile['phone'] ?? '').toString(),
           companyId: (companyProfile['companyId'] ?? '').toString(),
-          companyStampImageUrl: AuthService.companyStampNotifier.value?.isNotEmpty == true
-              ? AuthService.companyStampNotifier.value
-              : (companyProfile['companyStampUrl'] ?? '').toString(),
-          companyLogoUrl: AuthService.profilePicNotifier.value?.isNotEmpty == true
-              ? AuthService.profilePicNotifier.value
-              : (companyProfile['profilePicUrl'] ?? '').toString(),
+          companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+              .toString(),
+          companyLogoUrl: (companyProfile['profilePicUrl'] ?? '').toString(),
           workerId: r.workerId,
         );
 
@@ -1326,10 +1346,13 @@ class SalaryDayScheduler {
       if (pos.isNotEmpty) {
         final key = pos.toLowerCase();
         if (!positionNormalizer.containsKey(key)) {
-          positionNormalizer[key] = pos.split(' ').map((word) {
-            if (word.isEmpty) return word;
-            return word[0].toUpperCase() + word.substring(1);
-          }).join(' ');
+          positionNormalizer[key] = pos
+              .split(' ')
+              .map((word) {
+                if (word.isEmpty) return word;
+                return word[0].toUpperCase() + word.substring(1);
+              })
+              .join(' ');
         }
       }
     }
@@ -2237,7 +2260,9 @@ class SalaryDayScheduler {
                                           double total = 0;
                                           String prefix = '';
                                           for (final r in filteredResults) {
-                                            final idx = summary.results.indexOf(r);
+                                            final idx = summary.results.indexOf(
+                                              r,
+                                            );
                                             if (selectedIndices.contains(idx) &&
                                                 r.success &&
                                                 r.rawNetSalaryValue.isFinite) {
@@ -2407,7 +2432,6 @@ class SalaryDayScheduler {
           listen: false,
         ).currentUser?.isAnonymous ??
         false;
-
 
     return showDialog<AutoPayrollResult>(
       context: context,
@@ -3122,8 +3146,19 @@ class SalaryDayScheduler {
 
   String _formatPdfDate(DateTime date) {
     final months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month]} ${date.day}, ${date.year}';
   }

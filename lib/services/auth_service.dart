@@ -144,6 +144,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: _normalizeEmail(email),
@@ -164,6 +166,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
     UserCredential? credential;
     try {
       credential = await _auth.signInWithEmailAndPassword(
@@ -199,6 +203,8 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
+    profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
     UserCredential? authenticatedCredential;
     try {
       String? clientId;
@@ -251,6 +257,8 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithApple() async {
+    profilePicNotifier.value = null;
+    companyStampNotifier.value = null;
     UserCredential? authenticatedCredential;
     try {
       final appleProvider = OAuthProvider('apple.com');
@@ -338,6 +346,79 @@ class AuthService {
 
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: _normalizeEmail(email));
+  }
+
+  bool get currentUserUsesPasswordProvider {
+    final user = currentUser;
+    if (user == null || user.isAnonymous) return false;
+    return user.providerData.any((info) => info.providerId == 'password');
+  }
+
+  /// Firebase requires a recent credential before destructive account work.
+  /// Reauthenticate with the provider that owns the current account instead
+  /// of letting `User.delete` fail with `requires-recent-login`.
+  Future<void> reauthenticateForAccountDeletion({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+
+    final providerIds = user.providerData
+        .map((info) => info.providerId)
+        .toSet();
+
+    if (providerIds.contains('password')) {
+      final email = user.email?.trim() ?? '';
+      final enteredPassword = password ?? '';
+      if (email.isEmpty) {
+        throw FirebaseAuthException(code: 'email-missing');
+      }
+      if (enteredPassword.isEmpty) {
+        throw FirebaseAuthException(code: 'password-required');
+      }
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: enteredPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return;
+    }
+
+    if (providerIds.contains('google.com')) {
+      try {
+        String? clientId;
+        if (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS) {
+          clientId = DefaultFirebaseOptions.currentPlatform.iosClientId;
+        }
+        await GoogleSignIn.instance.initialize(clientId: clientId);
+        final googleUser = await GoogleSignIn.instance.authenticate();
+        final googleAuth = googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+        );
+        await user.reauthenticateWithCredential(credential);
+      } on GoogleSignInException catch (error) {
+        if (error.code == GoogleSignInExceptionCode.canceled ||
+            error.code == GoogleSignInExceptionCode.interrupted) {
+          throw FirebaseAuthException(code: 'reauthentication-cancelled');
+        }
+        rethrow;
+      }
+      return;
+    }
+
+    if (providerIds.contains('apple.com')) {
+      final appleProvider = OAuthProvider('apple.com')
+        ..addScope('email')
+        ..addScope('name');
+      await user.reauthenticateWithProvider(appleProvider);
+      return;
+    }
+
+    // Accounts using another Firebase provider can still be deleted when the
+    // session is recent. If it is not, User.delete returns a precise error.
+    await user.reload();
   }
 }
 

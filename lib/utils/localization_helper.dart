@@ -4,6 +4,22 @@ import 'currency_utils.dart';
 class LocalizationHelper {
   LocalizationHelper._();
 
+  /// Canonical Firebase values used as filter keys. Only the visible label is
+  /// localized so filtering keeps working after the app language changes.
+  static const List<String> defaultJobPositions = [
+    'Designer',
+    'Developer',
+    'Software Engineer',
+    'Sales',
+    'HR',
+    'Finance',
+    'Marketing',
+    'Operations',
+    'IT Support',
+    'Product',
+    'Research',
+  ];
+
   static String localizeGender(String value) {
     switch (value) {
       case 'Male':
@@ -77,7 +93,8 @@ class LocalizationHelper {
   }
 
   static String localizePosition(String value) {
-    switch (value.toLowerCase()) {
+    final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+    switch (normalized) {
       case 'designer':
         return 'designer'.tr();
       case 'developer':
@@ -86,6 +103,11 @@ class LocalizationHelper {
         return 'engineering'.tr();
       case 'sales':
         return 'sales'.tr();
+      case 'hr':
+      case 'human resources':
+        return 'hr'.tr();
+      case 'finance':
+        return 'finance'.tr();
       case 'management':
         return 'management'.tr();
       case 'manager':
@@ -128,6 +150,8 @@ class LocalizationHelper {
         return 'operations'.tr();
       case 'it support':
         return 'it_support'.tr();
+      case 'software engineer':
+        return 'software_engineer'.tr();
       case 'quality assurance':
         return 'quality_assurance'.tr();
       case 'product':
@@ -137,7 +161,7 @@ class LocalizationHelper {
       case 'legal':
         return 'legal'.tr();
       default:
-        return _localizeCompoundPosition(value);
+        return _localizeCompoundPosition(value.trim());
     }
   }
 
@@ -145,6 +169,9 @@ class LocalizationHelper {
     final words = value.split(' ');
     if (words.length <= 1) {
       if (value.isEmpty) return value;
+      if (_jobRoleAcronyms.contains(value.toLowerCase())) {
+        return value.toUpperCase();
+      }
       return value[0].toUpperCase() + value.substring(1);
     }
     final parts = words.map((w) {
@@ -187,15 +214,25 @@ class LocalizationHelper {
         case 'legal':
           return 'legal'.tr();
         default:
-          
-          
-          
           if (w.isEmpty) return w;
+          if (_jobRoleAcronyms.contains(lower)) return lower.toUpperCase();
           return w[0].toUpperCase() + w.substring(1);
       }
     }).toList();
     return parts.join(' ');
   }
+
+  static const Set<String> _jobRoleAcronyms = {
+    'hr',
+    'it',
+    'qa',
+    'ui',
+    'ux',
+    'ceo',
+    'cto',
+    'cfo',
+    'coo',
+  };
 
   static String localizeEducation(String value) {
     switch (value) {

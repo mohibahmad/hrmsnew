@@ -191,11 +191,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       case 'Today':
         return 'today_expense'.tr();
       case 'Week':
+      case 'This Week':
         return 'this_week_expense'.tr();
       case '6 Month':
+      case 'Last 6 Months':
         return 'last_6_months_expense'.tr();
       case 'Yearly':
+      case 'This Year':
         return 'this_year_expense'.tr();
+      case 'Month':
+      case 'This Month':
       default:
         return 'this_month_expense'.tr();
     }

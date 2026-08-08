@@ -16,10 +16,6 @@ class BulkWorkerResult {
   final int skipped;
   final List<String> skipReasons;
 
-  
-  
-  
-  
   final List<String> skippedClientRowIds;
   BulkWorkerResult({
     required this.imported,
@@ -56,9 +52,7 @@ class FirestoreService {
     }
     // Firestore rejects non-finite doubles (NaN / Infinity) with an
     // invalid-argument error, so drop any such fields before writing.
-    normalized.removeWhere(
-      (key, value) => value is num && !value.isFinite,
-    );
+    normalized.removeWhere((key, value) => value is num && !value.isFinite);
     return normalized;
   }
 
@@ -232,10 +226,6 @@ class FirestoreService {
     }
   }
 
-  
-  
-  
-  
   Future<Map<String, dynamic>?> getUserProfileOrThrow() async {
     if (isTesting) return {'isPremium': false, 'hasDummyData': false};
     final doc = _userDoc;
@@ -501,29 +491,18 @@ class FirestoreService {
     await coll.doc(id).update(leaveData);
   }
 
-  
-  
-  
-  
   Future<void> updateWorkerFields(
     String id,
     Map<String, dynamic> fields,
   ) async {
     final coll = _workers;
     if (coll == null || id.isEmpty) return;
-    await coll.doc(id).set(
-      {
-        ..._withNormalizedCurrency(fields),
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await coll.doc(id).set({
+      ..._withNormalizedCurrency(fields),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
-  
-  
-  
-  
   Future<int> applyLeavePolicyToWorkers({
     required List<Map<String, dynamic>> workers,
     required int annualLeaveDays,
@@ -536,8 +515,6 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) return 0;
 
-    
-    
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
     final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
     for (final record in timeOffRecords) {
@@ -631,27 +608,46 @@ class FirestoreService {
       final policyName = policyData['policyName'] ?? policyType;
 
       if (policyType == 'Leave Policy') {
-        final annual = int.tryParse(policyData['annualLeaveDays']?.toString() ?? '14') ?? 14;
-        final sick = int.tryParse(policyData['sickLeaves']?.toString() ?? '5') ?? 5;
-        final casual = int.tryParse(policyData['casualLeaves']?.toString() ?? '5') ?? 5;
-        final medical = int.tryParse(policyData['medicalLeaves']?.toString() ?? '5') ?? 5;
+        final annual =
+            int.tryParse(policyData['annualLeaveDays']?.toString() ?? '14') ??
+            14;
+        final sick =
+            int.tryParse(policyData['sickLeaves']?.toString() ?? '5') ?? 5;
+        final casual =
+            int.tryParse(policyData['casualLeaves']?.toString() ?? '5') ?? 5;
+        final medical =
+            int.tryParse(policyData['medicalLeaves']?.toString() ?? '5') ?? 5;
         updates['annualLeaves'] = annual;
         updates['sickLeaves'] = sick;
         updates['casualLeaves'] = casual;
         updates['medicalLeaves'] = medical;
         updates['leavePolicy'] = policyName;
       } else if (policyType == 'Payroll Policy') {
-        updates['paymentFrequency'] = policyData['paymentFrequency'] ?? 'Monthly';
-        updates['taxRatePercent'] = double.tryParse(policyData['taxRatePercent']?.toString() ?? '5.0') ?? 5.0;
-        updates['salaryDay'] = int.tryParse(policyData['salaryDay']?.toString() ?? '1') ?? 1;
+        updates['paymentFrequency'] =
+            policyData['paymentFrequency'] ?? 'Monthly';
+        updates['taxRatePercent'] =
+            double.tryParse(
+              policyData['taxRatePercent']?.toString() ?? '5.0',
+            ) ??
+            5.0;
+        updates['salaryDay'] =
+            int.tryParse(policyData['salaryDay']?.toString() ?? '1') ?? 1;
         updates['payrollPolicy'] = policyName;
       } else if (policyType == 'Holiday Policy') {
         updates['weeklyOffDays'] = policyData['weeklyOffDays'] ?? 'Sunday';
-        updates['paidHolidaysCount'] = int.tryParse(policyData['paidHolidaysCount']?.toString() ?? '10') ?? 10;
+        updates['paidHolidaysCount'] =
+            int.tryParse(policyData['paidHolidaysCount']?.toString() ?? '10') ??
+            10;
         updates['holidayPolicy'] = policyName;
       } else if (policyType == 'Asset Policy') {
-        updates['maxAssetsPerWorker'] = int.tryParse(policyData['maxAssetsPerWorker']?.toString() ?? '3') ?? 3;
-        updates['returnGracePeriodDays'] = int.tryParse(policyData['returnGracePeriodDays']?.toString() ?? '7') ?? 7;
+        updates['maxAssetsPerWorker'] =
+            int.tryParse(policyData['maxAssetsPerWorker']?.toString() ?? '3') ??
+            3;
+        updates['returnGracePeriodDays'] =
+            int.tryParse(
+              policyData['returnGracePeriodDays']?.toString() ?? '7',
+            ) ??
+            7;
         updates['assetPolicy'] = policyName;
       }
 
@@ -675,9 +671,6 @@ class FirestoreService {
     return updated;
   }
 
-  
-  
-  
   Future<List<Map<String, dynamic>>> getTimeoffOnce() async {
     final coll = _timeoff;
     if (coll == null) return const [];
@@ -826,7 +819,8 @@ class FirestoreService {
         'message': amount.isNotEmpty
             ? 'notif_msg_expense_amount'.tr(
                 namedArgs: {
-                  'amount': '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount'
+                  'amount':
+                      '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount',
                 },
               )
             : 'notif_msg_expense'.tr(),
@@ -966,23 +960,6 @@ class FirestoreService {
     await coll.doc(id).delete();
   }
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   Future<AttendanceLeaveSyncResult> saveAttendanceWithLeaveSync({
     required Map<String, dynamic> attendanceRecord,
     String? attendanceId,
@@ -1238,8 +1215,6 @@ class FirestoreService {
     return workingDates.length;
   }
 
-  
-  
   Future<Set<DateTime>> getWorkingDates({
     required DateTime from,
     required DateTime toExclusive,
@@ -1384,9 +1359,6 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  
-  
-  
   Stream<QuerySnapshot> attendanceStreamForPeriod({
     required DateTime start,
     required DateTime end,
@@ -1580,11 +1552,17 @@ class FirestoreService {
     });
   }
 
-  Future<void> updatePayrollByPayrollKey(String payrollKey, Map<String, dynamic> data) async {
+  Future<void> updatePayrollByPayrollKey(
+    String payrollKey,
+    Map<String, dynamic> data,
+  ) async {
     final coll = _payroll;
     if (coll == null || payrollKey.trim().isEmpty) return;
 
-    final snapshot = await coll.where('payrollKey', isEqualTo: payrollKey.trim()).limit(1).get();
+    final snapshot = await coll
+        .where('payrollKey', isEqualTo: payrollKey.trim())
+        .limit(1)
+        .get();
     if (snapshot.docs.isEmpty) return;
 
     await snapshot.docs.first.reference.update({
@@ -1682,7 +1660,7 @@ class FirestoreService {
     await batch.commit();
   }
 
-Future<void> cancelPayrollRecord({
+  Future<void> cancelPayrollRecord({
     required String payrollId,
     required String payrollKey,
   }) async {
@@ -1697,7 +1675,7 @@ Future<void> cancelPayrollRecord({
                   .where('payrollKey', isEqualTo: payrollKey.trim())
                   .get())
               .docs;
-final batch = _db.batch();
+    final batch = _db.batch();
     batch.update(payrollColl.doc(payrollId), {
       'status': 'Unpaid',
       'isPaid': false,
@@ -1789,9 +1767,12 @@ final batch = _db.batch();
       if (!timeOffSnapshot.exists) {
         throw StateError('Time off record does not exist');
       }
-      final timeOffData = (timeOffSnapshot.data() as Map<String, dynamic>?) ?? {};
-      final String leaveType = (timeOffData['action'] ?? timeOffData['type'] ?? '').toString();
-      final int requestedDays = int.tryParse(timeOffData['requestedDays']?.toString() ?? '0') ?? 0;
+      final timeOffData =
+          (timeOffSnapshot.data() as Map<String, dynamic>?) ?? {};
+      final String leaveType =
+          (timeOffData['action'] ?? timeOffData['type'] ?? '').toString();
+      final int requestedDays =
+          int.tryParse(timeOffData['requestedDays']?.toString() ?? '0') ?? 0;
 
       final leaveField = switch (TimeOffService.normalizeLeaveType(leaveType)) {
         'Annual Leave' => 'annualLeave',
@@ -1810,17 +1791,32 @@ final batch = _db.batch();
       if (leaveField.isNotEmpty && requestedDays > 0) {
         final workerSnapshot = await transaction.get(workerRef);
         if (workerSnapshot.exists) {
-          final workerData = (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
+          final workerData =
+              (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
           int currentBalance = 0;
-          final leaveBalances = workerData['leaveBalances'] as Map<String, dynamic>?;
+          final leaveBalances =
+              workerData['leaveBalances'] as Map<String, dynamic>?;
           if (leaveBalances != null && leaveBalances.containsKey(leaveField)) {
-            currentBalance = int.tryParse(leaveBalances[leaveField]?.toString() ?? '0') ?? 0;
+            currentBalance =
+                int.tryParse(leaveBalances[leaveField]?.toString() ?? '0') ?? 0;
           } else {
             currentBalance = switch (leaveField) {
-              'annualLeave' => int.tryParse((workerData['availableAnnualLeaves'] ?? workerData['annualLeaves'] ?? '0').toString()) ?? 0,
-              'sickLeave' => int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
-              'casualLeave' => int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
-              'medicalLeave' => int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
+              'annualLeave' =>
+                int.tryParse(
+                      (workerData['availableAnnualLeaves'] ??
+                              workerData['annualLeaves'] ??
+                              '0')
+                          .toString(),
+                    ) ??
+                    0,
+              'sickLeave' =>
+                int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
+              'casualLeave' =>
+                int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ??
+                    0,
+              'medicalLeave' =>
+                int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ??
+                    0,
               _ => 0,
             };
           }
@@ -1829,7 +1825,8 @@ final batch = _db.batch();
 
           transaction.update(workerRef, {
             'leaveBalances.$leaveField': newBalance,
-            if (leaveField == 'annualLeave') 'availableAnnualLeaves': newBalance.toString(),
+            if (leaveField == 'annualLeave')
+              'availableAnnualLeaves': newBalance.toString(),
           });
         }
       }
@@ -1850,7 +1847,7 @@ final batch = _db.batch();
       throw StateError('No authenticated user');
     }
     final isNew = timeOffId == null || timeOffId.isEmpty;
-    
+
     final leaveField = switch (TimeOffService.normalizeLeaveType(leaveType)) {
       'Annual Leave' => 'annualLeave',
       'Sick Leave' => 'sickLeave',
@@ -1881,9 +1878,13 @@ final batch = _db.batch();
       if (!isNew) {
         final existingRecordSnapshot = await transaction.get(timeOffRef);
         if (existingRecordSnapshot.exists) {
-          final oldRecordData = (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
-          final oldType = oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
-          oldLeaveField = switch (TimeOffService.normalizeLeaveType(oldType.toString())) {
+          final oldRecordData =
+              (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
+          final oldType =
+              oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
+          oldLeaveField = switch (TimeOffService.normalizeLeaveType(
+            oldType.toString(),
+          )) {
             'Annual Leave' => 'annualLeave',
             'Sick Leave' => 'sickLeave',
             'Casual Leave' => 'casualLeave',
@@ -1892,7 +1893,11 @@ final batch = _db.batch();
           };
           oldDays = TimeOffService.selectedDatesForRecord(oldRecordData).length;
           if (oldDays == 0) {
-            oldDays = int.tryParse(oldRecordData['requestedDays']?.toString() ?? '0') ?? 0;
+            oldDays =
+                int.tryParse(
+                  oldRecordData['requestedDays']?.toString() ?? '0',
+                ) ??
+                0;
           }
         }
       }
@@ -1906,10 +1911,20 @@ final batch = _db.batch();
           return int.tryParse(leaveBalances[field]?.toString() ?? '0') ?? 0;
         }
         return switch (field) {
-          'annualLeave' => int.tryParse((workerData['availableAnnualLeaves'] ?? workerData['annualLeaves'] ?? '0').toString()) ?? 0,
-          'sickLeave' => int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
-          'casualLeave' => int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
-          'medicalLeave' => int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
+          'annualLeave' =>
+            int.tryParse(
+                  (workerData['availableAnnualLeaves'] ??
+                          workerData['annualLeaves'] ??
+                          '0')
+                      .toString(),
+                ) ??
+                0,
+          'sickLeave' =>
+            int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
+          'casualLeave' =>
+            int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
+          'medicalLeave' =>
+            int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
           _ => 0,
         };
       }
@@ -1920,6 +1935,9 @@ final batch = _db.batch();
       }
 
       final currentNewVal = getFieldBalance(leaveField);
+      if (requestedDays > currentNewVal) {
+        throw StateError('Insufficient $leaveType balance');
+      }
       final updatedNewVal = (currentNewVal - requestedDays).clamp(0, 9999);
       leaveBalances[leaveField] = updatedNewVal;
 
@@ -1927,7 +1945,8 @@ final batch = _db.batch();
         'leaveBalances': leaveBalances,
       };
       if (leaveBalances.containsKey('annualLeave')) {
-        workerUpdates['availableAnnualLeaves'] = leaveBalances['annualLeave'].toString();
+        workerUpdates['availableAnnualLeaves'] = leaveBalances['annualLeave']
+            .toString();
       }
 
       transaction.update(workerRef, workerUpdates);
@@ -2293,6 +2312,35 @@ final batch = _db.batch();
     return _db.runTransaction<bool>((transaction) async {
       final existing = await transaction.get(docRef);
       if (existing.exists) return false;
+      transaction.set(docRef, {
+        ...notification,
+        'notificationKey': notificationKey.trim(),
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+  }
+
+  /// Creates a keyed notification or refreshes its live content without
+  /// changing its original timestamp/read state.
+  Future<bool> upsertNotificationByKey(
+    String notificationKey,
+    Map<String, dynamic> notification,
+  ) async {
+    final coll = _notifications;
+    final normalizedKey = notificationKey.trim().replaceAll('/', '_');
+    if (coll == null || normalizedKey.isEmpty) return false;
+    final docRef = coll.doc(normalizedKey);
+    return _db.runTransaction<bool>((transaction) async {
+      final existing = await transaction.get(docRef);
+      if (existing.exists) {
+        transaction.set(docRef, {
+          ...notification,
+          'notificationKey': notificationKey.trim(),
+        }, SetOptions(merge: true));
+        return false;
+      }
       transaction.set(docRef, {
         ...notification,
         'notificationKey': notificationKey.trim(),

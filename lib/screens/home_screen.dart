@@ -29,6 +29,7 @@ import '../services/dummy_data.dart';
 import '../services/error_reporter.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/snackbar_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/sidebar_widget.dart';
 import '../widgets/dashboard/top_header.dart';
@@ -92,7 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case 3:
         return PayrollScreen(
-          isActive: _getStackIndex() == 3 && !_showAssignTimeOff && !_showProfile && !_showWorkersAttendance && !_showNotifications,
+          isActive:
+              _getStackIndex() == 3 &&
+              !_showAssignTimeOff &&
+              !_showProfile &&
+              !_showWorkersAttendance &&
+              !_showNotifications,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onAssignTimeOff: () {
@@ -191,6 +197,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _otherWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
+  int? _salaryPaymentDay;
+  DateTime? _activePayrollMonth;
   List<Map<String, dynamic>> _rawExpensesDocs = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   List<Map<String, dynamic>> _workersDocs = [];
@@ -210,15 +218,16 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _allTimeoffDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
-  
-  
+
   bool _isPremium = PreferencesService.cachedIsPremium;
   bool _dashboardReady = false;
   bool _initialized = false;
   bool _workersLoaded = false;
   bool _payrollLoaded = false;
   bool _payrollReminderCheckInProgress = false;
+  bool _payrollReminderRefreshPending = false;
   String? _lastPayrollReminderPeriod;
+  int? _lastPayrollReminderCount;
 
   @override
   void dispose() {
@@ -259,8 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await PreferencesService.setPremium(isPremium);
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'loadPremiumStatus');
-        
-        
+
         isPremium = PreferencesService.cachedIsPremium;
       }
     }
@@ -335,15 +343,18 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUser != null && !currentUser.isAnonymous) {
       try {
         final profile = await _firestore.getUserProfile();
-        if (mounted && profile != null) {
-          final pic = profile['profilePic'];
+        if (mounted) {
+          final pic = profile?['profilePic'];
           if (pic != null && pic.toString().isNotEmpty) {
             AuthService.profilePicNotifier.value = pic.toString();
-            await PreferencesService.setProfilePicUrl(pic.toString());
-            return;
+          } else {
+            AuthService.profilePicNotifier.value = null;
           }
         }
-      } catch (_) {}
+      } catch (_) {
+        AuthService.profilePicNotifier.value = null;
+      }
+      return;
     }
 
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
@@ -370,13 +381,41 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final isPremium = profile['isPremium'] == true;
         final currencyCode = CurrencyUtils.normalize(profile['currency']);
+        final rawSalaryDay = profile['salaryPaymentDay'];
+        final parsedSalaryDay = rawSalaryDay is num
+            ? rawSalaryDay.toInt()
+            : int.tryParse(rawSalaryDay?.toString() ?? '');
+        final salaryPaymentDay =
+            parsedSalaryDay != null &&
+                parsedSalaryDay >= 1 &&
+                parsedSalaryDay <= 31
+            ? parsedSalaryDay
+            : null;
+        final activePayrollMonth = PayrollService.parsePayrollPeriodLabel(
+          profile['activePayrollPeriod'],
+        );
+        final profilePic = profile['profilePic']?.toString().trim() ?? '';
+        final companyStamp =
+            profile['companyStampUrl']?.toString().trim() ?? '';
+        AuthService.profilePicNotifier.value = profilePic.isEmpty
+            ? null
+            : profilePic;
+        AuthService.companyStampNotifier.value = companyStamp.isEmpty
+            ? null
+            : companyStamp;
         await PreferencesService.setPremium(isPremium);
         if (mounted &&
-            (_isPremium != isPremium || _currencyCode != currencyCode)) {
+            (_isPremium != isPremium ||
+                _currencyCode != currencyCode ||
+                _salaryPaymentDay != salaryPaymentDay ||
+                _activePayrollMonth != activePayrollMonth)) {
           setState(() {
             _isPremium = isPremium;
             _currencyCode = currencyCode;
+            _salaryPaymentDay = salaryPaymentDay;
+            _activePayrollMonth = activePayrollMonth;
           });
+          _maybeCreatePayrollReminder();
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -653,28 +692,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _maybeCreatePayrollReminder() async {
     final now = DateTime.now();
-    if (!PayrollService.isMonthEnding(now) ||
-        !_workersLoaded ||
-        !_payrollLoaded ||
-        _payrollReminderCheckInProgress) {
+    if (!_workersLoaded || !_payrollLoaded) {
       return;
     }
-    final month = PayrollService.currentPayrollMonth(referenceDate: now);
+    if (_payrollReminderCheckInProgress) {
+      _payrollReminderRefreshPending = true;
+      return;
+    }
+    final month =
+        _activePayrollMonth ??
+        PayrollService.currentPayrollMonth(referenceDate: now);
+    if (!PayrollService.isPayrollReminderDueForPeriod(
+      now,
+      month,
+      _salaryPaymentDay,
+    )) {
+      return;
+    }
     final period = PayrollService.payrollPeriodLabel(month);
-    if (_lastPayrollReminderPeriod == period) return;
-
-    final unpaidCount = PayrollService.unpaidWorkerCountForMonth(
+    final unpaidCount = PayrollService.unpaidWorkersForPeriod(
       _workersDocs,
       _rawPayrollDocs,
-      month,
-    );
+      month: month,
+      salaryDay: _salaryPaymentDay,
+      companyCurrency: _currencyCode,
+    ).length;
+    if (_lastPayrollReminderPeriod == period &&
+        _lastPayrollReminderCount == unpaidCount) {
+      return;
+    }
+
+    final notificationKey = 'payroll_due_$period';
     if (unpaidCount == 0) {
-      _lastPayrollReminderPeriod = period;
+      _payrollReminderCheckInProgress = true;
+      try {
+        final isGuest = _authService.currentUser?.isAnonymous ?? false;
+        if (isGuest) {
+          DummyData.notifications.removeWhere(
+            (item) => item['notificationKey'] == notificationKey,
+          );
+          await DummyData.saveToPrefs();
+        } else {
+          await _firestore.deleteNotification(
+            notificationKey.replaceAll('/', '_'),
+          );
+        }
+        _lastPayrollReminderPeriod = period;
+        _lastPayrollReminderCount = 0;
+      } catch (_) {
+      } finally {
+        _payrollReminderCheckInProgress = false;
+        if (_payrollReminderRefreshPending && mounted) {
+          _payrollReminderRefreshPending = false;
+          unawaited(_maybeCreatePayrollReminder());
+        }
+      }
       return;
     }
 
     _payrollReminderCheckInProgress = true;
-    final notificationKey = 'payroll_due_$period';
+    final isFirstReminderThisSession =
+        _lastPayrollReminderPeriod != period ||
+        (_lastPayrollReminderCount ?? 0) == 0;
     final notification = <String, dynamic>{
       'type': 'payroll_due',
       'title': 'notif_title_payroll_due'.tr(),
@@ -686,10 +765,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (isGuest) {
-        final exists = DummyData.notifications.any(
+        final existingIndex = DummyData.notifications.indexWhere(
           (item) => item['notificationKey'] == notificationKey,
         );
-        if (!exists) {
+        if (existingIndex == -1) {
           DummyData.notifications.insert(0, {
             ...notification,
             'id': notificationKey,
@@ -697,20 +776,42 @@ class _HomeScreenState extends State<HomeScreen> {
             'isRead': false,
             'createdAt': now.toIso8601String(),
           });
-          await DummyData.saveToPrefs();
           if (mounted) {
             setState(() => _unreadNotifCount++);
           }
+        } else {
+          DummyData.notifications[existingIndex] = {
+            ...DummyData.notifications[existingIndex],
+            ...notification,
+            'notificationKey': notificationKey,
+          };
         }
+        await DummyData.saveToPrefs();
       } else {
-        await _firestore.addNotificationIfAbsent(notificationKey, notification);
+        await _firestore.upsertNotificationByKey(notificationKey, notification);
       }
       _lastPayrollReminderPeriod = period;
+      _lastPayrollReminderCount = unpaidCount;
+      if (mounted && isFirstReminderThisSession) {
+        FlashySnackBar.show(
+          context,
+          title: notification['title']?.toString(),
+          message: notification['message']?.toString() ?? '',
+          isError: true,
+          maxLines: 4,
+          displayDuration: const Duration(seconds: 5),
+        );
+      }
     } catch (_) {
     } finally {
       _payrollReminderCheckInProgress = false;
+      if (_payrollReminderRefreshPending && mounted) {
+        _payrollReminderRefreshPending = false;
+        unawaited(_maybeCreatePayrollReminder());
+      }
     }
   }
+
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
@@ -843,12 +944,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isGuest =
         (_authService.currentUser?.isAnonymous ?? false) ||
         PreferencesService.cachedIsGuest;
-    
-    
-    
+
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
 
-    
     final workersList = isGuest ? DummyData.workers : _workersDocs;
     final validWorkerIds = <String>{};
     final validEmails = <String>{};
@@ -860,21 +958,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return rawDocs.where((attendance) {
-      
       final s = (attendance['status'] ?? '').toString().trim().toLowerCase();
       if (s == 'absent' || s == 'a' || s == 'leave' || s == 'l') return false;
 
-      
       if (workersList.isNotEmpty) {
-        final rId = (attendance['workerId'] ?? attendance['id'] ?? '').toString().trim();
-        final rEmail = (attendance['email'] ?? '').toString().trim().toLowerCase();
+        final rId = (attendance['workerId'] ?? attendance['id'] ?? '')
+            .toString()
+            .trim();
+        final rEmail = (attendance['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         final belongsToWorker =
             (rId.isNotEmpty && validWorkerIds.contains(rId)) ||
             (rEmail.isNotEmpty && validEmails.contains(rEmail));
         if (!belongsToWorker) return false;
       }
 
-      
       final date =
           AppDateUtils.attendanceRecordDate(attendance) ?? DateTime.now();
       return DashboardChartService.isDateWithinPeriod(date, period);
@@ -1031,7 +1131,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (!shouldDiscard) return;
                       }
                       if (_showAssignTimeOff) {
-                        final shouldDiscard = await UnsavedChangesDialog.show(context);
+                        final shouldDiscard = await UnsavedChangesDialog.show(
+                          context,
+                        );
                         if (!shouldDiscard) return;
                       }
                       setState(() {

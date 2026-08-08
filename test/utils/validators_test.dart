@@ -107,4 +107,39 @@ void main() {
       expect(Validators.isValidPhone('123000'), isTrue);
     });
   });
+
+  group('Validators.validateWorker salary', () {
+    test('rejects a missing salary amount', () {
+      expect(
+        () => Validators.validateWorker({'name': 'Urwa'}),
+        throwsA(
+          isA<ValidationException>().having(
+            (error) => error.field,
+            'field',
+            'salaryAmount',
+          ),
+        ),
+      );
+    });
+
+    test('rejects a zero salary amount', () {
+      expect(
+        () => Validators.validateWorker({
+          'name': 'Urwa',
+          'salaryAmount': 0,
+        }),
+        throwsA(isA<ValidationException>()),
+      );
+    });
+
+    test('accepts a valid salary amount', () {
+      expect(
+        () => Validators.validateWorker({
+          'name': 'Urwa',
+          'salaryAmount': Validators.minSalaryAmount,
+        }),
+        returnsNormally,
+      );
+    });
+  });
 }

@@ -154,6 +154,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   void dispose() {
     _assetsSub?.cancel();
+    _workersSub?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -197,6 +198,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   StreamSubscription? _assetsSub;
+  StreamSubscription? _workersSub;
 
   Future<void> _loadAssets() async {
     if (!mounted) return;
@@ -243,17 +245,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Future<void> _loadWorkers() async {
-    try {
-      final snapshot = await _firestore.getWorkersOnce();
-      if (!mounted) return;
-      _setWorkerOptions(
-        snapshot.docs.map(
-          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-        ),
-      );
-      if (mounted) setState(() {});
-    } catch (_) {}
+  void _loadWorkers() {
+    _workersSub?.cancel();
+    _workersSub = _firestore.workersStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        _setWorkerOptions(
+          snapshot.docs.map(
+            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+          ),
+        );
+        setState(() {});
+      },
+      onError: (_) {},
+    );
   }
 
   List<AssetData> get _filteredAssets {
