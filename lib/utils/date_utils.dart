@@ -128,6 +128,14 @@ class AppDateUtils {
     }
   }
 
+  /// Preserves a calendar date while representing it at UTC midnight.
+  ///
+  /// Do not use `value.toUtc()` for business dates: converting local midnight
+  /// in a positive-offset timezone can move the value to the previous day.
+  static DateTime asUtcDateOnly(DateTime value) {
+    return DateTime.utc(value.year, value.month, value.day);
+  }
+
   static String formatDate(DateTime date) {
     final dayStr = date.day.toString().padLeft(2, '0');
     final monthStr = date.month.toString().padLeft(2, '0');

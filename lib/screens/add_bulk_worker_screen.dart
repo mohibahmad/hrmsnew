@@ -289,7 +289,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (raw.isNotEmpty) {
         final parsed = AppDateUtils.parseDdMmYyyy(raw);
         normalized[key] = parsed != null
-            ? parsed.toUtc().toIso8601String()
+            ? AppDateUtils.asUtcDateOnly(parsed)
             : '';
       }
     }

@@ -964,7 +964,7 @@
   "success_asset_update": "Asset updated successfully!",
   "asset_updated": "Asset updated successfully",
   "account_created_successfully": "Account created successfully",
-  "worker_deleted_successfully": "Worker deleted successfully",
+  "worker_deleted_successfully": "Worker removed successfully",
   "payroll_saved_successfully": "Payroll data saved successfully",
   "failed_to_save_record": "Failed to save record",
   "please_select_worker_first": "Please select a worker first",

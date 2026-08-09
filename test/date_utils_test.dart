@@ -27,6 +27,20 @@ void main() {
     expect(AppDateUtils.parseDateString('08/05/2026'), DateTime(2026, 5, 8));
   });
 
+  test('bulk date normalization preserves the calendar day in UTC', () {
+    final dob = AppDateUtils.parseDdMmYyyy('08/06/1998')!;
+    final joiningDate = AppDateUtils.parseDdMmYyyy('06/08/2026')!;
+
+    expect(
+      AppDateUtils.asUtcDateOnly(dob),
+      DateTime.utc(1998, DateTime.june, 8),
+    );
+    expect(
+      AppDateUtils.asUtcDateOnly(joiningDate),
+      DateTime.utc(2026, DateTime.august, 6),
+    );
+  });
+
   group('Validators.validateWorker DOB handling', () {
     Map<String, dynamic> workerWithDob(dynamic dob) => {
       'name': 'Test Worker',
