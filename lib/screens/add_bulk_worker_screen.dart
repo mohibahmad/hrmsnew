@@ -287,7 +287,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     for (final key in ['dob', 'joiningDate']) {
       final raw = normalized[key]?.toString().trim() ?? '';
       if (raw.isNotEmpty) {
-        final parsed = AppDateUtils.parseDateString(raw);
+        final parsed = AppDateUtils.parseDdMmYyyy(raw);
         normalized[key] = parsed != null
             ? parsed.toUtc().toIso8601String()
             : '';
@@ -716,6 +716,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Future<void> _saveBulkWorkers() async {
     if (_isSaving) return;
+
+    for (final worker in _validWorkers) {
+      final row = worker['_rowNumber'] ?? worker['clientRowId'] ?? '?';
+      debugPrint('DOB RAW [row $row]: "${worker['dob'] ?? ''}"');
+      debugPrint('JOINING RAW [row $row]: "${worker['joiningDate'] ?? ''}"');
+    }
 
     final revalidated = await _revalidateAllWorkers();
     if (!revalidated || !mounted) return;
@@ -1281,12 +1287,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         hintText: isLeavesField
                                             ? '0'
                                             : isMediaField
-                                                ? mediaFieldHint(fieldKey)
-                                                : 'edit_cell_enter_value'.tr(
-                                                    namedArgs: {
-                                                      'label': label,
-                                                    },
-                                                  ),
+                                            ? mediaFieldHint(fieldKey)
+                                            : 'edit_cell_enter_value'.tr(
+                                                namedArgs: {'label': label},
+                                              ),
                                         hintStyle: const TextStyle(
                                           color: Color(0xFF9CA3AF),
                                           fontSize: 15,
@@ -1757,7 +1761,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         ).pop(leaves.toString());
                                       }
                                     } else if (fieldKey == 'dob') {
-                                      final dob = AppDateUtils.parseDateString(
+                                      final dob = AppDateUtils.parseDdMmYyyy(
                                         val,
                                       );
                                       if (dob == null) {
@@ -1775,7 +1779,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       }
                                     } else if (fieldKey == 'joiningDate') {
                                       final joiningDate =
-                                          AppDateUtils.parseDateString(val);
+                                          AppDateUtils.parseDdMmYyyy(val);
                                       if (joiningDate == null) {
                                         setDialogState(() {
                                           dialogError =
@@ -1935,8 +1939,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         // Recompute missing columns so that a column the user has now filled
         // for every worker no longer appears in the missing-columns banner.
         _missingColumns = _missingColumns
-            .where((field) => _validWorkers.any(
-                (w) => (w[field] ?? '').toString().trim().isEmpty))
+            .where(
+              (field) => _validWorkers.any(
+                (w) => (w[field] ?? '').toString().trim().isEmpty,
+              ),
+            )
             .toList();
         _hasUnsavedChanges = true;
       });

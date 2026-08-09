@@ -136,7 +136,7 @@ bool isDateField(String fieldKey) =>
 
 DateTime? parseDate(String dateStr) {
   if (dateStr.trim().isEmpty) return null;
-  return AppDateUtils.parseDateString(dateStr.trim());
+  return AppDateUtils.parseDdMmYyyy(dateStr);
 }
 
 String formatDateForField(DateTime date) {
@@ -183,7 +183,7 @@ Map<String, String> validateWorkerData(
 
   final dobStr = workerData['dob']?.toString().trim() ?? '';
   if (dobStr.isNotEmpty) {
-    final dob = AppDateUtils.parseDateString(dobStr);
+    final dob = AppDateUtils.parseDdMmYyyy(dobStr);
     if (dob == null) {
       fieldErrors['dob'] = 'validation_invalid_date'.tr();
     } else if (!isAtLeast18(dob)) {
@@ -288,20 +288,20 @@ Map<String, String> validateWorkerData(
     }
   }
 
-   final position = workerData['position']?.toString().trim() ?? '';
-   if (position.isNotEmpty) {
-     workerData['position'] = Validators.titleCase(position);
-   }
+  final position = workerData['position']?.toString().trim() ?? '';
+  if (position.isNotEmpty) {
+    workerData['position'] = Validators.titleCase(position);
+  }
 
-   final religion = workerData['religion']?.toString().trim() ?? '';
-   if (religion.isNotEmpty) {
-     workerData['religion'] = Validators.capitalizeFirst(religion);
-   }
+  final religion = workerData['religion']?.toString().trim() ?? '';
+  if (religion.isNotEmpty) {
+    workerData['religion'] = Validators.capitalizeFirst(religion);
+  }
 
-   final leavePolicy = workerData['leavePolicy']?.toString().trim() ?? '';
-   if (leavePolicy.isEmpty) {
-     workerData['leavePolicy'] = 'Standard';
-   }
+  final leavePolicy = workerData['leavePolicy']?.toString().trim() ?? '';
+  if (leavePolicy.isEmpty) {
+    workerData['leavePolicy'] = 'Standard';
+  }
 
   final phone = workerData['phone']?.toString().trim() ?? '';
   if (phone.isNotEmpty && !Validators.isValidPhone(phone)) {
@@ -337,19 +337,19 @@ Map<String, String> validateWorkerData(
     fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
   }
 
-   final salaryText = workerData['salaryAmount']?.toString().trim() ?? '';
-   if (salaryText.isNotEmpty) {
-     final amount = Validators.parseAmount(salaryText);
-     if (amount == null) {
-       fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
-     } else if (amount <= 0) {
-       fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
-     } else if (amount < Validators.minSalaryAmount) {
-       fieldErrors['salaryAmount'] = 'salary_min_amount_error'.tr(
-         namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
-       );
-     }
-   }
+  final salaryText = workerData['salaryAmount']?.toString().trim() ?? '';
+  if (salaryText.isNotEmpty) {
+    final amount = Validators.parseAmount(salaryText);
+    if (amount == null) {
+      fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
+    } else if (amount <= 0) {
+      fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
+    } else if (amount < Validators.minSalaryAmount) {
+      fieldErrors['salaryAmount'] = 'salary_min_amount_error'.tr(
+        namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
+      );
+    }
+  }
 
   final annualLeavesText = workerData['annualLeaves']?.toString().trim() ?? '';
   if (annualLeavesText.isNotEmpty) {
@@ -370,20 +370,24 @@ Map<String, String> validateWorkerData(
     final text = workerData[key]?.toString().trim() ?? '';
     if (text.isEmpty) {
       workerData[key] = '0';
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = '0';
       continue;
     }
     final days = int.tryParse(text);
     if (days == null || days < 0 || days > 366) {
       fieldErrors[key] = 'invalid_number'.tr();
       workerData[key] = '0';
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = '0';
     } else {
       workerData[key] = days.toString();
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = days
+          .toString();
     }
   }
 
   final joiningDateText = workerData['joiningDate']?.toString().trim() ?? '';
   if (joiningDateText.isNotEmpty) {
-    final joiningDate = AppDateUtils.parseDateString(joiningDateText);
+    final joiningDate = AppDateUtils.parseDdMmYyyy(joiningDateText);
     if (joiningDate == null) {
       fieldErrors['joiningDate'] = 'validation_invalid_date'.tr();
     } else {

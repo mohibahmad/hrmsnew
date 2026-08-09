@@ -103,7 +103,7 @@ class Validators {
   static bool isValidNationalId(String? value) {
     final cleaned = (value ?? '').replaceAll(_nationalIdSeparators, '');
     if (cleaned.isEmpty || cleaned.length < 6) return false;
-    return _digitsOnly.hasMatch(cleaned);
+    return RegExp(r'^[A-Za-z0-9]+$').hasMatch(cleaned);
   }
 
   static String? email(String? value, {bool required = false}) {
@@ -135,11 +135,18 @@ class Validators {
       throw ValidationException(emailErr, field: 'email');
     }
 
-    final dobStr = _str(w, 'dob');
-    if (dobStr.isNotEmpty) {
-      final dob = AppDateUtils.parseDateString(dobStr);
+    final dobValue = w['dob'];
+    final dobText = (dobValue?.toString() ?? '').trim();
+    if (dobText.isNotEmpty) {
+      // Add Worker converts a selected DOB to a Firestore Timestamp before
+      // this service-level validation runs. Parse the original value by type
+      // instead of converting Timestamp/DateTime values back into strings.
+      final dob = AppDateUtils.dateFromValue(dobValue);
       if (dob == null) {
-        throw ValidationException('invalid_date_format'.tr(), field: 'dob');
+        throw ValidationException(
+          '${'date_of_birth'.tr()}: ${'invalid_date_format'.tr()}',
+          field: 'dob',
+        );
       }
       final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
       if (dob.isAfter(cutoff)) {

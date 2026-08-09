@@ -78,6 +78,8 @@ class AppDateUtils {
           } else if (val2 > 12) {
             return _validatedDate(year, val1, val2);
           } else {
+            // Worker-facing slash dates are always DD/MM/YYYY. For ambiguous
+            // values such as 05/08/2026, keep 5 as the day and 8 as the month.
             return _validatedDate(year, val2, val1);
           }
         }
@@ -96,12 +98,31 @@ class AppDateUtils {
           final val2 = int.parse(hyphenParts[1]);
           if (val1 > 12) {
             return _validatedDate(year, val2, val1);
+          } else if (val2 > 12) {
+            return _validatedDate(year, val1, val2);
           } else {
             return _validatedDate(year, val2, val1);
           }
         }
       }
       return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Parses a worker-entered date in the canonical DD/MM/YYYY format.
+  ///
+  /// This intentionally does not fall back to [DateTime.tryParse], because
+  /// that parser expects ISO dates and can silently reinterpret ambiguous
+  /// day/month values.
+  static DateTime? parseDdMmYyyy(String value) {
+    final text = value.trim();
+    if (!RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(text)) return null;
+
+    try {
+      final parsed = DateFormat('dd/MM/yyyy').parseStrict(text);
+      return _validatedDate(parsed.year, parsed.month, parsed.day);
     } catch (_) {
       return null;
     }

@@ -139,6 +139,9 @@ class Worker {
   final int? casualLeaves;
   final int? medicalLeaves;
   final int? availableAnnualLeaves;
+  final int? availableSickLeaves;
+  final int? availableCasualLeaves;
+  final int? availableMedicalLeaves;
   final int? leavesUsed;
   final DateTime? joiningDate;
   final String? profileImage;
@@ -175,6 +178,9 @@ class Worker {
     this.casualLeaves,
     this.medicalLeaves,
     this.availableAnnualLeaves,
+    this.availableSickLeaves,
+    this.availableCasualLeaves,
+    this.availableMedicalLeaves,
     this.leavesUsed,
     this.joiningDate,
     this.profileImage,
@@ -223,6 +229,9 @@ class Worker {
       casualLeaves: _safeInt(data['casualLeaves']),
       medicalLeaves: _safeInt(data['medicalLeaves']),
       availableAnnualLeaves: _safeInt(data['availableAnnualLeaves']),
+      availableSickLeaves: _safeInt(data['availableSickLeaves']),
+      availableCasualLeaves: _safeInt(data['availableCasualLeaves']),
+      availableMedicalLeaves: _safeInt(data['availableMedicalLeaves']),
       leavesUsed: _safeInt(data['leavesUsed']),
       joiningDate: _safeBusinessDate(
         data['joiningDate'] ?? data['dateOfJoining'],
@@ -289,6 +298,24 @@ class Worker {
       map,
       'availableAnnualLeaves',
       availableAnnualLeaves,
+      forUpdate,
+    );
+    _addNumericField(
+      map,
+      'availableSickLeaves',
+      availableSickLeaves,
+      forUpdate,
+    );
+    _addNumericField(
+      map,
+      'availableCasualLeaves',
+      availableCasualLeaves,
+      forUpdate,
+    );
+    _addNumericField(
+      map,
+      'availableMedicalLeaves',
+      availableMedicalLeaves,
       forUpdate,
     );
     _addNumericField(map, 'leavesUsed', leavesUsed, forUpdate);
@@ -392,6 +419,9 @@ class Worker {
     int? casualLeaves,
     int? medicalLeaves,
     int? availableAnnualLeaves,
+    int? availableSickLeaves,
+    int? availableCasualLeaves,
+    int? availableMedicalLeaves,
     int? leavesUsed,
     DateTime? joiningDate,
     String? profileImage,
@@ -429,6 +459,12 @@ class Worker {
       medicalLeaves: medicalLeaves ?? this.medicalLeaves,
       availableAnnualLeaves:
           availableAnnualLeaves ?? this.availableAnnualLeaves,
+      availableSickLeaves:
+          availableSickLeaves ?? this.availableSickLeaves,
+      availableCasualLeaves:
+          availableCasualLeaves ?? this.availableCasualLeaves,
+      availableMedicalLeaves:
+          availableMedicalLeaves ?? this.availableMedicalLeaves,
       leavesUsed: leavesUsed ?? this.leavesUsed,
       joiningDate: joiningDate ?? this.joiningDate,
       profileImage: profileImage ?? this.profileImage,

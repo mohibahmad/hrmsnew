@@ -2,18 +2,18 @@ class LeaveBalanceHelper {
   
   
   static const Map<String, String> availKeyForType = {
-    'Sick Leave': 'availableAnnualLeaves',
-    'Casual Leave': 'availableAnnualLeaves',
+    'Sick Leave': 'availableSickLeaves',
+    'Casual Leave': 'availableCasualLeaves',
     'Annual Leave': 'availableAnnualLeaves',
-    'Medical Leave': 'availableAnnualLeaves',
+    'Medical Leave': 'availableMedicalLeaves',
   };
 
   
   static const Map<String, String> configKeyForType = {
-    'Sick Leave': 'annualLeaves',
-    'Casual Leave': 'annualLeaves',
+    'Sick Leave': 'sickLeaves',
+    'Casual Leave': 'casualLeaves',
     'Annual Leave': 'annualLeaves',
-    'Medical Leave': 'annualLeaves',
+    'Medical Leave': 'medicalLeaves',
   };
 
   static int _toInt(dynamic v) => int.tryParse(v?.toString() ?? '0') ?? 0;

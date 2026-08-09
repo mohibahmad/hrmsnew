@@ -920,8 +920,8 @@ class _ProfileBodyState extends State<ProfileBody> {
                   backgroundColor: const Color(0xFF0247C4),
                   foregroundColor: const Color(0xFFFFFFFF),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 30,
-                    vertical: 18,
+                    horizontal: 36,
+                    vertical: 19,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
@@ -959,15 +959,15 @@ class _ProfileBodyState extends State<ProfileBody> {
                 },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F0FE),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: SvgPicture.asset(
                     'assets/edit_icon.svg',
-                    width: 22,
-                    height: 22,
+                    width: 20,
+                    height: 20,
                     colorFilter: const ColorFilter.mode(
                       Color(0xFF155ED5),
                       BlendMode.srcIn,
@@ -1061,16 +1061,16 @@ class _ProfileBodyState extends State<ProfileBody> {
     if (hasNewBytes) {
       childWidget = Image.memory(
         _newProfileImageBytes!,
-        width: 90,
-        height: 90,
+        width: 100,
+        height: 100,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
     } else if (hasNewPath) {
       childWidget = Image.file(
         File(_newProfileImagePath!),
-        width: 90,
-        height: 90,
+        width: 100,
+        height: 100,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
@@ -1107,8 +1107,8 @@ class _ProfileBodyState extends State<ProfileBody> {
     } else {
       childWidget = Image.asset(
         'assets/company_profile_placeholder.png',
-        width: 90,
-        height: 90,
+        width: 100,
+        height: 100,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );

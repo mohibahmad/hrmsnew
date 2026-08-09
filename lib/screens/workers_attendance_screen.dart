@@ -729,12 +729,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 (worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0')
                     .toString()) ??
             0,
-        'sickLeave' =>
-          int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0,
-        'casualLeave' =>
-          int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0,
-        'medicalLeave' =>
-          int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0,
+        'sickLeave' => int.tryParse(
+                (worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0')
+                    .toString()) ??
+            0,
+        'casualLeave' => int.tryParse(
+                (worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0')
+                    .toString()) ??
+            0,
+        'medicalLeave' => int.tryParse(
+                (worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0')
+                    .toString()) ??
+            0,
         _ => 0,
       };
     }
@@ -771,6 +777,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final balanceUpdate = <String, dynamic>{
       'availableAnnualLeaves':
           (perTypeBalances['annualLeave'] ?? 0).toString(),
+      'availableSickLeaves':
+          (perTypeBalances['sickLeave'] ?? 0).toString(),
+      'availableCasualLeaves':
+          (perTypeBalances['casualLeave'] ?? 0).toString(),
+      'availableMedicalLeaves':
+          (perTypeBalances['medicalLeave'] ?? 0).toString(),
       'leavesUsed': usedLeaveDays.toString(),
       'annualLeavesUsed': (perTypeUsed['Annual Leave'] ?? 0).toString(),
       'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),

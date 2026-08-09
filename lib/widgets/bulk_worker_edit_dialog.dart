@@ -456,7 +456,7 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
   }
   if (fieldKey == 'nationalId') {
     return [
-      FilteringTextInputFormatter.allow(RegExp(r'^[\d-]*')),
+      FilteringTextInputFormatter.allow(RegExp(r'^[A-Za-z0-9\-]*')),
       LengthLimitingTextInputFormatter(20),
     ];
   }
@@ -536,9 +536,11 @@ TextInputType? keyboardTypeForField(String fieldKey) {
   if (fieldKey == 'annualLeaves' ||
       fieldKey == 'sickLeaves' ||
       fieldKey == 'casualLeaves' ||
-      fieldKey == 'medicalLeaves' ||
-      fieldKey == 'nationalId') {
+      fieldKey == 'medicalLeaves') {
     return TextInputType.number;
+  }
+  if (fieldKey == 'nationalId') {
+    return TextInputType.text;
   }
   return null;
 }

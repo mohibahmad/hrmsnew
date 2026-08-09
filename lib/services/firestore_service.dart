@@ -561,6 +561,9 @@ class FirestoreService {
         'casualLeaves': casualLeaveDays,
         'medicalLeaves': medicalLeaveDays,
         'availableAnnualLeaves': remaining,
+        'availableSickLeaves': sickLeaveDays,
+        'availableCasualLeaves': casualLeaveDays,
+        'availableMedicalLeaves': medicalLeaveDays,
         'leavePolicy': policyName,
       });
       pending++;
@@ -1854,14 +1857,24 @@ class FirestoreService {
                           .toString(),
                     ) ??
                     0,
-              'sickLeave' =>
-                int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
-              'casualLeave' =>
-                int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ??
-                    0,
-              'medicalLeave' =>
-                int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ??
-                    0,
+              'sickLeave' => int.tryParse(
+                      (workerData['availableSickLeaves'] ??
+                              workerData['sickLeaves'] ??
+                              '0')
+                          .toString()) ??
+                  0,
+              'casualLeave' => int.tryParse(
+                      (workerData['availableCasualLeaves'] ??
+                              workerData['casualLeaves'] ??
+                              '0')
+                          .toString()) ??
+                  0,
+              'medicalLeave' => int.tryParse(
+                      (workerData['availableMedicalLeaves'] ??
+                              workerData['medicalLeaves'] ??
+                              '0')
+                          .toString()) ??
+                  0,
               _ => 0,
             };
           }
@@ -1871,6 +1884,12 @@ class FirestoreService {
             'leaveBalances.$leaveField': newBalance,
             if (leaveField == 'annualLeave')
               'availableAnnualLeaves': newBalance.toString(),
+            if (leaveField == 'sickLeave')
+              'availableSickLeaves': newBalance.toString(),
+            if (leaveField == 'casualLeave')
+              'availableCasualLeaves': newBalance.toString(),
+            if (leaveField == 'medicalLeave')
+              'availableMedicalLeaves': newBalance.toString(),
           };
         }
       }

@@ -426,9 +426,9 @@ class TimeOffService {
     }
     return switch (fieldName) {
       'annualLeave' => int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0,
-      'sickLeave' => int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0,
-      'casualLeave' => int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0,
-      'medicalLeave' => int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0,
+      'sickLeave' => int.tryParse((worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0').toString()) ?? 0,
+      'casualLeave' => int.tryParse((worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0').toString()) ?? 0,
+      'medicalLeave' => int.tryParse((worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0').toString()) ?? 0,
       _ => 0,
     };
   }
@@ -510,9 +510,9 @@ class TimeOffService {
       return annual + sick + casual + medical;
     }
     final annual = int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0;
-    final sick = int.tryParse((worker['sickLeaves'] ?? '0').toString()) ?? 0;
-    final casual = int.tryParse((worker['casualLeaves'] ?? '0').toString()) ?? 0;
-    final medical = int.tryParse((worker['medicalLeaves'] ?? '0').toString()) ?? 0;
+    final sick = int.tryParse((worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0').toString()) ?? 0;
+    final casual = int.tryParse((worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0').toString()) ?? 0;
+    final medical = int.tryParse((worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0').toString()) ?? 0;
     return annual + sick + casual + medical;
   }
 

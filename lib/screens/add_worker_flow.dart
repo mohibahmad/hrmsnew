@@ -147,6 +147,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   bool _isCvUploaded = false;
 
   String? _joiningDate;
+  DateTime? _selectedDob;
+  DateTime? _selectedJoiningDate;
 
   bool _isSaving = false;
   bool _isChecking = false;
@@ -357,7 +359,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           .toString();
       _religionController.text = (widget.workerToEdit!['religion'] ?? '')
           .toString();
-      _dobController.text = (widget.workerToEdit!['dob'] ?? '').toString();
+      _selectedDob = AppDateUtils.dateFromValue(widget.workerToEdit!['dob']);
+      _dobController.text = _selectedDob == null
+          ? (widget.workerToEdit!['dob'] ?? '').toString()
+          : AppDateUtils.formatDate(_selectedDob!);
 
       _genderController.text = (widget.workerToEdit!['gender'] ?? 'Male')
           .toString();
@@ -454,8 +459,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvName = _cleanFileName(_existingCvUrl!);
       }
       _joiningDate = _workerDateText(widget.workerToEdit!['joiningDate']);
+      _selectedJoiningDate = AppDateUtils.dateFromValue(
+        widget.workerToEdit!['joiningDate'],
+      );
     } else {
-      _joiningDate = AppDateUtils.formatDate(DateTime.now());
+      final today = DateTime.now();
+      _selectedJoiningDate = DateTime(today.year, today.month, today.day);
+      _joiningDate = AppDateUtils.formatDate(_selectedJoiningDate!);
     }
   }
 
@@ -714,7 +724,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
 
-    final parsed = AppDateUtils.parseDateString(text);
+    final parsed =
+        AppDateUtils.parseDdMmYyyy(text) ?? AppDateUtils.parseDateString(text);
     if (parsed != null) {
       return DateTime(parsed.year, parsed.month, parsed.day);
     }
@@ -804,9 +815,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'salary_min_amount_error'.tr(
-          namedArgs: {
-            'amount': Validators.minSalaryAmount.toStringAsFixed(0),
-          },
+          namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
         ),
         isError: true,
       );
@@ -868,11 +877,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return false;
     }
 
-    final joiningDate = _parseWorkerDate(joiningDateText);
+    final joiningDate =
+        _selectedJoiningDate ?? AppDateUtils.parseDdMmYyyy(joiningDateText);
     if (joiningDate == null) {
       FlashySnackBar.show(
         context,
-        message: 'invalid_date_format'.tr(),
+        message: '${'joining_date_title'.tr()}: ${'invalid_date_format'.tr()}',
         isError: true,
       );
       return false;
@@ -1064,11 +1074,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   DateTime? _validateAndParseDob() {
     final dobStr = _dobController.text.trim();
     if (dobStr.isEmpty) return null;
-    final dob = AppDateUtils.parseDateString(dobStr);
+    final dob = _selectedDob ?? AppDateUtils.parseDdMmYyyy(dobStr);
     if (dob == null) {
       FlashySnackBar.show(
         context,
-        message: 'invalid_date_format'.tr(),
+        message: '${'date_of_birth'.tr()}: ${'invalid_date_format'.tr()}',
         isError: true,
       );
       return null;
@@ -1120,7 +1130,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         (edit['religion'] ?? '').toString().trim()) {
       return true;
     }
-    if (!_sameWorkerDate(_dobController.text, edit['dob']?.toString())) {
+    if (!_sameWorkerDate(_dobController.text, _workerDateText(edit['dob']))) {
       return true;
     }
     if (_genderController.text.trim() !=
@@ -1169,19 +1179,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return true;
     }
     if (_annualLeavesController.text.trim() !=
-        (edit['annualLeaves'] ?? '').toString().trim()) {
+        LeaveBalanceHelper.leaveDaysText(edit['annualLeaves']).trim()) {
       return true;
     }
     if (_sickLeavesController.text.trim() !=
-        (edit['sickLeaves'] ?? '').toString().trim()) {
+        LeaveBalanceHelper.leaveDaysText(edit['sickLeaves']).trim()) {
       return true;
     }
     if (_casualLeavesController.text.trim() !=
-        (edit['casualLeaves'] ?? '').toString().trim()) {
+        LeaveBalanceHelper.leaveDaysText(edit['casualLeaves']).trim()) {
       return true;
     }
     if (_medicalLeavesController.text.trim() !=
-        (edit['medicalLeaves'] ?? '').toString().trim()) {
+        LeaveBalanceHelper.leaveDaysText(edit['medicalLeaves']).trim()) {
       return true;
     }
     if (!_sameWorkerDate(_joiningDate, _workerDateText(edit['joiningDate']))) {
@@ -1236,6 +1246,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   Future<void> _saveWorker() async {
     if (_isSaving) return;
+
+    debugPrint('DOB RAW: "${_dobController.text}"');
+    debugPrint('JOINING RAW: "${_joiningDate ?? ''}"');
 
     final name = Validators.titleCase(_nameController.text);
     final phone = _phoneController.text.trim();
@@ -1398,7 +1411,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final joiningDate = _parseWorkerDate(_joiningDate);
+    final joiningDate =
+        _selectedJoiningDate ??
+        AppDateUtils.parseDdMmYyyy((_joiningDate ?? '').trim());
     if (joiningDate == null) return;
 
     setState(() {
@@ -1570,7 +1585,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'religion': religion,
         'dob': isGuest
             ? _dobController.text.trim()
-            : AppDateUtils.formatDate(dob),
+            : Timestamp.fromDate(DateTime(dob.year, dob.month, dob.day)),
         'gender': _genderController.text.trim(),
         'address': _addressController.text.trim(),
         'relationshipStatus': _relationshipStatus,
@@ -1589,8 +1604,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             int.tryParse(_annualLeavesController.text.trim()) ?? 0,
         'leavesUsed': 0,
         'sickLeaves': int.tryParse(_sickLeavesController.text.trim()) ?? 0,
+        'availableSickLeaves':
+            int.tryParse(_sickLeavesController.text.trim()) ?? 0,
         'casualLeaves': int.tryParse(_casualLeavesController.text.trim()) ?? 0,
+        'availableCasualLeaves':
+            int.tryParse(_casualLeavesController.text.trim()) ?? 0,
         'medicalLeaves':
+            int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
+        'availableMedicalLeaves':
             int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
         'joiningDate': isGuest
             ? (_joiningDate ?? '')
@@ -2062,22 +2083,24 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'add_new_worker'.tr(),
+                            widget.workerToEdit != null
+                                ? 'edit_worker'.tr()
+                                : 'add_new_worker'.tr(),
                             style: const TextStyle(
                               color: Color(0xFF000000),
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
-                          const SizedBox(height: 6),
                           Text(
-                            'fill_worker_details'.tr(),
+                            widget.workerToEdit != null
+                                ? 'update_worker_details'.tr()
+                                : 'fill_worker_details'.tr(),
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -2097,6 +2120,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                                 _nameController.text.trim().isNotEmpty &&
                                 _phoneController.text.trim().isNotEmpty);
                       final bool canSave = isSaveReady && !_isSaving;
+                      // In edit mode, hide the save button entirely when no
+                      // field has been changed yet.
+                      if (isEditMode && !hasChanges) {
+                        return const SizedBox.shrink();
+                      }
 
                       return GestureDetector(
                         onTap: canSave ? _saveWorker : null,
@@ -2120,7 +2148,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                                   ),
                                 )
                               : Text(
-                                  'save'.tr(),
+                                  isEditMode
+                                      ? 'save_changes'.tr()
+                                      : 'save'.tr(),
                                   style: TextStyle(
                                     color: isSaveReady
                                         ? const Color(0xFFFFFFFF)
@@ -2142,7 +2172,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 40,
-                  vertical: 24,
+                  vertical: 16,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2210,6 +2240,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                             _relationshipStatus = status;
                           });
                         },
+                        onDobChanged: (date) {
+                          setState(() => _selectedDob = date);
+                        },
                         onNextStep: _validateAndGoToExperience,
                         isChecking: _isChecking,
                       ),
@@ -2228,7 +2261,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         medicalLeavesController: _medicalLeavesController,
                         selectedJoiningDate: _joiningDate,
                         onJoiningDateChanged: (date) {
-                          setState(() => _joiningDate = date);
+                          setState(() {
+                            _selectedJoiningDate = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                            );
+                            _joiningDate = AppDateUtils.formatDate(date);
+                          });
                         },
                         onNextStep: _validateAndGoToDocumentation,
                         onPrevStep: () => setState(() => _activeTabIndex = 0),
@@ -2515,6 +2555,7 @@ class WorkerDetailFormSection extends StatelessWidget {
   final VoidCallback? onDeleteProfileTap;
   final String relationshipStatus;
   final ValueChanged<String> onRelationshipStatusChanged;
+  final ValueChanged<DateTime>? onDobChanged;
 
   const WorkerDetailFormSection({
     super.key,
@@ -2536,6 +2577,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     this.onDeleteProfileTap,
     required this.relationshipStatus,
     required this.onRelationshipStatusChanged,
+    this.onDobChanged,
   });
 
   final Color formBgGrey = const Color(0xFFF2F3F6);
@@ -2869,9 +2911,10 @@ class WorkerDetailFormSection extends StatelessWidget {
                                 now.month,
                                 now.day,
                               );
-                              final parsedDob = AppDateUtils.parseDateString(
-                                dobController.text.trim(),
-                              );
+                              final dobText = dobController.text.trim();
+                              final parsedDob =
+                                  AppDateUtils.parseDdMmYyyy(dobText) ??
+                                  AppDateUtils.parseDateString(dobText);
                               final initialDob = parsedDob == null
                                   ? maximumDob
                                   : parsedDob.isBefore(minimumDob)
@@ -2893,6 +2936,9 @@ class WorkerDetailFormSection extends StatelessWidget {
                                   );
                                   final year = date.year.toString();
                                   dobController.text = '$day/$month/$year';
+                                  onDobChanged?.call(
+                                    DateTime(date.year, date.month, date.day),
+                                  );
                                 },
                               );
                             },
@@ -3290,7 +3336,7 @@ class ExperienceFormSection extends StatefulWidget {
   final TextEditingController casualLeavesController;
   final TextEditingController medicalLeavesController;
   final String? selectedJoiningDate;
-  final ValueChanged<String>? onJoiningDateChanged;
+  final ValueChanged<DateTime>? onJoiningDateChanged;
   final VoidCallback? onNextStep;
   final VoidCallback? onPrevStep;
 
@@ -3359,7 +3405,9 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     DateTime? parsedDate;
 
     if (dateStr.isNotEmpty) {
-      parsedDate = AppDateUtils.parseDateString(dateStr);
+      parsedDate =
+          AppDateUtils.parseDdMmYyyy(dateStr) ??
+          AppDateUtils.parseDateString(dateStr);
 
       if (parsedDate == null) {
         final normalized = dateStr.replaceAll(',', '').trim();
@@ -3794,7 +3842,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                       final formatted =
                                           '$monthName ${selected.day}, ${selected.year}';
                                       widget.onJoiningDateChanged?.call(
-                                        formatted,
+                                        selected,
                                       );
                                       setState(() {
                                         _selectedDate = selected;
@@ -4148,13 +4196,25 @@ class DocumentationSection extends StatelessWidget {
                             Row(
                               children: [
                                 GestureDetector(
-                                  onTap: onUploadFrontTap,
+                                  onTap:
+                                      (frontIdBytes != null ||
+                                          (existingFrontIdUrl != null &&
+                                              existingFrontIdUrl!.isNotEmpty))
+                                      ? null
+                                      : onUploadFrontTap,
                                   child: Text(
                                     'upload_front_side'.tr(),
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
+                                      color:
+                                          (frontIdBytes != null ||
+                                              (existingFrontIdUrl != null &&
+                                                  existingFrontIdUrl!
+                                                      .isNotEmpty))
+                                          ? const Color(0xFF9CA3AF)
+                                          : const Color(0xFF000000),
                                     ),
                                   ),
                                 ),
@@ -4754,7 +4814,7 @@ Widget _buildInputField(
                     isAmount
                         ? RegExp(r'[\d,.]')
                         : (isNationalId
-                              ? RegExp(r'^[\d-]*')
+                              ? RegExp(r'^[A-Za-z0-9\-]*')
                               : isContact
                               ? RegExp(r'[0-9+\-\s()]')
                               : RegExp(r'^\d*')),
@@ -4771,7 +4831,8 @@ Widget _buildInputField(
                       // max 12 digits before decimal
                       if (intPart.length > 12) return oldValue;
                       // max 2 digits after decimal
-                      if (parts.length > 1 && parts[1].length > 2) return oldValue;
+                      if (parts.length > 1 && parts[1].length > 2)
+                        return oldValue;
                       final decPart = parts.length > 1 ? '.${parts[1]}' : '';
                       final buffer = StringBuffer();
                       for (int i = 0; i < intPart.length; i++) {
