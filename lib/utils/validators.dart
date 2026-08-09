@@ -71,7 +71,14 @@ class Validators {
     return trimmed
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
-        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .map((word) {
+          // Preserve fully-uppercase words (acronyms such as QA, UI/UX, HR,
+          // PHP) instead of collapsing them to "Qa".
+          if (word.length > 1 && word == word.toUpperCase()) {
+            return word;
+          }
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
         .join(' ');
   }
 
