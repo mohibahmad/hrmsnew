@@ -79,8 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = await PreferencesService.getBiometricPassword();
       hasSaved = enabled && email != null && password != null;
     } catch (error, stackTrace) {
-      
-      
       ErrorReporter.report(error, stackTrace, context: 'checkBiometricStatus');
     }
     if (mounted) {
@@ -145,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userCredential != null && mounted) {
         if (await _firestoreService.isCurrentUserDeleted()) {
           await _authService.signOut();
-          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
+          if (mounted) _showDeletedAccountSnackBar();
           return;
         }
         if (!mounted) return;
@@ -232,9 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    final enteredEmail = _emailController.text.trim().toLowerCase();
 
     try {
-      final enteredEmail = _emailController.text.trim().toLowerCase();
       await _authService.signIn(
         email: enteredEmail,
         password: _passwordController.text,
@@ -242,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         if (await _firestoreService.isCurrentUserDeleted()) {
           await _authService.signOut();
-          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
+          if (mounted) _showDeletedAccountSnackBar();
           return;
         }
 
@@ -283,7 +281,6 @@ class _LoginScreenState extends State<LoginScreen> {
               savedEmail?.trim().toLowerCase() == enteredEmail;
 
           if (sameAccount) {
-            
             await PreferencesService.setBiometricCredentials(
               email: enteredEmail,
               password: _passwordController.text,
@@ -309,6 +306,21 @@ class _LoginScreenState extends State<LoginScreen> {
         _openHome();
       }
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        try {
+          if (await _firestoreService.isEmailDeleted(enteredEmail)) {
+            if (mounted) _showDeletedAccountSnackBar();
+            return;
+          }
+        } catch (error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'loginDeletedEmailCheck',
+          );
+        }
+      }
+
       String message;
       switch (e.code) {
         case 'user-not-found':
@@ -364,7 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final biometricName = await BiometricService.getBiometricName();
-      final authenticated = await BiometricService.authenticate(
+      final result = await BiometricService.authenticate(
         localizedReason: 'login_with_biometric_reason'.tr(
           namedArgs: {
             'biometric': LocalizationHelper.localizeBiometricName(
@@ -374,9 +386,29 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      if (!authenticated) {
+      // Handle cancellation silently – user pressed Cancel, no error.
+      if (result == BiometricAuthResult.cancelled) {
+        return;
+      }
+
+      if (result != BiometricAuthResult.success) {
+        // Determine the right error message based on the result type.
+        String errorMsg;
+        switch (result) {
+          case BiometricAuthResult.lockedOut:
+            errorMsg = 'biometric_locked_out'.tr();
+            break;
+          case BiometricAuthResult.permanentlyLockedOut:
+            errorMsg = 'biometric_permanently_locked_out'.tr();
+            break;
+          case BiometricAuthResult.notAvailable:
+            errorMsg = 'biometric_not_enrolled'.tr();
+            break;
+          default:
+            errorMsg = 'biometric_auth_failed'.tr();
+        }
         if (mounted) {
-          _showErrorSnackBar('biometric_auth_failed'.tr());
+          _showErrorSnackBar(errorMsg);
         }
         return;
       }
@@ -424,6 +456,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     FlashySnackBar.show(context, message: message, isError: true);
+  }
+
+  void _showDeletedAccountSnackBar() {
+    FlashySnackBar.show(
+      context,
+      title: 'account_deleted'.tr(),
+      message: 'account_deleted_contact_message'.tr(),
+      isError: true,
+    );
   }
 
   InputDecoration _buildCustomInputDecoration(

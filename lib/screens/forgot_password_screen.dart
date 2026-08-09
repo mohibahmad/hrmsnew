@@ -309,7 +309,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             Text(
                               _emailSent
                                   ? 'forgot_password_subtitle_reset'.tr()
-                                  : 'forgot_password_otp_subtitle'.tr(),
+                                  : 'forgot_password_link_subtitle'.tr(),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,

@@ -1,6 +1,6 @@
 {
-    "name": "hrms",
-    "short_name": "hrms",
+    "name": "HRMS",
+    "short_name": "HRMS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

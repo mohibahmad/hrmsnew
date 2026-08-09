@@ -139,7 +139,9 @@ class FirestoreService {
       'phone': phone,
       'uid': user.uid,
       'companyId': '',
+      'currency': CurrencyUtils.defaultCode,
       'hasDummyData': false,
+      'isDeleted': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

@@ -27,18 +27,39 @@ Future<bool> offerBiometricLogin({
   final biometricName = await BiometricService.getBiometricName();
   if (!context.mounted) return false;
 
-  final verified = await BiometricService.authenticate(
+  final result = await BiometricService.authenticate(
     localizedReason: 'enable_biometric_signup_reason'.tr(
       namedArgs: {
         'biometric': LocalizationHelper.localizeBiometricName(biometricName),
       },
     ),
   );
-  if (!verified) {
+
+  // Handle cancellation silently – user pressed Cancel, no error.
+  if (result == BiometricAuthResult.cancelled) {
+    return false;
+  }
+
+  if (result != BiometricAuthResult.success) {
+    // Determine the right error message based on the result type.
+    String errorMsg;
+    switch (result) {
+      case BiometricAuthResult.lockedOut:
+        errorMsg = 'biometric_locked_out'.tr();
+        break;
+      case BiometricAuthResult.permanentlyLockedOut:
+        errorMsg = 'biometric_permanently_locked_out'.tr();
+        break;
+      case BiometricAuthResult.notAvailable:
+        errorMsg = 'biometric_not_enrolled'.tr();
+        break;
+      default:
+        errorMsg = 'biometric_auth_failed'.tr();
+    }
     if (context.mounted) {
       FlashySnackBar.show(
         context,
-        message: 'biometric_auth_failed'.tr(),
+        message: errorMsg,
         isError: true,
       );
     }

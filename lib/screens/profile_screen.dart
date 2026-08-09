@@ -977,7 +977,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               ),
           ],
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -1629,10 +1629,10 @@ class ProfilePreviewDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      child: Center(
-        child: Container(
-          width: 480,
-          clipBehavior: Clip.antiAlias,
+      child: Center(          child: Container(
+              width: 480,
+              constraints: const BoxConstraints(),
+              clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(6),
@@ -1678,7 +1678,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ),
                     ),
                     Align(
-                      alignment: Alignment(0.95, 0),
+                      alignment: Alignment(1.0, 0),
                       child: IconButton(
                         icon: SvgPicture.asset(
                           'assets/edit_icon.svg',
@@ -1702,10 +1702,10 @@ class ProfilePreviewDialog extends StatelessWidget {
 
               Container(
                 color: const Color(0xFF0247C4),
-                padding: const EdgeInsets.fromLTRB(24, 15, 24, 15),
+                padding: const EdgeInsets.fromLTRB(28, 14, 28, 14),
                 child: Row(
                   children: [
-                    const SizedBox(width: 28),
+                    const SizedBox(width: 16),
                     Container(
                       width: 140,
                       height: 140,
@@ -1714,7 +1714,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                       ),
-                      child: const ClipOval(child: UserAvatar(radius: 70)),
+                      child: const ClipOval(child: UserAvatar(radius: 62)),
                     ),
                     const SizedBox(width: 24),
                     Expanded(
@@ -1740,10 +1740,7 @@ class ProfilePreviewDialog extends StatelessWidget {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
                 child: Column(
                   children: [
                     Row(
@@ -1755,7 +1752,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                             'assets/preview_profile.svg',
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _buildPreviewCard(
                             'company_id_no'.tr(),
@@ -1765,7 +1762,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
                     Row(
                       children: [
@@ -1776,7 +1773,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                             'assets/company_email.svg',
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _buildPreviewCard(
                             'currency'.tr(),
@@ -1786,7 +1783,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
                     Row(
                       children: [
@@ -1797,7 +1794,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                             'assets/phone_preview.svg',
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _buildPreviewCard(
                             'address'.tr(),
@@ -1819,8 +1816,8 @@ class ProfilePreviewDialog extends StatelessWidget {
 
   Widget _buildPreviewCard(String label, String value, String svgPath) {
     return Container(
-      height: 70,
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      height: 72,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),

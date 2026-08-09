@@ -555,7 +555,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildFieldLabel('confirm_new_password'.tr()),
+            _buildFieldLabel('confirm_password'.tr()),
             TextFormField(
               controller: _confirmPasswordController,
               enabled: !_anyLoading,
@@ -573,7 +573,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _buildCustomInputDecoration(
-                'confirm_new_password_hint'.tr(),
+                'confirm_password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscureConfirmPassword,
                 onToggleVisibility: () {

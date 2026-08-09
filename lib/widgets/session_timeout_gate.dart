@@ -4,13 +4,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/biometric_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/localization_helper.dart';
 
 typedef SessionActiveCheck = bool Function();
 typedef BiometricAvailabilityCheck = Future<bool> Function();
 typedef BiometricNameLoader = Future<String> Function();
-typedef BiometricUnlock = Future<bool> Function();
+typedef BiometricUnlock = Future<BiometricAuthResult> Function();
 
 DateTime _systemNow() => DateTime.now();
 
@@ -181,18 +182,31 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
       _authenticationFailed = false;
     });
 
-    var authenticated = false;
+    BiometricAuthResult result = BiometricAuthResult.error;
     try {
-      authenticated = await widget.authenticate().timeout(
+      result = await widget.authenticate().timeout(
         _biometricAttemptTimeout,
-        onTimeout: () => false,
+        onTimeout: () => BiometricAuthResult.error,
       );
     } catch (_) {
-      authenticated = false;
+      result = BiometricAuthResult.error;
     }
 
     if (!mounted) return;
-    if (authenticated && widget.isSessionActive()) {
+
+    // User cancelled – dismiss the lock screen silently, no error.
+    if (result == BiometricAuthResult.cancelled) {
+      setState(() {
+        _authenticating = false;
+      });
+      // Re-show the lock screen so the user can try again or sign out.
+      setState(() {
+        _authenticationFailed = false;
+      });
+      return;
+    }
+
+    if (result == BiometricAuthResult.success && widget.isSessionActive()) {
       setState(() {
         _locked = false;
         _authenticating = false;

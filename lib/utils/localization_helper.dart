@@ -468,8 +468,9 @@ class LocalizationHelper {
     switch (value.trim().toLowerCase()) {
       case 'face id':
         return 'biometric_face_id'.tr();
-      case 'fingerprint':
       case 'touch id':
+        return 'biometric_touch_id'.tr();
+      case 'fingerprint':
         return 'biometric_fingerprint'.tr();
       case 'iris':
         return 'biometric_iris'.tr();
