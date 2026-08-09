@@ -92,6 +92,44 @@ class LocalizationHelper {
     }
   }
 
+  /// Full-phrase job roles (mostly the guest demo dataset). Only these exact
+  /// canonical phrases are translated; HR-created roles always stay as-is.
+  static const Map<String, String> _compoundRoleKeys = {
+    'backend developer': 'backend_developer',
+    'backend engineer': 'backend_engineer',
+    'business analyst': 'business_analyst',
+    'cloud architect': 'cloud_architect',
+    'content strategist': 'content_strategist',
+    'content writer': 'content_writer',
+    'cyber security analyst': 'cyber_security_analyst',
+    'data analyst': 'data_analyst',
+    'data engineer': 'data_engineer',
+    'devops engineer': 'devops_engineer',
+    'devops lead': 'devops_lead',
+    'event coordinator': 'event_coordinator',
+    'finance analyst': 'finance_analyst',
+    'frontend developer': 'frontend_developer',
+    'graphic designer': 'graphic_designer',
+    'hr manager': 'hr_manager',
+    'it support specialist': 'it_support_specialist',
+    'junior developer': 'junior_developer',
+    'junior qa tester': 'junior_qa_tester',
+    'marketing lead': 'marketing_lead',
+    'mobile developer': 'mobile_developer',
+    'office manager': 'office_manager',
+    'operations manager': 'operations_manager',
+    'product manager': 'product_manager',
+    'qa engineer': 'qa_engineer',
+    'sales executive': 'sales_executive',
+    'senior web developer': 'senior_web_developer',
+    'social media manager': 'social_media_manager',
+    'solutions architect': 'solutions_architect',
+    'system administrator': 'system_administrator',
+    'technical writer': 'technical_writer',
+    'ui designer': 'ui_designer',
+    'ux researcher': 'ux_researcher',
+  };
+
   static String localizePosition(String value) {
     final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
     switch (normalized) {
@@ -161,63 +199,20 @@ class LocalizationHelper {
       case 'legal':
         return 'legal'.tr();
       default:
+        final compoundKey = _compoundRoleKeys[normalized];
+        if (compoundKey != null) return compoundKey.tr();
         return _localizeCompoundPosition(value.trim());
     }
   }
 
   static String _localizeCompoundPosition(String value) {
+    if (value.isEmpty) return value;
     final words = value.split(' ');
-    if (words.length <= 1) {
-      if (value.isEmpty) return value;
-      if (_jobRoleAcronyms.contains(value.toLowerCase())) {
-        return value.toUpperCase();
-      }
-      return value[0].toUpperCase() + value.substring(1);
-    }
     final parts = words.map((w) {
+      if (w.isEmpty) return w;
       final lower = w.toLowerCase();
-      switch (lower) {
-        case 'manager':
-          return 'manager'.tr();
-        case 'developer':
-          return 'developer'.tr();
-        case 'designer':
-          return 'designer'.tr();
-        case 'engineer':
-          return 'engineer'.tr();
-        case 'analyst':
-          return 'analyst'.tr();
-        case 'director':
-          return 'director'.tr();
-        case 'lead':
-          return 'lead'.tr();
-        case 'coordinator':
-          return 'coordinator'.tr();
-        case 'specialist':
-          return 'specialist'.tr();
-        case 'assistant':
-          return 'assistant'.tr();
-        case 'tester':
-          return 'tester'.tr();
-        case 'writer':
-          return 'writer'.tr();
-        case 'architect':
-          return 'architect'.tr();
-        case 'marketing':
-          return 'marketing'.tr();
-        case 'operations':
-          return 'operations'.tr();
-        case 'product':
-          return 'product'.tr();
-        case 'research':
-          return 'research'.tr();
-        case 'legal':
-          return 'legal'.tr();
-        default:
-          if (w.isEmpty) return w;
-          if (_jobRoleAcronyms.contains(lower)) return lower.toUpperCase();
-          return w[0].toUpperCase() + w.substring(1);
-      }
+      if (_jobRoleAcronyms.contains(lower)) return lower.toUpperCase();
+      return w[0].toUpperCase() + w.substring(1);
     }).toList();
     return parts.join(' ');
   }
@@ -383,6 +378,179 @@ class LocalizationHelper {
       case 'Paternity':
       case 'paternity':
         return 'paternity'.tr();
+      default:
+        return value;
+    }
+  }
+
+  /// Localizes expense category labels (e.g. 'Salary', 'Rent', 'Food &
+  /// Beverage'). Unknown/typed categories fall back to the raw value so
+  /// display follows the app language without breaking stored data.
+  static String localizeExpenseCategory(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'salary':
+        return 'expense_cat_salary'.tr();
+      case 'stationery':
+        return 'expense_cat_stationery'.tr();
+      case 'food & beverage':
+      case 'food_and_beverage':
+        return 'expense_cat_food_beverage'.tr();
+      case 'software & it':
+      case 'software_and_it':
+        return 'expense_cat_software_it'.tr();
+      case 'rent':
+        return 'expense_cat_rent'.tr();
+      case 'entertainment':
+        return 'expense_cat_entertainment'.tr();
+      case 'training & development':
+      case 'training_and_development':
+        return 'expense_cat_training_development'.tr();
+      case 'utilities':
+        return 'expense_cat_utilities'.tr();
+      case 'furniture':
+        return 'expense_cat_furniture'.tr();
+      case 'professional services':
+      case 'professional_services':
+        return 'expense_cat_professional_services'.tr();
+      default:
+        return value;
+    }
+  }
+
+  /// Localizes leave type labels (e.g. 'Sick Leave', 'Casual', 'Annual
+  /// Leave') used in the dashboard leave chart. Unknown values fall back to
+  /// the raw type so the color/label mapping keeps working in any language.
+  static String localizeLeaveType(String value) {
+    final normalized = value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), '_');
+    switch (normalized) {
+      case 'casual_leave':
+      case 'casual':
+        return 'leave_casual'.tr();
+      case 'sick_leave':
+      case 'sick':
+        return 'leave_sick'.tr();
+      case 'medical_leave':
+      case 'medical':
+        return 'leave_medical'.tr();
+      case 'annual_leave':
+      case 'annual':
+        return 'leave_annual'.tr();
+      case 'maternity_leave':
+      case 'maternity':
+        return 'leave_maternity'.tr();
+      case 'paternity_leave':
+      case 'paternity':
+        return 'leave_paternity'.tr();
+      case 'unpaid_leave':
+      case 'unpaid':
+        return 'leave_unpaid'.tr();
+      case 'emergency_leave':
+      case 'emergency':
+        return 'leave_emergency'.tr();
+      case 'study_leave':
+      case 'study':
+        return 'leave_study'.tr();
+      case 'hajj_leave':
+      case 'hajj':
+        return 'leave_hajj'.tr();
+      default:
+        return value;
+    }
+  }
+
+  /// Localizes the raw biometric label reported by the device (e.g.
+  /// "Fingerprint", "Face ID") so auth-prompt reason strings are fully
+  /// localized instead of mixing English labels into translated sentences.
+  static String localizeBiometricName(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'face id':
+        return 'biometric_face_id'.tr();
+      case 'fingerprint':
+      case 'touch id':
+        return 'biometric_fingerprint'.tr();
+      case 'iris':
+        return 'biometric_iris'.tr();
+      default:
+        return 'biometric_generic'.tr();
+    }
+  }
+
+  /// Localizes the seeded holiday names shown on the Home upcoming-holidays
+  /// cards. Unknown/custom holiday names fall back to the raw value.
+  static String localizeHolidayName(String value) {
+    final normalized = value
+        .trim()
+        .toLowerCase()
+        .replaceAll("'", '')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    switch (normalized) {
+      case 'new_years_day':
+        return 'holiday_name_new_years_day'.tr();
+      case 'martin_luther_king_jr_day':
+        return 'holiday_name_mlk_day'.tr();
+      case 'valentines_day':
+        return 'holiday_name_valentines_day'.tr();
+      case 'presidents_day':
+        return 'holiday_name_presidents_day'.tr();
+      case 'spring_equinox':
+        return 'holiday_name_spring_equinox'.tr();
+      case 'easter_sunday':
+        return 'holiday_name_easter_sunday'.tr();
+      case 'earth_day':
+        return 'holiday_name_earth_day'.tr();
+      case 'memorial_day':
+        return 'holiday_name_memorial_day'.tr();
+      case 'juneteenth':
+        return 'holiday_name_juneteenth'.tr();
+      case 'independence_day':
+        return 'holiday_name_independence_day'.tr();
+      case 'national_intern_day':
+        return 'holiday_name_national_intern_day'.tr();
+      case 'international_cat_day':
+        return 'holiday_name_international_cat_day'.tr();
+      case 'summer_picnic':
+        return 'holiday_name_summer_picnic'.tr();
+      case 'world_photography_day':
+        return 'holiday_name_world_photography_day'.tr();
+      case 'womens_equality_day':
+        return 'holiday_name_womens_equality_day'.tr();
+      case 'labor_day':
+        return 'holiday_name_labor_day'.tr();
+      case 'patriot_day':
+        return 'holiday_name_patriot_day'.tr();
+      case 'international_day_of_peace':
+        return 'holiday_name_international_day_of_peace'.tr();
+      case 'world_teachers_day':
+        return 'holiday_name_world_teachers_day'.tr();
+      case 'columbus_day':
+        return 'holiday_name_columbus_day'.tr();
+      case 'united_nations_day':
+        return 'holiday_name_united_nations_day'.tr();
+      case 'halloween':
+        return 'holiday_name_halloween'.tr();
+      case 'veterans_day':
+        return 'holiday_name_veterans_day'.tr();
+      case 'world_kindness_day':
+        return 'holiday_name_world_kindness_day'.tr();
+      case 'thanksgiving_day':
+        return 'holiday_name_thanksgiving_day'.tr();
+      case 'black_friday':
+        return 'holiday_name_black_friday'.tr();
+      case 'human_rights_day':
+        return 'holiday_name_human_rights_day'.tr();
+      case 'winter_solstice':
+        return 'holiday_name_winter_solstice'.tr();
+      case 'christmas_eve':
+        return 'holiday_name_christmas_eve'.tr();
+      case 'christmas_day':
+        return 'holiday_name_christmas_day'.tr();
+      case 'boxing_day':
+        return 'holiday_name_boxing_day'.tr();
+      case 'new_years_eve':
+        return 'holiday_name_new_years_eve'.tr();
       default:
         return value;
     }

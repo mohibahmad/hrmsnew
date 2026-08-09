@@ -2552,7 +2552,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Date Picker',
+      barrierLabel: 'date_picker'.tr(),
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),

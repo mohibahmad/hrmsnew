@@ -1775,7 +1775,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final tooltipTypeLabel = tooltipOption?['labelKey']?.tr() ?? tooltipType;
     final tooltipDate = date == null
         ? ''
-        : DateFormat('dd/MM/yyyy').format(date);
+        : DateFormat('yMd', context.locale.toString()).format(date);
     final tooltipMessage = '$tooltipTypeLabel\n$tooltipDate';
     final tooltipColor = LeaveColors.getColor(tooltipType);
 

@@ -1063,20 +1063,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
-    final value = clampToZero ? amount.clamp(0, double.infinity) : amount;
+    final value = clampToZero ? amount.clamp(0, double.infinity).toDouble() : amount;
     final symbol = CurrencyUtils.symbolFor(_currencyCode);
-    final separator = symbol.length > 1 ? ' ' : '';
-    // Keep display consistent with the expense screen (e.g. 150745 -> "150.7K"
-    // instead of NumberFormat.compact's rounded "151K").
-    if (value.abs() >= 1e12) {
-      return '$symbol$separator${(value / 1e12).toStringAsFixed(1)}T';
-    } else if (value.abs() >= 1e9) {
-      return '$symbol$separator${(value / 1e9).toStringAsFixed(1)}B';
-    } else if (value.abs() >= 1e6) {
-      return '$symbol$separator${(value / 1e6).toStringAsFixed(1)}M';
-    } else if (value.abs() >= 1e3) {
-      return '$symbol$separator${(value / 1e3).toStringAsFixed(1)}K';
+    if (value.abs() >= 1e3) {
+      return CurrencyUtils.formatCompactLocale(
+        value,
+        context.locale.toString(),
+        symbol: symbol,
+      );
     }
+    final separator = symbol.length > 1 ? ' ' : '';
     try {
       return '$symbol$separator${NumberFormat.currency(
         locale: context.locale.toString(),

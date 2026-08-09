@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/biometric_service.dart';
 import '../services/preferences_service.dart';
+import 'localization_helper.dart';
 import 'snackbar_utils.dart';
 
 Future<bool> offerBiometricLogin({
@@ -28,7 +29,9 @@ Future<bool> offerBiometricLogin({
 
   final verified = await BiometricService.authenticate(
     localizedReason: 'enable_biometric_signup_reason'.tr(
-      namedArgs: {'biometric': biometricName},
+      namedArgs: {
+        'biometric': LocalizationHelper.localizeBiometricName(biometricName),
+      },
     ),
   );
   if (!verified) {

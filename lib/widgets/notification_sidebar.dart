@@ -244,7 +244,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         return 'time_ago_hours'.tr(namedArgs: {'count': '${diff.inHours}'});
       if (diff.inDays < 7)
         return 'time_ago_days'.tr(namedArgs: {'count': '${diff.inDays}'});
-      return DateFormat('time_ago_date'.tr()).format(created);
+      return DateFormat('time_ago_date'.tr(), context.locale.toString())
+          .format(created);
     } catch (_) {
       return '';
     }

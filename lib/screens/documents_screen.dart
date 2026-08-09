@@ -656,7 +656,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
       if (fileBytes != null && fileBytes.isNotEmpty) {
         final result = await FilePicker.saveFile(
-          dialogTitle: 'Download File',
+          dialogTitle: 'download_file'.tr(),
           fileName: defaultName,
           bytes: fileBytes,
         );
@@ -1847,7 +1847,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         bytes = downloaded.bytes;
       } else if (source.startsWith('data:application/pdf')) {
         if (!source.contains(',')) {
-          throw const FormatException('Invalid PDF data');
+          throw FormatException('invalid_pdf_data'.tr());
         }
         bytes = base64Decode(source.split(',').last);
       } else {

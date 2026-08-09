@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/file_opener.dart';
+import '../utils/localization_helper.dart';
 import 'dart:io';
 import 'auth_service.dart';
 import 'firestore_service.dart';
@@ -1609,7 +1610,11 @@ class SalaryDayScheduler {
                                             left: 8,
                                           ),
                                           child: ChoiceChip(
-                                            label: Text(pos),
+                                            label: Text(
+                                              LocalizationHelper.localizePosition(
+                                                pos,
+                                              ),
+                                            ),
                                             selected: positionFilter == pos,
                                             onSelected: (_) {
                                               setDialogState(
@@ -2182,6 +2187,9 @@ class SalaryDayScheduler {
                                                           child: Text(
                                                             AmountText.formatCompact(
                                                               r.netSalary,
+                                                              locale: context
+                                                                  .locale
+                                                                  .toString(),
                                                             ),
                                                             style: TextStyle(
                                                               fontSize: 14,
@@ -2278,6 +2286,9 @@ class SalaryDayScheduler {
                                           final value =
                                               PayrollService.formatNumber(
                                                 total,
+                                                locale: context
+                                                    .locale
+                                                    .toString(),
                                               );
                                           return prefix.isEmpty
                                               ? value
@@ -2572,6 +2583,9 @@ class SalaryDayScheduler {
                                     Text(
                                       AmountText.formatCompact(
                                         result.netSalary,
+                                        locale: detailContext
+                                            .locale
+                                            .toString(),
                                       ),
                                       style: const TextStyle(
                                         fontSize: 32,
@@ -2626,6 +2640,9 @@ class SalaryDayScheduler {
                                         result.salary.isNotEmpty
                                             ? AmountText.formatCompact(
                                                 result.salary,
+                                                locale: detailContext
+                                                    .locale
+                                                    .toString(),
                                               )
                                             : _zeroAmount(result.salary),
                                         const Color(0xFFF9FAFB),
@@ -2637,6 +2654,9 @@ class SalaryDayScheduler {
                                         result.overtimeAmount.isNotEmpty
                                             ? AmountText.formatCompact(
                                                 result.overtimeAmount,
+                                                locale: detailContext
+                                                    .locale
+                                                    .toString(),
                                               )
                                             : _zeroAmount(result.salary),
                                         const Color(0xFFECFDF5),

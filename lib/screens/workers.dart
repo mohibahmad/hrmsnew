@@ -1141,7 +1141,7 @@ class _WorkerProfilePreviewDialogState
       final worker = widget.worker;
       final name = _v(worker, 'name');
       final email = _v(worker, 'email');
-      final phone = _v(worker, 'phone');
+      final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
       final profileImage = _safeOptionalString(worker['profileImage']);
       final salaryAmount = _v(worker, 'salaryAmount');
       Map<String, dynamic> companyProfile = const {};
@@ -1166,7 +1166,10 @@ class _WorkerProfilePreviewDialogState
           ? '$currSymbol $rawSalaryStr'
           : rawSalaryStr;
       final salary = salaryToFormat.isNotEmpty
-          ? AmountText.formatCompact(salaryToFormat)
+          ? AmountText.formatCompact(
+              salaryToFormat,
+              locale: context.locale.toString(),
+            )
           : '';
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '').toString(),
@@ -1262,7 +1265,7 @@ class _WorkerProfilePreviewDialogState
     final worker = widget.worker;
     final name = _v(worker, 'name');
     final email = _v(worker, 'email');
-    final phone = _v(worker, 'phone');
+    final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
     final salaryAmount = _v(worker, 'salaryAmount');
     final companyCurr = PreferencesService.cachedCompanyCurrency;
@@ -1272,7 +1275,10 @@ class _WorkerProfilePreviewDialogState
         ? '$currSymbol $rawSalaryStr'
         : rawSalaryStr;
     final salary = salaryToFormat.isNotEmpty
-        ? AmountText.formatCompact(salaryToFormat)
+        ? AmountText.formatCompact(
+            salaryToFormat,
+            locale: context.locale.toString(),
+          )
         : '';
 
     return Dialog(

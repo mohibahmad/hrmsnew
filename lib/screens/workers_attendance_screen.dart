@@ -21,6 +21,7 @@ import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/localization_helper.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
@@ -2389,6 +2390,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Widget _buildHolidayNotice(String name, {bool isCompanyOffDay = false}) {
+    final displayName = LocalizationHelper.localizeHolidayName(name);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -2406,8 +2408,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           Text(
             isCompanyOffDay
                 ? 'company_off_day'.tr()
-                : (name.isNotEmpty
-                      ? '${'today_is_holiday'.tr()}: $name'
+                : (displayName.isNotEmpty
+                      ? '${'today_is_holiday'.tr()}: $displayName'
                       : 'today_is_holiday'.tr()),
             style: const TextStyle(
               fontSize: 18,

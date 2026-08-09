@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../utils/svg_fill_color_mapper.dart';
+import '../../utils/localization_helper.dart';
 import '../custom_timeframe_dropdown.dart';
 
 
@@ -212,7 +213,8 @@ class LeaveTypesPieChart extends StatelessWidget {
         Expanded(
           child: buildLegendItem(
             typeColors[first.key]!,
-            '${first.key}: ${typePercents[first.key]!.toInt()}%',
+            '${LocalizationHelper.localizeLeaveType(first.key)}: '
+            '${typePercents[first.key]!.toInt()}%',
           ),
         ),
       );
@@ -224,7 +226,8 @@ class LeaveTypesPieChart extends StatelessWidget {
           Expanded(
             child: buildLegendItem(
               typeColors[second.key]!,
-              '${second.key}: ${typePercents[second.key]!.toInt()}%',
+              '${LocalizationHelper.localizeLeaveType(second.key)}: '
+              '${typePercents[second.key]!.toInt()}%',
             ),
           ),
         );

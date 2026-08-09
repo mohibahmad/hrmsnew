@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -17,6 +18,7 @@ import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
+import 'utils/localization_helper.dart';
 import 'utils/navigation_utils.dart';
 import 'widgets/session_timeout_gate.dart';
 
@@ -31,6 +33,10 @@ Future<void> main() async {
 
       try {
         await EasyLocalization.ensureInitialized();
+
+        // Load CLDR date/time symbols & patterns for all supported locales so
+        // locale-based date formatting (e.g. DateFormat.yMd) works everywhere.
+        await initializeDateFormatting();
 
         await PreferencesService.initFromPrefs();
 
@@ -198,7 +204,11 @@ class HRMSApp extends StatelessWidget {
             final biometricName = await BiometricService.getBiometricName();
             return BiometricService.authenticate(
               localizedReason: 'session_unlock_reason'.tr(
-                namedArgs: {'biometric': biometricName},
+                namedArgs: {
+                  'biometric': LocalizationHelper.localizeBiometricName(
+                    biometricName,
+                  ),
+                },
               ),
             );
           },

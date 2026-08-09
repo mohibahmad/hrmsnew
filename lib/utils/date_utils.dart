@@ -113,6 +113,27 @@ class AppDateUtils {
     return '$dayStr/$monthStr/${date.year}';
   }
 
+  /// Formats [date] using the given [locale] (e.g. en_US -> M/d/yyyy,
+  /// en_GB/es -> dd/MM/yyyy, de -> dd.MM.yyyy, ar -> Arabic-Indic digits).
+  /// Falls back to the canonical dd/MM/yyyy format on any failure.
+  static String formatLocaleDate(DateTime date, {String? locale}) {
+    try {
+      return DateFormat.yMd(locale ?? Intl.getCurrentLocale()).format(date);
+    } catch (_) {
+      return formatDate(date);
+    }
+  }
+
+  /// Parses [value] (DateTime / Timestamp / date string) and formats it using
+  /// the given [locale]. Null values produce '' and unparseable values are
+  /// returned as-is so display can localize without breaking stored data.
+  static String fromValueLocalized(dynamic value, {String? locale}) {
+    if (value == null) return '';
+    final date = dateFromValue(value);
+    if (date == null) return value.toString();
+    return formatLocaleDate(date, locale: locale);
+  }
+
   static DateTime periodStart(String period, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     switch (period) {

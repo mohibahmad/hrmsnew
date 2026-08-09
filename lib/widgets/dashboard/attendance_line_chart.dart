@@ -81,6 +81,11 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                           _authService.currentUser?.isAnonymous ?? false,
                           context.locale.toString(),
                         );
+                        // Localized number format for axis/tooltip values
+                        // (e.g. 1200 -> "1 200" in ru/fr, "1.200" in es).
+                        final numberFmt = NumberFormat.decimalPattern(
+                          context.locale.toString(),
+                        );
                         final double rawMaxY = chartData.values.isEmpty
                             ? 1.0
                             : chartData.values
@@ -121,7 +126,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                       getTooltipItems: (spots) {
                                         return spots.map((spot) {
                                           return LineTooltipItem(
-                                            spot.y.toStringAsFixed(0),
+                                            numberFmt.format(spot.y),
                                             const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -185,7 +190,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                             meta: meta,
                                             space: 8,
                                             child: Text(
-                                              value.toInt().toString(),
+                                              numberFmt.format(value.toInt()),
                                               style: style,
                                               textAlign: TextAlign.right,
                                               maxLines: 1,

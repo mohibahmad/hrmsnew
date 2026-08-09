@@ -31,13 +31,13 @@ import '../widgets/notification_bell.dart';
 
 /// Formats a numeric salary value with thousands separators
 /// (e.g. 50000 -> "50,000"). Returns '' for empty/invalid input.
-String _formatSalaryWithCommas(dynamic value) {
+String _formatSalaryWithCommas(dynamic value, {String locale = 'en_US'}) {
   final text = (value ?? '').toString().trim();
   if (text.isEmpty) return '';
-  final cleaned = text.replaceAll(',', '');
+  final cleaned = text.replaceAll(RegExp(r'[,\s\u00A0\u202F]'), '');
   final amount = double.tryParse(cleaned);
   if (amount == null || !amount.isFinite) return '';
-  return NumberFormat('#,##0.##', 'en_US').format(amount);
+  return NumberFormat('#,##0.##', locale).format(amount);
 }
 
 class UploadProgress {
@@ -2467,7 +2467,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             workerIndex: index,
           ),
           _buildDataCell(
-            _formatSalaryWithCommas(worker['salaryAmount']),
+            _formatSalaryWithCommas(
+              worker['salaryAmount'],
+              locale: context.locale.toString(),
+            ),
             130,
             hasError: hasFieldError(worker, 'salaryAmount'),
             fieldKey: 'salaryAmount',

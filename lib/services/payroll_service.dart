@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../utils/currency_utils.dart';
 
 class PayrollService {
@@ -585,7 +586,13 @@ class PayrollService {
           worker['profileImage'],
           payrollRecord['profileImage'],
         );
-        final phone = _preferNonEmpty(worker['phone'], payrollRecord['phone']);
+        final phone = _preferNonEmpty(
+          worker['phone'],
+          _preferNonEmpty(
+            payrollRecord['phone'],
+            _preferNonEmpty(worker['contact'], payrollRecord['contact']),
+          ),
+        );
 
         final currentSalary = _salaryDisplayOrEmpty(
           worker,
@@ -890,15 +897,19 @@ class PayrollService {
     };
   }
 
-  static String formatNumber(num number) {
+  static String formatNumber(num number, {String locale = 'en_US'}) {
     if (number.isNaN || number.isInfinite) return '0';
     final isNegative = number < 0;
     final absolute = isNegative ? -number : number;
     final abs = absolute;
-    if (abs >= 1e12) return '${(number / 1e12).toStringAsFixed(1)}T';
-    if (abs >= 1e9) return '${(number / 1e9).toStringAsFixed(1)}B';
-    if (abs >= 1e6) return '${(number / 1e6).toStringAsFixed(1)}M';
-    if (abs >= 1e3) return '${(number / 1e3).toStringAsFixed(1)}K';
+    if (abs >= 1e3) {
+      final compact = CurrencyUtils.formatCompactLocale(
+        number.toDouble(),
+        locale,
+        symbol: '',
+      );
+      return isNegative ? '($compact)' : compact;
+    }
     final roundedStr = absolute.toStringAsFixed(0);
     final formatted = roundedStr.replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -908,17 +919,26 @@ class PayrollService {
     return formatted;
   }
 
-  static String formatFullNumber(num number) {
+  static String formatFullNumber(num number, {String locale = 'en_US'}) {
     if (number.isNaN || number.isInfinite) return '0';
     final hasDecimals = number != number.roundToDouble();
-    final parts = number.toStringAsFixed(hasDecimals ? 2 : 0).split('.');
-    final formattedInteger = parts.first.replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match match) => '${match[1]},',
-    );
-    return parts.length == 1
-        ? formattedInteger
-        : '$formattedInteger.${parts[1]}';
+    try {
+      final formatted = NumberFormat.currency(
+        locale: locale,
+        symbol: '',
+        decimalDigits: hasDecimals ? 2 : 0,
+      ).format(number);
+      return formatted.trim();
+    } catch (_) {
+      final parts = number.toStringAsFixed(hasDecimals ? 2 : 0).split('.');
+      final formattedInteger = parts.first.replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match match) => '${match[1]},',
+      );
+      return parts.length == 1
+          ? formattedInteger
+          : '$formattedInteger.${parts[1]}';
+    }
   }
 
   static String getCurrencyPrefix(String salaryStr) {

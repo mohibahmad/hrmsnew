@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import '../services/preferences_service.dart';
 
 String formatMoney(double amount, String symbol) {
@@ -93,4 +95,76 @@ class CurrencyUtils {
 
   static String symbolFor(dynamic value) =>
       _symbols[normalize(value)] ?? _symbols[companyCurrency]!;
+
+  /// Locale-aware compact amount that keeps 1 decimal of precision and uses
+  /// the locale's suffix + decimal separator. Examples for 150745 ($):
+  ///   en_US -> "$150.7K", ru -> "$150,7 тыс.", fr -> "$150,7 k",
+  ///   es/pt -> "$150,7 mil". Whole numbers drop the decimal (50000 -> "$50K").
+  static String formatCompactLocale(
+    double value,
+    String locale, {
+    required String symbol,
+  }) {
+    final lang = locale.toLowerCase().split('_').first;
+    final abs = value.abs();
+
+    double unit;
+    String suffix;
+    if (abs >= 1e12) {
+      unit = 1e12;
+      suffix = switch (lang) {
+        'ru' => 'трлн',
+        'es' => 'B',
+        'fr' => 'Bi',
+        'pt' => 'tri',
+        _ => 'T',
+      };
+    } else if (abs >= 1e9) {
+      unit = 1e9;
+      suffix = switch (lang) {
+        'ru' => 'млрд',
+        'es' => 'B',
+        'fr' => 'Md',
+        'pt' => 'bi',
+        _ => 'B',
+      };
+    } else if (abs >= 1e6) {
+      unit = 1e6;
+      suffix = switch (lang) {
+        'ru' => 'млн',
+        'es' => 'M',
+        'fr' => 'M',
+        'pt' => 'mi',
+        _ => 'M',
+      };
+    } else if (abs >= 1e3) {
+      unit = 1e3;
+      suffix = switch (lang) {
+        'ru' => 'тыс.',
+        'es' => 'mil',
+        'fr' => 'k',
+        'pt' => 'mil',
+        _ => 'K',
+      };
+    } else {
+      unit = 1;
+      suffix = '';
+    }
+
+    final scaled = unit == 1 ? value : value / unit;
+    String numberPart;
+    try {
+      numberPart = NumberFormat('0.0', locale).format(scaled);
+    } catch (_) {
+      numberPart = scaled.toStringAsFixed(1);
+    }
+    // Drop the trailing ".0"/",0" for whole numbers (50.0 -> 50, 2,0 -> 2).
+    numberPart = numberPart.replaceFirst(RegExp(r'[,.]0$'), '');
+    if (suffix.isEmpty) return '$symbol$numberPart';
+    // English attaches compact suffixes without a space ($57.3K), while other
+    // locales use word-like suffixes that need a space ($57,3 тыс., $150,7 mil).
+    return lang == 'en'
+        ? '$symbol$numberPart$suffix'
+        : '$symbol$numberPart $suffix';
+  }
 }

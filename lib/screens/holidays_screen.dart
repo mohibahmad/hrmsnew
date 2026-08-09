@@ -16,6 +16,7 @@ import '../utils/premium_gate.dart';
 import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/localization_helper.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -1840,7 +1841,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              item.name,
+              LocalizationHelper.localizeHolidayName(item.name),
               style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF000000),

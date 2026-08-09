@@ -120,7 +120,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   String _payPeriodLabelFor(DateTime month) {
     final start = PayrollService.payPeriodStart(month, _salaryPaymentDay);
     final end = PayrollService.payPeriodEnd(month, _salaryPaymentDay);
-    final monthFmt = DateFormat('MMM');
+    final monthFmt = DateFormat('MMM', context.locale.toString());
     return '${monthFmt.format(start)} ${start.day} – '
         '${monthFmt.format(end)} ${end.day}, ${end.year}';
   }
@@ -932,7 +932,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         ? const Color(0xFF0247C4)
         : const Color(0xFF004FDE);
 
-    final payDateText = DateFormat('dd MMM yyyy').format(dueDate);
+    final payDateText = DateFormat.yMMMd(context.locale.toString()).format(dueDate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -1860,6 +1860,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Widget _buildEmployeeRow(Map<String, dynamic> doc, int index) {
     final isPaid = doc['isPaid'] == true;
     final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
+    // 'phone' can be an empty string on merged payroll docs; fall back to
+    // 'contact' so the Contact No column is never blank when data exists.
+    final contactNo = (doc['phone'] ?? '').toString().trim().isEmpty
+        ? (doc['contact'] ?? '').toString()
+        : (doc['phone'] ?? '').toString();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1954,7 +1959,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 24.0),
               child: Text(
-                (doc['phone'] ?? doc['contact'] ?? '').toString(),
+                contactNo,
                 style: const TextStyle(
                   fontSize: 15,
                   color: Colors.black,
@@ -2155,12 +2160,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();
     final String rawOvertimeAmount = (data['overtimeAmount'] ?? '0').toString();
     final deductionsAreTotals = data['deductionsAreTotals'] == true;
-    final String overtimeAmount = AmountText.formatFull(rawOvertimeAmount);
+    final String overtimeAmount = AmountText.formatFull(
+      rawOvertimeAmount,
+      locale: context.locale.toString(),
+    );
     final String salary = AmountText.formatFull(
       PayrollService.currentSalaryDisplay(
         data,
         companyCurrency: _companyCurrency,
       ),
+      locale: context.locale.toString(),
     );
     final hasLeaveDeduction = rawLeaveDeduction.trim().isNotEmpty;
     final totalDaysValue = PayrollService.parseIntSafe(totalWorkDays);
@@ -2222,6 +2231,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               data['salaryAfterDeduction'] ??
               '0')
           .toString(),
+      locale: context.locale.toString(),
     );
     final String absentDeduction = AmountText.formatFull(
       (deductionsAreTotals
@@ -2229,6 +2239,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               : previewCalculation['formattedAbsentDeduct'] ??
                     rawAbsentDeduction)
           .toString(),
+      locale: context.locale.toString(),
     );
 
     final paidDate = PayrollService.payrollPaymentDate(data);

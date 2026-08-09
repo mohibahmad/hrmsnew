@@ -14,6 +14,7 @@ import '../services/preferences_service.dart';
 import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/biometric_enrollment.dart';
+import '../utils/localization_helper.dart';
 import '../utils/navigation_utils.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -365,7 +366,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final biometricName = await BiometricService.getBiometricName();
       final authenticated = await BiometricService.authenticate(
         localizedReason: 'login_with_biometric_reason'.tr(
-          namedArgs: {'biometric': biometricName},
+          namedArgs: {
+            'biometric': LocalizationHelper.localizeBiometricName(
+              biometricName,
+            ),
+          },
         ),
       );
 
@@ -772,16 +777,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'welcome_to_hrms'.tr(),
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      fontSize: 58,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                      fontFamily: 'SF Pro',
-                                      height: 1,
-                                      letterSpacing: 2,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      'welcome_to_hrms'.tr(),
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        fontSize: 58,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                        fontFamily: 'SF Pro',
+                                        height: 1,
+                                        letterSpacing: 2,
+                                      ),
                                     ),
                                   ),
                                   SizedBox(height: 10),

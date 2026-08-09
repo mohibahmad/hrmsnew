@@ -18,7 +18,12 @@ class TopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthService>().currentUser;
-    final name = user?.displayName ?? 'User';
+    String name = user?.displayName ?? 'User';
+    if (name.trim().isEmpty || name == 'User') {
+      name = 'user_name'.tr();
+    } else if (name == 'Guest User') {
+      name = 'guest_user'.tr();
+    }
 
     return Container(
       height: 94,

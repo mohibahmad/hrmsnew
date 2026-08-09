@@ -12,6 +12,7 @@ import '../services/payroll_service.dart';
 
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/localization_helper.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/snackbar_utils.dart';
@@ -20,13 +21,6 @@ import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/guest_restriction.dart';
-
-String _eds(dynamic value) {
-  if (value == null) return '';
-  final date = AppDateUtils.dateFromValue(value);
-  if (date == null) return value.toString();
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -191,8 +185,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   double get _selectedPeriodExpenseSum {
     return _expensesDocs.fold(0.0, (sum, doc) {
-      final dateStr = _eds(doc['date']);
-      if (_isDateWithinPeriod(dateStr, _selectedPeriod)) {
+      if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
         return sum + _expenseAmount(doc);
       }
       return sum;
@@ -255,16 +248,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _formatCurrency(double amount) {
-    final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
-    if (amount.abs() >= 1e12) {
-      return '$symbol${(amount / 1e12).toStringAsFixed(1)}T';
-    } else if (amount.abs() >= 1e9) {
-      return '$symbol${(amount / 1e9).toStringAsFixed(1)}B';
-    } else if (amount.abs() >= 1e6) {
-      return '$symbol${(amount / 1e6).toStringAsFixed(1)}M';
-    } else if (amount.abs() >= 1e3) {
-      return '$symbol${(amount / 1e3).toStringAsFixed(1)}K';
+    final codeSymbol = CurrencyUtils.symbolFor(_currencyCode);
+    if (amount.abs() >= 1e3) {
+      return CurrencyUtils.formatCompactLocale(
+        amount,
+        context.locale.toString(),
+        symbol: codeSymbol,
+      );
     }
+    final symbol = '$codeSymbol ';
     try {
       return NumberFormat.currency(
         locale: context.locale.toString(),
@@ -297,8 +289,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
-  bool _isDateWithinPeriod(String dateStr, String period) {
-    return AppDateUtils.isDateWithinPeriod(dateStr, period);
+  /// Localized display date for an expense row. The stored value stays
+  /// canonical (e.g. dd/MM/yyyy) so parsing/filtering is unaffected.
+  String _eds(dynamic value) {
+    return AppDateUtils.fromValueLocalized(
+      value,
+      locale: context.locale.toString(),
+    );
   }
 
   void _adjustDummyDatesForPeriod(String period) {
@@ -338,10 +335,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final dateStr = _eds(doc['date']);
 
       final matchesSearch = name.contains(query) || category.contains(query);
-      final matchesPeriod = _isDateWithinPeriod(dateStr, _selectedPeriod);
+      final matchesPeriod = AppDateUtils.isTimestampWithinPeriod(
+        doc['date'],
+        _selectedPeriod,
+      );
       return matchesSearch && matchesPeriod;
     }).toList();
   }
@@ -1782,11 +1781,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final date = _eds(doc['date']);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final rawCategory = (doc['category'] ?? '').toString();
-    // In guest mode the seeded salary expenses store the category as
-    // lowercase 'salary'; display it capitalized as 'Salary'.
-    final category = isGuest && rawCategory.trim().toLowerCase() == 'salary'
-        ? 'Salary'
-        : rawCategory;
+    // Localize the displayed category (e.g. "Salary" -> translated label).
+    // Falls back to the raw value for any unknown/typed categories.
+    final category = LocalizationHelper.localizeExpenseCategory(rawCategory);
     final amount = _expenseAmount(doc);
 
     return GestureDetector(

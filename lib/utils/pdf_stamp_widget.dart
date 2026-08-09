@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -80,7 +81,7 @@ pw.Widget _buildDefaultCompanySeal({
           ),
           pw.SizedBox(height: 1),
           pw.Text(
-            'OFFICIAL SEAL',
+            'official_seal'.tr(),
             style: pw.TextStyle(
               color: color,
               fontSize: 4.2,

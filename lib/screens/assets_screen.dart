@@ -13,6 +13,7 @@ import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
 import 'package:provider/provider.dart';
 import '../utils/premium_gate.dart';
+import '../utils/date_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
@@ -918,7 +919,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Date Picker',
+      barrierLabel: 'date_picker'.tr(),
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
@@ -1458,7 +1459,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                data.dateLoaned,
+                AppDateUtils.fromValueLocalized(
+                  data.dateLoaned,
+                  locale: context.locale.toString(),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1480,7 +1484,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         data.dateReturned.trim() == '__IN_USE__' ||
                         data.dateReturned.trim().isEmpty)
                     ? 'in_use'.tr()
-                    : data.dateReturned,
+                    : AppDateUtils.fromValueLocalized(
+                        data.dateReturned,
+                        locale: context.locale.toString(),
+                      ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

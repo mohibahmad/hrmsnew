@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../utils/localization_helper.dart';
 
 class HolidayCard extends StatelessWidget {
   final String day;
@@ -19,35 +20,30 @@ class HolidayCard extends StatelessWidget {
     this.isActive = false,
   });
 
-  static String _localizeMonth(String month) {
-    
-    switch (month) {
-      case 'January':
-        return 'Jan';
-      case 'February':
-        return 'Feb';
-      case 'March':
-        return 'Mar';
-      case 'April':
-        return 'Apr';
-      case 'May':
-        return 'May';
-      case 'June':
-        return 'Jun';
-      case 'July':
-        return 'Jul';
-      case 'August':
-        return 'Aug';
-      case 'September':
-        return 'Sep';
-      case 'October':
-        return 'Oct';
-      case 'November':
-        return 'Nov';
-      case 'December':
-        return 'Dec';
-      default:
-        return month;
+  static const List<String> _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  /// Localized short month name (e.g. "Jan" / "янв." / "ene.") using the
+  /// app locale instead of a hardcoded English abbreviation.
+  static String _localizeMonth(String month, String locale) {
+    final index = _monthNames.indexOf(month) + 1;
+    if (index < 1) return month;
+    try {
+      return DateFormat('MMM', locale).format(DateTime(2000, index));
+    } catch (_) {
+      return month;
     }
   }
 
@@ -117,7 +113,7 @@ class HolidayCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _localizeMonth(month),
+                  _localizeMonth(month, context.locale.toString()),
                   style: TextStyle(
                     color: mainTextColor,
                     fontSize: 14,
@@ -195,7 +191,9 @@ class HolidayCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    holidayNames.join(', '),
+                    holidayNames
+                        .map(LocalizationHelper.localizeHolidayName)
+                        .join(', '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../utils/currency_utils.dart';
 
 class AmountText extends StatelessWidget {
   final String amount;
@@ -31,7 +32,7 @@ class AmountText extends StatelessWidget {
     return firstDigit == null ? '' : trimmed.substring(0, firstDigit.start).trim();
   }
 
-  static String formatCompact(String input) {
+  static String formatCompact(String input, {String locale = 'en_US'}) {
     try {
       if (input.trim().isEmpty) return '0';
       if (RegExp(r'[KMBTkmbt]$').hasMatch(input.trim())) {
@@ -44,29 +45,24 @@ class AmountText extends StatelessWidget {
       final symbol = _extractSymbol(input);
       final abs = val.abs();
 
-      String fmtNum(double val, double divisor, String suffix) {
-        final n = val / divisor;
-        final formatted = (n == n.roundToDouble())
-            ? n.toInt().toString()
-            : n.toStringAsFixed(1);
+      if (abs >= 1e3) {
+        // Locale-aware compact amount: "$57.3K" (en) / "$57,3 тыс." (ru).
+        final compact = CurrencyUtils.formatCompactLocale(
+          val,
+          locale,
+          symbol: '',
+        );
         final space = (symbol.isNotEmpty &&
                 !symbol.endsWith(' ') &&
                 !RegExp(r'[$\u00A3\u20AC\u00A5\u20B9]').hasMatch(symbol))
             ? ' '
             : '';
-        return symbol.isEmpty
-            ? '$formatted$suffix'
-            : '$symbol$space$formatted$suffix';
+        return symbol.isEmpty ? compact : '$symbol$space$compact';
       }
-
-      if (abs >= 1e12) return fmtNum(val, 1e12, 'T');
-      if (abs >= 1e9) return fmtNum(val, 1e9, 'B');
-      if (abs >= 1e6) return fmtNum(val, 1e6, 'M');
-      if (abs >= 1e3) return fmtNum(val, 1e3, 'K');
 
       final hasDecimals = val != val.roundToDouble();
       final formatted = NumberFormat.currency(
-        locale: 'en_US',
+        locale: locale,
         symbol: '',
         decimalDigits: hasDecimals ? 2 : 0,
       ).format(val);
@@ -81,7 +77,7 @@ class AmountText extends StatelessWidget {
     }
   }
 
-  static String formatFull(String input) {
+  static String formatFull(String input, {String locale = 'en_US'}) {
     try {
       if (input.trim().isEmpty) return '0';
       final cleaned = _numericPart(input).replaceAll(RegExp(r"[^0-9.\-]"), '');
@@ -91,7 +87,7 @@ class AmountText extends StatelessWidget {
       final symbol = _extractSymbol(input);
       final hasDecimals = val != val.roundToDouble();
       final formatted = NumberFormat.currency(
-        locale: 'en_US',
+        locale: locale,
         symbol: '',
         decimalDigits: hasDecimals ? 2 : 0,
       ).format(val);

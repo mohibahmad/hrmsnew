@@ -892,20 +892,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             (worker['type2'] ?? worker['attendanceType'] ?? 'On-Site')
                 .toString();
 
-        rows.add(['Worker: $name']);
-        rows.add(['Email: $email']);
-        if (phone.isNotEmpty) rows.add(['Phone: $phone']);
-        rows.add(['Position: $position']);
-        rows.add(['Work Type: $workType']);
-        rows.add(['Attendance Type: $attendanceType']);
+        rows.add(['${'report_worker'.tr()}: $name']);
+        rows.add(['${'report_email'.tr()}: $email']);
+        if (phone.isNotEmpty) rows.add(['${'report_phone'.tr()}: $phone']);
+        rows.add(['${'report_position'.tr()}: $position']);
+        rows.add(['${'work_type'.tr()}: $workType']);
+        rows.add(['${'attendance_type'.tr()}: $attendanceType']);
         rows.add([]);
 
         rows.add([
-          'Date',
-          'Status',
-          'Work Type',
-          'Attendance Type',
-          'Reason/Notes',
+          'report_date'.tr(),
+          'report_status'.tr(),
+          'work_type'.tr(),
+          'attendance_type'.tr(),
+          'report_reason_notes'.tr(),
         ]);
         if (snapshot.records.isEmpty) {
           rows.add(['no_attendance_records_period'.tr(), '', '', '', '']);
@@ -923,11 +923,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
 
         rows.add([]);
-        rows.add(['Total Working Days', snapshot.totalWorkingDays]);
-        rows.add(['Total Present', snapshot.presents]);
-        rows.add(['Total Absent', snapshot.absents]);
-        rows.add(['Total Leave', snapshot.leaves]);
-        rows.add(['Attendance %', snapshot.percentage.toStringAsFixed(1)]);
+        rows.add([
+          'total_working_days'.tr(),
+          snapshot.totalWorkingDays,
+        ]);
+        rows.add(['total_present'.tr(), snapshot.presents]);
+        rows.add(['total_absent'.tr(), snapshot.absents]);
+        rows.add(['total_leave'.tr(), snapshot.leaves]);
+        rows.add([
+          'attendance_percent'.tr(),
+          snapshot.percentage.toStringAsFixed(1),
+        ]);
         rows.add([]);
       }
 
@@ -2642,26 +2648,30 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-    rows.add(['Worker Attendance Preview']);
-    rows.add(['Worker: ${widget.record.name}']);
-    rows.add(['Email: ${widget.record.email}']);
+    rows.add(['worker_attendance_preview'.tr()]);
+    rows.add(['${'report_worker'.tr()}: ${widget.record.name}']);
+    rows.add(['${'report_email'.tr()}: ${widget.record.email}']);
     rows.add([
-      'Position: ${LocalizationHelper.localizePosition(widget.record.role)}',
+      '${'report_position'.tr()}: '
+      '${LocalizationHelper.localizePosition(widget.record.role)}',
     ]);
     rows.add([]);
-    rows.add(['Total Working Days', _totalRecords]);
-    rows.add(['Total Present', _presents]);
-    rows.add(['Total Absent', _absents]);
-    rows.add(['Total Leave', _leaves]);
-    rows.add(['Attendance %', _percentage.toStringAsFixed(1)]);
+    rows.add(['total_working_days'.tr(), _totalRecords]);
+    rows.add(['total_present'.tr(), _presents]);
+    rows.add(['total_absent'.tr(), _absents]);
+    rows.add(['total_leave'.tr(), _leaves]);
+    rows.add([
+      'attendance_percent'.tr(),
+      _percentage.toStringAsFixed(1),
+    ]);
     rows.add([]);
 
     rows.add([
-      'Date',
-      'Status',
-      'Work Type',
-      'Attendance Type',
-      'Reason/Notes',
+      'report_date'.tr(),
+      'report_status'.tr(),
+      'work_type'.tr(),
+      'attendance_type'.tr(),
+      'report_reason_notes'.tr(),
     ]);
 
     final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);

@@ -54,6 +54,35 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       widget.options ??
       const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year'];
 
+  /// Maps legacy/aliased raw period values to the canonical option label so
+  /// selection matching (bullet/check indicator) works even when the caller
+  /// uses e.g. 'Month' while the menu option is 'This Month'.
+  static String _canonicalPeriod(String period) {
+    switch (period.trim()) {
+      case 'Today':
+        return 'Today';
+      case 'Week':
+      case 'This Week':
+        return 'This Week';
+      case 'Month':
+      case 'Monthly':
+      case 'This Month':
+        return 'This Month';
+      case '3 Month':
+      case '3 Months':
+        return '3 Month';
+      case '6 Month':
+      case '6 Months':
+      case 'Last 6 Months':
+        return 'Last 6 Months';
+      case 'Yearly':
+      case 'This Year':
+        return 'This Year';
+      default:
+        return period;
+    }
+  }
+
   void _toggleDropdown() {
     if (_isOpen) {
       _closeDropdown();
@@ -101,7 +130,9 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: _options.map((option) {
-                      final isSelected = widget.selectedPeriod == option;
+                      final isSelected =
+                          _canonicalPeriod(widget.selectedPeriod) ==
+                          _canonicalPeriod(option);
                       return GestureDetector(
                         onTap: () {
                           widget.onChanged(option);

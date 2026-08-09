@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/preferences_service.dart';
+import '../utils/localization_helper.dart';
 
 typedef SessionActiveCheck = bool Function();
 typedef BiometricAvailabilityCheck = Future<bool> Function();
@@ -147,7 +148,9 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     try {
       available = await widget.isBiometricAvailable();
       if (available) {
-        name = await widget.loadBiometricName();
+        name = LocalizationHelper.localizeBiometricName(
+          await widget.loadBiometricName(),
+        );
       }
     } catch (_) {
       available = false;

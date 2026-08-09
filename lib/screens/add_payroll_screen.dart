@@ -172,7 +172,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
 
-    _salaryCtrl.text = AmountText.formatFull(_salaryStr);
+    _salaryCtrl.text = AmountText.formatFull(
+      _salaryStr,
+      locale: context.locale.toString(),
+    );
 
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
@@ -1530,7 +1533,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   Widget _buildEmployeeBanner() {
     final (firstDay, lastDay) = _currentPayPeriod;
-    final monthFmt = DateFormat('MMM');
+    final monthFmt = DateFormat('MMM', context.locale.toString());
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '
         '${monthFmt.format(lastDay)} ${lastDay.day}, ${lastDay.year}';
