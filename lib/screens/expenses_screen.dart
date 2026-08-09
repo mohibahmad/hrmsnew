@@ -1780,10 +1780,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildDataRow(Map<String, dynamic> doc, int index) {
     final name = _expenseDisplayName(doc);
     final date = _eds(doc['date']);
-    final category = (doc['category'] ?? '').toString();
-    final amount = _expenseAmount(doc);
-
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final rawCategory = (doc['category'] ?? '').toString();
+    // In guest mode the seeded salary expenses store the category as
+    // lowercase 'salary'; display it capitalized as 'Salary'.
+    final category = isGuest && rawCategory.trim().toLowerCase() == 'salary'
+        ? 'Salary'
+        : rawCategory;
+    final amount = _expenseAmount(doc);
 
     return GestureDetector(
       onTap: () {
