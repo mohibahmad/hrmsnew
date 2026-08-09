@@ -71,12 +71,87 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   String? _canonicalMonth(dynamic value) {
-    final raw = (value ?? '').toString().trim();
+    final raw = (value ?? '').toString().trim().replaceAll('.', '');
     if (raw.isEmpty) return null;
-    for (final month in _calendarMonths) {
-      if (month.toLowerCase() == raw.toLowerCase()) return month;
+    final monthNumber = int.tryParse(raw);
+    if (monthNumber != null && monthNumber >= 1 && monthNumber <= 12) {
+      return _calendarMonths[monthNumber - 1];
+    }
+    final normalized = raw.toLowerCase();
+    for (var index = 0; index < _calendarMonths.length; index++) {
+      final month = _calendarMonths[index];
+      final lowerMonth = month.toLowerCase();
+      if (lowerMonth == normalized ||
+          lowerMonth.substring(0, 3) == normalized) {
+        return month;
+      }
     }
     return null;
+  }
+
+  DateTime? _storedHolidayDate(dynamic value) {
+    final raw = (value ?? '').toString().trim();
+    if (raw.isEmpty) return null;
+    final slashParts = raw.split('/');
+    if (slashParts.length == 3) {
+      final day = int.tryParse(slashParts[0]);
+      final month = int.tryParse(slashParts[1]);
+      final year = int.tryParse(slashParts[2]);
+      if (day != null && month != null && year != null) {
+        final parsed = DateTime(year, month, day);
+        if (parsed.year == year && parsed.month == month && parsed.day == day) {
+          return parsed;
+        }
+      }
+    }
+    return DateTime.tryParse(raw);
+  }
+
+  Map<String, List<HolidayItem>> _guestHolidayGroups() {
+    final result = <String, List<HolidayItem>>{};
+    for (final entry in DummyData.holidays.entries) {
+      for (final holiday in entry.value) {
+        final storedDate = _storedHolidayDate(holiday['date']);
+        final month =
+            _canonicalMonth(holiday['month']) ??
+            (storedDate == null
+                ? _canonicalMonth(entry.key)
+                : _calendarMonths[storedDate.month - 1]);
+        final day = _intValue(holiday['day']) ?? storedDate?.day;
+        final name = (holiday['name'] ?? '').toString().trim();
+        final entryYear = int.tryParse(entry.key);
+        final year =
+            _intValue(holiday['year']) ?? storedDate?.year ?? entryYear;
+        if (month == null || day == null || name.isEmpty) continue;
+
+        final monthNumber = _calendarMonths.indexOf(month) + 1;
+        final validationYear = year ?? DateTime.now().year;
+        if (day < 1 || day > DateTime(validationYear, monthNumber + 1, 0).day) {
+          continue;
+        }
+        result
+            .putIfAbsent(month, () => <HolidayItem>[])
+            .add(
+              HolidayItem(
+                day,
+                name,
+                holiday['isEnabled'] != false,
+                month: month,
+                year: year,
+                isRecurring: holiday['isRecurring'] == true,
+                storageKey: entry.key,
+              ),
+            );
+      }
+    }
+    return result;
+  }
+
+  bool _matchesGuestHoliday(Map<String, dynamic> holiday, HolidayItem item) {
+    final storedDate = _storedHolidayDate(holiday['date']);
+    final day = _intValue(holiday['day']) ?? storedDate?.day;
+    return day == item.day &&
+        (holiday['name'] ?? '').toString().trim() == item.name;
   }
 
   String _remainingDays(DateTime date) {
@@ -130,27 +205,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _holidaysByMonth = DummyData.holidays.map((month, list) {
-        return MapEntry(
-          month,
-          list.map((h) {
-            final dateStr = (h['date'] ?? '').toString();
-            final parts = dateStr.split('/');
-            int day = 1;
-            if (parts.length == 3) {
-              day = int.tryParse(parts[0]) ?? 1;
-            }
-            return HolidayItem(
-              (h['day'] as num?)?.toInt() ?? day,
-              h['name'] as String,
-              (h['isEnabled'] as bool?) ?? true,
-              month: month,
-              year: (h['year'] as num?)?.toInt(),
-              isRecurring: h['isRecurring'] == true,
-            );
-          }).toList(),
-        );
-      });
+      _holidaysByMonth = _guestHolidayGroups();
       PreferencesService.getCompanyWorkingDays().then((days) {
         if (mounted) setState(() => _companyWorkingDays = days);
       });
@@ -526,7 +581,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               : () async {
                                   setModalState(() => isSaving = true);
                                   if (selectedDay == null &&
-                                      holidayNameController.text.trim().isEmpty) {
+                                      holidayNameController.text
+                                          .trim()
+                                          .isEmpty) {
                                     setModalState(() => isSaving = false);
                                     if (!context.mounted) return;
                                     FlashySnackBar.show(
@@ -1171,8 +1228,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 isPremium: isPremium,
                 isGuest: isGuest,
               )) {
-                final upgraded =
-                    await PremiumGate.shouldShowUpgradeDialog(context);
+                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                  context,
+                );
                 if (upgraded == true && mounted) {
                   _showAddHolidayModal(context);
                 }
@@ -1331,6 +1389,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildMonthGroup(String month, List<HolidayItem> holidays) {
+    final sortedHolidays = List<HolidayItem>.from(holidays)
+      ..sort((a, b) {
+        final yearCompare = (a.year ?? 0).compareTo(b.year ?? 0);
+        if (yearCompare != 0) return yearCompare;
+        final dayCompare = a.day.compareTo(b.day);
+        if (dayCompare != 0) return dayCompare;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1344,7 +1410,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ...holidays.map((holiday) => _buildListItem(holiday)),
+        ...sortedHolidays.map((holiday) => _buildListItem(holiday)),
       ],
     );
   }
@@ -1368,12 +1434,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
         }
       });
-      final dummyMonthList = DummyData.holidays[item.month];
+      final storageKey = item.storageKey ?? item.month;
+      final dummyMonthList = DummyData.holidays[storageKey];
       if (dummyMonthList != null) {
-        dummyMonthList.removeWhere(
-          (h) => h['day'] == item.day && h['name'] == item.name,
-        );
-        if (dummyMonthList.isEmpty) DummyData.holidays.remove(item.month);
+        dummyMonthList.removeWhere((h) => _matchesGuestHoliday(h, item));
+        if (dummyMonthList.isEmpty) DummyData.holidays.remove(storageKey);
       }
       await DummyData.saveToPrefs();
       if (mounted) {
@@ -1547,17 +1612,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     try {
                                       if (isGuest) {
                                         setState(() {
+                                          final storageKey =
+                                              item.storageKey ?? item.month;
                                           final oldMonthList =
-                                              DummyData.holidays[item.month];
+                                              DummyData.holidays[storageKey];
 
                                           Map<String, dynamic>? updatedHoliday;
 
                                           if (oldMonthList != null) {
                                             final index = oldMonthList
                                                 .indexWhere(
-                                                  (h) =>
-                                                      h['day'] == item.day &&
-                                                      h['name'] == item.name,
+                                                  (h) => _matchesGuestHoliday(
+                                                    h,
+                                                    item,
+                                                  ),
                                                 );
 
                                             if (index != -1) {
@@ -1569,7 +1637,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
                                               if (oldMonthList.isEmpty) {
                                                 DummyData.holidays.remove(
-                                                  item.month,
+                                                  storageKey,
                                                 );
                                               }
                                             }
@@ -1588,6 +1656,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                               calendarDate.year;
                                           updatedHoliday['isRecurring'] =
                                               item.isRecurring;
+                                          updatedHoliday['date'] =
+                                              '${selectedDay.toString().padLeft(2, '0')}/'
+                                              '${calendarDate.month.toString().padLeft(2, '0')}/'
+                                              '${calendarDate.year}';
 
                                           DummyData.holidays.putIfAbsent(
                                             selectedMonthName,
@@ -1598,26 +1670,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
                                           DummyData.saveToPrefs();
 
-                                          _holidaysByMonth = DummyData.holidays
-                                              .map((month, list) {
-                                                return MapEntry(
-                                                  month,
-                                                  list.map((h) {
-                                                    return HolidayItem(
-                                                      h['day'] as int,
-                                                      h['name'] as String,
-                                                      h['isEnabled'] as bool? ??
-                                                          true,
-                                                      month: month,
-                                                      year: (h['year'] as num?)
-                                                          ?.toInt(),
-                                                      isRecurring:
-                                                          h['isRecurring'] ==
-                                                          true,
-                                                    );
-                                                  }).toList(),
-                                                );
-                                              });
+                                          _holidaysByMonth =
+                                              _guestHolidayGroups();
                                         });
                                       } else {
                                         await _firestore
@@ -1807,10 +1861,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 setState(() {
                   item.isEnabled = value;
                 });
-                final monthList = DummyData.holidays[item.month];
+                final monthList =
+                    DummyData.holidays[item.storageKey ?? item.month];
                 if (monthList != null) {
                   for (var h in monthList) {
-                    if (h['day'] == item.day && h['name'] == item.name) {
+                    if (_matchesGuestHoliday(h, item)) {
                       h['isEnabled'] = value;
                       break;
                     }
@@ -2028,7 +2083,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   String _localizeMonth(String month) {
-    switch (month) {
+    switch (_canonicalMonth(month) ?? month) {
       case 'January':
         return 'month_january'.tr();
       case 'February':
@@ -2067,6 +2122,7 @@ class HolidayItem {
   bool isEnabled;
   final int? year;
   final bool isRecurring;
+  final String? storageKey;
 
   HolidayItem(
     this.day,
@@ -2076,5 +2132,6 @@ class HolidayItem {
     required this.month,
     this.year,
     this.isRecurring = false,
+    this.storageKey,
   });
 }

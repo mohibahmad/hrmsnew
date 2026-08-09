@@ -269,6 +269,38 @@ void main() {
     });
   });
 
+  group('paidPayrollRecordsForActiveWorkers (dashboard salary source)', () {
+    test('excludes cancelled/unpaid payroll from salary totals', () {
+      final workers = <Map<String, dynamic>>[
+        {'id': 'worker-paid', 'name': 'Paid Worker'},
+        {'id': 'worker-unpaid', 'name': 'Unpaid Worker'},
+      ];
+      final payroll = <Map<String, dynamic>>[
+        {
+          'workerId': 'worker-paid',
+          'status': 'Paid',
+          'salary': '1000',
+          'netSalaryAmount': 1000,
+        },
+        {
+          'workerId': 'worker-unpaid',
+          'status': 'Unpaid',
+          'isPaid': false,
+          'salary': '5000',
+          'netSalaryAmount': 5000,
+        },
+      ];
+
+      final paid = PayrollService.paidPayrollRecordsForActiveWorkers(
+        workers,
+        payroll,
+      );
+
+      expect(paid, hasLength(1));
+      expect(paid.single['workerId'], 'worker-paid');
+    });
+  });
+
   group('allWorkersPaidForPeriod (active period advancement gate)', () {
     final workers = <Map<String, dynamic>>[
       {'workerId': 'w1', 'email': 'a@x.com', 'name': 'A'},

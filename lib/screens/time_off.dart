@@ -97,9 +97,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     };
   }
 
-  
-  
-  
   bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
     return (record['source'] ?? '').toString().trim().toLowerCase() ==
         'attendance';
@@ -136,9 +133,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return (total - used).clamp(0, total).toInt();
   }
 
-  
-  
-  
   Map<String, dynamic> _docForNewLeave(Map<String, dynamic> doc) {
     return {...doc}
       ..remove('action')
@@ -226,8 +220,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             (recordWorkerId.isEmpty && email.isNotEmpty && tEmail == email) ||
             (email.isEmpty && name.isNotEmpty && tName == name);
       }).toList();
-      
-      
+
       final balanceRecords = _rawTimeoffDocs.where((record) {
         if (!TimeOffService.isActiveRecord(record)) return false;
         final recordWorkerId = (record['workerId'] ?? '').toString().trim();
@@ -261,9 +254,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         continue;
       }
 
-      
-      
-      
       final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
         ..sort((a, b) {
           final aStart = TimeOffService.parseDate(a['startDate']);
@@ -328,11 +318,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return;
     }
 
-    
-    
-    
-    
-    
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
     final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
     final allRecordsByWorkerId = <String, List<Map<String, dynamic>>>{};
@@ -409,9 +394,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         continue;
       }
 
-      
-      
-      
       final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
         ..sort((a, b) {
           final aStart = TimeOffService.parseDate(a['startDate']);
@@ -572,13 +554,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final filtered = _timeoffDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
-      final email = (doc['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
 
       final matchesSearch =
           name.contains(query) ||
-          position.contains(query) ||
-          email.contains(query);
+          position.contains(query);
 
       if (!matchesSearch) return false;
       return _matchesFilter(position, _selectedTab);
@@ -1096,9 +1076,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   showGuestRestrictionDialog(context);
                                   return;
                                 }
-                                
-                                
-                                
+
                                 if (isLimitReached ||
                                     doc['canAssignTimeOff'] == false) {
                                   _showTimeOffDataDialog(context, doc, index);
@@ -1231,7 +1209,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         child: Center(
           child: Container(
             width: dialogWidth,
-            height: 520,
+            height: 420,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
@@ -1430,96 +1408,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               ),
                             ],
                           ),
-                          if (workerRecords.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'leave_records'.tr(),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF334155),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ...workerRecords.map((record) {
-                              final recordType =
-                                  TimeOffService.leaveType(record);
-                              final recordDates =
-                                  TimeOffService.selectedDatesForRecord(
-                                    record,
-                                  );
-                              final typeColor =
-                                  LeaveColors.getColor(recordType);
-                              final typeBg =
-                                  LeaveColors.getBgColor(recordType);
-                              final localeName = context.locale.toString();
-                              final dateStr = recordDates.isEmpty
-                                  ? ''
-                                  : recordDates.length == 1
-                                      ? DateFormat.yMMMd(localeName)
-                                          .format(recordDates.first)
-                                      : '${DateFormat.MMMd(localeName).format(recordDates.first)} – ${DateFormat.yMMMd(localeName).format(recordDates.last)}';
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: typeBg,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: typeColor.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: typeColor,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        _localizedLeaveType(recordType),
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        dateStr,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF475569),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${recordDates.length} ${'days'.tr()}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF334155),
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
                         ],
                       ),
                     ),
@@ -1544,7 +1432,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             (wEmail.isNotEmpty && wEmail == rEmail);
       }).toList();
 
-      
       Map<String, dynamic>? latestRecord;
       if (activeRecords.isNotEmpty) {
         latestRecord = activeRecords.reduce((a, b) {
@@ -1554,8 +1441,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       }
 
-      
-      
       final mergedWorker = <String, dynamic>{...data};
       if (latestRecord != null) {
         mergedWorker.addAll(latestRecord);
@@ -1738,8 +1623,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 380,
-          constraints: const BoxConstraints(maxHeight: 450),
+          width: 560,
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
+          ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
@@ -1801,7 +1689,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: typeOrder.where(typeCounts.containsKey).map((type) {
+                    children: typeOrder.where(typeCounts.containsKey).map((
+                      type,
+                    ) {
                       final color = LeaveColors.getColor(type);
                       return Container(
                         padding: const EdgeInsets.symmetric(
@@ -1893,8 +1783,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          DateFormat.yMMMd(localeName)
-                                              .format(date),
+                                          DateFormat.yMMMd(
+                                            localeName,
+                                          ).format(date),
                                           style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
@@ -1903,8 +1794,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                           ),
                                         ),
                                         Text(
-                                          DateFormat.EEEE(localeName)
-                                              .format(date),
+                                          DateFormat.EEEE(
+                                            localeName,
+                                          ).format(date),
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: Color(0xFF666666),

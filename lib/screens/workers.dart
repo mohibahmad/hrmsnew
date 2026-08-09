@@ -283,11 +283,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.trim().toLowerCase();
 
-      final email = (doc['email'] ?? '').toString().toLowerCase();
       final matchesSearch =
           name.contains(query) ||
-          position.contains(query) ||
-          email.contains(query);
+          position.contains(query);
       final matchesFilter = _matchesFilter(position, _selectedFilter);
 
       return matchesSearch && matchesFilter;

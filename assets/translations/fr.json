@@ -580,6 +580,8 @@
   "update_time_off_success": "Congé mis à jour avec succès",
   "assign_time_off_failed": "Échec de l'attribution du congé",
   "requested_leaves_exceed_available": "Les congés demandés dépassent les congés disponibles.",
+  "only_one_leave_day_available": "Un seul jour de {type} est disponible.",
+  "only_leave_days_available": "Seuls {count} jours de {type} sont disponibles.",
   "search_assets_hint": "Rechercher par travailleurs ou détails d'actifs",
   "weekday_sun": "DIM",
   "weekday_mon": "LUN",

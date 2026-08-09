@@ -1375,7 +1375,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     final showEditButtons = !widget.readOnly;
     final showSaveButton =
         showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
-    final showCancelButton = hasRecord && !_isCancellingPayroll;
+    final showCancelButton =
+        hasRecord && _isPaidRecord && !_isCancellingPayroll;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1390,7 +1391,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         ),
         Row(
           children: [
-            if (showEditButtons && hasRecord) ...[
+            if (showEditButtons && showCancelButton) ...[
               OutlinedButton(
                 onPressed: _isSaving || _isCancellingPayroll
                     ? null
@@ -1516,9 +1517,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                             ? (_hasUnsavedChanges
                                   ? 'save_correction'.tr()
                                   : 'save'.tr())
-                            : (hasRecord
-                                  ? 'save_changes'.tr()
-                                  : 'save_payroll'.tr()),
+                            : 'process_payroll'.tr(),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
               ),

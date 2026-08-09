@@ -96,8 +96,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         final amounts = <String, double>{};
         for (final document in snapshot.docs) {
           final data = document.data() as Map<String, dynamic>;
-          final status = (data['status'] ?? '').toString().trim().toLowerCase();
-          if (status == 'cancelled') continue;
+          if (!PayrollService.isPayrollRecordPaid(data)) continue;
           final payrollKey = (data['payrollKey'] ?? '').toString().trim();
           if (payrollKey.isEmpty) continue;
           final numericAmount = data['netSalaryAmount'];
@@ -154,6 +153,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
       for (final payroll in DummyData.payroll) {
+        if (!PayrollService.isPayrollRecordPaid(payroll)) continue;
         final payrollKey = (payroll['payrollKey'] ?? '').toString();
         if (payrollKey.isEmpty) continue;
         final numericAmount = payroll['netSalaryAmount'];
@@ -305,6 +305,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
+      if (_isPayrollExpense(doc)) {
+        final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
+        // A generated salary expense only exists while its matching payroll
+        // is paid. This also hides legacy orphan rows left by an older key.
+        if (!_payrollAmountsByKey.containsKey(payrollKey)) return false;
+      }
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();

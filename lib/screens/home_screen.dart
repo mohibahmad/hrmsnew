@@ -56,7 +56,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late int _selectedIndex;
   late int _selectedSubIndex;
-  String _selectedPeriod = 'Yearly';
+  String _selectedPeriod = 'This Year';
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
   bool _showNotifications = false;
@@ -317,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _isGuest = _authService.currentUser?.isAnonymous ?? false;
 
     final currentUser = _authService.currentUser;
     _restoreProfilePic(currentUser);
@@ -825,14 +826,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _recalculateSumsForPeriod(String period) {
-    final activePayrollRecords = PayrollService.payrollRecordsForActiveWorkers(
-      _workersDocs,
-      _rawPayrollDocs,
-    );
-    final activePayrollKeys = activePayrollRecords
+    final paidPayrollRecords =
+        PayrollService.paidPayrollRecordsForActiveWorkers(
+          _workersDocs,
+          _rawPayrollDocs,
+        );
+    final paidPayrollKeys = paidPayrollRecords
         .map((record) => (record['payrollKey'] ?? '').toString().trim())
         .where((key) => key.isNotEmpty)
         .toSet();
+
+    final payrollAmountByKey = <String, double>{};
+    for (final record in paidPayrollRecords) {
+      final key = (record['payrollKey'] ?? '').toString().trim();
+      if (key.isEmpty) continue;
+      final netSalary = _parseNumToDouble(record['netSalary']);
+      if (netSalary > 0) {
+        payrollAmountByKey[key] = netSalary;
+      }
+    }
+
     final activeExpenseRecords = _rawExpensesDocs.where((record) {
       final category = (record['category'] ?? '')
           .toString()
@@ -840,16 +853,26 @@ class _HomeScreenState extends State<HomeScreen> {
           .toLowerCase();
       final payrollKey = (record['payrollKey'] ?? '').toString().trim();
       if (category != 'salary' || payrollKey.isEmpty) return true;
-      return activePayrollKeys.contains(payrollKey);
+      return paidPayrollKeys.contains(payrollKey);
     }).toList();
     final expenseSeries = DashboardChartService.buildSeries(
       records: activeExpenseRecords,
-      valueOf: (record) => _parseNumToDouble(record['amount']),
+      valueOf: (record) {
+        final category = (record['category'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+        if (category == 'salary' && payrollKey.isNotEmpty) {
+          return payrollAmountByKey[payrollKey] ?? 0.0;
+        }
+        return _parseNumToDouble(record['amount']);
+      },
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
     );
     final salarySeries = DashboardChartService.buildSeries(
-      records: activePayrollRecords,
+      records: paidPayrollRecords,
       valueOf: (record) => _parseNumToDouble(record['netSalary']),
       period: period,
     );
@@ -861,17 +884,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _recalculateDummyTotals(String period) {
-    final expenseSeries = DashboardChartService.buildSeries(
-      records: DummyData.expenses,
-      valueOf: (record) => _parseNumToDouble(record['amount']),
-      period: period,
-      dateOf: DashboardChartService.expenseRecordDate,
-      placeUndatedInCurrentPeriod: true,
-    );
-    final activePayrollRecords = PayrollService.payrollRecordsForActiveWorkers(
-      DummyData.workers,
-      DummyData.payroll,
-    );
+    final activePayrollRecords =
+        PayrollService.paidPayrollRecordsForActiveWorkers(
+          DummyData.workers,
+          DummyData.payroll,
+        );
     final payrollRecords = activePayrollRecords.map((item) {
       final savedNet = item['netSalaryAmount'];
       final formattedNet = (item['netSalary'] ?? '').toString();
@@ -885,6 +902,70 @@ class _HomeScreenState extends State<HomeScreen> {
           : 0.0;
       return {...item, 'netSalary': netSalary};
     }).toList();
+
+    final payrollAmountByKey = <String, double>{};
+    for (final record in payrollRecords) {
+      final key = (record['payrollKey'] ?? '').toString().trim();
+      if (key.isEmpty) continue;
+      final netSalary = _parseNumToDouble(record['netSalary']);
+      if (netSalary > 0) {
+        payrollAmountByKey[key] = netSalary;
+      }
+    }
+
+    final now = DateTime.now();
+    int maxDays = 365;
+    if (period == 'Today') {
+      maxDays = 0;
+    } else if (period == 'Week') {
+      maxDays = 7;
+    } else if (period == 'Month') {
+      maxDays = 30;
+    } else if (period == '6 Month') {
+      maxDays = 180;
+    }
+
+    final adjustedExpenses = DummyData.expenses.asMap().entries.map((entry) {
+      final record = Map<String, dynamic>.from(entry.value);
+      final int i = entry.key;
+      int daysAgo = (i * (maxDays + 1) / DummyData.expenses.length).floor();
+      final newDate = now.subtract(Duration(days: daysAgo));
+      final dayStr = newDate.day.toString().padLeft(2, '0');
+      final monthStr = newDate.month.toString().padLeft(2, '0');
+      final yearStr = newDate.year.toString();
+      record['date'] = '$dayStr/$monthStr/$yearStr';
+      return record;
+    }).toList();
+
+    final filteredExpenses = adjustedExpenses.where((record) {
+      final category = (record['category'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+      if (category == 'salary' && payrollKey.isNotEmpty) {
+        return payrollAmountByKey.containsKey(payrollKey);
+      }
+      return true;
+    }).toList();
+
+    final expenseSeries = DashboardChartService.buildSeries(
+      records: filteredExpenses,
+      valueOf: (record) {
+        final category = (record['category'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+        if (category == 'salary' && payrollKey.isNotEmpty) {
+          return payrollAmountByKey[payrollKey] ?? 0.0;
+        }
+        return _parseNumToDouble(record['amount']);
+      },
+      period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
+      placeUndatedInCurrentPeriod: true,
+    );
     final totalDummySalary = payrollRecords.fold<double>(
       0,
       (runningTotal, record) =>
@@ -998,7 +1079,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return daysUntilHoliday <= 30;
       case '6 Month':
         return daysUntilHoliday <= 180;
-      case 'Yearly':
+      case 'This Year':
         return daysUntilHoliday <= 365;
       default:
         return true;
@@ -1010,20 +1091,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool _backToLoginInProgress = false;
+  bool _isGuest = false;
 
   Future<void> _handleBackToLogin() async {
     if (_backToLoginInProgress) return;
     _backToLoginInProgress = true;
+    setState(() {
+      _isGuest = true;
+    });
     try {
       await _authService.signOut(preserveBiometricLogin: true);
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'backToLoginSignOut');
-    }
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
+    } finally {
+      _backToLoginInProgress = false;
     }
   }
 
@@ -1121,7 +1208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
-                    isGuest: _authService.currentUser?.isAnonymous ?? false,
+                    isGuest: _isGuest || (_authService.currentUser?.isAnonymous ?? false),
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
                       if (_selectedIndex == 1 &&

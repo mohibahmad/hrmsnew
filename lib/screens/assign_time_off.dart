@@ -517,6 +517,36 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   bool get _requestedDaysExceedAvailable =>
       _usesPaidAllowance && _selectedDaysCount > _baseAvailableDays;
 
+  String get _localizedSelectedLeaveType {
+    final normalized = TimeOffService.normalizeLeaveType(_timeOffType);
+    final option = _leaveTypeOptions.cast<Map<String, String>?>().firstWhere(
+      (item) => item?['value'] == normalized,
+      orElse: () => null,
+    );
+    return option?['labelKey']?.tr() ?? normalized;
+  }
+
+  String get _availableLeaveLabel {
+    return switch (TimeOffService.normalizeLeaveType(_timeOffType)) {
+      'Sick Leave' => 'available_sick_leave'.tr(),
+      'Casual Leave' => 'available_casual_leave'.tr(),
+      'Medical Leave' => 'available_medical_leave'.tr(),
+      _ => 'available_annual_leave'.tr(),
+    };
+  }
+
+  String get _insufficientBalanceMessage {
+    final key = _baseAvailableDays == 1
+        ? 'only_one_leave_day_available'
+        : 'only_leave_days_available';
+    return key.tr(
+      namedArgs: {
+        'count': '$_baseAvailableDays',
+        'type': _localizedSelectedLeaveType,
+      },
+    );
+  }
+
   int get _requestedDays =>
       _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
 
@@ -919,7 +949,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                           size: 20,
                                         ),
                                         title: 'time_off_type'.tr(),
-                                        value: _timeOffType,
+                                        value: _localizedSelectedLeaveType,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -930,7 +960,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                           color: Color(0xFF004FDE),
                                           size: 20,
                                         ),
-                                        title: 'available_annual_leave'.tr(),
+                                        title: _availableLeaveLabel,
                                         value: '$_availableDays',
                                       ),
                                     ),
@@ -1097,7 +1127,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
                 elevation: 0,
               ),
-              onPressed: (_selectedWorker == null || _isLoading)
+              onPressed:
+                  (_selectedWorker == null ||
+                      _isLoading ||
+                      (_editingId == null && _selectedDates.isEmpty) ||
+                      _requestedDaysExceedAvailable)
                   ? null
                   : () {
                       final isGuest =
@@ -1619,7 +1653,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_dragExceededAvailableDays) {
       FlashySnackBar.show(
         context,
-        message: 'requested_leaves_exceed_available'.tr(),
+        message: _insufficientBalanceMessage,
         isError: true,
       );
     }
@@ -1672,7 +1706,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (!isRemoving && _usesPaidAllowance && _availableDays <= 0) {
       FlashySnackBar.show(
         context,
-        message: 'requested_leaves_exceed_available'.tr(),
+        message: _insufficientBalanceMessage,
         isError: true,
       );
       return;
@@ -1844,7 +1878,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         Widget summaryWidget = Column(
           children: [
             _buildSummaryRow(
-              'available_annual_leave'.tr(),
+              _availableLeaveLabel,
               '$_availableDays',
               _availableDays > 0 ? Colors.black : Colors.red,
             ),
@@ -2048,7 +2082,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_requestedDaysExceedAvailable) {
       FlashySnackBar.show(
         context,
-        message: 'requested_leaves_exceed_available'.tr(),
+        message: _insufficientBalanceMessage,
         isError: true,
       );
       return;
@@ -2461,15 +2495,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   void _showSelectedDatesListDialog(BuildContext context) {
-    final String dayDisplayType = _timeOffType.replaceAll(' Leave', '');
+    final String dayDisplayType = _localizedSelectedLeaveType;
+    final localeName = context.locale.toString();
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 380,
-          constraints: const BoxConstraints(maxHeight: 500),
+          width: 560,
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
+          ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
@@ -2499,7 +2537,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '${'selected_dates'.tr()} (${_sortedSelectedDates.length} ${'total_leaves'.tr()})',
+                        'selected_dates_count_title'.tr(
+                          namedArgs: {
+                            'count': '${_sortedSelectedDates.length}',
+                          },
+                        ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -2525,11 +2567,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: _sortedSelectedDates.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(24),
+                      ? Padding(
+                          padding: const EdgeInsets.all(24),
                           child: Text(
-                            'No dates selected',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            'no_dates_selected'.tr(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
                           ),
                         )
                       : ListView.separated(
@@ -2570,7 +2615,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      DateFormat('dd/MM/yyyy').format(date),
+                                      DateFormat.yMMMd(localeName).format(date),
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
@@ -2580,7 +2625,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                     ),
                                   ),
                                   Text(
-                                    DateFormat('EEEE').format(date),
+                                    DateFormat.EEEE(localeName).format(date),
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: Color(0xFF666666),

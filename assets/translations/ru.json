@@ -576,6 +576,8 @@
   "update_time_off_success": "Отпуск успешно обновлен",
   "assign_time_off_failed": "Не удалось назначить отпуск",
   "requested_leaves_exceed_available": "Запрошенные отпуска превышают доступные.",
+  "only_one_leave_day_available": "Доступен только 1 день отпуска «{type}».",
+  "only_leave_days_available": "Доступно только {count} дней отпуска «{type}».",
   "all_leaves_utilized": "Все отпуска использованы.",
   "no_worker_selected": "Работник не выбран",
   "select_worker_to_assign": "Выберите работника для назначения отпуска.",

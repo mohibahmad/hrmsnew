@@ -580,6 +580,8 @@
   "update_time_off_success": "Tiempo libre actualizado exitosamente",
   "assign_time_off_failed": "Error al asignar tiempo libre",
   "requested_leaves_exceed_available": "Los permisos solicitados exceden los permisos disponibles.",
+  "only_one_leave_day_available": "Solo hay 1 día de {type} disponible.",
+  "only_leave_days_available": "Solo hay {count} días de {type} disponibles.",
   "all_leaves_utilized": "Todos los permisos han sido utilizados.",
   "no_worker_selected": "Ningún Trabajador Seleccionado",
   "select_worker_to_assign": "Seleccione un trabajador de la lista para asignar permisos.",

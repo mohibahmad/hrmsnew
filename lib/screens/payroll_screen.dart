@@ -1639,10 +1639,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final filtered = _payrollDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final pos = (doc['position'] ?? '').toString().toLowerCase();
-      final email = (doc['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final matchesSearch =
-          name.contains(query) || pos.contains(query) || email.contains(query);
+          name.contains(query) || pos.contains(query);
 
       if (!matchesSearch) return false;
       return _matchesFilter(doc, _selectedFilter);

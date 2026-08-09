@@ -680,6 +680,16 @@ class PayrollService {
     }).toList();
   }
 
+  static List<Map<String, dynamic>> paidPayrollRecordsForActiveWorkers(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> payrollRecords,
+  ) {
+    return payrollRecordsForActiveWorkers(
+      workersList,
+      payrollRecords,
+    ).where(isPayrollRecordPaid).toList();
+  }
+
   static bool isRecordInMonth(
     Map<String, dynamic> record,
     DateTime month, {
