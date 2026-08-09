@@ -361,13 +361,33 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     _timeOffSub = _firestore.timeoffStream.listen(
       (snapshot) {
         if (!mounted) return;
+        final newRecords = snapshot.docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .toList();
+        final hadTodayLeave = _plannedTimeOffRecords.any((r) {
+          if (!TimeOffService.isActiveRecord(r)) return false;
+          final dates = TimeOffService.selectedDatesForRecord(r);
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          return dates.contains(today);
+        });
         setState(() {
-          _timeOffRecords = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
+          _timeOffRecords = newRecords;
           _timeOffLoaded = true;
           _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
         });
+        final hasNewTodayLeave = _plannedTimeOffRecords.any((r) {
+          if (!TimeOffService.isActiveRecord(r)) return false;
+          final dates = TimeOffService.selectedDatesForRecord(r);
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          return dates.contains(today);
+        });
+        if (hasNewTodayLeave && !hadTodayLeave) {
+          // A new time off for today was just assigned — re-run auto-mark.
+          _autoMarkDoneForToday = false;
+          _leaveNoticeShown = false;
+        }
         _showActiveLeaveNotice();
       },
       onError: (e) {
@@ -1062,14 +1082,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return Map<String, dynamic>.from(attendanceOrWorker);
     }
     return {...attendanceOrWorker, ...worker};
-  }
-
-  List<Map<String, dynamic>> get _filteredWorkers {
+  }  List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
       if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
         return false;
       }
       if (!AttendanceService.isEligibleForAttendance(worker)) {
+        return false;
+      }
+      // Workers with approved time off for today should not appear in
+      // the Mark Attendance list — they are automatically marked as Leave.
+      if (_isWorkerOnPlannedTimeOff(worker)) {
         return false;
       }
       final name = (worker['name'] ?? '').toString().toLowerCase();
@@ -1085,8 +1108,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           email.contains(query) ||
           workerStatus.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch &&
-          workerStatus == _selectedStatusFilter.toLowerCase();
+      return matchesSearch && workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();
   }
 
@@ -1844,6 +1866,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             ? null
                                             : () {
                                                 setDialogState(() {
+                                                  if (selectedStatus !=
+                                                      'Present') {
+                                                    reasonController.clear();
+                                                  }
                                                   selectedStatus = 'Present';
                                                 });
                                               },
@@ -1862,6 +1888,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             ? null
                                             : () {
                                                 setDialogState(() {
+                                                  if (selectedStatus !=
+                                                      'Absent') {
+                                                    reasonController.clear();
+                                                  }
                                                   selectedStatus = 'Absent';
                                                   selectedLeaveType =
                                                       'Without Notice';
@@ -1881,6 +1911,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         onTap: canSelectLeave && !dialogIsSaving
                                             ? () {
                                                 setDialogState(() {
+                                                  if (selectedStatus !=
+                                                      'Leave') {
+                                                    reasonController.clear();
+                                                  }
                                                   selectedStatus = 'Leave';
                                                   selectedLeaveType =
                                                       firstAvailableLeaveType();
@@ -2088,9 +2122,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   : selectedLeaveType;
                                               final desc =
                                                   selectedStatus == 'Present'
-                                                  ? (reason.isEmpty
-                                                        ? null
-                                                        : reason)
+                                                  ? null
                                                   : reason;
                                               try {
                                                 if (!isGuest) {
@@ -2133,9 +2165,20 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   };
                                                   if (type != null) {
                                                     attendanceData['type'] = type;
+                                                  } else {
+                                                    // Present has no reason/type -
+                                                    // remove stale values from a
+                                                    // previous Absent/Leave mark
+                                                    // (merge:true keeps them otherwise).
+                                                    attendanceData['type'] =
+                                                        FieldValue.delete();
                                                   }
-                                                  if (desc != null && desc.isNotEmpty) {
+                                                  if (desc != null &&
+                                                      desc.isNotEmpty) {
                                                     attendanceData['desc'] = desc;
+                                                  } else {
+                                                    attendanceData['desc'] =
+                                                        FieldValue.delete();
                                                   }
                                                   final attendanceId =
                                                       (todayRecord['id'] ?? '')

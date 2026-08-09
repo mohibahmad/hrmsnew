@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -10,6 +11,7 @@ import '../services/preferences_service.dart';
 import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/time_off_unsaved_changes.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
@@ -140,6 +142,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   };
   StreamSubscription? _holidaysSub;
   bool _initialized = false;
+  bool _hasTypeChanged = false;
+  bool _hasDateSelectionChanged = false;
+  bool _hasNotesChanged = false;
 
   @override
   void initState() {
@@ -215,6 +220,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   void _resetFormFields() {
     final source = _editingRecord ?? _selectedWorker;
+    _hasTypeChanged = false;
+    _hasDateSelectionChanged = false;
+    _hasNotesChanged = false;
     if (source != null && (source['action'] ?? '').toString().isNotEmpty) {
       _editingId = (_editingRecord?['id'] ?? source['id'])?.toString();
       _timeOffType = source['action'].toString();
@@ -251,6 +259,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _calendarMonth.month + 1,
       1,
     );
+  }
+
+  void _markFormClean() {
+    _hasTypeChanged = false;
+    _hasDateSelectionChanged = false;
+    _hasNotesChanged = false;
   }
 
   List<DateTime> get _sortedSelectedDates {
@@ -507,7 +521,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         (TimeOffService.normalizeLeaveType(_timeOffType) == normType)
         ? _selectedDates.length
         : 0;
-    return (base - currentlySelected).clamp(0, 9999);
+    return projectedTimeOffBalance(
+      availableDays: base,
+      requestedDays: currentlySelected,
+    );
   }
 
   int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
@@ -528,11 +545,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   String get _availableLeaveLabel {
     return switch (TimeOffService.normalizeLeaveType(_timeOffType)) {
-      'Sick Leave' => 'available_sick_leave'.tr(),
-      'Casual Leave' => 'available_casual_leave'.tr(),
-      'Medical Leave' => 'available_medical_leave'.tr(),
-      _ => 'available_annual_leave'.tr(),
+      'Annual Leave' => 'total_annual_leave_days'.tr(),
+      'Sick Leave' => 'total_sick_leave_days'.tr(),
+      'Casual Leave' => 'total_casual_leave_days'.tr(),
+      'Medical Leave' => 'total_medical_leave_days'.tr(),
+      _ => 'total_leave_days'.tr(),
     };
+  }
+
+  int get _displayedLeaveBalance {
+    if (_selectedWorker == null) return 0;
+    return TimeOffService.configuredLimitForType(
+      _selectedWorkerForService,
+      _timeOffType,
+    );
   }
 
   String get _insufficientBalanceMessage {
@@ -552,7 +578,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int get _remainingDaysAfterRequest {
     if (!_isGuest && !_isPaidLeave) return _baseAvailableDays;
-    return _baseAvailableDays - _requestedDays;
+    return projectedTimeOffBalance(
+      availableDays: _baseAvailableDays,
+      requestedDays: _requestedDays,
+    );
   }
 
   String get _selectedDatesSummary {
@@ -571,52 +600,236 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+  Future<bool> _confirmDiscardChanges() async {
+    final currentContext = context;
+    if (!hasUnsavedTimeOffChanges(
+      hasSelectedDates: _hasDateSelectionChanged,
+      hasNotes: _hasNotesChanged,
+      isEditing: _editingId != null,
+      typeChanged: _hasTypeChanged,
+      datesChanged: _hasDateSelectionChanged,
+    )) {
+      return true;
+    }
+
+    if (!mounted) return false;
+
+    final shouldDiscard = await showGeneralDialog<bool>(
+      context: currentContext,
+      barrierDismissible: true,
+      barrierLabel: 'UnsavedChangesDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (_, _, _) => const SizedBox(),
+      transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  width: 380,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.15),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEE2E2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: Color(0xFFEF4444),
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       Text(
-                        'assign_time_off'.tr(),
+                        'discard_changes'.tr(),
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
-
-                      const Spacer(),
-                      _buildLeaveLegendItem('Annual Leave', LeaveColors.annual),
-                      const SizedBox(width: 16),
-                      _buildLeaveLegendItem('Sick Leave', LeaveColors.sick),
-                      const SizedBox(width: 16),
-                      _buildLeaveLegendItem('Casual Leave', LeaveColors.casual),
-                      const SizedBox(width: 16),
-                      _buildLeaveLegendItem(
-                        'Medical Leave',
-                        LeaveColors.medical,
+                      const SizedBox(height: 12),
+                      Text(
+                        'unsaved_changes_message'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(ctx, false),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'cancel'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF000000),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(ctx, true),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  'discard'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildMainCard(),
-                ],
+                ),
               ),
             ),
           ),
-        ],
+        );
+      },
+    );
+    return shouldDiscard ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldLeave = await _confirmDiscardChanges();
+        if (shouldLeave && mounted) {
+          if (!context.mounted) return;
+          widget.onBack();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'assign_time_off'.tr(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const Spacer(),
+                        _buildLeaveLegendItem(
+                          'Annual Leave',
+                          LeaveColors.annual,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildLeaveLegendItem('Sick Leave', LeaveColors.sick),
+                        const SizedBox(width: 16),
+                        _buildLeaveLegendItem(
+                          'Casual Leave',
+                          LeaveColors.casual,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildLeaveLegendItem(
+                          'Medical Leave',
+                          LeaveColors.medical,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildMainCard(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -658,7 +871,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: widget.onBack,
+            onTap: () async {
+              final shouldLeave = await _confirmDiscardChanges();
+              if (shouldLeave) {
+                widget.onBack();
+              }
+            },
             child: const Padding(
               padding: EdgeInsets.only(top: 2.0),
               child: Icon(
@@ -779,6 +997,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   onPressed: () {
                     setState(() {
                       _selectedDates.clear();
+                      _hasDateSelectionChanged = true;
                       _syncSelectionBounds();
                     });
                   },
@@ -961,7 +1180,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                           size: 20,
                                         ),
                                         title: _availableLeaveLabel,
-                                        value: '$_availableDays',
+                                        value: '$_displayedLeaveBalance',
                                       ),
                                     ),
                                   ],
@@ -1130,6 +1349,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               onPressed:
                   (_selectedWorker == null ||
                       _isLoading ||
+                      // Inspecting a zero-balance type is allowed, but it must
+                      // not be possible to assign or save against it.
+                      _baseAvailableDaysForType(_timeOffType) <= 0 ||
                       (_editingId == null && _selectedDates.isEmpty) ||
                       _requestedDaysExceedAvailable)
                   ? null
@@ -1228,6 +1450,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   final label = option['labelKey']!.tr();
                   final typeVal = option['value']!;
                   final avail = _availableDaysForType(typeVal);
+                  // Every type stays selectable so HR can inspect the
+                  // worker's existing dates for a type even when its balance
+                  // is zero (the calendar only shows dates for the selected
+                  // type). Zero-balance types are styled grey as a hint;
+                  // adding new dates and saving are blocked separately.
                   final displayLabel = (_selectedWorker != null && avail < 999)
                       ? '$label ($avail)'
                       : label;
@@ -1251,6 +1478,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     setState(() {
                       _timeOffType = v;
                       _selectedDates.clear();
+                      _hasTypeChanged = true;
+                      _hasDateSelectionChanged = true;
+                      // Switching the type starts a new request — drop any
+                      // edit context so saving with empty dates can never
+                      // accidentally cancel the previously edited record.
+                      _editingId = null;
+                      _editingRecord = null;
                       _syncSelectionBounds();
                     });
                   }
@@ -1553,6 +1787,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
             setState(() {
               _selectedDates = candidate;
+              _hasDateSelectionChanged = true;
               _dragExceededAvailableDays = exceededAvailableDays;
               _syncSelectionBounds();
             });
@@ -1685,20 +1920,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         excludingRecordId: _editingId,
       );
       if (savedLeave != null) {
-        final savedDates = TimeOffService.selectedDatesForRecord(
-          savedLeave,
-        ).map(_dateOnly).toSet();
-        savedDates.remove(selectedDate);
-        setState(() {
-          _editingRecord = Map<String, dynamic>.from(savedLeave);
-          _editingId = savedLeave['id']?.toString();
-          _timeOffType = TimeOffService.normalizeLeaveType(
-            TimeOffService.leaveType(savedLeave),
-          );
-          _notesController.text = savedLeave['notes']?.toString() ?? '';
-          _selectedDates = savedDates;
-          _syncSelectionBounds();
-        });
+        // Date already has an assigned leave — keep it locked.
+        FlashySnackBar.show(
+          context,
+          message: 'date_already_has_leave'.tr(),
+          isError: true,
+        );
         return;
       }
     }
@@ -1717,6 +1944,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       } else {
         _selectedDates.add(selectedDate);
       }
+      _hasDateSelectionChanged = true;
       _syncSelectionBounds();
     });
   }
@@ -1773,9 +2001,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           orElse: () => null,
         );
     final tooltipTypeLabel = tooltipOption?['labelKey']?.tr() ?? tooltipType;
-    final tooltipDate = date == null
-        ? ''
-        : DateFormat('yMd', context.locale.toString()).format(date);
+    // Match the Selected Dates summary (_formatDate -> dd/MM/yyyy). The generic
+    // localized yMd pattern resolves to US M/d/yyyy for the default 'en' locale,
+    // which would render 11 Aug as 8/11/2026 and mismatch the rest of the screen.
+    final tooltipDate = date == null ? '' : _formatDate(date);
     final tooltipMessage = '$tooltipTypeLabel\n$tooltipDate';
     final tooltipColor = LeaveColors.getColor(tooltipType);
 
@@ -1856,6 +2085,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: TextField(
                 controller: _notesController,
+                onChanged: (_) {
+                  setState(() {
+                    _hasNotesChanged = true;
+                  });
+                },
                 maxLines: null,
                 style: const TextStyle(
                   fontSize: 14,
@@ -1879,8 +2113,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           children: [
             _buildSummaryRow(
               _availableLeaveLabel,
-              '$_availableDays',
-              _availableDays > 0 ? Colors.black : Colors.red,
+              '$_displayedLeaveBalance',
+              _displayedLeaveBalance > 0 ? Colors.black : Colors.red,
             ),
             _buildSummaryRow(
               'requested_days'.tr(),
@@ -2024,6 +2258,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         if (!mounted) return;
         await _loadTimeoffForSelectedWorker();
         if (!mounted) return;
+        setState(_markFormClean);
         FlashySnackBar.show(
           context,
           message: 'update_time_off_success'.tr(
@@ -2162,19 +2397,25 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       0,
                   'sickLeave':
                       int.tryParse(
-                        (DummyData.workers[workerIdx]['sickLeaves'] ?? '0')
+                        (DummyData.workers[workerIdx]['availableSickLeaves'] ??
+                                DummyData.workers[workerIdx]['sickLeaves'] ??
+                                '0')
                             .toString(),
                       ) ??
                       0,
                   'casualLeave':
                       int.tryParse(
-                        (DummyData.workers[workerIdx]['casualLeaves'] ?? '0')
+                        (DummyData.workers[workerIdx]['availableCasualLeaves'] ??
+                                DummyData.workers[workerIdx]['casualLeaves'] ??
+                                '0')
                             .toString(),
                       ) ??
                       0,
                   'medicalLeave':
                       int.tryParse(
-                        (DummyData.workers[workerIdx]['medicalLeaves'] ?? '0')
+                        (DummyData.workers[workerIdx]['availableMedicalLeaves'] ??
+                                DummyData.workers[workerIdx]['medicalLeaves'] ??
+                                '0')
                             .toString(),
                       ) ??
                       0,
@@ -2187,6 +2428,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           DummyData.workers[workerIdx]['leaveBalances'] = currentMap;
           if (leaveField == 'annualLeave') {
             DummyData.workers[workerIdx]['availableAnnualLeaves'] = updatedVal
+                .toString();
+          } else if (leaveField == 'sickLeave') {
+            DummyData.workers[workerIdx]['availableSickLeaves'] = updatedVal
+                .toString();
+          } else if (leaveField == 'casualLeave') {
+            DummyData.workers[workerIdx]['availableCasualLeaves'] = updatedVal
+                .toString();
+          } else if (leaveField == 'medicalLeave') {
+            DummyData.workers[workerIdx]['availableMedicalLeaves'] = updatedVal
                 .toString();
           }
         }
@@ -2208,6 +2458,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           _endDate = DateTime.now();
           _notesController.clear();
           _timeOffType = 'Annual Leave';
+          _markFormClean();
         });
         await _loadTimeoffForSelectedWorker();
         if (!mounted) return;

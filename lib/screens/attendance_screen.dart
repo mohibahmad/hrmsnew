@@ -1252,12 +1252,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       case 'Today':
         return 'today_attendance'.tr();
       case 'Week':
+      case 'This Week':
         return 'weekly_attendance'.tr();
       case 'Month':
+      case 'This Month':
         return 'monthly_attendance'.tr();
       case '6 Month':
+      case 'Last 6 Months':
         return 'six_month_attendance'.tr();
       case 'Yearly':
+      case 'This Year':
         return 'yearly_attendance'.tr();
       default:
         return 'today_attendance'.tr();

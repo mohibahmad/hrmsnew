@@ -1857,24 +1857,30 @@ class FirestoreService {
                           .toString(),
                     ) ??
                     0,
-              'sickLeave' => int.tryParse(
+              'sickLeave' =>
+                int.tryParse(
                       (workerData['availableSickLeaves'] ??
                               workerData['sickLeaves'] ??
                               '0')
-                          .toString()) ??
-                  0,
-              'casualLeave' => int.tryParse(
+                          .toString(),
+                    ) ??
+                    0,
+              'casualLeave' =>
+                int.tryParse(
                       (workerData['availableCasualLeaves'] ??
                               workerData['casualLeaves'] ??
                               '0')
-                          .toString()) ??
-                  0,
-              'medicalLeave' => int.tryParse(
+                          .toString(),
+                    ) ??
+                    0,
+              'medicalLeave' =>
+                int.tryParse(
                       (workerData['availableMedicalLeaves'] ??
                               workerData['medicalLeaves'] ??
                               '0')
-                          .toString()) ??
-                  0,
+                          .toString(),
+                    ) ??
+                    0,
               _ => 0,
             };
           }
@@ -1992,11 +1998,29 @@ class FirestoreService {
                 ) ??
                 0,
           'sickLeave' =>
-            int.tryParse((workerData['sickLeaves'] ?? '0').toString()) ?? 0,
+            int.tryParse(
+                  (workerData['availableSickLeaves'] ??
+                          workerData['sickLeaves'] ??
+                          '0')
+                      .toString(),
+                ) ??
+                0,
           'casualLeave' =>
-            int.tryParse((workerData['casualLeaves'] ?? '0').toString()) ?? 0,
+            int.tryParse(
+                  (workerData['availableCasualLeaves'] ??
+                          workerData['casualLeaves'] ??
+                          '0')
+                      .toString(),
+                ) ??
+                0,
           'medicalLeave' =>
-            int.tryParse((workerData['medicalLeaves'] ?? '0').toString()) ?? 0,
+            int.tryParse(
+                  (workerData['availableMedicalLeaves'] ??
+                          workerData['medicalLeaves'] ??
+                          '0')
+                      .toString(),
+                ) ??
+                0,
           _ => 0,
         };
       }
@@ -2018,6 +2042,18 @@ class FirestoreService {
       };
       if (leaveBalances.containsKey('annualLeave')) {
         workerUpdates['availableAnnualLeaves'] = leaveBalances['annualLeave']
+            .toString();
+      }
+      if (leaveBalances.containsKey('sickLeave')) {
+        workerUpdates['availableSickLeaves'] = leaveBalances['sickLeave']
+            .toString();
+      }
+      if (leaveBalances.containsKey('casualLeave')) {
+        workerUpdates['availableCasualLeaves'] = leaveBalances['casualLeave']
+            .toString();
+      }
+      if (leaveBalances.containsKey('medicalLeave')) {
+        workerUpdates['availableMedicalLeaves'] = leaveBalances['medicalLeave']
             .toString();
       }
 
