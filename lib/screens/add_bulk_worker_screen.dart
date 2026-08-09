@@ -1088,6 +1088,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             fieldKey == 'cv';
         String? mediaDataUrl;
         String? mediaFileName;
+        bool isValidatingMedia = false;
         bool hasExistingUpload = false;
         if (isMediaField && currentValue.isNotEmpty) {
           // Treat any existing value (http(s) link or data: URL) as an
@@ -1501,7 +1502,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       vertical: 10,
                                     ),
                                   ),
-                                  onPressed: () {
+                                  onPressed: () async {
+                                    if (isValidatingMedia) return;
                                     final val = controller.text
                                         .replaceAll(RegExp(r'[\r\n]+'), ' ')
                                         .trim();
@@ -1807,105 +1809,82 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           Navigator.of(ctx).pop(val);
                                         }
                                       }
-                                    } else {
-                                      if (isMediaField) {
-                                        if (mediaDataUrl != null) {
-                                          worker['${fieldKey}_name'] =
-                                              mediaFileName ?? '';
-                                          Navigator.of(ctx).pop(mediaDataUrl);
-                                        } else if (hasExistingUpload) {
-                                          worker['${fieldKey}_name'] =
-                                              _extractFileName(
-                                                currentValue,
-                                                fieldKey,
-                                              );
-                                          Navigator.of(ctx).pop(currentValue);
-                                        } else if (val.isNotEmpty &&
-                                            !val.startsWith('data:')) {
-                                          final uri = Uri.tryParse(val);
-                                          if (uri == null ||
-                                              !uri.hasAuthority ||
-                                              (uri.scheme != 'http' &&
-                                                  uri.scheme != 'https')) {
-                                            setDialogState(() {
-                                              dialogError =
-                                                  'bulk_media_invalid_url'.tr();
-                                            });
-                                            return;
-                                          }
-                                          final lastSegment =
-                                              uri.pathSegments.isEmpty
-                                              ? ''
-                                              : uri.pathSegments.last;
-                                          final ext = lastSegment.contains('.')
-                                              ? lastSegment
-                                                    .split('.')
-                                                    .last
-                                                    .toLowerCase()
-                                              : '';
-                                          const imageExts = {
-                                            'png',
-                                            'jpeg',
-                                            'jpg',
-                                          };
-                                          const cvExts = {
-                                            'pdf',
-                                            'doc',
-                                            'docx',
-                                            'jpg',
-                                            'jpeg',
-                                            'png',
-                                          };
-                                          if (fieldKey == 'cv' &&
-                                              ext.isNotEmpty &&
-                                              !cvExts.contains(ext)) {
-                                            setDialogState(() {
-                                              dialogError =
-                                                  'bulk_media_cv_format_error'
-                                                      .tr();
-                                            });
-                                          } else if (fieldKey != 'cv' &&
-                                              ext.isNotEmpty &&
-                                              !imageExts.contains(ext)) {
-                                            setDialogState(() {
-                                              dialogError =
-                                                  'bulk_media_image_format_error'
-                                                      .tr(
-                                                        namedArgs: {
-                                                          'received': ext,
-                                                        },
-                                                      );
-                                            });
-                                          } else {
-                                            worker['${fieldKey}_name'] =
-                                                _extractFileName(val, fieldKey);
-                                            Navigator.of(ctx).pop(val);
-                                          }
-                                        } else {
-                                          worker['${fieldKey}_name'] =
-                                              _extractFileName(val, fieldKey);
-                                          Navigator.of(ctx).pop(val);
-                                        }
-                                      } else {
-                                        Navigator.of(ctx).pop(val);
+                                    } else if (isMediaField) {
+                                      if (mediaDataUrl != null) {
+                                        worker['${fieldKey}_name'] =
+                                            mediaFileName ?? '';
+                                        Navigator.of(ctx).pop(mediaDataUrl);
+                                        return;
                                       }
+
+                                      final mediaValue = hasExistingUpload
+                                          ? currentValue.trim()
+                                          : val;
+                                      if (mediaValue.startsWith('data:')) {
+                                        worker['${fieldKey}_name'] =
+                                            _extractFileName(
+                                              mediaValue,
+                                              fieldKey,
+                                            );
+                                        Navigator.of(ctx).pop(mediaValue);
+                                        return;
+                                      }
+
+                                      setDialogState(() {
+                                        isValidatingMedia = true;
+                                        dialogError = null;
+                                      });
+                                      final mediaError =
+                                          await validateRemoteWorkerMediaLink(
+                                            field: fieldKey,
+                                            url: mediaValue,
+                                          );
+                                      if (!ctx.mounted) return;
+                                      if (mediaError != null) {
+                                        setDialogState(() {
+                                          isValidatingMedia = false;
+                                          dialogError = mediaError;
+                                        });
+                                        return;
+                                      }
+
+                                      worker['${fieldKey}_name'] =
+                                          _extractFileName(
+                                            mediaValue,
+                                            fieldKey,
+                                          );
+                                      Navigator.of(ctx).pop(mediaValue);
+                                    } else {
+                                      Navigator.of(ctx).pop(val);
                                     }
                                   },
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.check_rounded, size: 18),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'save'.tr(),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          fontFamily: 'SF Pro Display',
+                                  child: isValidatingMedia
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.check_rounded,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'save'.tr(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ],
                             ),

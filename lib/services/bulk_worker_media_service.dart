@@ -51,17 +51,54 @@ String readableSaveError(Object error) {
   if (error is FormatException) return error.message;
 
   var message = error.toString().trim();
-  for (final prefix in [
-    'Bad state: ',
-    'Exception: ',
-    'FirebaseException: ',
-  ]) {
+  for (final prefix in ['Bad state: ', 'Exception: ', 'FirebaseException: ']) {
     if (message.startsWith(prefix)) {
       message = message.substring(prefix.length).trim();
     }
   }
   if (message.isEmpty) return 'bulk_media_unknown_error'.tr();
   return message;
+}
+
+/// Validates a remote worker-media URL when the user saves an individual
+/// bulk-edit cell. This keeps broken/unreachable links from surviving until
+/// the final "Save All" operation.
+Future<String?> validateRemoteWorkerMediaLink({
+  required String field,
+  required String url,
+}) async {
+  final value = url.trim();
+  final uri = Uri.tryParse(value);
+  if (uri == null ||
+      !uri.hasAuthority ||
+      (uri.scheme != 'http' && uri.scheme != 'https')) {
+    return 'bulk_media_invalid_url'.tr();
+  }
+
+  final folder = field == 'profileImage'
+      ? 'profile_images'
+      : field == 'cv'
+      ? 'worker_cvs'
+      : 'identity_documents';
+  final fallbackName = field == 'cv' ? 'document.pdf' : '$field.jpg';
+  final fallbackMime = field == 'cv' ? 'application/pdf' : 'image/jpeg';
+
+  try {
+    final file = await UploadService.downloadRemoteFile(
+      url: value,
+      folder: folder,
+      fallbackFileName: fallbackName,
+      fallbackMimeType: fallbackMime,
+    );
+    if (!isSupportedMediaType(field, file.mimeType)) {
+      return supportedMediaMessage(field, file.mimeType);
+    }
+    return null;
+  } catch (error) {
+    return 'bulk_media_broken_link_error'.tr(
+      namedArgs: {'error': readableSaveError(error)},
+    );
+  }
 }
 
 Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
