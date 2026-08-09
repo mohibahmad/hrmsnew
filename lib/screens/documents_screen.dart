@@ -226,7 +226,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             setState(() => _searchQuery = val);
                           },
                           decoration: InputDecoration(
-                            hintText: 'search_workers_hint'.tr(),
+                            hintText: 'search_workers_name'.tr(),
                             hintStyle: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 14,

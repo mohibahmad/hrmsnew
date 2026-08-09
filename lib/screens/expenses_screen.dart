@@ -228,6 +228,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return category == 'salary' && payrollKey.isNotEmpty;
   }
 
+  String _expenseDisplayName(Map<String, dynamic> expense) {
+    final name = (expense['name'] ?? '').toString().trim();
+    final category = (expense['category'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (category != 'salary') return name;
+
+    return name
+        .replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '')
+        .trim();
+  }
+
   String _formatCurrency(double amount) {
     final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     if (amount.abs() >= 1e12) {
@@ -280,20 +293,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     if (dummyList.isEmpty) return;
 
     final now = DateTime.now();
-    int maxDays = 7;
+    int maxDays = 365;
     if (period == 'Today')
       maxDays = 1;
-    else if (period == 'Week')
+    else if (period == 'Week' || period == 'This Week')
       maxDays = 7;
-    else if (period == 'Month')
+    else if (period == 'Month' || period == 'This Month')
       maxDays = 30;
-    else if (period == '6 Month')
+    else if (period == '6 Month' || period == 'Last 6 Months')
       maxDays = 180;
-    else if (period == 'Yearly')
-      maxDays = 365;
 
     for (int i = 0; i < dummyList.length; i++) {
-      int daysAgo = (i * maxDays / dummyList.length).floor();
+      int daysAgo = (i * (maxDays + 1) / dummyList.length).floor();
       final newDate = now.subtract(Duration(days: daysAgo));
       final dayStr = newDate.day.toString().padLeft(2, '0');
       final monthStr = newDate.month.toString().padLeft(2, '0');
@@ -324,7 +335,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
     final docId = (doc['id'] ?? '').toString().trim();
-    final isGuest = _authService.currentUser?.isAnonymous ?? false || PreferencesService.cachedIsGuest;
+    final isGuest =
+        _authService.currentUser?.isAnonymous ??
+        false || PreferencesService.cachedIsGuest;
     if (docId.isEmpty) return;
 
     final confirmed = await DeleteDialog.show(
@@ -484,14 +497,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                   final date = DateTime(
+                                  final date = DateTime(
                                     calendarDate.year,
                                     calendarDate.month,
                                     selectedDay,
                                   );
-                                  final bool wasPayrollExpense = _isPayrollExpense(doc);
+                                  final bool wasPayrollExpense =
+                                      _isPayrollExpense(doc);
                                   final String payrollKey = wasPayrollExpense
-                                      ? (doc['payrollKey'] ?? '').toString().trim()
+                                      ? (doc['payrollKey'] ?? '')
+                                            .toString()
+                                            .trim()
                                       : '';
                                   final updatedMap = {
                                     'date': date,
@@ -526,11 +542,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         docId,
                                         updatedMap,
                                       );
-                                      if (wasPayrollExpense && payrollKey.isNotEmpty) {
-                                        await _firestore.updatePayrollByPayrollKey(
-                                          payrollKey,
-                                          {'netSalaryAmount': amt},
-                                        );
+                                      if (wasPayrollExpense &&
+                                          payrollKey.isNotEmpty) {
+                                        await _firestore
+                                            .updatePayrollByPayrollKey(
+                                              payrollKey,
+                                              {'netSalaryAmount': amt},
+                                            );
                                       }
                                     }
                                   } catch (e) {
@@ -803,23 +821,38 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   }
 
                                   try {
-                                    final policies = await _firestore.getPolicies();
-                                    final expPolicyList = policies.where((p) => p['typeId'] == 'Expense Policy').toList();
+                                    final policies = await _firestore
+                                        .getPolicies();
+                                    final expPolicyList = policies
+                                        .where(
+                                          (p) =>
+                                              p['typeId'] == 'Expense Policy',
+                                        )
+                                        .toList();
                                     if (expPolicyList.isNotEmpty) {
                                       final expPolicy = expPolicyList.first;
-                                      final double maxLimit = double.tryParse(expPolicy['maxExpenseLimitPerClaim']?.toString() ?? '500.0') ?? 500.0;
+                                      final double maxLimit =
+                                          double.tryParse(
+                                            expPolicy['maxExpenseLimitPerClaim']
+                                                    ?.toString() ??
+                                                '500.0',
+                                          ) ??
+                                          500.0;
                                       if (amt > maxLimit) {
                                         setModalState(() => isSaving = false);
                                         FlashySnackBar.show(
                                           context,
-                                          message: 'expense_claim_exceeds_limit'.tr(
-                                            namedArgs: {
-                                              'maxLimit': formatMoney(
-                                                maxLimit,
-                                                CurrencyUtils.symbolFor(_currencyCode),
+                                          message: 'expense_claim_exceeds_limit'
+                                              .tr(
+                                                namedArgs: {
+                                                  'maxLimit': formatMoney(
+                                                    maxLimit,
+                                                    CurrencyUtils.symbolFor(
+                                                      _currencyCode,
+                                                    ),
+                                                  ),
+                                                },
                                               ),
-                                            },
-                                          ),
                                           isError: true,
                                         );
                                         return;
@@ -1732,7 +1765,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildDataRow(Map<String, dynamic> doc, int index) {
-    final name = (doc['name'] ?? '').toString();
+    final name = _expenseDisplayName(doc);
     final date = _eds(doc['date']);
     final category = (doc['category'] ?? '').toString();
     final amount = _expenseAmount(doc);
