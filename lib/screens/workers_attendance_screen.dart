@@ -483,37 +483,48 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             .toString()
             .trim();
         if (workerId.isEmpty) continue;
-        final alreadyMarked = _todayAttendance
-            .cast<Map<String, dynamic>?>()
-            .any((record) {
-          if (record == null) return false;
-          return _authenticatedRecordBelongsToWorker(record, worker);
-        });
-        if (alreadyMarked) continue;
-
         final leaveType = TimeOffService.normalizeLeaveType(
           (leave['action'] ?? leave['type'] ?? 'Sick Leave').toString(),
         );
-        final attendanceRecord = <String, dynamic>{
-          'workerId': workerId,
-          'name': worker['name'] ?? 'Worker',
-          'workerName': worker['name'] ?? 'Worker',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? worker['role'] ?? 'Worker',
-          'contact': worker['phone'] ?? worker['contact'] ?? '',
-          'profileImage': worker['profileImage'] ?? '',
-          'attendanceDate': todayKey,
-          'status': 'Leave',
-          'type': leaveType,
-          'desc': 'auto_marked_on_leave'.tr(),
-          'source': 'auto_leave',
-        };
+        final existingAttendance = _todayAttendance
+            .cast<Map<String, dynamic>?>()
+            .firstWhere(
+              (record) =>
+                  record != null &&
+                  _authenticatedRecordBelongsToWorker(record, worker),
+              orElse: () => null,
+            );
+        final existingStatus = (existingAttendance?['status'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        final existingType = TimeOffService.normalizeLeaveType(
+          (existingAttendance?['type'] ?? '').toString(),
+        );
+        if (existingStatus == 'leave' && existingType == leaveType) continue;
+
+        final attendanceRecord = AttendanceService.applyApprovedTimeOff(
+          attendanceRecord: <String, dynamic>{
+            if (existingAttendance != null) ...existingAttendance,
+            'workerId': workerId,
+            'name': worker['name'] ?? 'Worker',
+            'workerName': worker['name'] ?? 'Worker',
+            'email': worker['email'] ?? '',
+            'position': worker['position'] ?? worker['role'] ?? 'Worker',
+            'contact': worker['phone'] ?? worker['contact'] ?? '',
+            'profileImage': worker['profileImage'] ?? '',
+            'attendanceDate': todayKey,
+          },
+          timeOffRecord: leave,
+          automaticDescription: 'auto_marked_on_leave'.tr(),
+        );
         try {
-          await _firestore.saveAttendanceWithLeaveSync(
+          final result = await _firestore.saveAttendanceWithLeaveSync(
             attendanceRecord: attendanceRecord,
+            attendanceId: (existingAttendance?['id'] ?? '').toString(),
             workerId: workerId,
           );
-          marked.add(attendanceRecord);
+          marked.add({...attendanceRecord, 'id': result.attendanceId});
         } catch (error, stackTrace) {
           ErrorReporter.report(
             error,
@@ -524,7 +535,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       }
       if (marked.isNotEmpty && mounted) {
         setState(() {
-          _todayAttendance = [..._todayAttendance, ...marked];
+          final updated = List<Map<String, dynamic>>.from(_todayAttendance);
+          for (final markedRecord in marked) {
+            final worker = _resolveWorkerData(markedRecord);
+            updated.removeWhere(
+              (record) => _authenticatedRecordBelongsToWorker(record, worker),
+            );
+            updated.add(markedRecord);
+          }
+          _todayAttendance = updated;
         });
       }
     } finally {
@@ -1135,6 +1154,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> get _visibleTodayAttendance {
     return _todayAttendance
         .where((record) => _attendanceBelongsToCurrentWorker(record))
+        .map((record) {
+          final worker = _resolveWorkerData(record);
+          final leave = _activePlannedTimeOffForWorker(worker);
+          if (leave == null) return record;
+          return AttendanceService.applyApprovedTimeOff(
+            attendanceRecord: record,
+            timeOffRecord: leave,
+            automaticDescription: 'auto_marked_on_leave'.tr(),
+          );
+        })
         .where((record) {
           if (_selectedStatusFilter == 'All') return true;
           final status = (record['status'] ?? '').toString().toLowerCase();
@@ -1360,6 +1389,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     String titleKey = 'mark_attendance',
   }) {
     if (_isDialogOpen) return;
+    final workerData = _resolveWorkerData(data);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       showGuestRestrictionDialog(context);
@@ -1373,7 +1403,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       );
       return;
     }
-    if (_isWorkerOnPlannedTimeOff(data)) {
+    if (_isWorkerOnPlannedTimeOff(workerData)) {
       FlashySnackBar.show(
         context,
         message: 'worker_on_time_off_attendance_blocked'.tr(),

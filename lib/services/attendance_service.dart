@@ -18,9 +18,6 @@ class AttendanceService {
     'archived',
   };
 
-  
-  
-  
   static bool isEligibleForAttendance(Map<String, dynamic> worker) {
     final status = (worker['status'] ?? 'Active')
         .toString()
@@ -53,6 +50,23 @@ class AttendanceService {
       return true;
     }
     return workerExistedOnDate(worker, attendanceDate);
+  }
+
+  static Map<String, dynamic> applyApprovedTimeOff({
+    required Map<String, dynamic> attendanceRecord,
+    required Map<String, dynamic> timeOffRecord,
+    required String automaticDescription,
+  }) {
+    final leaveType = TimeOffService.normalizeLeaveType(
+      (timeOffRecord['action'] ?? timeOffRecord['type'] ?? 'Leave').toString(),
+    );
+    return {
+      ...attendanceRecord,
+      'status': 'Leave',
+      'type': leaveType,
+      'desc': automaticDescription,
+      'source': 'auto_leave',
+    };
   }
 
   static bool _recordMatchesWorkerIdentity(
@@ -292,11 +306,6 @@ class AttendanceService {
     return combined;
   }
 
-  
-  
-  
-  
-  
   static Map<String, int> countRecordsByStatus(
     List<Map<String, dynamic>> records,
     List<Map<String, dynamic>> timeOffRecords,
@@ -306,7 +315,8 @@ class AttendanceService {
     int leave = 0;
     for (final record in records) {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
-      final isOnLeave = recordDate != null &&
+      final isOnLeave =
+          recordDate != null &&
           TimeOffService.isWorkerOnLeave(
             record,
             timeOffRecords,
