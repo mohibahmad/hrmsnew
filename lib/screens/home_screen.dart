@@ -917,11 +917,11 @@ class _HomeScreenState extends State<HomeScreen> {
     int maxDays = 365;
     if (period == 'Today') {
       maxDays = 0;
-    } else if (period == 'Week') {
+    } else if (period == 'Week' || period == 'This Week') {
       maxDays = 7;
-    } else if (period == 'Month') {
+    } else if (period == 'Month' || period == 'This Month') {
       maxDays = 30;
-    } else if (period == '6 Month') {
+    } else if (period == '6 Month' || period == 'Last 6 Months') {
       maxDays = 180;
     }
 

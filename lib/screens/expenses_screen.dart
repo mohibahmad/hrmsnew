@@ -152,18 +152,31 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       _expensesDocs = DummyData.expenses
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
-      for (final payroll in DummyData.payroll) {
-        if (!PayrollService.isPayrollRecordPaid(payroll)) continue;
-        final payrollKey = (payroll['payrollKey'] ?? '').toString();
+      final activePayrollRecords =
+          PayrollService.paidPayrollRecordsForActiveWorkers(
+            DummyData.workers,
+            DummyData.payroll,
+          );
+      final payrollRecords = activePayrollRecords.map((item) {
+        final savedNet = item['netSalaryAmount'];
+        final formattedNet = (item['netSalary'] ?? '').toString();
+        final amount = item['amount'];
+        final netSalary = savedNet is num
+            ? savedNet.toDouble()
+            : formattedNet.trim().isNotEmpty
+            ? PayrollService.extractSalary(formattedNet)
+            : amount is num
+            ? amount.toDouble()
+            : 0.0;
+        return {...item, 'netSalary': netSalary};
+      }).toList();
+      for (final record in payrollRecords) {
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
         if (payrollKey.isEmpty) continue;
-        final numericAmount = payroll['netSalaryAmount'];
-        final amount = numericAmount is num
-            ? numericAmount.toDouble()
-            : PayrollService.extractSalary(
-                (payroll['netSalaryFormatted'] ?? payroll['netSalary'] ?? '')
-                    .toString(),
-              );
-        if (amount > 0) _payrollAmountsByKey[payrollKey] = amount;
+        final netSalary = (record['netSalary'] is num)
+            ? (record['netSalary'] as num).toDouble()
+            : 0.0;
+        if (netSalary > 0) _payrollAmountsByKey[payrollKey] = netSalary;
       }
       _isLoading = false;
       _adjustDummyDatesForPeriod(_selectedPeriod);
@@ -295,7 +308,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final now = DateTime.now();
     int maxDays = 365;
     if (period == 'Today')
-      maxDays = 1;
+      maxDays = 0;
     else if (period == 'Week' || period == 'This Week')
       maxDays = 7;
     else if (period == 'Month' || period == 'This Month')
