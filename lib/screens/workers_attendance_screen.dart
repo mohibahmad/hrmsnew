@@ -361,32 +361,32 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     _timeOffSub = _firestore.timeoffStream.listen(
       (snapshot) {
         if (!mounted) return;
+        final now = DateTime.now();
+        final previousTodayLeaveKeys =
+            TimeOffService.activeLeaveAssignmentKeysForDate(
+              _plannedTimeOffRecords,
+              now,
+            );
         final newRecords = snapshot.docs
             .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
             .toList();
-        final hadTodayLeave = _plannedTimeOffRecords.any((r) {
-          if (!TimeOffService.isActiveRecord(r)) return false;
-          final dates = TimeOffService.selectedDatesForRecord(r);
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          return dates.contains(today);
-        });
         setState(() {
           _timeOffRecords = newRecords;
           _timeOffLoaded = true;
           _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
         });
-        final hasNewTodayLeave = _plannedTimeOffRecords.any((r) {
-          if (!TimeOffService.isActiveRecord(r)) return false;
-          final dates = TimeOffService.selectedDatesForRecord(r);
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          return dates.contains(today);
-        });
-        if (hasNewTodayLeave && !hadTodayLeave) {
-          // A new time off for today was just assigned — re-run auto-mark.
+        final currentTodayLeaveKeys =
+            TimeOffService.activeLeaveAssignmentKeysForDate(
+              _plannedTimeOffRecords,
+              now,
+            );
+        final todayAssignmentsChanged =
+            previousTodayLeaveKeys.length != currentTodayLeaveKeys.length ||
+            !previousTodayLeaveKeys.containsAll(currentTodayLeaveKeys);
+        if (todayAssignmentsChanged) {
           _autoMarkDoneForToday = false;
           _leaveNoticeShown = false;
+          _autoMarkPlannedLeaves();
         }
         _showActiveLeaveNotice();
       },

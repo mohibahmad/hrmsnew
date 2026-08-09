@@ -80,6 +80,35 @@ class TimeOffService {
   static bool isActiveRecord(Map<String, dynamic> record) =>
       !isCancelledRecord(record);
 
+  static Set<String> activeLeaveAssignmentKeysForDate(
+    List<Map<String, dynamic>> records,
+    DateTime date,
+  ) {
+    final target = DateTime(date.year, date.month, date.day);
+    final keys = <String>{};
+
+    for (final record in records) {
+      if (!isActiveRecord(record)) continue;
+      if (!selectedDatesForRecord(record).contains(target)) continue;
+
+      final recordId = (record['id'] ?? '').toString().trim();
+      final workerId = (record['workerId'] ?? '').toString().trim();
+      final email = (record['email'] ?? '').toString().trim().toLowerCase();
+      final name = (record['name'] ?? record['workerName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final workerKey = workerId.isNotEmpty
+          ? 'id:$workerId'
+          : email.isNotEmpty
+          ? 'email:$email'
+          : 'name:$name';
+      keys.add('$recordId|$workerKey|${leaveType(record)}');
+    }
+
+    return keys;
+  }
+
   static bool isPaidRecord(Map<String, dynamic> record) {
     final explicit = record['isPaidLeave'];
     if (explicit is bool) return explicit;
