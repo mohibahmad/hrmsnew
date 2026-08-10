@@ -81,7 +81,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 20),
 
                               ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                                 child: Image.asset(
                                   'assets/app_icon.png',
                                   width: 70,
@@ -98,9 +98,10 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'SF Pro Display',
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 26),
 
                               _buildFeatureItem('secure_staff_records'.tr()),
                               _buildFeatureItem('modern_hrms_experience'.tr()),
@@ -220,7 +221,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                     child: _isSaving
                                         ? const SizedBox(
-                                            width: 20,
+                                            width: 26,
                                             height: 20,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
@@ -252,7 +253,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 19),
 
                                 Padding(
                                   padding: EdgeInsets.zero,
@@ -335,7 +336,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFeatureItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 32),
       child: Row(
         children: [
           const ImageIcon(
@@ -349,8 +350,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
               text,
               style: const TextStyle(
                 color: Color(0xFFFFFFFF),
-                fontSize: 18,
+                fontSize: 19,
                 fontWeight: FontWeight.w500,
+                letterSpacing: 0.9,
                 fontFamily: 'SF Pro Display',
               ),
             ),
