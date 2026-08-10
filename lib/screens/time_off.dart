@@ -1374,7 +1374,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                         _showSelectedDatesDialog(
                                           context,
                                           allDatesWithTypes,
-                                          data,
                                         );
                                       },
                                     ),
@@ -1612,8 +1611,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   void _showSelectedDatesDialog(
     BuildContext context,
-    List<Map<String, dynamic>> datesWithTypes,
-    Map<String, dynamic> worker, [
+    List<Map<String, dynamic>> datesWithTypes, [
     String? leaveType,
   ]) {
     const typeOrder = [
@@ -1622,10 +1620,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       'Casual Leave',
       'Medical Leave',
     ];
-    final configuredLeaveDays = {
-      for (final type in typeOrder)
-        type: TimeOffService.configuredLimitForType(worker, type),
+    final assignedDatesByType = <String, Set<DateTime>>{
+      for (final type in typeOrder) type: <DateTime>{},
     };
+    for (final item in datesWithTypes) {
+      final type = TimeOffService.normalizeLeaveType(
+        (item['type'] ?? '').toString(),
+      );
+      final date = item['date'];
+      if (date is DateTime && assignedDatesByType.containsKey(type)) {
+        assignedDatesByType[type]!.add(
+          DateTime(date.year, date.month, date.day),
+        );
+      }
+    }
 
     showDialog(
       context: context,
@@ -1633,9 +1641,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 440,
+          width: 520,
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.88,
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
             maxHeight: MediaQuery.sizeOf(ctx).height * 0.68,
           ),
           clipBehavior: Clip.antiAlias,
@@ -1714,7 +1722,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       ),
                       child: Text(
                         '${_localizedLeaveType(type)}: '
-                        '${configuredLeaveDays[type]} ${'days'.tr()}',
+                        '${assignedDatesByType[type]!.length} ${'days'.tr()}',
                         style: TextStyle(
                           color: color,
                           fontSize: 10,

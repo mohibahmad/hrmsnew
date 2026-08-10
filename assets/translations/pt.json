@@ -635,6 +635,7 @@
   "update_time_off_success": "Folga atualizada com sucesso",
   "assign_time_off_failed": "Falha ao atribuir folga",
   "requested_leaves_exceed_available": "As licenças solicitadas excedem as licenças disponíveis.",
+  "no_leave_days_available": "Nenhum dia de {type} está disponível.",
   "only_one_leave_day_available": "Apenas 1 dia de {type} está disponível.",
   "only_leave_days_available": "Apenas {count} dias de {type} estão disponíveis.",
   "all_leaves_utilized": "Todas as licenças foram utilizadas.",

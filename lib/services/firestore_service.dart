@@ -2082,6 +2082,11 @@ class FirestoreService {
         }
         final oldType =
             oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
+        if (!TimeOffService.recordHasLeaveType(oldRecordData, leaveType)) {
+          throw StateError(
+            'An existing time off record cannot be changed to another leave type',
+          );
+        }
         oldLeaveField = switch (TimeOffService.normalizeLeaveType(
           oldType.toString(),
         )) {
@@ -2240,6 +2245,14 @@ class FirestoreService {
     final coll = _timeoff;
     if (coll == null) return const Stream.empty();
     return coll.orderBy('createdAt', descending: true).snapshots();
+  }
+
+  Stream<QuerySnapshot> timeoffForWorkerStream(String workerId) {
+    final coll = _timeoff;
+    if (coll == null || workerId.trim().isEmpty) {
+      return const Stream.empty();
+    }
+    return coll.where('workerId', isEqualTo: workerId.trim()).snapshots();
   }
 
   Future<QuerySnapshot> getTimeoffForWorker(String workerId) async {

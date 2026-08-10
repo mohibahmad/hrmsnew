@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
 import '../services/preferences_service.dart';
 import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
@@ -131,6 +132,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   List<Map<String, dynamic>> _workers = [];
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
+  StreamSubscription? _timeoffSub;
+  String _watchedTimeoffWorkerId = '';
   List<Map<String, dynamic>> _timeoffRecords = [];
 
   Map<String, dynamic>? _editingRecord;
@@ -397,6 +400,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _loadTimeoffForSelectedWorker() async {
     final worker = _selectedWorker;
     if (worker == null) {
+      await _timeoffSub?.cancel();
+      _timeoffSub = null;
+      _watchedTimeoffWorkerId = '';
       if (mounted) setState(() => _timeoffRecords = []);
       return;
     }
@@ -404,6 +410,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         .toString()
         .trim();
     if (workerId.isEmpty) {
+      await _timeoffSub?.cancel();
+      _timeoffSub = null;
+      _watchedTimeoffWorkerId = '';
       if (mounted) setState(() => _timeoffRecords = []);
       return;
     }
@@ -420,16 +429,35 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       }
       return;
     }
-    try {
-      final snapshot = await _firestore.getTimeoffForWorker(workerId);
-      if (!mounted) return;
-      setState(() {
-        _timeoffRecords = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
-        _syncViewOnlyDatesForType();
-      });
-    } catch (_) {}
+    if (_watchedTimeoffWorkerId == workerId && _timeoffSub != null) return;
+
+    await _timeoffSub?.cancel();
+    if (!mounted) return;
+    _watchedTimeoffWorkerId = workerId;
+    _timeoffSub = _firestore
+        .timeoffForWorkerStream(workerId)
+        .listen(
+          (snapshot) {
+            if (!mounted || _watchedTimeoffWorkerId != workerId) return;
+            setState(() {
+              _timeoffRecords = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              if (widget.viewOnly) {
+                _syncViewOnlyDatesForType();
+              } else {
+                _syncOpenRecordFromLiveData();
+              }
+            });
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'AssignTimeOffWorkerRecordsStream:$workerId',
+            );
+          },
+        );
   }
 
   void _syncViewOnlyDatesForType() {
@@ -440,6 +468,74 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
     _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
     _syncSelectionBounds();
+  }
+
+  void _syncOpenRecordFromLiveData() {
+    if (_editingId == null || _hasUnsavedChanges) return;
+    final liveRecord = _timeoffRecords.cast<Map<String, dynamic>?>().firstWhere(
+      (record) => record?['id']?.toString() == _editingId,
+      orElse: () => null,
+    );
+    if (liveRecord != null) {
+      _applyEditingRecord(liveRecord, preserveCalendarMonth: true);
+    }
+  }
+
+  void _applyEditingRecord(
+    Map<String, dynamic> record, {
+    bool preserveCalendarMonth = false,
+  }) {
+    _editingRecord = Map<String, dynamic>.from(record);
+    _editingId = record['id']?.toString();
+    _timeOffType = TimeOffService.leaveType(record);
+    _selectedDates = TimeOffService.selectedDatesForRecord(record).toSet();
+    _notesController.text = (record['notes'] ?? '').toString();
+    if (_selectedDates.isEmpty) {
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+    } else {
+      _syncSelectionBounds();
+    }
+    if (!preserveCalendarMonth) {
+      _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
+    }
+    _markFormClean();
+  }
+
+  Future<void> _switchToLeaveType(String type) async {
+    final normalizedType = TimeOffService.normalizeLeaveType(type);
+    if (normalizedType == _timeOffType) return;
+
+    if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
+    if (!mounted) return;
+
+    final record = TimeOffService.recordForWorkerLeaveType(
+      _selectedWorkerForService,
+      _timeoffRecords,
+      normalizedType,
+    );
+    setState(() {
+      if (record != null) {
+        _applyEditingRecord(record, preserveCalendarMonth: true);
+        return;
+      }
+
+      // No assigned record exists for this type. Start a separate new request
+      // instead of relabelling the record that was previously open.
+      _editingRecord = null;
+      _editingId = null;
+      _timeOffType = normalizedType;
+      _selectedDates.clear();
+      _notesController.clear();
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+      _markFormClean();
+    });
   }
 
   String _getMonthName(int month) {
@@ -519,25 +615,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int _baseAvailableDaysForType(String type) {
     if (_selectedWorker == null) return 0;
-    final dbBalance = TimeOffService.getLeaveBalance(
+    return TimeOffService.availableBalanceForEditingRecord(
       _selectedWorkerForService,
       type,
+      _editingRecord,
     );
-
-    if (_editingRecord != null) {
-      final originalType = TimeOffService.leaveType(_editingRecord!);
-      final originalDaysCount = TimeOffService.selectedDatesForRecord(
-        _editingRecord!,
-      ).length;
-
-      final normType = TimeOffService.normalizeLeaveType(type);
-      final normOriginalType = TimeOffService.normalizeLeaveType(originalType);
-
-      if (normType == normOriginalType) {
-        return (dbBalance + originalDaysCount).clamp(0, 9999);
-      }
-    }
-    return dbBalance.clamp(0, 9999);
   }
 
   int _availableDaysForType(String type) {
@@ -594,7 +676,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   String get _insufficientBalanceMessage {
     final availableDays = _availableDays;
-    final key = availableDays == 1
+    final key = availableDays == 0
+        ? 'no_leave_days_available'
+        : availableDays == 1
         ? 'only_one_leave_day_available'
         : 'only_leave_days_available';
     return key.tr(
@@ -611,18 +695,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       ? 0
       : _selectedDaysCount;
 
-  int get _remainingDaysAfterRequest {
-    if (widget.viewOnly && _selectedWorker != null) {
-      return TimeOffService.getLeaveBalance(
-        _selectedWorkerForService,
-        _timeOffType,
-      );
-    }
-    if (!_isGuest && !_isPaidLeave) return _baseAvailableDays;
-    return projectedTimeOffBalance(
-      availableDays: _baseAvailableDays,
-      requestedDays: _requestedDays,
+  int get _summaryRequestedDays {
+    if (_selectedWorker == null) return 0;
+    return TimeOffService.projectedAssignedDaysForEditingRecord(
+      _selectedWorkerForService,
+      _timeOffType,
+      _editingRecord,
+      _selectedDaysCount,
     );
+  }
+
+  int get _remainingDaysAfterRequest {
+    if (_selectedWorker == null) return 0;
+    return (_displayedLeaveBalance - _summaryRequestedDays).clamp(0, 9999);
   }
 
   String get _selectedDatesSummary {
@@ -637,6 +722,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   void dispose() {
     _notesController.dispose();
     _workersSub?.cancel();
+    _timeoffSub?.cancel();
     _holidaysSub?.cancel();
     super.dispose();
   }
@@ -1235,7 +1321,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                           size: 20,
                                         ),
                                         title: 'requested_days'.tr(),
-                                        value: '$_requestedDays',
+                                        value: '$_summaryRequestedDays',
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -1405,15 +1491,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       }
                       _handleSave();
                     },
-              child: Text(
-                (_editingId == null ? 'assign' : 'save').tr(),
-                style: const TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      (_editingId == null ? 'assign' : 'save').tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
             ),
           ),
         ),
@@ -1523,14 +1618,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     });
                     return;
                   }
-                  setState(() {
-                    _timeOffType = v;
-                    _hasTypeChanged = true;
-                    // Keep the edit context and selected dates. The save
-                    // transaction restores the original type's balance before
-                    // deducting these dates from the newly selected type.
-                    _syncSelectionBounds();
-                  });
+                  unawaited(_switchToLeaveType(v));
                 },
               ),
             ),
@@ -1837,7 +1925,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           },
           onPanEnd: (_) {
             if (!_dragMoved && _dragAnchorDate != null) {
-              _toggleDate(_dragAnchorDate!);
+              unawaited(_toggleDate(_dragAnchorDate!));
             }
             _finishDateDrag();
           },
@@ -1943,7 +2031,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _dragMoved = false;
   }
 
-  void _toggleDate(DateTime date) {
+  Future<void> _toggleDate(DateTime date) async {
     final selectedDate = _dateOnly(date);
     final isRemoving = _selectedDates.contains(selectedDate);
     if (!isRemoving && _isNonWorkingDate(selectedDate)) {
@@ -1963,6 +2051,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         excludingRecordId: _editingId,
       );
       if (savedLeave != null) {
+        if (TimeOffService.recordHasLeaveType(savedLeave, _timeOffType)) {
+          if (!TimeOffService.isEditableRecord(savedLeave)) {
+            FlashySnackBar.show(
+              context,
+              message: 'past_time_off_edit_blocked'.tr(),
+              isError: true,
+            );
+            return;
+          }
+          if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
+          if (!mounted) return;
+          setState(() {
+            // The calendar combines dates from every record of a leave type.
+            // Load the owning record before removing its date so any same-type
+            // assigned day can be edited directly.
+            _applyEditingRecord(savedLeave, preserveCalendarMonth: true);
+            _selectedDates.remove(selectedDate);
+            _hasDateSelectionChanged = true;
+            _syncSelectionBounds();
+          });
+          return;
+        }
         // Date already has an assigned leave — keep it locked.
         FlashySnackBar.show(
           context,
@@ -2162,7 +2272,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
             _buildSummaryRow(
               'requested_days'.tr(),
-              '$_requestedDays',
+              '$_summaryRequestedDays',
               Colors.black,
             ),
             _buildSummaryRow(
@@ -2447,6 +2557,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final workerId = workerIdentity.toString().trim();
       if (!isGuest && workerId.isEmpty) {
         throw StateError('Missing worker id');
+      }
+
+      // A dropdown switch navigates between independent leave-type records.
+      // Never allow a stale UI state to relabel an existing Annual record as
+      // Sick (or any other type); Firestore enforces the same invariant.
+      if (_editingRecord != null &&
+          !TimeOffService.recordHasLeaveType(_editingRecord!, _timeOffType)) {
+        throw StateError(
+          'The selected leave type does not match the record being edited',
+        );
       }
 
       final recordMap = <String, dynamic>{

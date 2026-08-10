@@ -180,6 +180,13 @@ class TimeOffService {
     );
   }
 
+  static bool recordHasLeaveType(
+    Map<String, dynamic> record,
+    String expectedType,
+  ) {
+    return leaveType(record) == normalizeLeaveType(expectedType);
+  }
+
   static bool isPaidLeaveType(String type) =>
       paidLeaveTypes.contains(normalizeLeaveType(type));
 
@@ -543,6 +550,56 @@ class TimeOffService {
     };
   }
 
+  /// Finds the worker's record for a dropdown leave type without converting
+  /// the currently open record into that type. Editable records are preferred,
+  /// then the most recent assigned dates are used.
+  static Map<String, dynamic>? recordForWorkerLeaveType(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> timeOffRecords,
+    String type, {
+    DateTime? referenceDate,
+  }) {
+    final normalizedType = normalizeLeaveType(type);
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+    final matches = timeOffRecords
+        .where((record) {
+          return isActiveRecord(record) &&
+              normalizeLeaveType(leaveType(record)) == normalizedType &&
+              _belongsToWorker(
+                record,
+                workerId: workerId,
+                workerEmail: workerEmail,
+                workerName: workerName,
+              );
+        })
+        .map(Map<String, dynamic>.from)
+        .toList();
+
+    if (matches.isEmpty) return null;
+
+    DateTime recordDate(Map<String, dynamic> record) {
+      final dates = selectedDatesForRecord(record);
+      if (dates.isNotEmpty) return dates.last;
+      for (final key in ['updatedAt', 'createdAt', 'startDate', 'endDate']) {
+        final parsed = parseDate(record[key]);
+        if (parsed != null) return parsed;
+      }
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    matches.sort((a, b) {
+      final aEditable = isEditableRecord(a, referenceDate: referenceDate);
+      final bEditable = isEditableRecord(b, referenceDate: referenceDate);
+      if (aEditable != bEditable) return aEditable ? -1 : 1;
+      return recordDate(b).compareTo(recordDate(a));
+    });
+    return matches.first;
+  }
+
   static int configuredPaidLeaveAllowance(Map<String, dynamic> worker) {
     final rawAnnual = worker['annualLeaves'];
     final annual = rawAnnual is num
@@ -588,6 +645,49 @@ class TimeOffService {
     final balances =
         canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
     return balances[fieldName] ?? 0;
+  }
+
+  /// Returns the balance that can be used while editing an existing record.
+  /// The record's already allocated days are temporarily available because an
+  /// atomic save restores the old allocation before applying the new one.
+  static int availableBalanceForEditingRecord(
+    Map<String, dynamic> worker,
+    String type,
+    Map<String, dynamic>? editingRecord,
+  ) {
+    final storedBalance = getLeaveBalance(worker, type);
+    if (editingRecord == null ||
+        normalizeLeaveType(type) != leaveType(editingRecord)) {
+      return storedBalance;
+    }
+
+    return (storedBalance + selectedDatesForRecord(editingRecord).length).clamp(
+      0,
+      9999,
+    );
+  }
+
+  /// Projects the worker's total assigned days for one leave type while a
+  /// single record is being edited. Firestore's stored used count already
+  /// includes every record; replace only the open record's old allocation with
+  /// its current draft selection.
+  static int projectedAssignedDaysForEditingRecord(
+    Map<String, dynamic> worker,
+    String type,
+    Map<String, dynamic>? editingRecord,
+    int selectedDays,
+  ) {
+    final total = configuredLimitForType(worker, type);
+    final available = getLeaveBalance(worker, type).clamp(0, total);
+    final storedAssigned = total - available;
+    final originalSelectedDays =
+        editingRecord != null && recordHasLeaveType(editingRecord, type)
+        ? selectedDatesForRecord(editingRecord).length
+        : 0;
+    return (storedAssigned - originalSelectedDays + selectedDays).clamp(
+      0,
+      total,
+    );
   }
 
   static int configuredLimitForType(Map<String, dynamic> worker, String type) {

@@ -634,6 +634,7 @@
   "update_time_off_success": "Successfully updated time off for {name}",
   "assign_time_off_failed": "Failed to assign time off",
   "requested_leaves_exceed_available": "Requested leaves exceed available leaves.",
+  "no_leave_days_available": "No {type} days are available.",
   "only_one_leave_day_available": "Only 1 {type} day is available.",
   "only_leave_days_available": "Only {count} {type} days are available.",
   "all_leaves_utilized": "All leaves have been utilized.",

@@ -292,20 +292,6 @@ class PayrollService {
         _parseDate(record['paymentDate']) != null;
   }
 
-  static bool _isCancelledPayrollRecord(Map<String, dynamic> record) {
-    final status = (record['status'] ?? '').toString().trim().toLowerCase();
-    if (status == 'cancelled' || status == 'canceled') return true;
-
-    // Cancelling a paid payroll moves it back to `Unpaid` so it can be run
-    // again, but the cancellation marker must keep its old calculation inputs
-    // from seeding the fresh payroll form.
-    for (final key in ['cancelledAt', 'canceledAt']) {
-      final marker = record[key];
-      if (marker != null && marker.toString().trim().isNotEmpty) return true;
-    }
-    return false;
-  }
-
   static bool _isTruthy(dynamic value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
@@ -435,16 +421,17 @@ class PayrollService {
       return const <Map<String, dynamic>>[];
     }
 
+    // A cancelled payroll is an unpaid calculation snapshot, not a deleted
+    // payroll. Keep it in the selected period so corrections survive payment
+    // reversal and can seed the next manual/Pay All run.
     final monthlyPayrollDocs = rawPayrollDocs
-        .where((record) {
-          if (_isCancelledPayrollRecord(record)) return false;
-
-          return isRecordInMonth(
+        .where(
+          (record) => isRecordInMonth(
             record,
             targetMonth,
             allowUndated: allowUndatedRecords,
-          );
-        })
+          ),
+        )
         .map(Map<String, dynamic>.from)
         .toList();
 
@@ -474,7 +461,6 @@ class PayrollService {
           : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
               (record) =>
                   record != null &&
-                  !_isCancelledPayrollRecord(record) &&
                   canonicalKeys.contains(
                     (record['payrollKey'] ?? '')
                         .toString()

@@ -106,41 +106,58 @@ void main() {
     expect(result['netSalary'], 4800.0);
   });
 
-  test('cancelled payroll does not seed a fresh pay period form', () {
+  test('cancelled payroll remains payable with its latest saved values', () {
+    final workers = [
+      {
+        'id': 'sara-1',
+        'name': 'Sara',
+        'email': 'sara@example.com',
+        'status': 'Active',
+        'salaryAmount': 6200,
+        'currency': 'USD',
+      },
+    ];
+    final records = [
+      {
+        'id': 'payroll-1',
+        'workerId': 'sara-1',
+        'name': 'Sara',
+        'email': 'sara@example.com',
+        'status': 'Unpaid',
+        'isPaid': false,
+        'cancelledAt': DateTime(2026, 8, 10),
+        'payPeriod': DateTime(2026, 8, 31),
+        'payPeriodStart': DateTime(2026, 8, 1),
+        'payPeriodEnd': DateTime(2026, 8, 31),
+        'payrollKey': 'sara-1_2026-08-01_2026-08-31',
+        'totalWorkDays': 26,
+        'absents': 1,
+        'absentDeduction': 120.0,
+        'netSalary': r'$ 6,080',
+        'netSalaryAmount': 6080.0,
+      },
+    ];
+
     final payroll = PayrollService.combinePayroll(
-      [
-        {
-          'id': 'worker-1',
-          'name': 'Noah Wilson',
-          'email': 'noah@example.com',
-          'status': 'Active',
-          'salaryAmount': 4800,
-          'currency': 'GBP',
-        },
-      ],
-      [
-        {
-          'id': 'payroll-1',
-          'workerId': 'worker-1',
-          'name': 'Noah Wilson',
-          'email': 'noah@example.com',
-          'status': 'Unpaid',
-          'cancelledAt': DateTime(2026, 8, 10),
-          'payPeriod': DateTime(2026, 8, 31),
-          'payPeriodStart': DateTime(2026, 8, 1),
-          'payPeriodEnd': DateTime(2026, 8, 31),
-          'payrollKey': 'worker-1_2026-08-01_2026-08-31',
-          'totalWorkDays': 26,
-          'absentDeduction': 1.0,
-        },
-      ],
+      workers,
+      records,
+      month: DateTime(2026, 8, 10),
+    );
+    final payable = PayrollService.payableWorkersForPeriod(
+      workers,
+      records,
       month: DateTime(2026, 8, 10),
     );
 
     expect(payroll, hasLength(1));
-    expect(payroll.single['hasPayrollRecord'], isFalse);
-    expect(payroll.single['totalWorkDays'], isEmpty);
-    expect(payroll.single.containsKey('absentDeduction'), isFalse);
+    expect(payroll.single['hasPayrollRecord'], isTrue);
+    expect(payroll.single['isPaid'], isFalse);
+    expect(payroll.single['absentDeduction'], 120.0);
+    expect(payroll.single['netSalaryAmount'], 6080.0);
+    expect(payroll.single['netSalary'], r'$ 6,080');
+    expect(payable, hasLength(1));
+    expect(payable.single['absentDeduction'], 120.0);
+    expect(payable.single['netSalaryAmount'], 6080.0);
   });
 
   test('Pay All only includes unpaid workers with a positive salary', () {

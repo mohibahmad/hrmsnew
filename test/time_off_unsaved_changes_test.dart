@@ -151,4 +151,124 @@ void main() {
       );
     }
   });
+
+  test('editing restores allocation only for the record own leave type', () {
+    final worker = {
+      'annualLeaves': 14,
+      'availableAnnualLeaves': 0,
+      'sickLeaves': 8,
+      'availableSickLeaves': 8,
+    };
+    final editingRecord = {
+      'action': 'Annual Leave',
+      'status': 'Approved',
+      'startDate': DateTime(2026, 8, 10),
+      'endDate': DateTime(2026, 8, 23),
+    };
+
+    expect(
+      TimeOffService.availableBalanceForEditingRecord(
+        worker,
+        'Annual Leave',
+        editingRecord,
+      ),
+      14,
+    );
+    expect(
+      TimeOffService.availableBalanceForEditingRecord(
+        worker,
+        'Sick Leave',
+        editingRecord,
+      ),
+      8,
+    );
+  });
+
+  test('dropdown leave type loads its own assigned Firebase record', () {
+    final worker = {'id': 'worker-1', 'email': 'worker@example.com'};
+    final records = [
+      {
+        'id': 'annual-1',
+        'workerId': 'worker-1',
+        'action': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 20)],
+      },
+      {
+        'id': 'sick-1',
+        'workerId': 'worker-1',
+        'action': 'Sick Leave',
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 21)],
+      },
+    ];
+
+    final annual = TimeOffService.recordForWorkerLeaveType(
+      worker,
+      records,
+      'Annual Leave',
+      referenceDate: DateTime(2026, 8, 10),
+    );
+    final sick = TimeOffService.recordForWorkerLeaveType(
+      worker,
+      records,
+      'Sick Leave',
+      referenceDate: DateTime(2026, 8, 10),
+    );
+
+    expect(annual?['id'], 'annual-1');
+    expect(TimeOffService.leaveType(annual!), 'Annual Leave');
+    expect(sick?['id'], 'sick-1');
+    expect(TimeOffService.leaveType(sick!), 'Sick Leave');
+    expect(TimeOffService.recordHasLeaveType(annual, 'Sick Leave'), isFalse);
+    expect(TimeOffService.recordHasLeaveType(sick, 'Sick Leave'), isTrue);
+  });
+
+  test('summary includes assigned days from every record of the type', () {
+    final worker = {'annualLeaves': 22, 'availableAnnualLeaves': 0};
+    final openAnnualRecord = {
+      'action': 'Annual Leave',
+      'selectedDates': List.generate(
+        21,
+        (index) => DateTime(2026, 9, index + 1),
+      ),
+    };
+
+    final assigned = TimeOffService.projectedAssignedDaysForEditingRecord(
+      worker,
+      'Annual Leave',
+      openAnnualRecord,
+      21,
+    );
+
+    expect(assigned, 22);
+    expect(22 - assigned, 0);
+  });
+
+  test('assigned leave dates stay separated by their persisted type', () {
+    final worker = {'id': 'worker-1'};
+    final records = [
+      {
+        'id': 'annual-1',
+        'workerId': 'worker-1',
+        'action': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 11), DateTime(2026, 9, 2)],
+      },
+      {
+        'id': 'sick-1',
+        'workerId': 'worker-1',
+        'action': 'Sick Leave',
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 18)],
+      },
+    ];
+
+    final dates = TimeOffService.leaveDatesByTypeForWorker(worker, records);
+
+    expect(dates['Annual Leave'], hasLength(2));
+    expect(dates['Sick Leave'], hasLength(1));
+    expect(dates['Casual Leave'], isEmpty);
+    expect(dates['Medical Leave'], isEmpty);
+  });
 }
