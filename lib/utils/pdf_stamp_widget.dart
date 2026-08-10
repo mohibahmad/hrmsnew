@@ -1,37 +1,36 @@
 import 'dart:math' as math;
 
-import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-String _companyInitials(String companyName) {
-  final words = companyName
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return 'HR';
-  if (words.length == 1) {
-    final word = words.first.toUpperCase();
-    return word.substring(0, math.min(2, word.length));
+final PdfColor _hrStampColor = PdfColor.fromHex('#0B2A6F');
+const String defaultHrStampAssetPath = 'assets/default_hr_stamp.png';
+
+Future<Uint8List?> loadDefaultHrStampBytes() async {
+  try {
+    final data = await rootBundle.load(defaultHrStampAssetPath);
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+  } catch (_) {
+    return null;
   }
-  return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }
 
-void _drawSealStar(
+void _drawHrStampStar(
   PdfGraphics canvas,
   double centerX,
   double centerY,
+  double size,
   PdfColor color,
 ) {
-  const outerRadius = 3.2;
-  const innerRadius = 1.35;
+  final outerRadius = size;
+  final innerRadius = size * 0.42;
   canvas.setFillColor(color);
   for (var index = 0; index < 10; index++) {
-    final radius = index.isEven ? outerRadius : innerRadius;
-    final angle = -math.pi / 2 + index * math.pi / 5;
-    final x = centerX + math.cos(angle) * radius;
-    final y = centerY + math.sin(angle) * radius;
+    final r = index.isEven ? outerRadius : innerRadius;
+    final angle = (index * math.pi / 5) - (math.pi / 2);
+    final x = centerX + r * math.cos(angle);
+    final y = centerY + r * math.sin(angle);
     if (index == 0) {
       canvas.moveTo(x, y);
     } else {
@@ -43,26 +42,43 @@ void _drawSealStar(
     ..fillPath();
 }
 
-pw.Widget _buildDefaultCompanySeal({
-  required String companyName,
-  required PdfColor color,
-}) {
-  final initials = _companyInitials(companyName);
+pw.Widget _buildDefaultHrStamp() {
   return pw.CustomPaint(
     size: const PdfPoint(66, 66),
     painter: (canvas, size) {
       final centerX = size.x / 2;
       final centerY = size.y / 2;
+      final radius = size.x / 2;
+      final color = _hrStampColor;
+
+      canvas.setStrokeColor(color);
+      canvas.setFillColor(color);
+
       canvas
-        ..setStrokeColor(color)
-        ..setLineWidth(1.4)
-        ..drawEllipse(centerX, centerY, 31, 31)
+        ..setLineWidth(radius * 0.009)
+        ..drawEllipse(centerX, centerY, radius * 0.95, radius * 0.95)
         ..strokePath()
-        ..setLineWidth(0.7)
-        ..drawEllipse(centerX, centerY, 26.5, 26.5)
+        ..setLineWidth(radius * 0.022)
+        ..drawEllipse(centerX, centerY, radius * 0.92, radius * 0.92)
+        ..strokePath()
+        ..setLineWidth(radius * 0.018)
+        ..drawEllipse(centerX, centerY, radius * 0.59, radius * 0.59)
         ..strokePath();
-      _drawSealStar(canvas, 10.5, centerY, color);
-      _drawSealStar(canvas, 55.5, centerY, color);
+
+      _drawHrStampStar(
+        canvas,
+        centerX - radius * 0.76,
+        centerY,
+        radius * 0.065,
+        color,
+      );
+      _drawHrStampStar(
+        canvas,
+        centerX + radius * 0.76,
+        centerY,
+        radius * 0.065,
+        color,
+      );
     },
     child: pw.Container(
       width: 66,
@@ -72,21 +88,21 @@ pw.Widget _buildDefaultCompanySeal({
         mainAxisAlignment: pw.MainAxisAlignment.center,
         children: [
           pw.Text(
-            initials,
+            'HR',
             style: pw.TextStyle(
-              color: color,
-              fontSize: 16,
+              color: _hrStampColor,
+              fontSize: 20,
               fontWeight: pw.FontWeight.bold,
             ),
           ),
-          pw.SizedBox(height: 1),
+          pw.SizedBox(height: 2),
           pw.Text(
-            'official_seal'.tr(),
+            'HUMAN RESOURCES',
             style: pw.TextStyle(
-              color: color,
-              fontSize: 4.2,
+              color: _hrStampColor,
+              fontSize: 3.5,
               fontWeight: pw.FontWeight.bold,
-              letterSpacing: 0.45,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -120,10 +136,7 @@ pw.Widget buildCompanyAuthorization({
           alignment: pw.Alignment.center,
           child: stampImage != null
               ? pw.Image(stampImage, fit: pw.BoxFit.contain)
-              : _buildDefaultCompanySeal(
-                  companyName: cleanName,
-                  color: accentColor,
-                ),
+              : _buildDefaultHrStamp(),
         ),
         pw.SizedBox(width: 10),
         pw.Expanded(

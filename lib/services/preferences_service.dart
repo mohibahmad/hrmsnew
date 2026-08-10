@@ -22,8 +22,6 @@ class PreferencesService {
   static const String _rateUsFirstBulkWorkerKey = 'rate_us_first_bulk_worker';
   static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
   static const String _companyWorkingDaysKey = 'company_working_days';
-  static const String _companySalaryDayKey = 'company_salary_day';
-  static const String _activePayrollPeriodKey = 'active_payroll_period';
   static const String _guestProfileKey = 'guest_profile_data';
   static const String _guestWorkersKey = 'guest_workers_data';
   static const String _guestPayrollKey = 'guest_payroll_data';
@@ -43,21 +41,14 @@ class PreferencesService {
   static Future<Directory> _getGuestDataDir() async {
     if (_guestDataDir != null) return _guestDataDir!;
     final appDir = await getApplicationDocumentsDirectory();
-    _guestDataDir = await Directory('${appDir.path}/guest_data').create(
-      recursive: true,
-    );
+    _guestDataDir = await Directory(
+      '${appDir.path}/guest_data',
+    ).create(recursive: true);
     return _guestDataDir!;
   }
 
   static const String _localImagesDirName = 'company_images';
 
-  
-  
-  
-  
-  
-  
-  
   static Future<String?> persistImageLocally({
     required Uint8List bytes,
     required String fileName,
@@ -65,8 +56,9 @@ class PreferencesService {
     if (bytes.isEmpty) return null;
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      final imageDir = await Directory('${appDir.path}/$_localImagesDirName')
-          .create(recursive: true);
+      final imageDir = await Directory(
+        '${appDir.path}/$_localImagesDirName',
+      ).create(recursive: true);
       final file = File('${imageDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
@@ -92,7 +84,10 @@ class PreferencesService {
         prefs.containsKey(_guestProfileKey)) {
       try {
         final guestData = jsonDecode(prefs.getString(_guestProfileKey) ?? '{}');
-        final stampFromGuest = (guestData['companyStampUrl'] ?? guestData['stampUrl'])?.toString().trim();
+        final stampFromGuest =
+            (guestData['companyStampUrl'] ?? guestData['stampUrl'])
+                ?.toString()
+                .trim();
         if (stampFromGuest != null && stampFromGuest.isNotEmpty) {
           _cachedCompanyStampUrl = stampFromGuest;
         }
@@ -105,9 +100,6 @@ class PreferencesService {
   static String? get cachedCompanyCurrency => _cachedCompanyCurrency;
   static bool get cachedIsGuest => _cachedIsGuest;
 
-  
-  
-  
   static bool get cachedIsPremium => _cachedIsPremium;
 
   static Future<void> setLoggedIn(bool value) async {
@@ -165,38 +157,6 @@ class PreferencesService {
       _companyWorkingDaysKey,
       days.map((day) => day.toString()).toList(),
     );
-  }
-
-  static Future<int?> getCompanySalaryDay() async {
-    final prefs = await SharedPreferences.getInstance();
-    final day = prefs.getInt(_companySalaryDayKey);
-    return day != null && day >= 1 && day <= 31 ? day : null;
-  }
-
-  static Future<void> setCompanySalaryDay(int? day) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (day == null) {
-      await prefs.remove(_companySalaryDayKey);
-    } else {
-      if (day < 1 || day > 31) {
-        throw ArgumentError.value(
-          day,
-          'day',
-          'Salary day must be from 1 to 31',
-        );
-      }
-      await prefs.setInt(_companySalaryDayKey, day);
-    }
-  }
-
-  static Future<String?> getActivePayrollPeriod() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_activePayrollPeriodKey);
-  }
-
-  static Future<void> setActivePayrollPeriod(String periodLabel) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_activePayrollPeriodKey, periodLabel);
   }
 
   static Future<void> setGuestProfileData(Map<String, String> data) async {
@@ -389,8 +349,6 @@ class PreferencesService {
   static Future<void> markFirstAssetTriggered() =>
       _setBool(_rateUsFirstAssetKey, true);
 
-  
-
   static Future<bool> isSessionLocked() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_sessionLockedKey) ?? false;
@@ -400,8 +358,6 @@ class PreferencesService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_sessionLockedKey, value);
   }
-
-  
 
   static Future<bool> isBiometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -425,8 +381,7 @@ class PreferencesService {
     try {
       await _secureStorage.write(key: _biometricEmailKey, value: email);
       await _secureStorage.write(key: _biometricPasswordKey, value: password);
-      
-      
+
       await prefs.remove(_biometricEmailKey);
       await prefs.remove(_biometricPasswordKey);
     } catch (_) {
@@ -446,7 +401,6 @@ class PreferencesService {
       return securelyStored;
     }
 
-    
     final prefs = await SharedPreferences.getInstance();
     final encoded = prefs.getString(key);
     if (encoded == null) return null;
@@ -487,8 +441,6 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstBulkWorkerKey);
     await prefs.remove(_rateUsFirstAssetKey);
     await prefs.remove(_companyWorkingDaysKey);
-    await prefs.remove(_companySalaryDayKey);
-    await prefs.remove(_activePayrollPeriodKey);
     await prefs.remove(_sessionLockedKey);
     await prefs.remove(_guestPayrollKey);
     if (!preserveBiometricCredentials) {

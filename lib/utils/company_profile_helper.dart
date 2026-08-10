@@ -3,7 +3,6 @@ import '../services/preferences_service.dart';
 import '../services/auth_service.dart';
 
 class CompanyProfileHelper {
-  
   static String companyNameOrFallback(String? value) {
     final trimmed = (value ?? '').trim();
     return trimmed.isEmpty ? 'HRMS Company' : trimmed;
@@ -31,7 +30,6 @@ class CompanyProfileHelper {
       }
     }
 
-    
     final companyName =
         (profile?['businessName'] ??
                 profile?['companyName'] ??
@@ -41,7 +39,6 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    
     final companyId =
         (profile?['companyId'] ??
                 profile?['businessId'] ??
@@ -51,15 +48,12 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    
     String profilePicUrl = '';
 
-    
     if (profile != null) {
       profilePicUrl = (profile['profilePic'] ?? '').toString().trim();
     }
 
-    
     if (profilePicUrl.isEmpty && guestProfile != null) {
       profilePicUrl =
           (guestProfile['profilePic'] ??
@@ -71,7 +65,6 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    
     if (isGuest && profilePicUrl.isEmpty) {
       try {
         profilePicUrl = (await PreferencesService.getProfilePicUrl() ?? '')
@@ -79,7 +72,6 @@ class CompanyProfileHelper {
       } catch (_) {}
     }
 
-    
     if (isGuest) {
       final notifierPic = AuthService.profilePicNotifier.value ?? '';
       if (notifierPic.isNotEmpty) {
@@ -87,15 +79,12 @@ class CompanyProfileHelper {
       }
     }
 
-    
     String companyStampUrl = '';
 
-    
     if (profile != null) {
       companyStampUrl = (profile['companyStampUrl'] ?? '').toString().trim();
     }
 
-    
     if (companyStampUrl.isEmpty && guestProfile != null) {
       companyStampUrl =
           (guestProfile['companyStampUrl'] ??
@@ -109,7 +98,6 @@ class CompanyProfileHelper {
               .trim();
     }
 
-    
     if (isGuest && companyStampUrl.isEmpty) {
       try {
         companyStampUrl = (await PreferencesService.getCompanyStampUrl() ?? '')
@@ -117,7 +105,6 @@ class CompanyProfileHelper {
       } catch (_) {}
     }
 
-    
     if (isGuest && companyStampUrl.isEmpty) {
       final notifierStamp = AuthService.companyStampNotifier.value ?? '';
       if (notifierStamp.isNotEmpty) {
@@ -125,17 +112,14 @@ class CompanyProfileHelper {
       }
     }
 
-    
     final address = (profile?['address'] ?? guestProfile?['address'] ?? '')
         .toString()
         .trim();
 
-    
     final email = (profile?['email'] ?? guestProfile?['email'] ?? '')
         .toString()
         .trim();
 
-    
     final phone =
         (profile?['contact1'] ??
                 profile?['phone'] ??
@@ -145,23 +129,6 @@ class CompanyProfileHelper {
             .toString()
             .trim();
 
-    
-    final rawSalaryDay = profile?['salaryPaymentDay'] ??
-        profile?['salaryDay'] ??
-        guestProfile?['salaryPaymentDay'] ??
-        guestProfile?['salaryDay'];
-    int? salaryDay;
-    if (rawSalaryDay is num) {
-      salaryDay = rawSalaryDay.toInt();
-    } else if (rawSalaryDay != null) {
-      salaryDay = int.tryParse(rawSalaryDay.toString());
-    }
-    if (isGuest && salaryDay == null) {
-      try {
-        salaryDay = await PreferencesService.getCompanySalaryDay();
-      } catch (_) {}
-    }
-
     return {
       'companyName': companyName,
       'companyId': companyId,
@@ -170,7 +137,6 @@ class CompanyProfileHelper {
       'address': address,
       'email': email,
       'phone': phone,
-      'salaryDay': salaryDay,
     };
   }
 }

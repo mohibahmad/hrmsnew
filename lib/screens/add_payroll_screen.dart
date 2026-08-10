@@ -62,10 +62,8 @@ Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
   final DateTime payrollMonth;
-  final int? salaryDay;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
-  final VoidCallback? onPayrollSaved;
   final VoidCallback? onBack;
   final bool readOnly;
 
@@ -73,10 +71,8 @@ class AddPayrollScreen extends StatefulWidget {
     super.key,
     required this.workerData,
     required this.payrollMonth,
-    this.salaryDay,
     this.onNotificationTap,
     this.onProfileTap,
-    this.onPayrollSaved,
     this.onBack,
     this.readOnly = false,
   });
@@ -121,7 +117,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   static const double _prorationFactor = 1.0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
-  int? _salaryDay;
 
   String get _name => (widget.workerData['name'] ?? '').toString();
 
@@ -155,16 +150,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   DateTime get _payrollMonth =>
       DateTime(widget.payrollMonth.year, widget.payrollMonth.month, 1);
-
-  @override
-  void initState() {
-    super.initState();
-    final configuredDay = widget.salaryDay;
-    _salaryDay =
-        configuredDay != null && configuredDay >= 1 && configuredDay <= 31
-        ? configuredDay
-        : null;
-  }
 
   @override
   void didChangeDependencies() {
@@ -205,12 +190,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
-
-    PreferencesService.getCompanySalaryDay().then((day) {
-      if (mounted && _salaryDay == null && day != null) {
-        setState(() => _salaryDay = day);
-      }
-    });
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _fetchMonthlyAttendance(),
@@ -308,9 +287,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool get _canEditInputs => !widget.readOnly;
 
   // The pay period shown/used for this record. For a paid payroll we always
-  // keep the saved payPeriodStart/payPeriodEnd from the payroll document —
-  // never recomputed from the current salary schedule. For Payable/Unpaid
-  // payrolls we calculate from the current salary schedule.
+  // keep the saved payPeriodStart/payPeriodEnd from the payroll document.
+  // New payroll records always use the selected calendar month.
   (DateTime, DateTime) get _currentPayPeriod {
     if (_isPaidRecord) {
       final savedStart = widget.workerData['payPeriodStart'];
@@ -322,8 +300,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       }
     }
     return (
-      PayrollService.payPeriodStart(_payrollMonth, _salaryDay),
-      PayrollService.payPeriodEnd(_payrollMonth, _salaryDay),
+      PayrollService.payPeriodStart(_payrollMonth),
+      PayrollService.payPeriodEnd(_payrollMonth),
     );
   }
 
@@ -351,44 +329,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       _captureSavedValues();
     }
     try {
-      final profile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
-        _firestore,
-      );
-      final dynamic rawSalaryDay = profile['salaryDay'];
-      if (rawSalaryDay is num) {
-        _salaryDay = rawSalaryDay.toInt();
-      } else if (rawSalaryDay != null) {
-        _salaryDay = int.tryParse(rawSalaryDay.toString());
-      }
-      _salaryDay ??= await PreferencesService.getCompanySalaryDay();
-
-      final currentPeriodStart = PayrollService.payPeriodStart(
-        _payrollMonth,
-        _salaryDay,
-      );
-      final currentPeriodEnd = PayrollService.payPeriodEnd(
-        _payrollMonth,
-        _salaryDay,
-      );
-
-      final startMonth1 = DateTime(
-        currentPeriodStart.year,
-        currentPeriodStart.month,
-        1,
-      );
-      final startMonth2 = DateTime(
-        currentPeriodEnd.year,
-        currentPeriodEnd.month,
-        1,
-      );
-
-      final futures = <Future<Map<String, int>>>[];
-      futures.add(
+      final futures = <Future<Map<String, int>>>[
         _firestore
             .getWorkerMonthlyAttendance(
               _email,
               workerId: _workerId,
-              month: startMonth1,
+              month: _payrollMonth,
             )
             .timeout(
               const Duration(seconds: 10),
@@ -398,25 +344,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 );
               },
             ),
-      );
-      if (startMonth2.isAfter(startMonth1)) {
-        futures.add(
-          _firestore
-              .getWorkerMonthlyAttendance(
-                _email,
-                workerId: _workerId,
-                month: startMonth2,
-              )
-              .timeout(
-                const Duration(seconds: 10),
-                onTimeout: () {
-                  throw TimeoutException(
-                    'Attendance request timed out. Please check your connection and retry.',
-                  );
-                },
-              ),
-        );
-      }
+      ];
       final allResults = await Future.wait(futures);
       final results = <String, int>{
         'absents': 0,
@@ -594,7 +522,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'salary': _salaryStr,
       'currency': _currencyCode,
       'salaryType': (widget.workerData['salaryType'] ?? 'Monthly').toString(),
-      'salaryPaymentDay': _salaryDay,
       'netSalary': _calculatedNet,
       'netSalaryAmount': netAmount,
       'netSalaryFormatted': _calculatedNet,
@@ -702,7 +629,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
     if (mounted) setState(() => _isSaving = false);
     if (mounted) {
-      widget.onPayrollSaved?.call();
       widget.onBack?.call();
     }
   }
@@ -1883,7 +1809,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           _breakdownRow(
             'gross_pay'.tr(),
             fmt('formattedGross'),
-            '${cr['workedDays'] ?? 0} ${(cr['workedDays'] ?? 0).toString() == '1' ? 'day'.tr() : 'days'.tr()}',
+            '${_workDaysCtrl.text.trim()} ${int.tryParse(_workDaysCtrl.text.trim()) == 1 ? 'day'.tr() : 'days'.tr()}',
           ),
           _breakdownRow('overtime_pay'.tr(), fmt('formattedOvertime'), null),
           _breakdownRow(

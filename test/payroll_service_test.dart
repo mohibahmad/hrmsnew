@@ -3,52 +3,24 @@ import 'package:hrms/services/payroll_service.dart';
 import 'package:hrms/services/salary_day_scheduler.dart';
 
 void main() {
-  test('salary-day invoice period uses the exact scheduled date range', () {
-    final start = PayrollService.payPeriodStart(DateTime(2026, 8, 10), 10);
-    final end = PayrollService.payPeriodEnd(DateTime(2026, 8, 10), 10);
+  test('payroll period uses the selected calendar month', () {
+    final start = PayrollService.payPeriodStart(DateTime(2026, 8, 10));
+    final end = PayrollService.payPeriodEnd(DateTime(2026, 8, 10));
 
     expect(
       PayrollService.formatPayPeriodRange(start, end, locale: 'en'),
-      'Jul 10 – Aug 10, 2026',
+      'Aug 1 – Aug 31, 2026',
     );
     expect(
       PayrollService.payrollKeyForPeriod('Worker-1', start, end),
-      'worker-1_2026-07-10_2026-08-10',
+      'worker-1_2026-08-01_2026-08-31',
     );
   });
 
-  test('next salary cycle stays closed until its due date', () {
-    final augustDueMonth = PayrollService.latestOpenPayrollMonth(
-      DateTime(2026, 8, 10),
-      10,
-    );
-    final beforeSeptemberDue = PayrollService.latestOpenPayrollMonth(
-      DateTime(2026, 9, 9),
-      10,
-    );
-    final septemberDueMonth = PayrollService.latestOpenPayrollMonth(
-      DateTime(2026, 9, 10),
-      10,
-    );
-
-    expect(augustDueMonth, DateTime(2026, 8, 1));
+  test('current payroll month is not gated by a salary date', () {
     expect(
-      PayrollService.formatPayPeriodRange(
-        PayrollService.payPeriodStart(augustDueMonth, 10),
-        PayrollService.payPeriodEnd(augustDueMonth, 10),
-        locale: 'en',
-      ),
-      'Jul 10 – Aug 10, 2026',
-    );
-    expect(beforeSeptemberDue, DateTime(2026, 8, 1));
-    expect(septemberDueMonth, DateTime(2026, 9, 1));
-    expect(
-      PayrollService.isPayrollPeriodDue(
-        DateTime(2026, 8, 10),
-        DateTime(2026, 9, 1),
-        10,
-      ),
-      isFalse,
+      PayrollService.currentPayrollMonth(referenceDate: DateTime(2026, 8, 10)),
+      DateTime(2026, 8, 1),
     );
   });
 
@@ -67,8 +39,8 @@ void main() {
   });
 
   test('Pay All builds the canonical Firestore payroll schema', () {
-    final periodStart = DateTime(2026, 7, 10);
-    final periodEnd = DateTime(2026, 8, 10);
+    final periodStart = DateTime(2026, 8, 1);
+    final periodEnd = DateTime(2026, 8, 31);
     final runDate = DateTime(2026, 8, 10, 9, 30);
     final result = AutoPayrollResult(
       workerId: 'avery-1',
@@ -99,14 +71,13 @@ void main() {
       periodStart: periodStart,
       periodEnd: periodEnd,
       runDate: runDate,
-      salaryPaymentDay: 10,
     );
 
-    expect(record['payrollKey'], 'avery-1_2026-07-10_2026-08-10');
+    expect(record['payrollKey'], 'avery-1_2026-08-01_2026-08-31');
     expect(record['payPeriod'], periodEnd);
     expect(record['payPeriodStart'], periodStart);
     expect(record['payPeriodEnd'], periodEnd);
-    expect(record['salaryPaymentDay'], 10);
+    expect(record.containsKey('salaryPaymentDay'), isFalse);
     expect(record['totalWorkDays'], isA<int>());
     expect(record['absents'], isA<int>());
     expect(record['paidLeaves'], isA<int>());
@@ -155,21 +126,47 @@ void main() {
           'email': 'noah@example.com',
           'status': 'Unpaid',
           'cancelledAt': DateTime(2026, 8, 10),
-          'payPeriod': DateTime(2026, 8, 10),
-          'payPeriodStart': DateTime(2026, 7, 10),
-          'payPeriodEnd': DateTime(2026, 8, 10),
-          'payrollKey': 'worker-1_2026-07-10_2026-08-10',
+          'payPeriod': DateTime(2026, 8, 31),
+          'payPeriodStart': DateTime(2026, 8, 1),
+          'payPeriodEnd': DateTime(2026, 8, 31),
+          'payrollKey': 'worker-1_2026-08-01_2026-08-31',
           'totalWorkDays': 26,
           'absentDeduction': 1.0,
         },
       ],
       month: DateTime(2026, 8, 10),
-      salaryDay: 10,
     );
 
     expect(payroll, hasLength(1));
     expect(payroll.single['hasPayrollRecord'], isFalse);
     expect(payroll.single['totalWorkDays'], isEmpty);
     expect(payroll.single.containsKey('absentDeduction'), isFalse);
+  });
+
+  test('Pay All only includes unpaid workers with a positive salary', () {
+    final workers = [
+      {
+        'id': 'payable',
+        'name': 'Payable Worker',
+        'email': 'payable@example.com',
+        'status': 'Active',
+        'salaryAmount': 1000,
+      },
+      {
+        'id': 'no-salary',
+        'name': 'No Salary Worker',
+        'email': 'no-salary@example.com',
+        'status': 'Active',
+        'salaryAmount': 0,
+      },
+    ];
+
+    final payable = PayrollService.payableWorkersForPeriod(
+      workers,
+      const [],
+      month: DateTime(2026, 8, 1),
+    );
+
+    expect(payable.map((worker) => worker['id']), ['payable']);
   });
 }

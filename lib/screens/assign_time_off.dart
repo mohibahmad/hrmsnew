@@ -1525,14 +1525,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   }
                   setState(() {
                     _timeOffType = v;
-                    _selectedDates.clear();
                     _hasTypeChanged = true;
-                    _hasDateSelectionChanged = true;
-                    // Switching the type starts a new request — drop edit
-                    // context so an empty save cannot cancel the record that
-                    // was previously being inspected.
-                    _editingId = null;
-                    _editingRecord = null;
+                    // Keep the edit context and selected dates. The save
+                    // transaction restores the original type's balance before
+                    // deducting these dates from the newly selected type.
                     _syncSelectionBounds();
                   });
                 },
@@ -2267,6 +2263,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_isLoading) return;
     if (_editingId != null && !_hasUnsavedChanges) return;
 
+    if (_editingRecord != null &&
+        !TimeOffService.isEditableRecord(_editingRecord!)) {
+      FlashySnackBar.show(
+        context,
+        message: 'past_time_off_edit_blocked'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (_selectedWorker == null && _selectedDates.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -2301,10 +2307,61 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '';
         final workerId = workerIdentity.toString().trim();
         if (workerId.isEmpty) throw StateError('Missing worker id');
-        await _firestore.cancelTimeOffWithWorkerBalance(
-          timeOffId: _editingId!,
-          workerId: workerId,
-        );
+        if (_isGuest) {
+          final recordIndex = DummyData.timeoff.indexWhere(
+            (record) => record['id']?.toString() == _editingId,
+          );
+          if (recordIndex == -1) {
+            throw StateError('Time off record does not exist');
+          }
+          final oldRecord = DummyData.timeoff[recordIndex];
+          if (!TimeOffService.isEditableRecord(oldRecord)) {
+            throw const PastTimeOffEditException();
+          }
+          final workerIndex = DummyData.workers.indexWhere(
+            (worker) =>
+                (worker['workerId'] ?? worker['id'] ?? '').toString().trim() ==
+                workerId,
+          );
+          if (workerIndex != -1) {
+            final balances = Map<String, dynamic>.from(
+              TimeOffService.canonicalWorkerLeaveFields(
+                    DummyData.workers[workerIndex],
+                  )['leaveBalances']
+                  as Map,
+            );
+            final oldField = switch (TimeOffService.leaveType(oldRecord)) {
+              'Annual Leave' => 'annualLeave',
+              'Sick Leave' => 'sickLeave',
+              'Casual Leave' => 'casualLeave',
+              'Medical Leave' => 'medicalLeave',
+              _ => '',
+            };
+            if (oldField.isNotEmpty) {
+              final current =
+                  int.tryParse(balances[oldField]?.toString() ?? '0') ?? 0;
+              balances[oldField] =
+                  current +
+                  TimeOffService.selectedDatesForRecord(oldRecord).length;
+              DummyData.workers[workerIndex].addAll(
+                TimeOffService.canonicalWorkerLeaveFields(
+                  DummyData.workers[workerIndex],
+                  remainingBalances: balances,
+                ),
+              );
+            }
+          }
+          DummyData.timeoff[recordIndex] = {
+            ...oldRecord,
+            'status': 'Cancelled',
+          };
+          await DummyData.saveToPrefs();
+        } else {
+          await _firestore.cancelTimeOffWithWorkerBalance(
+            timeOffId: _editingId!,
+            workerId: workerId,
+          );
+        }
         if (!mounted) return;
         await _loadTimeoffForSelectedWorker();
         if (!mounted) return;
@@ -2318,6 +2375,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
         );
         widget.onBack();
+      } on PastTimeOffEditException {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'past_time_off_edit_blocked'.tr(),
+            isError: true,
+          );
+        }
       } catch (_) {
         if (mounted) {
           FlashySnackBar.show(
@@ -2415,11 +2480,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       };
 
       if (isGuest) {
+        Map<String, dynamic>? previousGuestRecord;
         if (_editingId != null) {
           final idx = DummyData.timeoff.indexWhere(
             (t) => t['id'] == _editingId,
           );
           if (idx != -1) {
+            previousGuestRecord = Map<String, dynamic>.from(
+              DummyData.timeoff[idx],
+            );
             DummyData.timeoff[idx] = {...DummyData.timeoff[idx], ...recordMap};
           }
         } else {
@@ -2473,22 +2542,39 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           );
           final currentVal =
               int.tryParse(currentMap[leaveField]?.toString() ?? '0') ?? 0;
-          final updatedVal = (currentVal - _requestedDays).clamp(0, 999);
-          currentMap[leaveField] = updatedVal;
-          DummyData.workers[workerIdx]['leaveBalances'] = currentMap;
-          if (leaveField == 'annualLeave') {
-            DummyData.workers[workerIdx]['availableAnnualLeaves'] = updatedVal
-                .toString();
-          } else if (leaveField == 'sickLeave') {
-            DummyData.workers[workerIdx]['availableSickLeaves'] = updatedVal
-                .toString();
-          } else if (leaveField == 'casualLeave') {
-            DummyData.workers[workerIdx]['availableCasualLeaves'] = updatedVal
-                .toString();
-          } else if (leaveField == 'medicalLeave') {
-            DummyData.workers[workerIdx]['availableMedicalLeaves'] = updatedVal
-                .toString();
+          if (previousGuestRecord != null) {
+            final oldField = switch (TimeOffService.leaveType(
+              previousGuestRecord,
+            )) {
+              'Annual Leave' => 'annualLeave',
+              'Sick Leave' => 'sickLeave',
+              'Casual Leave' => 'casualLeave',
+              'Medical Leave' => 'medicalLeave',
+              _ => '',
+            };
+            final oldDays = TimeOffService.selectedDatesForRecord(
+              previousGuestRecord,
+            ).length;
+            if (oldField.isNotEmpty && oldDays > 0) {
+              final oldBalance =
+                  int.tryParse(currentMap[oldField]?.toString() ?? '0') ?? 0;
+              currentMap[oldField] = oldBalance + oldDays;
+            }
           }
+          final restoredNewBalance =
+              int.tryParse(currentMap[leaveField]?.toString() ?? '0') ??
+              currentVal;
+          final updatedVal = (restoredNewBalance - _requestedDays).clamp(
+            0,
+            999,
+          );
+          currentMap[leaveField] = updatedVal;
+          DummyData.workers[workerIdx].addAll(
+            TimeOffService.canonicalWorkerLeaveFields(
+              DummyData.workers[workerIdx],
+              remainingBalances: currentMap,
+            ),
+          );
         }
         await DummyData.saveToPrefs();
       } else {
@@ -2526,6 +2612,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         );
         widget.onBack();
         return;
+      }
+    } on DuplicateTimeOffDateException {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
+      }
+    } on PastTimeOffEditException {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
     } catch (e) {
       if (mounted) {

@@ -12,124 +12,13 @@ class PayrollService {
     return DateTime(reference.year, reference.month, 1);
   }
 
-  static DateTime payPeriodStart(DateTime referenceDate, int? salaryDay) {
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      return DateTime(referenceDate.year, referenceDate.month, 1);
-    }
-    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    if (referenceDate.day > effectiveDay) {
-      return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
-    }
-    final prevMonth = DateTime(referenceDate.year, referenceDate.month - 1, 1);
-    return DateTime(
-      prevMonth.year,
-      prevMonth.month,
-      effectiveSalaryDay(prevMonth, salaryDay),
-    );
-  }
+  /// Payroll is always calculated for a calendar month. Legacy salary-day
+  /// fields are intentionally ignored.
+  static DateTime payPeriodStart(DateTime month) =>
+      DateTime(month.year, month.month, 1);
 
-  static DateTime payPeriodEnd(DateTime referenceDate, int? salaryDay) {
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      return DateTime(referenceDate.year, referenceDate.month + 1, 0);
-    }
-    final start = payPeriodStart(referenceDate, salaryDay);
-    final nextMonth = DateTime(start.year, start.month + 1, 1);
-    final effectiveDayNextMonth = effectiveSalaryDay(nextMonth, salaryDay);
-    return DateTime(nextMonth.year, nextMonth.month, effectiveDayNextMonth);
-  }
-
-  static DateTime nextPayDate(DateTime referenceDate, int? salaryDay) {
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      return DateTime(referenceDate.year, referenceDate.month + 1, 0);
-    }
-    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    if (referenceDate.day <= effectiveDay) {
-      return DateTime(referenceDate.year, referenceDate.month, effectiveDay);
-    }
-    final nextMonth = DateTime(referenceDate.year, referenceDate.month + 1, 1);
-    return DateTime(
-      nextMonth.year,
-      nextMonth.month,
-      effectiveSalaryDay(nextMonth, salaryDay),
-    );
-  }
-
-  static DateTime payrollDueDate(DateTime payrollMonth, int? salaryDay) {
-    return payPeriodEnd(payrollMonth, salaryDay);
-  }
-
-  static bool isPayrollReminderDueForPeriod(
-    DateTime referenceDate,
-    DateTime payrollMonth,
-    int? salaryDay, {
-    int reminderDays = 3,
-  }) {
-    final today = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      referenceDate.day,
-    );
-    final dueDate = payrollDueDate(payrollMonth, salaryDay);
-    return !today.isBefore(dueDate.subtract(Duration(days: reminderDays)));
-  }
-
-  static bool isPayrollPeriodDue(
-    DateTime referenceDate,
-    DateTime payrollMonth,
-    int? salaryDay,
-  ) {
-    final today = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      referenceDate.day,
-    );
-    return !today.isBefore(payrollDueDate(payrollMonth, salaryDay));
-  }
-
-  static DateTime latestOpenPayrollMonth(
-    DateTime referenceDate,
-    int? salaryDay,
-  ) {
-    final calendarMonth = currentPayrollMonth(referenceDate: referenceDate);
-    // A payroll period becomes payable only when its end/due date arrives.
-    // Before that date, keep the most recently due period active instead of
-    // exposing the next cycle as payable.
-    return isPayrollPeriodDue(referenceDate, calendarMonth, salaryDay)
-        ? calendarMonth
-        : DateTime(calendarMonth.year, calendarMonth.month - 1, 1);
-  }
-
-  static bool isPayDateReminderDue(
-    DateTime referenceDate,
-    int? salaryDay, {
-    int reminderDays = 3,
-  }) {
-    final today = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      referenceDate.day,
-    );
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
-      // No salary day configured: the current calendar month is the pay
-      // period, and the month end is the due date.
-      final dueDate = DateTime(referenceDate.year, referenceDate.month + 1, 0);
-      return dueDate.difference(today).inDays <= reminderDays;
-    }
-    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    if (today.day >= effectiveDay) return true;
-    final dueDate = DateTime(
-      referenceDate.year,
-      referenceDate.month,
-      effectiveDay,
-    );
-    return dueDate.difference(today).inDays <= reminderDays;
-  }
-
-  static bool isPayDate(DateTime referenceDate, int? salaryDay) {
-    if (salaryDay == null || salaryDay < 1 || salaryDay > 31) return false;
-    final effectiveDay = effectiveSalaryDay(referenceDate, salaryDay);
-    return referenceDate.day == effectiveDay;
-  }
+  static DateTime payPeriodEnd(DateTime month) =>
+      DateTime(month.year, month.month + 1, 0);
 
   static String payrollPeriodLabel(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
@@ -212,44 +101,29 @@ class PayrollService {
     return date.day > lastDay - reminderDays;
   }
 
-  static DateTime previousPayrollCheckMonth(
-    DateTime activeMonth,
-    int? salaryDay, {
-    DateTime? referenceDate,
-  }) {
-    final reference = referenceDate ?? DateTime.now();
-    final todayDate = DateTime(reference.year, reference.month, reference.day);
-    final activePeriodEnd = payPeriodEnd(activeMonth, salaryDay);
-    return !todayDate.isBefore(activePeriodEnd)
-        ? activeMonth
-        : DateTime(activeMonth.year, activeMonth.month - 1, 1);
-  }
-
   static bool workerJoinedBeforePeriodEnd(
     Map<String, dynamic> worker,
     DateTime month,
-    int? salaryDay,
   ) {
     final joiningDate = _parseDate(
       worker['joiningDate'] ?? worker['dateOfJoining'],
     );
     if (joiningDate == null) return true;
-    final periodEnd = payPeriodEnd(month, salaryDay);
-    return joiningDate.isBefore(periodEnd);
+    final periodEnd = payPeriodEnd(month);
+    // A worker who joins on the final day of the month still belongs to that
+    // month's payroll. Only workers joining after the period should be hidden.
+    return !joiningDate.isAfter(periodEnd);
   }
 
   static bool allWorkersHavePayrollRecords(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
     DateTime month, {
-    int? salaryDay,
     bool allowUndatedRecords = false,
   }) {
     final expectedWorkers = workersList
         .where(isWorkerEligibleForPayroll)
-        .where(
-          (worker) => workerJoinedBeforePeriodEnd(worker, month, salaryDay),
-        )
+        .where((worker) => workerJoinedBeforePeriodEnd(worker, month))
         .toList();
     if (expectedWorkers.isEmpty) return true;
 
@@ -258,7 +132,6 @@ class PayrollService {
       rawPayrollDocs,
       month: month,
       allowUndatedRecords: allowUndatedRecords,
-      salaryDay: salaryDay,
     );
 
     return combined.every((worker) => worker['hasPayrollRecord'] == true);
@@ -267,24 +140,17 @@ class PayrollService {
   static bool hasUnpaidWorkers(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
-    DateTime month, {
-    int? salaryDay,
-  }) {
-    final combined = combinePayroll(
-      workersList,
-      rawPayrollDocs,
-      month: month,
-      salaryDay: salaryDay,
-    );
+    DateTime month,
+  ) {
+    final combined = combinePayroll(workersList, rawPayrollDocs, month: month);
     return combined.any((worker) => worker['isPaid'] != true);
   }
 
-  /// Canonical current-period query used by reminders and Pay All.
+  /// Canonical unpaid-worker query for the selected calendar month.
   static List<Map<String, dynamic>> unpaidWorkersForPeriod(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
     required DateTime month,
-    int? salaryDay,
     bool allowUndatedRecords = false,
     String? companyCurrency,
   }) {
@@ -292,17 +158,15 @@ class PayrollService {
       workersList,
       rawPayrollDocs,
       month: month,
-      salaryDay: salaryDay,
       allowUndatedRecords: allowUndatedRecords,
       companyCurrency: companyCurrency,
     ).where((worker) => worker['isPaid'] != true).toList();
   }
 
-  static bool allWorkersPaidForPeriod(
+  static List<Map<String, dynamic>> payableWorkersForPeriod(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
     required DateTime month,
-    int? salaryDay,
     bool allowUndatedRecords = false,
     String? companyCurrency,
   }) {
@@ -310,7 +174,27 @@ class PayrollService {
       workersList,
       rawPayrollDocs,
       month: month,
-      salaryDay: salaryDay,
+      allowUndatedRecords: allowUndatedRecords,
+      companyCurrency: companyCurrency,
+    ).where((worker) {
+      return extractSalary(
+            currentSalaryDisplay(worker, companyCurrency: companyCurrency),
+          ) >
+          0;
+    }).toList();
+  }
+
+  static bool allWorkersPaidForPeriod(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    required DateTime month,
+    bool allowUndatedRecords = false,
+    String? companyCurrency,
+  }) {
+    return unpaidWorkersForPeriod(
+      workersList,
+      rawPayrollDocs,
+      month: month,
       allowUndatedRecords: allowUndatedRecords,
       companyCurrency: companyCurrency,
     ).isEmpty;
@@ -333,18 +217,6 @@ class PayrollService {
     );
 
     return combined.where((worker) => worker['isPaid'] != true).length;
-  }
-
-  static int effectiveSalaryDay(DateTime month, int configuredDay) {
-    final lastDay = DateTime(month.year, month.month + 1, 0).day;
-    return configuredDay.clamp(1, lastDay);
-  }
-
-  static bool isPayrollDue(DateTime date, int? configuredDay) {
-    if (configuredDay == null || configuredDay < 1 || configuredDay > 31) {
-      return false;
-    }
-    return date.day >= effectiveSalaryDay(date, configuredDay);
   }
 
   static bool isWorkerEligibleForPayroll(Map<String, dynamic> worker) {
@@ -550,16 +422,12 @@ class PayrollService {
     DateTime? month,
     bool allowUndatedRecords = false,
     String? companyCurrency,
-    int? salaryDay,
   }) {
     final targetMonth = month ?? DateTime.now();
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final activeWorkers = workersList
         .where(isWorkerEligibleForPayroll)
-        .where(
-          (worker) =>
-              workerJoinedBeforePeriodEnd(worker, targetMonth, salaryDay),
-        )
+        .where((worker) => workerJoinedBeforePeriodEnd(worker, targetMonth))
         .map(Map<String, dynamic>.from)
         .toList();
 
@@ -592,8 +460,8 @@ class PayrollService {
           ? ''
           : payrollKeyForPeriod(
               identity,
-              payPeriodStart(targetMonth, salaryDay),
-              payPeriodEnd(targetMonth, salaryDay),
+              payPeriodStart(targetMonth),
+              payPeriodEnd(targetMonth),
             );
       final legacyPayrollKey = identity.isEmpty
           ? ''

@@ -80,16 +80,23 @@ String _localizedMonth(int month) {
   }
 }
 
-Uint8List _compressImageTask(Map<String, dynamic> args) {
-  final bytes = args['bytes'] as Uint8List;
-  final maxWidth = args['maxWidth'] as int;
-  final quality = args['quality'] as int;
+Uint8List _compressImageBytesSync(
+  Uint8List bytes, {
+  int maxWidth = 1200,
+  int quality = 80,
+}) {
   img.Image? image = img.decodeImage(bytes);
   if (image == null) return bytes;
   if (image.width > maxWidth) {
     image = img.copyResize(image, width: maxWidth);
   }
   return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+}
+
+/// Compresses all the given images inside a single isolate so saving a worker
+/// does not pay the isolate spawn/teardown cost once per image.
+List<Uint8List> _compressImagesTask(List<Uint8List> images) {
+  return [for (final bytes in images) _compressImageBytesSync(bytes)];
 }
 
 class AddNewWorkerFlow extends StatefulWidget {
@@ -691,33 +698,69 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return '$baseName.jpg';
   }
 
-  Future<UploadFile> _prepareUploadFile({
-    required String folder,
-    required String? fileName,
-    required String fallbackFileName,
-    required Uint8List bytes,
-    required bool compressImages,
+  /// Prepares all picked files for upload, compressing every image in a
+  /// single isolate pass (instead of one `compute` call per image) so worker
+  /// saves complete faster while keeping the exact same output files.
+  Future<List<UploadFile>> _prepareUploadFilesBatched({
+    required List<
+        ({
+          String folder,
+          String? fileName,
+          String fallbackFileName,
+          Uint8List bytes,
+          bool compressImages,
+        })> specs,
   }) async {
-    final resolvedName = fileName?.trim().isNotEmpty == true
-        ? fileName!.trim()
-        : fallbackFileName;
-    final mimeType = _mimeTypeForFileName(resolvedName);
+    if (specs.isEmpty) return const [];
 
-    if (compressImages && mimeType.startsWith('image/')) {
-      return UploadFile(
-        folder: folder,
-        fileName: _jpegFileName(resolvedName, fallbackFileName),
-        bytes: await _compressImage(bytes),
-        mimeType: 'image/jpeg',
-      );
+    final resolvedNames = [
+      for (final spec in specs)
+        spec.fileName?.trim().isNotEmpty == true
+            ? spec.fileName!.trim()
+            : spec.fallbackFileName,
+    ];
+
+    final compressIndices = <int>[];
+    for (var index = 0; index < specs.length; index++) {
+      final spec = specs[index];
+      if (spec.compressImages &&
+          _mimeTypeForFileName(resolvedNames[index]).startsWith('image/')) {
+        compressIndices.add(index);
+      }
     }
 
-    return UploadFile(
-      folder: folder,
-      fileName: resolvedName,
-      bytes: bytes,
-      mimeType: mimeType,
-    );
+    final compressed = compressIndices.isEmpty
+        ? const <Uint8List>[]
+        : await _compressImagesBatch([
+            for (final index in compressIndices) specs[index].bytes,
+          ]);
+
+    final files = <UploadFile>[];
+    var compressedIndex = 0;
+    for (var index = 0; index < specs.length; index++) {
+      final spec = specs[index];
+      final mimeType = _mimeTypeForFileName(resolvedNames[index]);
+      final isImage = spec.compressImages && mimeType.startsWith('image/');
+      files.add(
+        isImage
+            ? UploadFile(
+                folder: spec.folder,
+                fileName: _jpegFileName(
+                  resolvedNames[index],
+                  spec.fallbackFileName,
+                ),
+                bytes: compressed[compressedIndex++],
+                mimeType: 'image/jpeg',
+              )
+            : UploadFile(
+                folder: spec.folder,
+                fileName: resolvedNames[index],
+                bytes: spec.bytes,
+                mimeType: mimeType,
+              ),
+      );
+    }
+    return files;
   }
 
   String? _workerDateText(dynamic value) {
@@ -1238,16 +1281,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return false;
   }
 
-  Future<Uint8List> _compressImage(
-    Uint8List bytes, {
-    int maxWidth = 1200,
-    int quality = 80,
-  }) async {
-    return compute(_compressImageTask, {
-      'bytes': bytes,
-      'maxWidth': maxWidth,
-      'quality': quality,
-    });
+  Future<List<Uint8List>> _compressImagesBatch(List<Uint8List> images) {
+    return compute(_compressImagesTask, images);
   }
 
   Future<void> _saveWorker() async {
@@ -1494,51 +1529,42 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
         }
       } else {
-        final uploadFiles = <UploadFile>[];
-        if (_profileImageBytes != null) {
-          uploadFiles.add(
-            await _prepareUploadFile(
-              folder: 'profile_images',
-              fileName: _profileImageName,
-              fallbackFileName: 'profile.jpg',
-              bytes: _profileImageBytes!,
-              compressImages: true,
-            ),
-          );
-        }
-        if (_frontIdBytes != null) {
-          uploadFiles.add(
-            await _prepareUploadFile(
-              folder: 'id_cards/front',
-              fileName: _frontIdName,
-              fallbackFileName: 'front.jpg',
-              bytes: _frontIdBytes!,
-              compressImages: true,
-            ),
-          );
-        }
-        if (_backIdBytes != null) {
-          uploadFiles.add(
-            await _prepareUploadFile(
-              folder: 'id_cards/back',
-              fileName: _backIdName,
-              fallbackFileName: 'back.jpg',
-              bytes: _backIdBytes!,
-              compressImages: true,
-            ),
-          );
-        }
-        if (_cvBytes != null) {
-          uploadFiles.add(
-            await _prepareUploadFile(
-              folder: 'cvs',
-              fileName: _cvName,
-              fallbackFileName: 'cv.pdf',
-              bytes: _cvBytes!,
-              compressImages: false,
-            ),
-          );
-        }
+        final uploadFiles = await _prepareUploadFilesBatched(
+          specs: [
+            if (_profileImageBytes != null)
+              (
+                folder: 'profile_images',
+                fileName: _profileImageName,
+                fallbackFileName: 'profile.jpg',
+                bytes: _profileImageBytes!,
+                compressImages: true,
+              ),
+            if (_frontIdBytes != null)
+              (
+                folder: 'id_cards/front',
+                fileName: _frontIdName,
+                fallbackFileName: 'front.jpg',
+                bytes: _frontIdBytes!,
+                compressImages: true,
+              ),
+            if (_backIdBytes != null)
+              (
+                folder: 'id_cards/back',
+                fileName: _backIdName,
+                fallbackFileName: 'back.jpg',
+                bytes: _backIdBytes!,
+                compressImages: true,
+              ),
+            if (_cvBytes != null)
+              (
+                folder: 'cvs',
+                fileName: _cvName,
+                fallbackFileName: 'cv.pdf',
+                bytes: _cvBytes!,
+                compressImages: false,
+              ),
+          ],
+        );
 
         if (uploadFiles.isNotEmpty) {
           final results = await UploadService.uploadFiles(files: uploadFiles);

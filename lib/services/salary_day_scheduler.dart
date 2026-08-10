@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/file_opener.dart';
 import '../utils/localization_helper.dart';
@@ -112,7 +111,6 @@ class AutoPayrollResult {
     required DateTime periodStart,
     required DateTime periodEnd,
     required DateTime runDate,
-    int? salaryPaymentDay,
   }) {
     return {
       'workerId': workerId,
@@ -136,7 +134,6 @@ class AutoPayrollResult {
       'salary': salary,
       'currency': currency,
       'salaryType': salaryType,
-      'salaryPaymentDay': salaryPaymentDay,
       'netSalary': netSalary,
       'netSalaryAmount': rawNetSalaryValue,
       'netSalaryFormatted': netSalary,
@@ -161,7 +158,6 @@ class PayrollRunSummary {
   final int failCount;
   final List<AutoPayrollResult> results;
   final String periodLabel;
-  final int? salaryPaymentDay;
 
   PayrollRunSummary({
     required this.runDate,
@@ -170,48 +166,15 @@ class PayrollRunSummary {
     required this.failCount,
     required this.results,
     required this.periodLabel,
-    this.salaryPaymentDay,
   });
 }
 
-class SalaryDayScheduler {
-  static const String _lastRunKey = 'salary_day_last_run';
-
-  static final SalaryDayScheduler _instance = SalaryDayScheduler._();
-  factory SalaryDayScheduler() => _instance;
-  SalaryDayScheduler._();
+class PayrollRunner {
+  static final PayrollRunner _instance = PayrollRunner._();
+  factory PayrollRunner() => _instance;
+  PayrollRunner._();
 
   bool _runInProgress = false;
-
-  Future<bool> checkAndRunIfDue(BuildContext context) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final isGuest = authService.currentUser?.isAnonymous ?? false;
-    final salaryDay = await _loadSalaryDay(context);
-    if (salaryDay == null) return false;
-
-    final today = DateTime.now();
-
-    if (!PayrollService.isPayrollDue(today, salaryDay)) return false;
-    if (!context.mounted) return false;
-
-    final payrollMonth = await _loadActivePayrollMonth(context, today);
-    final period = PayrollService.payrollPeriodLabel(payrollMonth);
-    if (await _alreadyRanForPeriod(
-      period,
-      isGuest: isGuest,
-      userId: authService.currentUser?.uid,
-    )) {
-      return false;
-    }
-
-    if (!context.mounted) return false;
-    final summary = await runPayroll(
-      context,
-      autoMode: false,
-      payrollMonth: payrollMonth,
-    );
-    return summary != null;
-  }
 
   Future<PayrollRunSummary?> runPayroll(
     BuildContext context, {
@@ -273,13 +236,9 @@ class SalaryDayScheduler {
               final name = (w['name'] ?? '').toString().trim();
               final workerId = (w['id'] ?? '').toString().trim();
               final email = (w['email'] ?? '').toString().trim();
-              final status = (w['status'] ?? 'Active')
-                  .toString()
-                  .trim()
-                  .toLowerCase();
               return name.isNotEmpty &&
                   (workerId.isNotEmpty || email.isNotEmpty) &&
-                  status == 'active';
+                  PayrollService.isWorkerEligibleForPayroll(w);
             })
             .toList();
       } catch (e) {
@@ -342,27 +301,12 @@ class SalaryDayScheduler {
       ErrorReporter.report(
         error,
         stackTrace,
-        context: 'SalaryDayCompanyCurrency',
+        context: 'PayrollRunnerCompanyCurrency',
       );
     }
     final companyCurrency = CurrencyUtils.normalize(
       companyProfile?['currency'],
     );
-
-    int? salaryDay;
-    try {
-      final rawDay =
-          companyProfile?['salaryDay'] ?? companyProfile?['salaryPaymentDay'];
-      final parsedDay = rawDay is num
-          ? rawDay.toInt()
-          : int.tryParse(rawDay?.toString() ?? '');
-      salaryDay = (parsedDay != null && parsedDay >= 1 && parsedDay <= 31)
-          ? parsedDay
-          : (isGuest ? await PreferencesService.getCompanySalaryDay() : null);
-    } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'SalaryDayPeriod');
-      salaryDay = null;
-    }
 
     try {
       final List<Map<String, dynamic>> existingPayroll;
@@ -376,29 +320,28 @@ class SalaryDayScheduler {
             .toList();
       }
 
-      final unpaidWorkers = PayrollService.unpaidWorkersForPeriod(
+      final payableWorkers = PayrollService.payableWorkersForPeriod(
         workers,
         existingPayroll,
         month: effectivePayrollMonth,
-        salaryDay: salaryDay,
         allowUndatedRecords: isGuest,
         companyCurrency: companyCurrency,
       );
-      final unpaidIdentities = unpaidWorkers
+      final payableIdentities = payableWorkers
           .map(_payrollWorkerIdentity)
           .where((identity) => identity.isNotEmpty)
           .toSet();
       workers = workers
           .where(
             (worker) =>
-                unpaidIdentities.contains(_payrollWorkerIdentity(worker)),
+                payableIdentities.contains(_payrollWorkerIdentity(worker)),
           )
           .toList();
     } catch (error, stackTrace) {
       ErrorReporter.report(
         error,
         stackTrace,
-        context: 'SalaryDayExistingPayrollCheck',
+        context: 'PayrollRunnerExistingPayrollCheck',
       );
       if (context.mounted) {
         FlashySnackBar.show(
@@ -411,15 +354,9 @@ class SalaryDayScheduler {
     }
 
     if (workers.isEmpty) {
-      await _markRunComplete(
-        periodLabel,
-        isGuest: isGuest,
-        userId: authService.currentUser?.uid,
-      );
       return null;
     }
 
-    final eligibleWorkerCount = workers.length;
     late final List<Map<String, dynamic>> attendanceResults;
 
     if (isGuest) {
@@ -458,7 +395,7 @@ class SalaryDayScheduler {
             ErrorReporter.report(
               error,
               stackTrace,
-              context: 'SalaryDayAttendanceFetch:$workerId',
+              context: 'PayrollRunnerAttendanceFetch:$workerId',
             );
             return <String, dynamic>{'_error': error.toString()};
           }
@@ -474,7 +411,11 @@ class SalaryDayScheduler {
         month: effectivePayrollMonth,
       );
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'SalaryDayWorkingDays');
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollRunnerWorkingDays',
+      );
       if (context.mounted) {
         FlashySnackBar.show(
           context,
@@ -636,7 +577,7 @@ class SalaryDayScheduler {
           ErrorReporter.report(
             error,
             stackTrace,
-            context: 'SalaryDayPayrollCalculation:$workerId',
+            context: 'PayrollRunnerCalculation:$workerId',
           );
         }
         results.add(
@@ -709,10 +650,8 @@ class SalaryDayScheduler {
       failCount: failCount,
       results: results,
       periodLabel: periodLabel,
-      salaryPaymentDay: salaryDay,
     );
     var committedSummary = summary;
-    var committedCount = 0;
 
     if (!autoMode) {
       if (!context.mounted) return null;
@@ -726,23 +665,18 @@ class SalaryDayScheduler {
         failCount: selectedResults.where((r) => !r.success).length,
         results: selectedResults,
         periodLabel: summary.periodLabel,
-        salaryPaymentDay: summary.salaryPaymentDay,
       );
       committedSummary = filteredSummary;
       if (!context.mounted) return null;
       FlashySnackBar.show(context, message: 'processing_payroll'.tr());
       try {
-        committedCount = await _commitPayrollRun(
-          filteredSummary,
-          isGuest,
-          context,
-        );
+        await _commitPayrollRun(filteredSummary, isGuest, context);
       } catch (error, stackTrace) {
         if (!isGuest) {
           ErrorReporter.report(
             error,
             stackTrace,
-            context: 'SalaryDayPayrollCommit',
+            context: 'PayrollRunnerCommit',
           );
         }
         if (context.mounted) {
@@ -755,7 +689,7 @@ class SalaryDayScheduler {
         return null;
       }
 
-      if (filteredSummary.successCount > 1 && context.mounted) {
+      if (filteredSummary.successCount >= 1 && context.mounted) {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
@@ -768,13 +702,13 @@ class SalaryDayScheduler {
     } else {
       if (!context.mounted) return null;
       try {
-        committedCount = await _commitPayrollRun(summary, isGuest, context);
+        await _commitPayrollRun(summary, isGuest, context);
       } catch (error, stackTrace) {
         if (!isGuest) {
           ErrorReporter.report(
             error,
             stackTrace,
-            context: 'SalaryDayPayrollCommit',
+            context: 'PayrollRunnerCommit',
           );
         }
         if (context.mounted) {
@@ -787,22 +721,10 @@ class SalaryDayScheduler {
         return null;
       }
 
-      if (summary.successCount > 1 && context.mounted) {
+      if (summary.successCount >= 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
         await _generateAndSaveZip(context, paidResults, summary.periodLabel);
       }
-    }
-
-    final completedAllEligible =
-        committedCount == committedSummary.successCount &&
-        committedSummary.successCount == eligibleWorkerCount &&
-        summary.failCount == 0;
-    if (isGuest || completedAllEligible) {
-      await _markRunComplete(
-        periodLabel,
-        isGuest: isGuest,
-        userId: authService.currentUser?.uid,
-      );
     }
 
     if (context.mounted && autoMode) {
@@ -829,77 +751,6 @@ class SalaryDayScheduler {
       positionFilter: positionFilter,
     );
     return result;
-  }
-
-  Future<int?> _loadSalaryDay(BuildContext context) async {
-    final isGuest =
-        Provider.of<AuthService>(
-          context,
-          listen: false,
-        ).currentUser?.isAnonymous ??
-        false;
-    if (isGuest) {
-      return PreferencesService.getCompanySalaryDay();
-    }
-    final profile = await Provider.of<FirestoreService>(
-      context,
-      listen: false,
-    ).getUserProfile();
-    final raw = profile?['salaryPaymentDay'];
-    final day = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
-    if (day != null && (day < 1 || day > 31)) return null;
-    return day;
-  }
-
-  Future<DateTime> _loadActivePayrollMonth(
-    BuildContext context,
-    DateTime referenceDate,
-  ) async {
-    final fallback = PayrollService.currentPayrollMonth(
-      referenceDate: referenceDate,
-    );
-    final isGuest =
-        Provider.of<AuthService>(
-          context,
-          listen: false,
-        ).currentUser?.isAnonymous ??
-        false;
-    final firestoreService = isGuest
-        ? null
-        : Provider.of<FirestoreService>(context, listen: false);
-    final rawPeriod = isGuest
-        ? await PreferencesService.getActivePayrollPeriod()
-        : (await firestoreService!.getUserProfile())?['activePayrollPeriod'];
-    return PayrollService.parsePayrollPeriodLabel(rawPeriod) ?? fallback;
-  }
-
-  String _lastRunPreferenceKey({required bool isGuest, String? userId}) {
-    if (isGuest) return _lastRunKey;
-    final normalizedUserId = (userId ?? '').trim();
-    return normalizedUserId.isEmpty
-        ? '${_lastRunKey}_authenticated'
-        : '${_lastRunKey}_$normalizedUserId';
-  }
-
-  Future<bool> _alreadyRanForPeriod(
-    String periodLabel, {
-    required bool isGuest,
-    String? userId,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = _lastRunPreferenceKey(isGuest: isGuest, userId: userId);
-    final lastRun = prefs.getString(key);
-    return lastRun == periodLabel;
-  }
-
-  Future<void> _markRunComplete(
-    String periodLabel, {
-    required bool isGuest,
-    String? userId,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = _lastRunPreferenceKey(isGuest: isGuest, userId: userId);
-    await prefs.setString(key, periodLabel);
   }
 
   String _payrollWorkerIdentity(Map<String, dynamic> worker) {
@@ -949,14 +800,8 @@ class SalaryDayScheduler {
     final periodReference =
         PayrollService.parsePayrollPeriodLabel(summary.periodLabel) ??
         summary.runDate;
-    final periodStart = PayrollService.payPeriodStart(
-      periodReference,
-      summary.salaryPaymentDay,
-    );
-    final periodEnd = PayrollService.payPeriodEnd(
-      periodReference,
-      summary.salaryPaymentDay,
-    );
+    final periodStart = PayrollService.payPeriodStart(periodReference);
+    final periodEnd = PayrollService.payPeriodEnd(periodReference);
 
     if (isGuest) {
       final savedPayroll = DummyData.payroll.toList();
@@ -978,7 +823,6 @@ class SalaryDayScheduler {
             periodStart: periodStart,
             periodEnd: periodEnd,
             runDate: summary.runDate,
-            salaryPaymentDay: summary.salaryPaymentDay,
           );
           final record = {
             ...canonicalRecord,
@@ -1088,7 +932,6 @@ class SalaryDayScheduler {
         periodStart: periodStart,
         periodEnd: periodEnd,
         runDate: summary.runDate,
-        salaryPaymentDay: summary.salaryPaymentDay,
       );
       payrollRecords.add(record);
 
@@ -1157,7 +1000,7 @@ class SalaryDayScheduler {
       ErrorReporter.report(
         error,
         stackTrace,
-        context: 'SalaryDayPayrollNotifications',
+        context: 'PayrollRunnerNotifications',
       );
     }
 
@@ -1180,7 +1023,7 @@ class SalaryDayScheduler {
         ErrorReporter.report(
           error,
           stackTrace,
-          context: 'SalaryDayPayrollRollback:$payrollKey',
+          context: 'PayrollRunnerRollback:$payrollKey',
         );
       }
     }
@@ -1207,17 +1050,10 @@ class SalaryDayScheduler {
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
-      final salaryDayForPdf = await _loadSalaryDay(context);
       final periodReference =
           PayrollService.parsePayrollPeriodLabel(periodLabel) ?? now;
-      final periodStart = PayrollService.payPeriodStart(
-        periodReference,
-        salaryDayForPdf,
-      );
-      final periodEnd = PayrollService.payPeriodEnd(
-        periodReference,
-        salaryDayForPdf,
-      );
+      final periodStart = PayrollService.payPeriodStart(periodReference);
+      final periodEnd = PayrollService.payPeriodEnd(periodReference);
       final periodDisplay = PayrollService.formatPayPeriodRange(
         periodStart,
         periodEnd,

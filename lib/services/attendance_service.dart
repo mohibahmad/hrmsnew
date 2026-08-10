@@ -60,12 +60,16 @@ class AttendanceService {
     final leaveType = TimeOffService.normalizeLeaveType(
       (timeOffRecord['action'] ?? timeOffRecord['type'] ?? 'Leave').toString(),
     );
+    final timeOffId = (timeOffRecord['id'] ?? timeOffRecord['timeOffId'] ?? '')
+        .toString()
+        .trim();
     return {
       ...attendanceRecord,
       'status': 'Leave',
       'type': leaveType,
       'desc': automaticDescription,
       'source': 'auto_leave',
+      if (timeOffId.isNotEmpty) 'timeOffId': timeOffId,
     };
   }
 

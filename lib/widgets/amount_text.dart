@@ -90,8 +90,9 @@ class AmountText extends StatelessWidget {
         locale: locale,
         symbol: '',
         decimalDigits: hasDecimals ? 2 : 0,
-      ).format(val);
-      return symbol + formatted.trim();
+      ).format(val.abs());
+      final prefix = symbol.isEmpty ? '' : '$symbol ';
+      return val < 0 ? '-$prefix${formatted.trim()}' : '$prefix${formatted.trim()}';
     } catch (_) {
       return input;
     }

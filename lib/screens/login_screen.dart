@@ -62,6 +62,32 @@ class _LoginScreenState extends State<LoginScreen> {
     ).pushReplacement(noTransitionRoute(builder: (_) => const HomeScreen()));
   }
 
+  Future<void> _handleMissingProfile(String? email) async {
+    var isDeleted = false;
+    final normalizedEmail = email?.trim().toLowerCase() ?? '';
+
+    if (normalizedEmail.isNotEmpty) {
+      try {
+        isDeleted = await _firestoreService.isEmailDeleted(normalizedEmail);
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'loginMissingProfileDeletedEmailCheck',
+        );
+      }
+    }
+
+    await _authService.signOut();
+    if (!mounted) return;
+
+    if (isDeleted) {
+      _showDeletedAccountSnackBar();
+    } else {
+      _showErrorSnackBar('user_not_found'.tr());
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -150,8 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final profile = await _firestoreService.getUserProfile();
         if (profile == null) {
-          await _authService.signOut();
-          if (mounted) _showErrorSnackBar('user_not_found'.tr());
+          await _handleMissingProfile(_authService.currentUser?.email);
           return;
         }
 
@@ -258,10 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         final profile = await _firestoreService.getUserProfile();
         if (profile == null) {
-          await _authService.signOut();
-          if (mounted) {
-            _showErrorSnackBar('user_not_found'.tr());
-          }
+          await _handleMissingProfile(enteredEmail);
           return;
         }
         if (_authService.currentUser?.displayName == null ||

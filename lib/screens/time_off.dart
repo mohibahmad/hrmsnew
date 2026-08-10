@@ -16,6 +16,7 @@ import '../widgets/notification_bell.dart';
 import 'assign_time_off.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/localization_helper.dart';
+import '../utils/snackbar_utils.dart';
 
 class Worker {
   final String name;
@@ -1427,10 +1428,18 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       }
 
-      final mergedWorker = <String, dynamic>{...data};
-      if (latestRecord != null) {
-        mergedWorker.addAll(latestRecord);
+      if (latestRecord == null ||
+          !TimeOffService.isEditableRecord(latestRecord)) {
+        FlashySnackBar.show(
+          this.context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+        return;
       }
+
+      final mergedWorker = <String, dynamic>{...data};
+      mergedWorker.addAll(latestRecord);
 
       setState(() {
         _isAssigningTimeOff = true;

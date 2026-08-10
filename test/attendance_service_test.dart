@@ -24,6 +24,21 @@ void main() {
     expect(result['source'], 'auto_leave');
   });
 
+  test('auto-created attendance keeps its source time off link', () {
+    final result = AttendanceService.applyApprovedTimeOff(
+      attendanceRecord: {'workerId': 'worker-1', 'status': 'Present'},
+      timeOffRecord: {
+        'id': 'time-off-1',
+        'workerId': 'worker-1',
+        'action': 'Annual Leave',
+      },
+      automaticDescription: 'Automatically marked On Leave',
+    );
+
+    expect(result['timeOffId'], 'time-off-1');
+    expect(result['source'], 'auto_leave');
+  });
+
   test('today leave assignment keys detect a second worker added live', () {
     final today = DateTime(2026, 8, 10);
     final existing = <Map<String, dynamic>>[

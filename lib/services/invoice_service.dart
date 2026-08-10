@@ -98,9 +98,9 @@ class InvoiceService {
     } catch (_) {
       logoImage = null;
     }
-    final companyStampBytes = await _loadCompanyStampBytes(
-      companyStampImageUrl,
-    );
+    final companyStampBytes =
+        await _loadCompanyStampBytes(companyStampImageUrl) ??
+        await loadDefaultHrStampBytes();
     final companyStampImage = companyStampBytes == null
         ? null
         : pw.MemoryImage(companyStampBytes);

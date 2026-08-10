@@ -1,6 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/date_utils.dart';
 
+class DuplicateTimeOffDateException implements Exception {
+  const DuplicateTimeOffDateException();
+}
+
+class PastTimeOffEditException implements Exception {
+  const PastTimeOffEditException();
+}
+
 class TimeOffService {
   static const _workerLeaveFields =
       <({String balance, String total, String available, String used})>[
@@ -190,6 +198,21 @@ class TimeOffService {
 
   static bool isActiveRecord(Map<String, dynamic> record) =>
       !isCancelledRecord(record);
+
+  /// Time off that has already started is treated as used history. Today and
+  /// future dates remain editable so a same-day correction can still keep an
+  /// automatically created attendance record in sync.
+  static bool isEditableRecord(
+    Map<String, dynamic> record, {
+    DateTime? referenceDate,
+  }) {
+    if (!isActiveRecord(record)) return false;
+    final dates = selectedDatesForRecord(record);
+    if (dates.isEmpty) return false;
+    final now = referenceDate ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return !dates.any((date) => date.isBefore(today));
+  }
 
   static Set<String> activeLeaveAssignmentKeysForDate(
     List<Map<String, dynamic>> records,

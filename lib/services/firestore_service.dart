@@ -68,6 +68,20 @@ class FirestoreService {
   String _payrollNotificationDocumentId(String payrollKey) =>
       _safeDocumentKey('payroll_${payrollKey.trim()}');
 
+  String _attendanceDocumentId(String workerId, DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final dateKey =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-'
+        '${day.day.toString().padLeft(2, '0')}';
+    return '${workerId}_$dateKey';
+  }
+
+  String _timeOffDateKey(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    return '${day.year}-${day.month.toString().padLeft(2, '0')}-'
+        '${day.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _deleteDocumentsInChunks(
     Iterable<DocumentReference> references,
   ) async {
@@ -151,16 +165,17 @@ class FirestoreService {
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     final doc = _userDoc;
     if (doc == null) return;
-    await doc.set(_withNormalizedCurrency(data), SetOptions(merge: true));
+    final normalized = _withNormalizedCurrency(data);
+    if (normalized['isDeleted'] == false) {
+      normalized['deletedAt'] = FieldValue.delete();
+    }
+    await doc.set(normalized, SetOptions(merge: true));
   }
 
   Future<void> deleteUserData() async {
     final doc = _userDoc;
     if (doc == null) return;
-    await doc.set({
-      'isDeleted': true,
-      'deletedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await doc.set({'isDeleted': true}, SetOptions(merge: true));
   }
 
   Future<void> clearDummyDataForCurrentUser() async {
@@ -682,8 +697,6 @@ class FirestoreService {
               policyData['taxRatePercent']?.toString() ?? '5.0',
             ) ??
             5.0;
-        updates['salaryDay'] =
-            int.tryParse(policyData['salaryDay']?.toString() ?? '1') ?? 1;
         updates['payrollPolicy'] = policyName;
       } else if (policyType == 'Holiday Policy') {
         updates['weeklyOffDays'] = policyData['weeklyOffDays'] ?? 'Sunday';
@@ -1888,14 +1901,16 @@ class FirestoreService {
       final timeOffData =
           (timeOffSnapshot.data() as Map<String, dynamic>?) ?? {};
       if (!TimeOffService.isActiveRecord(timeOffData)) return;
+      if (!TimeOffService.isEditableRecord(timeOffData)) {
+        throw const PastTimeOffEditException();
+      }
       final String leaveType =
           (timeOffData['action'] ?? timeOffData['type'] ?? '').toString();
       var requestedDays =
           int.tryParse(timeOffData['requestedDays']?.toString() ?? '0') ?? 0;
-      if (requestedDays <= 0) {
-        requestedDays = TimeOffService.selectedDatesForRecord(
-          timeOffData,
-        ).length;
+      final oldDates = TimeOffService.selectedDatesForRecord(timeOffData);
+      if (oldDates.isNotEmpty) {
+        requestedDays = oldDates.length;
       }
 
       final leaveField = switch (TimeOffService.normalizeLeaveType(leaveType)) {
@@ -1906,12 +1921,33 @@ class FirestoreService {
         _ => '',
       };
 
+      final workerSnapshot = await transaction.get(workerRef);
+      final workerData = workerSnapshot.exists
+          ? (workerSnapshot.data() as Map<String, dynamic>?) ?? {}
+          : <String, dynamic>{};
+
+      final attendanceSnapshots = <String, DocumentSnapshot>{};
+      final attendanceColl = _attendance;
+      if (attendanceColl != null) {
+        for (final date in oldDates) {
+          final ref = attendanceColl.doc(_attendanceDocumentId(workerId, date));
+          attendanceSnapshots[_timeOffDateKey(date)] = await transaction.get(
+            ref,
+          );
+        }
+      }
+
       Map<String, dynamic>? workerBalanceUpdate;
-      if (leaveField.isNotEmpty && requestedDays > 0) {
-        final workerSnapshot = await transaction.get(workerRef);
-        if (workerSnapshot.exists) {
-          final workerData =
-              (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
+      if (workerSnapshot.exists) {
+        final dateLocks = workerData['timeOffDateLocks'] is Map
+            ? Map<String, dynamic>.from(workerData['timeOffDateLocks'] as Map)
+            : <String, dynamic>{};
+        for (final date in oldDates) {
+          final key = _timeOffDateKey(date);
+          if (dateLocks[key]?.toString() == timeOffId) dateLocks.remove(key);
+        }
+
+        if (leaveField.isNotEmpty && requestedDays > 0) {
           final canonical = TimeOffService.canonicalWorkerLeaveFields(
             workerData,
           );
@@ -1928,6 +1964,10 @@ class FirestoreService {
             remainingBalances: leaveBalances,
           );
         }
+        workerBalanceUpdate = {
+          ...?workerBalanceUpdate,
+          'timeOffDateLocks': dateLocks,
+        };
       }
 
       transaction.update(timeOffRef, {
@@ -1937,6 +1977,17 @@ class FirestoreService {
       });
       if (workerBalanceUpdate != null) {
         transaction.update(workerRef, workerBalanceUpdate);
+      }
+      for (final snapshot in attendanceSnapshots.values) {
+        if (!snapshot.exists) continue;
+        final attendance =
+            (snapshot.data() as Map<String, dynamic>?) ?? const {};
+        final source = (attendance['source'] ?? '').toString();
+        final linkedId = (attendance['timeOffId'] ?? '').toString().trim();
+        if (source == 'auto_leave' &&
+            (linkedId.isEmpty || linkedId == timeOffId)) {
+          transaction.delete(snapshot.reference);
+        }
       }
     });
   }
@@ -1973,6 +2024,37 @@ class FirestoreService {
         : timeOffId;
     final timeOffRef = timeOffColl.doc(docId);
     final workerRef = workersColl.doc(workerId);
+    final newDates = TimeOffService.selectedDatesForRecord(record);
+    if (newDates.isEmpty || requestedDays != newDates.length) {
+      throw ArgumentError('requestedDays must match the selected leave dates');
+    }
+
+    // A fresh server read catches legacy records created before atomic date
+    // locks were introduced. The worker-level locks below close the race
+    // between concurrent saves.
+    final existingRecords = await timeOffColl
+        .where('workerId', isEqualTo: workerId)
+        .get(const GetOptions(source: Source.server));
+    final overlapWorker = <String, dynamic>{
+      'workerId': workerId,
+      'email': record['email'] ?? '',
+      'name': record['name'] ?? record['workerName'] ?? '',
+    };
+    final overlapping = TimeOffService.hasOverlappingApprovedLeave(
+      overlapWorker,
+      existingRecords.docs
+          .map(
+            (snapshot) => {
+              ...snapshot.data() as Map<String, dynamic>,
+              'id': snapshot.id,
+            },
+          )
+          .toList(),
+      newDates,
+      excludingRecordId: isNew ? null : docId,
+    );
+    if (overlapping) throw const DuplicateTimeOffDateException();
+
     await _db.runTransaction((transaction) async {
       final workerSnapshot = await transaction.get(workerRef);
       if (!workerSnapshot.exists) {
@@ -1983,30 +2065,49 @@ class FirestoreService {
 
       String? oldLeaveField;
       int oldDays = 0;
+      var oldDates = const <DateTime>[];
       if (!isNew) {
         final existingRecordSnapshot = await transaction.get(timeOffRef);
-        if (existingRecordSnapshot.exists) {
-          final oldRecordData =
-              (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
-          final oldType =
-              oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
-          oldLeaveField = switch (TimeOffService.normalizeLeaveType(
-            oldType.toString(),
-          )) {
-            'Annual Leave' => 'annualLeave',
-            'Sick Leave' => 'sickLeave',
-            'Casual Leave' => 'casualLeave',
-            'Medical Leave' => 'medicalLeave',
-            _ => null,
-          };
-          oldDays = TimeOffService.selectedDatesForRecord(oldRecordData).length;
-          if (oldDays == 0) {
-            oldDays =
-                int.tryParse(
-                  oldRecordData['requestedDays']?.toString() ?? '0',
-                ) ??
-                0;
-          }
+        if (!existingRecordSnapshot.exists) {
+          throw StateError('Time off record does not exist');
+        }
+        final oldRecordData =
+            (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
+        if (!TimeOffService.isEditableRecord(oldRecordData)) {
+          throw const PastTimeOffEditException();
+        }
+        final oldWorkerId = (oldRecordData['workerId'] ?? '').toString().trim();
+        if (oldWorkerId.isNotEmpty && oldWorkerId != workerId) {
+          throw StateError('The worker on an existing time off cannot change');
+        }
+        final oldType =
+            oldRecordData['action'] ?? oldRecordData['type'] ?? leaveType;
+        oldLeaveField = switch (TimeOffService.normalizeLeaveType(
+          oldType.toString(),
+        )) {
+          'Annual Leave' => 'annualLeave',
+          'Sick Leave' => 'sickLeave',
+          'Casual Leave' => 'casualLeave',
+          'Medical Leave' => 'medicalLeave',
+          _ => null,
+        };
+        oldDates = TimeOffService.selectedDatesForRecord(oldRecordData);
+        oldDays = oldDates.length;
+        if (oldDays == 0) {
+          oldDays =
+              int.tryParse(oldRecordData['requestedDays']?.toString() ?? '0') ??
+              0;
+        }
+      }
+
+      final attendanceSnapshots = <String, DocumentSnapshot>{};
+      final attendanceColl = _attendance;
+      if (attendanceColl != null) {
+        for (final date in {...oldDates, ...newDates}) {
+          final ref = attendanceColl.doc(_attendanceDocumentId(workerId, date));
+          attendanceSnapshots[_timeOffDateKey(date)] = await transaction.get(
+            ref,
+          );
         }
       }
 
@@ -2017,6 +2118,22 @@ class FirestoreService {
 
       int getFieldBalance(String field) {
         return int.tryParse(leaveBalances[field]?.toString() ?? '0') ?? 0;
+      }
+
+      final dateLocks = workerData['timeOffDateLocks'] is Map
+          ? Map<String, dynamic>.from(workerData['timeOffDateLocks'] as Map)
+          : <String, dynamic>{};
+      for (final date in oldDates) {
+        final key = _timeOffDateKey(date);
+        if (dateLocks[key]?.toString() == docId) dateLocks.remove(key);
+      }
+      for (final date in newDates) {
+        final key = _timeOffDateKey(date);
+        final owner = (dateLocks[key] ?? '').toString().trim();
+        if (owner.isNotEmpty && owner != docId) {
+          throw const DuplicateTimeOffDateException();
+        }
+        dateLocks[key] = docId;
       }
 
       if (oldLeaveField != null && oldDays > 0) {
@@ -2034,7 +2151,7 @@ class FirestoreService {
       final workerUpdates = TimeOffService.canonicalWorkerLeaveFields(
         workerData,
         remainingBalances: leaveBalances,
-      );
+      )..['timeOffDateLocks'] = dateLocks;
 
       transaction.update(workerRef, workerUpdates);
 
@@ -2043,6 +2160,32 @@ class FirestoreService {
         if (isNew) 'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      final newDateKeys = newDates.map(_timeOffDateKey).toSet();
+      final normalizedType = TimeOffService.normalizeLeaveType(leaveType);
+      for (final entry in attendanceSnapshots.entries) {
+        final snapshot = entry.value;
+        if (!snapshot.exists) continue;
+        final attendance =
+            (snapshot.data() as Map<String, dynamic>?) ?? const {};
+        final source = (attendance['source'] ?? '').toString();
+        final linkedId = (attendance['timeOffId'] ?? '').toString().trim();
+        if (source != 'auto_leave' ||
+            (linkedId.isNotEmpty && linkedId != docId)) {
+          continue;
+        }
+        if (newDateKeys.contains(entry.key)) {
+          transaction.set(snapshot.reference, {
+            'status': 'Leave',
+            'type': normalizedType,
+            'source': 'auto_leave',
+            'timeOffId': docId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } else {
+          transaction.delete(snapshot.reference);
+        }
+      }
     });
 
     if (isNew) {

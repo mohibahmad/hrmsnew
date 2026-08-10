@@ -7,8 +7,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'auth_service.dart';
-import 'preferences_service.dart';
 import '../utils/file_opener.dart';
 import '../utils/pdf_stamp_widget.dart';
 import 'package:pdf/pdf.dart';
@@ -51,49 +49,50 @@ class WorkerProfileService {
       regularFontData = fontData.buffer.asUint8List();
     } catch (_) {}
 
-    
-    
     final rawProfileBytes = await _loadImageBytes(profileImageUrl);
 
-    
     Uint8List? rawStampBytes;
     final stampSource = (companyStampImageUrl ?? '').trim();
     if (stampSource.isNotEmpty) {
       rawStampBytes = await _loadImageBytes(stampSource);
     }
+    rawStampBytes ??= await loadDefaultHrStampBytes();
 
     final profileBytes = _compressImageForPdf(rawProfileBytes);
     final stampBytes = _compressImageForPdf(rawStampBytes);
 
     final strings = _collectStrings();
 
-    return compute(_buildPdf, _PdfArgs(
-      name: name,
-      email: email,
-      phone: phone,
-      fatherHusbandName: fatherHusbandName,
-      position: position,
-      nationalId: nationalId,
-      attendanceType: attendanceType,
-      workType: workType,
-      experienceLevel: experienceLevel,
-      gender: gender,
-      joiningDate: joiningDate,
-      salary: salary,
-      education: education,
-      salaryType: salaryType,
-      religion: religion,
-      dateOfBirth: dateOfBirth,
-      relationshipStatus: relationshipStatus,
-      address: address,
-      profileImageBytes: profileBytes,
-      stampImageBytes: stampBytes,
-      generatedOnText: generatedOnText,
-      companyName: companyName,
-      companyId: companyId,
-      fontBytes: regularFontData,
-      strings: strings,
-    ));
+    return compute(
+      _buildPdf,
+      _PdfArgs(
+        name: name,
+        email: email,
+        phone: phone,
+        fatherHusbandName: fatherHusbandName,
+        position: position,
+        nationalId: nationalId,
+        attendanceType: attendanceType,
+        workType: workType,
+        experienceLevel: experienceLevel,
+        gender: gender,
+        joiningDate: joiningDate,
+        salary: salary,
+        education: education,
+        salaryType: salaryType,
+        religion: religion,
+        dateOfBirth: dateOfBirth,
+        relationshipStatus: relationshipStatus,
+        address: address,
+        profileImageBytes: profileBytes,
+        stampImageBytes: stampBytes,
+        generatedOnText: generatedOnText,
+        companyName: companyName,
+        companyId: companyId,
+        fontBytes: regularFontData,
+        strings: strings,
+      ),
+    );
   }
 
   static Uint8List? _compressImageForPdf(Uint8List? bytes) {
@@ -101,7 +100,8 @@ class WorkerProfileService {
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return bytes;
-      final needsResize = decoded.width > _maxPdfImageDimension ||
+      final needsResize =
+          decoded.width > _maxPdfImageDimension ||
           decoded.height > _maxPdfImageDimension;
       if (!needsResize) return bytes;
       final resized = img.copyResize(
@@ -125,10 +125,16 @@ class WorkerProfileService {
       'worker_detail': _localized('worker_detail', 'Employee Details'),
       'contact_no_label': _localized('contact_no_label', 'Contact'),
       'work_type': _localized('work_type', 'Work'),
-      'personal_information': _localized('personal_information', 'Personal Information'),
+      'personal_information': _localized(
+        'personal_information',
+        'Personal Information',
+      ),
       'experience': _localized('experience', 'Work Summary'),
       'worker_name_label': _localized('worker_name_label', 'Name'),
-      'father_husband_name': _localized('father_husband_name', 'Father/Husband Name'),
+      'father_husband_name': _localized(
+        'father_husband_name',
+        'Father/Husband Name',
+      ),
       'position': _localized('position', 'Position'),
       'national_id': _localized('national_id', 'National ID'),
       'gender': _localized('gender', 'Gender'),
@@ -145,7 +151,10 @@ class WorkerProfileService {
       'salary': _localized('salary', 'Salary'),
       'field': _localized('field', 'Field'),
       'details': _localized('details', 'Details'),
-      'authorized_signatory': _localized('authorized_signatory', 'Authorized Signatory'),
+      'authorized_signatory': _localized(
+        'authorized_signatory',
+        'Authorized Signatory',
+      ),
       'generated_on': _localized('generated_on', 'Generated on'),
     };
   }
@@ -685,12 +694,22 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
               isHeader: true,
             ),
             _tableRow(
-              [relationshipLabel, args.relationshipStatus, salaryTypeLabel, args.salaryType],
+              [
+                relationshipLabel,
+                args.relationshipStatus,
+                salaryTypeLabel,
+                args.salaryType,
+              ],
               navy,
               isHeader: true,
             ),
             _tableRow(
-              [addressLabel, args.address, salaryLabel, args.salary.isNotEmpty ? args.salary : '-'],
+              [
+                addressLabel,
+                args.address,
+                salaryLabel,
+                args.salary.isNotEmpty ? args.salary : '-',
+              ],
               navy,
               isHeader: true,
             ),
@@ -711,14 +730,16 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             _tableRow([attendanceTypeLabel, args.attendanceType], navy),
             _tableRow([experienceLevelLabel, args.experienceLevel], navy),
             _tableRow([joiningDateLabel, args.joiningDate], navy),
-            _tableRow([salaryLabel, args.salary.isNotEmpty ? args.salary : '-'], navy),
+            _tableRow([
+              salaryLabel,
+              args.salary.isNotEmpty ? args.salary : '-',
+            ], navy),
           ],
         ),
         pw.SizedBox(height: 20),
         pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
         pw.SizedBox(height: 8),
-        
-        
+
         pw.Align(
           alignment: pw.Alignment.centerRight,
           child: pw.Column(

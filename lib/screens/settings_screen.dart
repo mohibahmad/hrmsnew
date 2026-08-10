@@ -652,7 +652,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       await _firestore.deleteUserData();
       profileMarkedDeleted = true;
-      await user.delete();
+
+      // Keep the Firebase Authentication identity. Account deletion only
+      // disables the HRMS profile so the email remains registered in Auth.
 
       try {
         await _authService.signOut();
@@ -673,7 +675,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         try {
           await _firestore.updateUserProfile({
             'isDeleted': false,
-            'deletedAt': null,
           });
         } catch (_) {}
       }
@@ -689,7 +690,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         try {
           await _firestore.updateUserProfile({
             'isDeleted': false,
-            'deletedAt': null,
           });
         } catch (_) {}
       }

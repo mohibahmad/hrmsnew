@@ -29,7 +29,6 @@ import '../services/dummy_data.dart';
 import '../services/error_reporter.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
-import '../utils/snackbar_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/sidebar_widget.dart';
 import '../widgets/dashboard/top_header.dart';
@@ -197,8 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _otherWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
-  int? _salaryPaymentDay;
-  DateTime? _activePayrollMonth;
   List<Map<String, dynamic>> _rawExpensesDocs = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   List<Map<String, dynamic>> _workersDocs = [];
@@ -223,11 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _dashboardReady = false;
   bool _initialized = false;
   bool _workersLoaded = false;
-  bool _payrollLoaded = false;
-  bool _payrollReminderCheckInProgress = false;
-  bool _payrollReminderRefreshPending = false;
-  String? _lastPayrollReminderPeriod;
-  int? _lastPayrollReminderCount;
 
   @override
   void dispose() {
@@ -382,19 +374,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final isPremium = profile['isPremium'] == true;
         final currencyCode = CurrencyUtils.normalize(profile['currency']);
-        final rawSalaryDay = profile['salaryPaymentDay'];
-        final parsedSalaryDay = rawSalaryDay is num
-            ? rawSalaryDay.toInt()
-            : int.tryParse(rawSalaryDay?.toString() ?? '');
-        final salaryPaymentDay =
-            parsedSalaryDay != null &&
-                parsedSalaryDay >= 1 &&
-                parsedSalaryDay <= 31
-            ? parsedSalaryDay
-            : null;
-        final activePayrollMonth = PayrollService.parsePayrollPeriodLabel(
-          profile['activePayrollPeriod'],
-        );
         final profilePic = profile['profilePic']?.toString().trim() ?? '';
         final companyStamp =
             profile['companyStampUrl']?.toString().trim() ?? '';
@@ -406,17 +385,11 @@ class _HomeScreenState extends State<HomeScreen> {
             : companyStamp;
         await PreferencesService.setPremium(isPremium);
         if (mounted &&
-            (_isPremium != isPremium ||
-                _currencyCode != currencyCode ||
-                _salaryPaymentDay != salaryPaymentDay ||
-                _activePayrollMonth != activePayrollMonth)) {
+            (_isPremium != isPremium || _currencyCode != currencyCode)) {
           setState(() {
             _isPremium = isPremium;
             _currencyCode = currencyCode;
-            _salaryPaymentDay = salaryPaymentDay;
-            _activePayrollMonth = activePayrollMonth;
           });
-          _maybeCreatePayrollReminder();
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -541,9 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _workersDocs = List<Map<String, dynamic>>.from(DummyData.workers);
         _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
         _workersLoaded = true;
-        _payrollLoaded = true;
       });
-      _maybeCreatePayrollReminder();
     } else {
       setState(() {
         _holidays = [];
@@ -592,7 +563,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _workersLoaded = true;
             _recalculateSumsForPeriod(_selectedPeriod);
           });
-          _maybeCreatePayrollReminder();
         }
       });
 
@@ -671,10 +641,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         .toDouble();
               return {...?data, 'id': doc.id, 'netSalary': netSalary};
             }).toList();
-            _payrollLoaded = true;
             _recalculateSumsForPeriod(_selectedPeriod);
           });
-          _maybeCreatePayrollReminder();
         }
       });
 
@@ -688,128 +656,6 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       });
-    }
-  }
-
-  Future<void> _maybeCreatePayrollReminder() async {
-    final now = DateTime.now();
-    if (!_workersLoaded || !_payrollLoaded) {
-      return;
-    }
-    if (_payrollReminderCheckInProgress) {
-      _payrollReminderRefreshPending = true;
-      return;
-    }
-    final month =
-        _activePayrollMonth ??
-        PayrollService.currentPayrollMonth(referenceDate: now);
-    if (!PayrollService.isPayrollReminderDueForPeriod(
-      now,
-      month,
-      _salaryPaymentDay,
-    )) {
-      return;
-    }
-    final period = PayrollService.payrollPeriodLabel(month);
-    final unpaidCount = PayrollService.unpaidWorkersForPeriod(
-      _workersDocs,
-      _rawPayrollDocs,
-      month: month,
-      salaryDay: _salaryPaymentDay,
-      companyCurrency: _currencyCode,
-    ).length;
-    if (_lastPayrollReminderPeriod == period &&
-        _lastPayrollReminderCount == unpaidCount) {
-      return;
-    }
-
-    final notificationKey = 'payroll_due_$period';
-    if (unpaidCount == 0) {
-      _payrollReminderCheckInProgress = true;
-      try {
-        final isGuest = _authService.currentUser?.isAnonymous ?? false;
-        if (isGuest) {
-          DummyData.notifications.removeWhere(
-            (item) => item['notificationKey'] == notificationKey,
-          );
-          await DummyData.saveToPrefs();
-        } else {
-          await _firestore.deleteNotification(
-            notificationKey.replaceAll('/', '_'),
-          );
-        }
-        _lastPayrollReminderPeriod = period;
-        _lastPayrollReminderCount = 0;
-      } catch (_) {
-      } finally {
-        _payrollReminderCheckInProgress = false;
-        if (_payrollReminderRefreshPending && mounted) {
-          _payrollReminderRefreshPending = false;
-          unawaited(_maybeCreatePayrollReminder());
-        }
-      }
-      return;
-    }
-
-    _payrollReminderCheckInProgress = true;
-    final isFirstReminderThisSession =
-        _lastPayrollReminderPeriod != period ||
-        (_lastPayrollReminderCount ?? 0) == 0;
-    final notification = <String, dynamic>{
-      'type': 'payroll_due',
-      'title': 'notif_title_payroll_due'.tr(),
-      'message': 'notif_msg_payroll_due'.tr(
-        namedArgs: {'count': '$unpaidCount', 'period': period},
-      ),
-      'data': {'count': '$unpaidCount', 'period': period},
-    };
-    try {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-      if (isGuest) {
-        final existingIndex = DummyData.notifications.indexWhere(
-          (item) => item['notificationKey'] == notificationKey,
-        );
-        if (existingIndex == -1) {
-          DummyData.notifications.insert(0, {
-            ...notification,
-            'id': notificationKey,
-            'notificationKey': notificationKey,
-            'isRead': false,
-            'createdAt': now.toIso8601String(),
-          });
-          if (mounted) {
-            setState(() => _unreadNotifCount++);
-          }
-        } else {
-          DummyData.notifications[existingIndex] = {
-            ...DummyData.notifications[existingIndex],
-            ...notification,
-            'notificationKey': notificationKey,
-          };
-        }
-        await DummyData.saveToPrefs();
-      } else {
-        await _firestore.upsertNotificationByKey(notificationKey, notification);
-      }
-      _lastPayrollReminderPeriod = period;
-      _lastPayrollReminderCount = unpaidCount;
-      if (mounted && isFirstReminderThisSession) {
-        FlashySnackBar.show(
-          context,
-          title: notification['title']?.toString(),
-          message: notification['message']?.toString() ?? '',
-          isError: true,
-          maxLines: 4,
-          displayDuration: const Duration(seconds: 5),
-        );
-      }
-    } catch (_) {
-    } finally {
-      _payrollReminderCheckInProgress = false;
-      if (_payrollReminderRefreshPending && mounted) {
-        _payrollReminderRefreshPending = false;
-        unawaited(_maybeCreatePayrollReminder());
-      }
     }
   }
 
@@ -1063,7 +909,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
-    final value = clampToZero ? amount.clamp(0, double.infinity).toDouble() : amount;
+    final value = clampToZero
+        ? amount.clamp(0, double.infinity).toDouble()
+        : amount;
     final symbol = CurrencyUtils.symbolFor(_currencyCode);
     if (value.abs() >= 1e3) {
       return CurrencyUtils.formatCompactLocale(
@@ -1074,17 +922,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final separator = symbol.length > 1 ? ' ' : '';
     try {
-      return '$symbol$separator${NumberFormat.currency(
-        locale: context.locale.toString(),
-        symbol: '',
-        decimalDigits: 2,
-      ).format(value)}';
+      return '$symbol$separator${NumberFormat.currency(locale: context.locale.toString(), symbol: '', decimalDigits: 2).format(value)}';
     } catch (_) {
-      return '$symbol$separator${NumberFormat.currency(
-        locale: 'en_US',
-        symbol: '',
-        decimalDigits: 2,
-      ).format(value)}';
+      return '$symbol$separator${NumberFormat.currency(locale: 'en_US', symbol: '', decimalDigits: 2).format(value)}';
     }
   }
 
@@ -1227,7 +1067,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
-                    isGuest: _isGuest || (_authService.currentUser?.isAnonymous ?? false),
+                    isGuest:
+                        _isGuest ||
+                        (_authService.currentUser?.isAnonymous ?? false),
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
                       if (_selectedIndex == 1 &&
@@ -1587,7 +1429,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     _totalWorkersCount == 0,
                                 leaveDocs: leaveDocs,
                               ),
-                            ),      
+                            ),
                           ],
                         ),
                       );

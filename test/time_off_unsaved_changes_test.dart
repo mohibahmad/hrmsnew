@@ -85,6 +85,35 @@ void main() {
     );
   });
 
+  test('future and today time off can be edited, past time off cannot', () {
+    final today = DateTime(2026, 8, 10);
+
+    expect(
+      TimeOffService.isEditableRecord({
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 10), DateTime(2026, 8, 11)],
+      }, referenceDate: today),
+      isTrue,
+    );
+    expect(
+      TimeOffService.isEditableRecord({
+        'status': 'Approved',
+        'selectedDates': [DateTime(2026, 8, 9), DateTime(2026, 8, 11)],
+      }, referenceDate: today),
+      isFalse,
+    );
+  });
+
+  test('cancelled time off cannot be edited even when dates are future', () {
+    expect(
+      TimeOffService.isEditableRecord({
+        'status': 'Cancelled',
+        'selectedDates': [DateTime(2026, 8, 11)],
+      }, referenceDate: DateTime(2026, 8, 10)),
+      isFalse,
+    );
+  });
+
   test('one selected medical leave day previews balance 4 as 3', () {
     expect(projectedTimeOffBalance(availableDays: 4, requestedDays: 1), 3);
   });

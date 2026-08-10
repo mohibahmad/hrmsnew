@@ -177,11 +177,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _applyAuthenticatedProfile(profile);
         },
         onError: (Object error, StackTrace stackTrace) {
-          ErrorReporter.report(
-            error,
-            stackTrace,
-            context: 'ProfileStream',
-          );
+          ErrorReporter.report(error, stackTrace, context: 'ProfileStream');
         },
       );
     }
@@ -258,7 +254,9 @@ class _ProfileBodyState extends State<ProfileBody> {
       _clearCompanyStamp = false;
       AuthService.profilePicNotifier.value = profileImage;
       AuthService.companyStampNotifier.value = companyStamp;
-      PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
+      PreferencesService.setCompanyCurrency(
+        normalizedCurrency,
+      ).catchError((_) {});
       _isLoading = false;
     });
   }
@@ -283,7 +281,8 @@ class _ProfileBodyState extends State<ProfileBody> {
               guestData?['contact2'] ?? 'guest_contact_2'.tr();
           _addressController.text =
               guestData?['address'] ?? 'guest_address'.tr();
-          _profilePicUrl = guestData?['profilePic'] ?? AuthService.profilePicNotifier.value;
+          _profilePicUrl =
+              guestData?['profilePic'] ?? AuthService.profilePicNotifier.value;
           _companyStampUrl = guestData?['companyStampUrl'];
           AuthService.profilePicNotifier.value = _profilePicUrl;
           AuthService.companyStampNotifier.value = _companyStampUrl;
@@ -688,8 +687,10 @@ class _ProfileBodyState extends State<ProfileBody> {
             'companyStampUrl': '',
         });
         profileSaved = true;
-        
-        PreferencesService.setCompanyCurrency(normalizedCurrency).catchError((_) {});
+
+        PreferencesService.setCompanyCurrency(
+          normalizedCurrency,
+        ).catchError((_) {});
 
         if (downloadUrl != null) {
           _profilePicUrl = downloadUrl;
@@ -697,7 +698,10 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImageBytes = null;
           _newProfileImagePath = null;
 
-          _authService.currentUser?.updatePhotoURL(downloadUrl).catchError((error, stackTrace) {
+          _authService.currentUser?.updatePhotoURL(downloadUrl).catchError((
+            error,
+            stackTrace,
+          ) {
             ErrorReporter.report(
               error,
               stackTrace,
@@ -716,8 +720,9 @@ class _ProfileBodyState extends State<ProfileBody> {
             );
           });
           if (cachedLocalPicPath != null && cachedLocalPicPath.isNotEmpty) {
-            PreferencesService.setProfilePicLocalPath(cachedLocalPicPath)
-                .catchError((_) {});
+            PreferencesService.setProfilePicLocalPath(
+              cachedLocalPicPath,
+            ).catchError((_) {});
           }
         }
         if (stampDownloadUrl != null || _clearCompanyStamp) {
@@ -739,7 +744,10 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (oldProfilePicUrl != null &&
             oldProfilePicUrl.isNotEmpty &&
             oldProfilePicUrl != downloadUrl) {
-          UploadService.deleteByUrl(oldProfilePicUrl).catchError((error, stackTrace) {
+          UploadService.deleteByUrl(oldProfilePicUrl).catchError((
+            error,
+            stackTrace,
+          ) {
             ErrorReporter.report(
               error,
               stackTrace,
@@ -750,7 +758,10 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (oldCompanyStampUrl != null &&
             oldCompanyStampUrl.isNotEmpty &&
             oldCompanyStampUrl != stampDownloadUrl) {
-          UploadService.deleteByUrl(oldCompanyStampUrl).catchError((error, stackTrace) {
+          UploadService.deleteByUrl(oldCompanyStampUrl).catchError((
+            error,
+            stackTrace,
+          ) {
             ErrorReporter.report(
               error,
               stackTrace,
@@ -764,7 +775,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             bytes: _newProfileImageBytes!,
             fileName: 'company_logo.png',
           );
-          downloadUrl = localPath ??
+          downloadUrl =
+              localPath ??
               'data:image/png;base64,${base64Encode(_newProfileImageBytes!)}';
         } else if (_newProfileImagePath != null) {
           Uint8List? pickedBytes;
@@ -774,10 +786,10 @@ class _ProfileBodyState extends State<ProfileBody> {
           if (pickedBytes != null && pickedBytes.isNotEmpty) {
             downloadUrl =
                 await PreferencesService.persistImageLocally(
-                      bytes: pickedBytes,
-                      fileName: 'company_logo.png',
-                    ) ??
-                    _newProfileImagePath;
+                  bytes: pickedBytes,
+                  fileName: 'company_logo.png',
+                ) ??
+                _newProfileImagePath;
           } else {
             downloadUrl = _newProfileImagePath;
           }
@@ -794,12 +806,14 @@ class _ProfileBodyState extends State<ProfileBody> {
         }
 
         if (_newCompanyStampBytes != null) {
-          final stampFormat = _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
+          final stampFormat =
+              _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
           final localPath = await PreferencesService.persistImageLocally(
             bytes: _newCompanyStampBytes!,
             fileName: 'company_stamp.$stampFormat',
           );
-          _companyStampUrl = localPath ??
+          _companyStampUrl =
+              localPath ??
               'data:image/$stampFormat;base64,${base64Encode(_newCompanyStampBytes!)}';
           AuthService.companyStampNotifier.value = _companyStampUrl;
           try {
@@ -815,7 +829,8 @@ class _ProfileBodyState extends State<ProfileBody> {
           _clearCompanyStamp = false;
         }
 
-        final existingGuest = await PreferencesService.getGuestProfileData() ?? {};
+        final existingGuest =
+            await PreferencesService.getGuestProfileData() ?? {};
         await PreferencesService.setGuestProfileData({
           ...existingGuest,
           'businessName': _businessNameController.text,
@@ -1173,9 +1188,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         border: Border.all(color: const Color(0xFFD8DCE5)),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Center(
-        child: _buildCompanyStampPreview(),
-      ),
+      child: Center(child: _buildCompanyStampPreview()),
     );
 
     final details = Column(
@@ -1316,14 +1329,15 @@ class _ProfileBodyState extends State<ProfileBody> {
   Widget _buildCompanyStampPreview() {
     Widget fallback() => Center(
       child: Image.asset(
-        'assets/stamp.png',
-        width: 34,
-        height: 34,
-        color: const Color(0xFF9CA3AF),
+        'assets/default_hr_stamp.png',
+        width: 96,
+        height: 96,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
         errorBuilder: (_, __, ___) => const Icon(
           Icons.approval_outlined,
-          size: 34,
-          color: Color(0xFF9CA3AF),
+          size: 48,
+          color: Color(0xFF0B2A6F),
         ),
       ),
     );
@@ -1472,10 +1486,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   autocorrect: !isEmailField && !isCompanyId,
                   enableSuggestions: !isEmailField && !isCompanyId,
                   inputFormatters:
-                      isCompanyId ||
-                          isContact ||
-                          isBusinessName ||
-                          isAddress
+                      isCompanyId || isContact || isBusinessName || isAddress
                       ? [
                           LengthLimitingTextInputFormatter(
                             isBusinessName
@@ -1629,10 +1640,11 @@ class ProfilePreviewDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      child: Center(          child: Container(
-              width: 480,
-              constraints: const BoxConstraints(),
-              clipBehavior: Clip.antiAlias,
+      child: Center(
+        child: Container(
+          width: 480,
+          constraints: const BoxConstraints(),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(6),
