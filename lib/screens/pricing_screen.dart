@@ -159,9 +159,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           width: double.infinity,
                           height: double.infinity,
                           padding: const EdgeInsets.fromLTRB(
-                            48,
+                            34,
                             16,
-                            48,
+                            34,
                             18,
                           ),
                           child: SingleChildScrollView(
