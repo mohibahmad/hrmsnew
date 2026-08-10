@@ -1439,6 +1439,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
       final mergedWorker = <String, dynamic>{...data};
       mergedWorker.addAll(latestRecord);
+      mergedWorker['_aggregateTimeOffEdit'] = true;
+      mergedWorker['_aggregateDatesByType'] = leaveDatesByType;
 
       setState(() {
         _isAssigningTimeOff = true;

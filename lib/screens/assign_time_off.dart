@@ -150,6 +150,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   bool _hasTypeChanged = false;
   bool _hasDateSelectionChanged = false;
   bool _hasNotesChanged = false;
+  bool _isAggregateOverview = false;
 
   @override
   void initState() {
@@ -157,10 +158,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (widget.initialWorker != null) {
       _selectedWorker = widget.initialWorker;
 
+      _isAggregateOverview =
+          widget.initialWorker!['_aggregateTimeOffEdit'] == true;
+
       final hasAction = (widget.initialWorker!['action'] ?? '')
           .toString()
           .isNotEmpty;
-      if (hasAction) {
+      if (hasAction && !_isAggregateOverview) {
         _editingRecord = Map<String, dynamic>.from(widget.initialWorker!);
       }
     }
@@ -228,7 +232,33 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _hasTypeChanged = false;
     _hasDateSelectionChanged = false;
     _hasNotesChanged = false;
-    if (source != null && (source['action'] ?? '').toString().isNotEmpty) {
+    if (_isAggregateOverview && source != null) {
+      _editingRecord = null;
+      _editingId = null;
+      _timeOffType = TimeOffService.normalizeLeaveType(
+        (source['action'] ?? source['type'] ?? 'Annual Leave').toString(),
+      );
+      final aggregateDates = source['_aggregateDatesByType'];
+      final datesForType = aggregateDates is Map
+          ? aggregateDates[_timeOffType]
+          : null;
+      _selectedDates = datesForType is Iterable
+          ? datesForType
+                .map(TimeOffService.parseDate)
+                .whereType<DateTime>()
+                .toSet()
+          : <DateTime>{};
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+      _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
+      _notesController.clear();
+    } else if (source != null &&
+        (source['action'] ?? '').toString().isNotEmpty) {
       _editingId = (_editingRecord?['id'] ?? source['id'])?.toString();
       _timeOffType = source['action'].toString();
       _selectedDates = TimeOffService.selectedDatesForRecord(source).toSet();
@@ -243,7 +273,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _notesController.clear();
     }
 
-    if (_selectedDates.isNotEmpty) {
+    if (_selectedDates.isNotEmpty && !_isAggregateOverview) {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
       _calendarMonth2 = DateTime(
         _calendarMonth.year,
@@ -257,13 +287,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (!_leaveTypeOptions.any((o) => o['value'] == _timeOffType)) {
       _timeOffType = 'Annual Leave';
     }
-    _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+    if (!_isAggregateOverview) {
+      _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
 
-    _calendarMonth2 = DateTime(
-      _calendarMonth.year,
-      _calendarMonth.month + 1,
-      1,
-    );
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
+    }
   }
 
   void _markFormClean() {
@@ -445,6 +477,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   .toList();
               if (widget.viewOnly) {
                 _syncViewOnlyDatesForType();
+              } else if (_isAggregateOverview) {
+                _syncAggregateDatesForType();
               } else {
                 _syncOpenRecordFromLiveData();
               }
@@ -468,6 +502,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
     _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
     _syncSelectionBounds();
+  }
+
+  void _syncAggregateDatesForType() {
+    if (!_isAggregateOverview || _selectedWorker == null) return;
+    final datesByType = TimeOffService.leaveDatesByTypeForWorker(
+      _selectedWorkerForService,
+      _timeoffRecords,
+    );
+    _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
+    _editingRecord = null;
+    _editingId = null;
+    _notesController.clear();
+    _markFormClean();
   }
 
   void _syncOpenRecordFromLiveData() {
@@ -510,6 +557,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _switchToLeaveType(String type) async {
     final normalizedType = TimeOffService.normalizeLeaveType(type);
     if (normalizedType == _timeOffType) return;
+
+    if (_isAggregateOverview) {
+      setState(() {
+        _timeOffType = normalizedType;
+        _syncAggregateDatesForType();
+      });
+      return;
+    }
 
     if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
     if (!mounted) return;
@@ -697,6 +752,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int get _summaryRequestedDays {
     if (_selectedWorker == null) return 0;
+    if (_isAggregateOverview) return _selectedDaysCount;
     return TimeOffService.projectedAssignedDaysForEditingRecord(
       _selectedWorkerForService,
       _timeOffType,
@@ -1117,7 +1173,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ),
                 ),
               ),
-              if (_selectedDates.isNotEmpty && !widget.viewOnly)
+              if (_selectedDates.isNotEmpty &&
+                  !widget.viewOnly &&
+                  !_isAggregateOverview)
                 TextButton(
                   onPressed: () {
                     setState(() {
@@ -1478,6 +1536,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       // Inspecting a zero-balance type is allowed, but it must
                       // not be possible to assign or save against it.
                       _baseAvailableDaysForType(_timeOffType) <= 0 ||
+                      _isAggregateOverview ||
                       (_editingId == null && _selectedDates.isEmpty) ||
                       (_editingId != null && !_hasUnsavedChanges) ||
                       _requestedDaysExceedAvailable)
@@ -2034,6 +2093,37 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _toggleDate(DateTime date) async {
     final selectedDate = _dateOnly(date);
     final isRemoving = _selectedDates.contains(selectedDate);
+
+    if (_isAggregateOverview) {
+      if (!isRemoving || _selectedWorker == null) return;
+      final owningRecord = TimeOffService.activeLeaveForWorker(
+        _selectedWorkerForService,
+        _timeoffRecords,
+        onDate: selectedDate,
+      );
+      if (owningRecord == null ||
+          !TimeOffService.recordHasLeaveType(owningRecord, _timeOffType)) {
+        return;
+      }
+      if (!TimeOffService.isEditableRecord(owningRecord)) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _isAggregateOverview = false;
+        _applyEditingRecord(owningRecord, preserveCalendarMonth: true);
+        _selectedDates.remove(selectedDate);
+        _hasDateSelectionChanged = true;
+        _syncSelectionBounds();
+      });
+      return;
+    }
+
     if (!isRemoving && _isNonWorkingDate(selectedDate)) {
       FlashySnackBar.show(
         context,
@@ -2238,7 +2328,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: TextField(
                 controller: _notesController,
-                readOnly: widget.viewOnly,
+                readOnly: widget.viewOnly || _isAggregateOverview,
                 onChanged: (_) {
                   setState(() {
                     _hasNotesChanged = true;
