@@ -21,12 +21,14 @@ class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
   final VoidCallback? onNotificationTap;
   final Map<String, dynamic>? initialWorker;
+  final bool viewOnly;
   const AssignTimeOffScreen({
     super.key,
     required this.onBack,
     this.onProfileTap,
     this.onNotificationTap,
     this.initialWorker,
+    this.viewOnly = false,
   });
 
   @override
@@ -267,6 +269,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _hasNotesChanged = false;
   }
 
+  bool get _hasUnsavedChanges => hasUnsavedTimeOffChanges(
+    hasSelectedDates: _hasDateSelectionChanged,
+    hasNotes: _hasNotesChanged,
+    isEditing: _editingId != null,
+    typeChanged: _hasTypeChanged,
+    datesChanged: _hasDateSelectionChanged,
+  );
+
   List<DateTime> get _sortedSelectedDates {
     final dates = _selectedDates.toList()..sort();
     return dates;
@@ -402,7 +412,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final records = DummyData.timeoff
           .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
           .toList();
-      if (mounted) setState(() => _timeoffRecords = records);
+      if (mounted) {
+        setState(() {
+          _timeoffRecords = records;
+          _syncViewOnlyDatesForType();
+        });
+      }
       return;
     }
     try {
@@ -412,8 +427,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         _timeoffRecords = snapshot.docs
             .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
             .toList();
+        _syncViewOnlyDatesForType();
       });
     } catch (_) {}
+  }
+
+  void _syncViewOnlyDatesForType() {
+    if (!widget.viewOnly || _selectedWorker == null) return;
+    final datesByType = TimeOffService.leaveDatesByTypeForWorker(
+      _selectedWorkerForService,
+      _timeoffRecords,
+    );
+    _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
+    _syncSelectionBounds();
   }
 
   String _getMonthName(int month) {
@@ -515,6 +541,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   int _availableDaysForType(String type) {
+    if (widget.viewOnly) {
+      return TimeOffService.getLeaveBalance(_selectedWorkerForService, type);
+    }
     final base = _baseAvailableDaysForType(type);
     final normType = TimeOffService.normalizeLeaveType(type);
     final currentlySelected =
@@ -532,7 +561,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   int get _availableDays => _availableDaysForType(_timeOffType);
 
   bool get _requestedDaysExceedAvailable =>
-      _usesPaidAllowance && _selectedDaysCount > _baseAvailableDays;
+      !widget.viewOnly &&
+      _usesPaidAllowance &&
+      _selectedDaysCount > _baseAvailableDays;
 
   String get _localizedSelectedLeaveType {
     final normalized = TimeOffService.normalizeLeaveType(_timeOffType);
@@ -562,21 +593,31 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   String get _insufficientBalanceMessage {
-    final key = _baseAvailableDays == 1
+    final availableDays = _availableDays;
+    final key = availableDays == 1
         ? 'only_one_leave_day_available'
         : 'only_leave_days_available';
     return key.tr(
       namedArgs: {
-        'count': '$_baseAvailableDays',
+        'count': '$availableDays',
         'type': _localizedSelectedLeaveType,
       },
     );
   }
 
-  int get _requestedDays =>
-      _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
+  int get _requestedDays => widget.viewOnly
+      ? _selectedDaysCount
+      : _requestedDaysExceedAvailable
+      ? 0
+      : _selectedDaysCount;
 
   int get _remainingDaysAfterRequest {
+    if (widget.viewOnly && _selectedWorker != null) {
+      return TimeOffService.getLeaveBalance(
+        _selectedWorkerForService,
+        _timeOffType,
+      );
+    }
     if (!_isGuest && !_isPaidLeave) return _baseAvailableDays;
     return projectedTimeOffBalance(
       availableDays: _baseAvailableDays,
@@ -602,13 +643,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Future<bool> _confirmDiscardChanges() async {
     final currentContext = context;
-    if (!hasUnsavedTimeOffChanges(
-      hasSelectedDates: _hasDateSelectionChanged,
-      hasNotes: _hasNotesChanged,
-      isEditing: _editingId != null,
-      typeChanged: _hasTypeChanged,
-      datesChanged: _hasDateSelectionChanged,
-    )) {
+    if (!_hasUnsavedChanges) {
       return true;
     }
 
@@ -972,7 +1007,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildTopForm(),
           const SizedBox(height: 32),
-          _buildUnifiedDaysGrid(),
+          IgnorePointer(
+            ignoring: widget.viewOnly,
+            child: _buildUnifiedDaysGrid(),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -984,7 +1022,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'tap_dates_to_select'.tr(),
+                  (widget.viewOnly ? 'selected_dates' : 'tap_dates_to_select')
+                      .tr(),
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF64748B),
@@ -992,7 +1031,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ),
                 ),
               ),
-              if (_selectedDates.isNotEmpty)
+              if (_selectedDates.isNotEmpty && !widget.viewOnly)
                 TextButton(
                   onPressed: () {
                     setState(() {
@@ -1347,12 +1386,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 elevation: 0,
               ),
               onPressed:
-                  (_selectedWorker == null ||
+                  (widget.viewOnly ||
+                      _selectedWorker == null ||
                       _isLoading ||
                       // Inspecting a zero-balance type is allowed, but it must
                       // not be possible to assign or save against it.
                       _baseAvailableDaysForType(_timeOffType) <= 0 ||
                       (_editingId == null && _selectedDates.isEmpty) ||
+                      (_editingId != null && !_hasUnsavedChanges) ||
                       _requestedDaysExceedAvailable)
                   ? null
                   : () {
@@ -1474,20 +1515,26 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   );
                 }).toList(),
                 onChanged: (v) {
-                  if (v != null && v != _timeOffType) {
+                  if (v == null || v == _timeOffType) return;
+                  if (widget.viewOnly) {
                     setState(() {
                       _timeOffType = v;
-                      _selectedDates.clear();
-                      _hasTypeChanged = true;
-                      _hasDateSelectionChanged = true;
-                      // Switching the type starts a new request — drop any
-                      // edit context so saving with empty dates can never
-                      // accidentally cancel the previously edited record.
-                      _editingId = null;
-                      _editingRecord = null;
-                      _syncSelectionBounds();
+                      _syncViewOnlyDatesForType();
                     });
+                    return;
                   }
+                  setState(() {
+                    _timeOffType = v;
+                    _selectedDates.clear();
+                    _hasTypeChanged = true;
+                    _hasDateSelectionChanged = true;
+                    // Switching the type starts a new request — drop edit
+                    // context so an empty save cannot cancel the record that
+                    // was previously being inspected.
+                    _editingId = null;
+                    _editingRecord = null;
+                    _syncSelectionBounds();
+                  });
                 },
               ),
             ),
@@ -2085,6 +2132,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: TextField(
                 controller: _notesController,
+                readOnly: widget.viewOnly,
                 onChanged: (_) {
                   setState(() {
                     _hasNotesChanged = true;
@@ -2215,7 +2263,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       '${date.day.toString().padLeft(2, '0')}';
 
   Future<void> _handleSave() async {
+    if (widget.viewOnly) return;
     if (_isLoading) return;
+    if (_editingId != null && !_hasUnsavedChanges) return;
 
     if (_selectedWorker == null && _selectedDates.isEmpty) {
       FlashySnackBar.show(
@@ -2630,9 +2680,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
         });
         if (workerIdx != -1) {
-          DummyData.workers[workerIdx]['annualLeaves'] = newAnnual.toString();
-          DummyData.workers[workerIdx]['availableAnnualLeaves'] = newAvailable
-              .toString();
+          DummyData.workers[workerIdx]['annualLeaves'] = newAnnual;
+          DummyData.workers[workerIdx]['availableAnnualLeaves'] = newAvailable;
+          DummyData.workers[workerIdx].addAll(
+            TimeOffService.canonicalWorkerLeaveFields(
+              DummyData.workers[workerIdx],
+            ),
+          );
           await DummyData.saveToPrefs();
 
           setState(() {
@@ -2646,15 +2700,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           throw StateError('Missing worker id');
         }
         await _firestore.updateWorkerLeaves(workerId, {
-          'annualLeaves': newAnnual.toString(),
-          'availableAnnualLeaves': newAvailable.toString(),
+          'annualLeaves': newAnnual,
+          'availableAnnualLeaves': newAvailable,
         });
 
         setState(() {
-          _selectedWorker = {
+          final updatedWorker = <String, dynamic>{
             ..._selectedWorker!,
-            'annualLeaves': newAnnual.toString(),
-            'availableAnnualLeaves': newAvailable.toString(),
+            'annualLeaves': newAnnual,
+            'availableAnnualLeaves': newAvailable,
+          };
+          _selectedWorker = {
+            ...updatedWorker,
+            ...TimeOffService.canonicalWorkerLeaveFields(updatedWorker),
           };
         });
       }

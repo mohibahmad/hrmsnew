@@ -2,6 +2,117 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/date_utils.dart';
 
 class TimeOffService {
+  static const _workerLeaveFields =
+      <({String balance, String total, String available, String used})>[
+        (
+          balance: 'annualLeave',
+          total: 'annualLeaves',
+          available: 'availableAnnualLeaves',
+          used: 'annualLeavesUsed',
+        ),
+        (
+          balance: 'sickLeave',
+          total: 'sickLeaves',
+          available: 'availableSickLeaves',
+          used: 'sickLeavesUsed',
+        ),
+        (
+          balance: 'casualLeave',
+          total: 'casualLeaves',
+          available: 'availableCasualLeaves',
+          used: 'casualLeavesUsed',
+        ),
+        (
+          balance: 'medicalLeave',
+          total: 'medicalLeaves',
+          available: 'availableMedicalLeaves',
+          used: 'medicalLeavesUsed',
+        ),
+      ];
+
+  static int _leaveInt(dynamic value) {
+    final parsed = value is num
+        ? value.toInt()
+        : int.tryParse((value ?? '').toString().trim()) ?? 0;
+    return parsed < 0 ? 0 : parsed;
+  }
+
+  /// Produces the single canonical Firestore representation for worker leave
+  /// balances. All values are numeric and every used value is derived from
+  /// `total - available`, so legacy counters cannot disagree with balances.
+  static Map<String, dynamic> canonicalWorkerLeaveFields(
+    Map<String, dynamic> worker, {
+    Map<String, dynamic>? remainingBalances,
+  }) {
+    final storedBalances = worker['leaveBalances'] is Map
+        ? Map<String, dynamic>.from(worker['leaveBalances'] as Map)
+        : <String, dynamic>{};
+    final explicitBalances = remainingBalances == null
+        ? const <String, dynamic>{}
+        : Map<String, dynamic>.from(remainingBalances);
+    final canonicalBalances = <String, int>{};
+    final result = <String, dynamic>{};
+    var totalUsed = 0;
+
+    for (final fields in _workerLeaveFields) {
+      final hasOverride = explicitBalances.containsKey(fields.balance);
+      final hasNestedBalance = storedBalances.containsKey(fields.balance);
+      final hasTopLevelBalance = worker.containsKey(fields.available);
+      final hasAvailable =
+          hasOverride || hasNestedBalance || hasTopLevelBalance;
+
+      final rawAvailable = hasOverride
+          ? explicitBalances[fields.balance]
+          : hasTopLevelBalance
+          ? worker[fields.available]
+          : storedBalances[fields.balance];
+      final storedTotal = _leaveInt(worker[fields.total]);
+      final storedUsed = _leaveInt(worker[fields.used]);
+      var available = hasAvailable
+          ? _leaveInt(rawAvailable)
+          : (storedTotal - storedUsed).clamp(0, storedTotal).toInt();
+
+      // Preserve the actual allowance when a legacy document contains a
+      // partial/missing total but its remaining + used values prove a larger
+      // value. Used is still recalculated below from the canonical balance.
+      final inferredTotal = available + storedUsed;
+      final total = storedTotal > 0 ? storedTotal : inferredTotal;
+      available = available.clamp(0, total).toInt();
+      final used = total - available;
+
+      result[fields.total] = total;
+      result[fields.available] = available;
+      result[fields.used] = used;
+      canonicalBalances[fields.balance] = available;
+      totalUsed += used;
+    }
+
+    result['leavesUsed'] = totalUsed;
+    result['leaveBalances'] = canonicalBalances;
+    return result;
+  }
+
+  static bool hasCanonicalWorkerLeaveFields(Map<String, dynamic> worker) {
+    final canonical = canonicalWorkerLeaveFields(worker);
+    for (final entry in canonical.entries) {
+      final current = worker[entry.key];
+      if (entry.key == 'leaveBalances') {
+        if (current is! Map) return false;
+        final currentMap = Map<String, dynamic>.from(current);
+        final expectedMap = entry.value as Map<String, int>;
+        for (final balance in expectedMap.entries) {
+          if (currentMap[balance.key] is! int ||
+              currentMap[balance.key] != balance.value) {
+            return false;
+          }
+        }
+      } else if (current is! int || current != entry.value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static const Set<String> paidLeaveTypes = {
     'Annual Leave',
     'Sick Leave',
@@ -188,7 +299,8 @@ class TimeOffService {
 
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
-      if (excludingRecordId != null && leave['id']?.toString() == excludingRecordId) {
+      if (excludingRecordId != null &&
+          leave['id']?.toString() == excludingRecordId) {
         continue;
       }
       if (!_belongsToWorker(
@@ -418,7 +530,8 @@ class TimeOffService {
 
     final sick = int.tryParse((worker['sickLeaves'] ?? '').toString()) ?? 5;
     final casual = int.tryParse((worker['casualLeaves'] ?? '').toString()) ?? 5;
-    final medical = int.tryParse((worker['medicalLeaves'] ?? '').toString()) ?? 1;
+    final medical =
+        int.tryParse((worker['medicalLeaves'] ?? '').toString()) ?? 1;
 
     final total = sick + casual + medical;
     return total > 0 ? total : 25;
@@ -441,7 +554,6 @@ class TimeOffService {
   }
 
   static int getLeaveBalance(Map<String, dynamic> worker, String type) {
-    final leaveBalances = worker['leaveBalances'] as Map<String, dynamic>?;
     final fieldName = switch (normalizeLeaveType(type)) {
       'Annual Leave' => 'annualLeave',
       'Sick Leave' => 'sickLeave',
@@ -450,30 +562,20 @@ class TimeOffService {
       _ => '',
     };
     if (fieldName.isEmpty) return 0;
-    if (leaveBalances != null && leaveBalances.containsKey(fieldName)) {
-      return int.tryParse(leaveBalances[fieldName]?.toString() ?? '0') ?? 0;
-    }
-    return switch (fieldName) {
-      'annualLeave' => int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0,
-      'sickLeave' => int.tryParse((worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0').toString()) ?? 0,
-      'casualLeave' => int.tryParse((worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0').toString()) ?? 0,
-      'medicalLeave' => int.tryParse((worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0').toString()) ?? 0,
-      _ => 0,
-    };
+    final balances =
+        canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
+    return balances[fieldName] ?? 0;
   }
 
-  
-  
-  
-  static int configuredLimitForType(
-    Map<String, dynamic> worker,
-    String type,
-  ) {
+  static int configuredLimitForType(Map<String, dynamic> worker, String type) {
     final normType = normalizeLeaveType(type);
     switch (normType) {
       case 'Annual Leave':
-        final annualLimit = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        return annualLimit > 0 ? annualLimit : configuredPaidLeaveAllowance(worker);
+        final annualLimit =
+            int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+        return annualLimit > 0
+            ? annualLimit
+            : configuredPaidLeaveAllowance(worker);
       case 'Sick Leave':
         return int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
       case 'Casual Leave':
@@ -485,9 +587,6 @@ class TimeOffService {
     }
   }
 
-  
-  
-  
   static int remainingForType(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
@@ -530,29 +629,21 @@ class TimeOffService {
   }
 
   static int totalAvailableLeaves(Map<String, dynamic> worker) {
-    final leaveBalances = worker['leaveBalances'] as Map<String, dynamic>?;
-    if (leaveBalances != null) {
-      final annual = int.tryParse(leaveBalances['annualLeave']?.toString() ?? '0') ?? 0;
-      final sick = int.tryParse(leaveBalances['sickLeave']?.toString() ?? '0') ?? 0;
-      final casual = int.tryParse(leaveBalances['casualLeave']?.toString() ?? '0') ?? 0;
-      final medical = int.tryParse(leaveBalances['medicalLeave']?.toString() ?? '0') ?? 0;
-      return annual + sick + casual + medical;
-    }
-    final annual = int.tryParse((worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0').toString()) ?? 0;
-    final sick = int.tryParse((worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0').toString()) ?? 0;
-    final casual = int.tryParse((worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0').toString()) ?? 0;
-    final medical = int.tryParse((worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0').toString()) ?? 0;
-    return annual + sick + casual + medical;
+    final balances =
+        canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
+    return balances.values.fold(0, (sum, value) => sum + value);
   }
 
-  
-  
-  
   static bool isWorkerLimitReached(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
   ) {
-    const types = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Medical Leave'];
+    const types = [
+      'Annual Leave',
+      'Sick Leave',
+      'Casual Leave',
+      'Medical Leave',
+    ];
     for (final type in types) {
       if (getLeaveBalance(worker, type) > 0) {
         return false;
@@ -601,8 +692,6 @@ class TimeOffService {
     required DateTime month,
     DateTime? referenceDate,
   }) {
-    
-    
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
@@ -627,7 +716,7 @@ class TimeOffService {
         (date) =>
             date.year == month.year &&
             date.month == month.month &&
-            date.isBefore(today),
+            !date.isAfter(today),
       );
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);

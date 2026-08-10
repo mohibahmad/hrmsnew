@@ -556,9 +556,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
 
-      final matchesSearch =
-          name.contains(query) ||
-          position.contains(query);
+      final matchesSearch = name.contains(query) || position.contains(query);
 
       if (!matchesSearch) return false;
       return _matchesFilter(position, _selectedTab);
@@ -1315,98 +1313,86 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.event_available,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final cardWidth = (constraints.maxWidth - 12) / 2;
+                              return Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildTimeOffMetricCard(
+                                      icon: const Icon(
+                                        Icons.event_available,
+                                        color: Color(0xFF004FDE),
+                                        size: 20,
+                                      ),
+                                      title: 'total_leave_days'.tr(),
+                                      value: selectedDays,
+                                    ),
                                   ),
-                                  title: 'total_leave_days'.tr(),
-                                  value: selectedDays,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildTimeOffMetricCard(
+                                      icon: const Icon(
+                                        Icons.calendar_month,
+                                        color: Color(0xFF004FDE),
+                                        size: 20,
+                                      ),
+                                      title: 'requested_days'.tr(),
+                                      value: selectedDays,
+                                    ),
                                   ),
-                                  title: 'available_leave_days'.tr(),
-                                  value:
-                                      '${TimeOffService.totalAvailableLeaves(data)}',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.calendar_month,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildTimeOffMetricCard(
+                                      icon: const Icon(
+                                        Icons.beach_access,
+                                        color: Color(0xFF004FDE),
+                                        size: 20,
+                                      ),
+                                      title: 'remaining_days'.tr(),
+                                      value:
+                                          '${TimeOffService.totalAvailableLeaves(data)}',
+                                    ),
                                   ),
-                                  title: 'requested_days'.tr(),
-                                  value: selectedDays,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.beach_access,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildTimeOffMetricCard(
+                                      icon: const Icon(
+                                        Icons.date_range,
+                                        color: Color(0xFF004FDE),
+                                        size: 20,
+                                      ),
+                                      title: 'selected_dates'.tr(),
+                                      value: _formatSelectedDatesSummary(
+                                        allDatesWithTypes,
+                                      ),
+                                      onTap: () {
+                                        _showSelectedDatesDialog(
+                                          context,
+                                          allDatesWithTypes,
+                                          data,
+                                        );
+                                      },
+                                    ),
                                   ),
-                                  title: 'remaining_days'.tr(),
-                                  value:
-                                      '${TimeOffService.totalAvailableLeaves(data)}',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.date_range,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _buildTimeOffMetricCard(
+                                      icon: const Icon(
+                                        Icons.notes,
+                                        color: Color(0xFF004FDE),
+                                        size: 20,
+                                      ),
+                                      title: 'notes_label'.tr(),
+                                      value: notes.isNotEmpty ? notes : '-',
+                                    ),
                                   ),
-                                  title: 'selected_dates'.tr(),
-                                  value:
-                                      '${allDatesWithTypes.length} ${'days'.tr()}',
-                                  onTap: () {
-                                    _showSelectedDatesDialog(
-                                      context,
-                                      allDatesWithTypes,
-                                      name,
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
-                                    Icons.notes,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'notes_label'.tr(),
-                                  value: notes.isNotEmpty ? notes : '-',
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -1597,25 +1583,40 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
+  String _formatSelectedDatesSummary(
+    List<Map<String, dynamic>> datesWithTypes,
+  ) {
+    if (datesWithTypes.isEmpty) return 'select_date'.tr();
+    String formatDate(DateTime date) {
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day/$month/${date.year}';
+    }
+
+    final visibleDates = datesWithTypes
+        .take(3)
+        .map((e) => formatDate(e['date'] as DateTime))
+        .join(', ');
+    final remaining = datesWithTypes.length - 3;
+    return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
+  }
+
   void _showSelectedDatesDialog(
     BuildContext context,
     List<Map<String, dynamic>> datesWithTypes,
-    String workerName, [
+    Map<String, dynamic> worker, [
     String? leaveType,
   ]) {
-    final typeCounts = <String, int>{};
-    for (final item in datesWithTypes) {
-      final rawType = (item['type'] ?? leaveType ?? '').toString();
-      final normalizedType = TimeOffService.normalizeLeaveType(rawType);
-      if (normalizedType.isEmpty) continue;
-      typeCounts[normalizedType] = (typeCounts[normalizedType] ?? 0) + 1;
-    }
     const typeOrder = [
       'Annual Leave',
       'Sick Leave',
       'Casual Leave',
       'Medical Leave',
     ];
+    final configuredLeaveDays = {
+      for (final type in typeOrder)
+        type: TimeOffService.configuredLimitForType(worker, type),
+    };
 
     showDialog(
       context: context,
@@ -1623,10 +1624,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 560,
+          width: 440,
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
-            maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.88,
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.68,
           ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -1644,17 +1645,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: const BoxDecoration(color: Color(0xFF004FDE)),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.calendar_month_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'selected_dates_count_title'.tr(
@@ -1662,7 +1663,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'SF Pro Display',
                         ),
@@ -1672,7 +1673,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       icon: const Icon(
                         Icons.close,
                         color: Colors.white,
-                        size: 20,
+                        size: 18,
                       ),
                       onPressed: () => Navigator.of(ctx).pop(),
                       padding: EdgeInsets.zero,
@@ -1681,46 +1682,44 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   ],
                 ),
               ),
-              if (typeCounts.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  color: const Color(0xFFF8FAFC),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: typeOrder.where(typeCounts.containsKey).map((
-                      type,
-                    ) {
-                      final color = LeaveColors.getColor(type);
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 5,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                color: const Color(0xFFF8FAFC),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: typeOrder.map((type) {
+                    final color = LeaveColors.getColor(type);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: LeaveColors.getBgColor(type),
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.25),
                         ),
-                        decoration: BoxDecoration(
-                          color: LeaveColors.getBgColor(type),
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                            color: color.withValues(alpha: 0.25),
-                          ),
+                      ),
+                      child: Text(
+                        '${_localizedLeaveType(type)}: '
+                        '${configuredLeaveDays[type]} ${'days'.tr()}',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'SF Pro Display',
                         ),
-                        child: Text(
-                          '${_localizedLeaveType(type)}: ${typeCounts[type]}',
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 ),
+              ),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: datesWithTypes.isEmpty
                       ? Padding(
                           padding: const EdgeInsets.all(24),
@@ -1735,8 +1734,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       : ListView.separated(
                           shrinkWrap: true,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            horizontal: 12,
+                            vertical: 4,
                           ),
                           itemCount: datesWithTypes.length,
                           separatorBuilder: (_, _) => const Divider(
@@ -1755,12 +1754,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 : _localizedLeaveType(effectiveType);
                             final localeName = context.locale.toString();
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 6),
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 28,
-                                    height: 28,
+                                    width: 24,
+                                    height: 24,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFE5EEFC),
                                       borderRadius: BorderRadius.circular(6),
@@ -1771,12 +1770,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       style: const TextStyle(
                                         color: Color(0xFF004FDE),
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                        fontSize: 11,
                                         fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -1787,7 +1786,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                             localeName,
                                           ).format(date),
                                           style: const TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.black,
                                             fontFamily: 'SF Pro Display',
@@ -1798,7 +1797,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                             localeName,
                                           ).format(date),
                                           style: const TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 11,
                                             color: Color(0xFF666666),
                                             fontWeight: FontWeight.w500,
                                             fontFamily: 'SF Pro Display',
@@ -1811,7 +1810,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                        horizontal: 6,
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
@@ -1823,7 +1822,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       child: Text(
                                         displayType,
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                           color: LeaveColors.getColor(
                                             effectiveType ?? '',

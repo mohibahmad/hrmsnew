@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pdfx/pdfx.dart';
 import 'add_worker_flow.dart' show PdfPagePreview, DocPreview;
 import '../utils/guest_restriction.dart';
+import '../utils/document_file_name.dart';
 
 class DocumentsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -499,6 +500,12 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     widget.worker['cv_url']?.toString(),
   ]);
 
+  String? get _existingCvName => _firstNonEmpty([
+    widget.worker['cvFileName']?.toString(),
+    widget.worker['cv_file_name']?.toString(),
+    widget.worker['cvName']?.toString(),
+  ]);
+
   String get _workerId => (widget.worker['id'] ?? '').toString().trim();
   String get _workerName =>
       (widget.worker['name'] ?? 'worker_fallback'.tr()).toString().trim();
@@ -509,7 +516,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       var cleanValue = value.split('?').first;
       cleanValue = Uri.decodeComponent(cleanValue);
       final name = cleanValue.split('/').last.trim();
-      
+
       final cleaned = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
       return cleaned.isNotEmpty ? cleaned : 'cv';
     } catch (_) {
@@ -555,7 +562,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     final existingCv = _existingCv;
     if (existingCv != null && existingCv.isNotEmpty) {
       _isCvUploaded = true;
-      _cvName = _cleanFileName(existingCv);
+      _cvName = _existingCvName ?? _cleanFileName(existingCv);
     }
   }
 
@@ -776,6 +783,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         updates['id_back'] = url;
       } else {
         updates['cv'] = url;
+        updates['cvFileName'] = fileName ?? _cleanFileName(url);
       }
       updates['name'] = _workerName;
 
@@ -1240,7 +1248,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                               if (_isCvUploaded ||
                                   (_existingCv != null &&
                                       _existingCv!.isNotEmpty)) ...[
-                                
                                 GestureDetector(
                                   onTap: () => _downloadFile(
                                     _existingCv,
@@ -1279,7 +1286,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                
+
                                 GestureDetector(
                                   onTap: () => _pickFile('cv'),
                                   child: Container(
@@ -1777,24 +1784,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   }
 }
 
-String _cleanDocumentFileName(String rawName) {
-  if (rawName.trim().isEmpty) return 'document'.tr();
-  String name = rawName.trim().split('?').first;
-  try {
-    name = Uri.decodeComponent(name);
-  } catch (_) {}
-  if (name.contains('/')) {
-    name = name.split('/').last;
-  }
-  name = name.trim();
-  
-  name = name.replaceFirst(RegExp(r'^\d+_\d+_'), '');
-  name = name.replaceFirst(RegExp(r'^\d+[_-]*'), '');
-  name = name.replaceAll(RegExp(r'_+'), ' ');
-  name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return name.trim().isNotEmpty ? name.trim() : 'document'.tr();
-}
-
 class _FullScreenPdfPreview extends StatefulWidget {
   final String? url;
 
@@ -2088,17 +2077,20 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
     final previewWidth = size.width > 720
         ? (size.width * 0.85).clamp(450.0, 720.0)
         : size.width;
-    
-    
-    
-    
+
     final maxPreviewHeight = (size.height * 0.9 - 70).clamp(160.0, 640.0);
     final previewHeight = (size.height * 0.8)
         .clamp(160.0, maxPreviewHeight)
         .toDouble();
     final failedToLoadText = 'failed_to_load'.tr();
-    final cleanTitle = _cleanDocumentFileName(widget.label);
-    final cleanFileName = _cleanDocumentFileName(widget.url);
+    final cleanTitle = cleanUploadedDocumentFileName(
+      widget.label,
+      fallback: 'document'.tr(),
+    );
+    final cleanFileName = cleanUploadedDocumentFileName(
+      widget.url,
+      fallback: 'document'.tr(),
+    );
 
     final Widget imageContent = widget.url.startsWith('data:')
         ? Image.memory(

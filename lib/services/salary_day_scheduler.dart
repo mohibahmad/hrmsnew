@@ -22,7 +22,6 @@ import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/company_profile_helper.dart';
-import '../utils/date_utils.dart';
 import '../widgets/amount_text.dart';
 
 class AutoPayrollResult {
@@ -47,6 +46,7 @@ class AutoPayrollResult {
   final String currency;
   final String totalWorkDays;
   final String position;
+  final String employmentType;
   final String salaryType;
   final String? imageUrl;
   double prorationFactor;
@@ -73,6 +73,7 @@ class AutoPayrollResult {
     this.currency = CurrencyUtils.defaultCode,
     this.totalWorkDays = '',
     this.position = '',
+    this.employmentType = '',
     this.salaryType = 'Monthly',
     this.imageUrl,
     this.prorationFactor = 1.0,
@@ -100,10 +101,57 @@ class AutoPayrollResult {
     currency: currency,
     totalWorkDays: totalWorkDays,
     position: position,
+    employmentType: employmentType,
     salaryType: salaryType,
     imageUrl: imageUrl,
     prorationFactor: prorationFactor,
   );
+
+  Map<String, dynamic> toCanonicalPayrollRecord({
+    required String payrollKey,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime runDate,
+    int? salaryPaymentDay,
+  }) {
+    return {
+      'workerId': workerId,
+      'name': workerName,
+      'email': email,
+      'position': position,
+      if (employmentType.trim().isNotEmpty) 'type1': employmentType.trim(),
+      if (imageUrl?.trim().isNotEmpty ?? false) 'profileImage': imageUrl,
+      'status': 'Paid',
+      'totalWorkDays': int.tryParse(totalWorkDays) ?? 0,
+      'absents': absents,
+      'halfDays': halfDays,
+      'paidLeaves': paidLeaves,
+      'unpaidLeaves': unpaidLeaves,
+      'leaves': leaves,
+      'overtimeAmount': PayrollService.extractSalary(overtimeAmount),
+      'absentDeduction': PayrollService.extractSalary(absentDeduction),
+      'leaveDeduction': PayrollService.extractSalary(leaveDeduction),
+      'customDeduction': PayrollService.extractSalary(customDeduction),
+      'deductionsAreTotals': true,
+      'salary': salary,
+      'currency': currency,
+      'salaryType': salaryType,
+      'salaryPaymentDay': salaryPaymentDay,
+      'netSalary': netSalary,
+      'netSalaryAmount': rawNetSalaryValue,
+      'netSalaryFormatted': netSalary,
+      'prorationFactor': prorationFactor,
+      'payrollKey': payrollKey,
+      'payPeriod': periodEnd,
+      'payPeriodStart': periodStart,
+      'payPeriodEnd': periodEnd,
+      'dueDate': periodEnd,
+      'cancelledAt': null,
+      'lastModified': runDate,
+      'payrollDate': runDate,
+      'paidAt': runDate,
+    };
+  }
 }
 
 class PayrollRunSummary {
@@ -113,6 +161,7 @@ class PayrollRunSummary {
   final int failCount;
   final List<AutoPayrollResult> results;
   final String periodLabel;
+  final int? salaryPaymentDay;
 
   PayrollRunSummary({
     required this.runDate,
@@ -121,6 +170,7 @@ class PayrollRunSummary {
     required this.failCount,
     required this.results,
     required this.periodLabel,
+    this.salaryPaymentDay,
   });
 }
 
@@ -308,9 +358,7 @@ class SalaryDayScheduler {
           : int.tryParse(rawDay?.toString() ?? '');
       salaryDay = (parsedDay != null && parsedDay >= 1 && parsedDay <= 31)
           ? parsedDay
-          : (isGuest
-                ? await PreferencesService.getCompanySalaryDay()
-                : null);
+          : (isGuest ? await PreferencesService.getCompanySalaryDay() : null);
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SalaryDayPeriod');
       salaryDay = null;
@@ -450,27 +498,6 @@ class SalaryDayScheduler {
       return null;
     }
 
-    final periodReference = DateTime(
-      effectivePayrollMonth.year,
-      effectivePayrollMonth.month,
-      15,
-    );
-    final periodStart = PayrollService.payPeriodStart(
-      periodReference,
-      salaryDay,
-    );
-    final periodEnd = PayrollService.payPeriodEnd(periodReference, salaryDay);
-    Set<DateTime>? workingDates;
-    try {
-      workingDates = await firestoreService.getWorkingDates(
-        from: periodStart,
-        toExclusive: periodEnd,
-      );
-    } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'SalaryDayWorkingDates');
-      workingDates = null;
-    }
-
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
       final worker = workers[i];
@@ -502,6 +529,7 @@ class SalaryDayScheduler {
             currency: companyCurrency,
             totalWorkDays: totalWorkDays,
             position: (worker['position'] ?? '').toString(),
+            employmentType: PayrollService.workerEmploymentType(worker),
             salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
             imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
                 ? (worker['profileImage'] ?? '').toString()
@@ -511,16 +539,9 @@ class SalaryDayScheduler {
         continue;
       }
 
-      final joiningDate = AppDateUtils.dateFromValue(
-        worker['joiningDate'] ?? worker['dateOfJoining'],
-      );
-      final prorationFactor = PayrollService.prorationFactor(
-        joiningDate: joiningDate,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-        totalWorkDays: workDays,
-        workingDates: workingDates,
-      );
+      // Working-day count determines daily rates and deductions only. Monthly
+      // salary is not automatically prorated from the employee joining date.
+      const prorationFactor = 1.0;
 
       if (!isGuest && attendanceError.isNotEmpty) {
         results.add(
@@ -535,6 +556,7 @@ class SalaryDayScheduler {
             currency: companyCurrency,
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
+            employmentType: PayrollService.workerEmploymentType(worker),
             salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
             prorationFactor: prorationFactor,
             imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
@@ -634,6 +656,7 @@ class SalaryDayScheduler {
             currency: companyCurrency,
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
+            employmentType: PayrollService.workerEmploymentType(worker),
             salaryType: salaryType,
             prorationFactor: prorationFactor,
             imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
@@ -666,6 +689,7 @@ class SalaryDayScheduler {
           currency: companyCurrency,
           totalWorkDays: workDays.toString(),
           position: (worker['position'] ?? '').toString(),
+          employmentType: PayrollService.workerEmploymentType(worker),
           salaryType: salaryType,
           prorationFactor: prorationFactor,
           imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
@@ -685,6 +709,7 @@ class SalaryDayScheduler {
       failCount: failCount,
       results: results,
       periodLabel: periodLabel,
+      salaryPaymentDay: salaryDay,
     );
     var committedSummary = summary;
     var committedCount = 0;
@@ -701,6 +726,7 @@ class SalaryDayScheduler {
         failCount: selectedResults.where((r) => !r.success).length,
         results: selectedResults,
         periodLabel: summary.periodLabel,
+        salaryPaymentDay: summary.salaryPaymentDay,
       );
       committedSummary = filteredSummary;
       if (!context.mounted) return null;
@@ -920,42 +946,50 @@ class SalaryDayScheduler {
     bool isGuest,
     BuildContext context,
   ) async {
+    final periodReference =
+        PayrollService.parsePayrollPeriodLabel(summary.periodLabel) ??
+        summary.runDate;
+    final periodStart = PayrollService.payPeriodStart(
+      periodReference,
+      summary.salaryPaymentDay,
+    );
+    final periodEnd = PayrollService.payPeriodEnd(
+      periodReference,
+      summary.salaryPaymentDay,
+    );
+
     if (isGuest) {
       final savedPayroll = DummyData.payroll.toList();
       final savedExpenses = DummyData.expenses.toList();
       try {
         for (final r in summary.results) {
           if (!r.success) continue;
-          final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
-          final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
+          final payrollIdentity = r.workerId.isNotEmpty
+              ? r.workerId
+              : r.email.trim().toLowerCase();
+          final payrollKey = PayrollService.payrollKeyForPeriod(
+            payrollIdentity,
+            periodStart,
+            periodEnd,
+          );
           final nowIso = DateTime.now().toIso8601String();
+          final canonicalRecord = r.toCanonicalPayrollRecord(
+            payrollKey: payrollKey,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            runDate: summary.runDate,
+            salaryPaymentDay: summary.salaryPaymentDay,
+          );
           final record = {
-            'workerId': r.workerId,
-            'name': r.workerName,
-            'email': r.email,
-            'status': 'Paid',
-            'totalWorkDays': r.totalWorkDays,
-            'absents': r.absents.toString(),
-            'paidLeaves': r.paidLeaves,
-            'unpaidLeaves': r.unpaidLeaves,
-            'leaves': r.leaves.toString(),
-            'overtimeAmount': r.overtimeAmount,
-            'absentDeduction': r.absentDeduction,
-            'leaveDeduction': r.leaveDeduction,
-            'deductionsAreTotals': true,
-            'salary': r.salary,
-            'currency': r.currency,
-            'salaryType': r.salaryType,
-            'netSalary': r.netSalary,
-            'netSalaryAmount': r.rawNetSalaryValue,
-            'netSalaryFormatted': r.netSalary,
-            'prorationFactor': r.prorationFactor,
-            'payrollKey': payrollKey,
-            'payPeriod': '${summary.periodLabel}-01',
-            'cancelledAt': null,
-            'lastModified': nowIso,
+            ...canonicalRecord,
+            'payPeriod': periodEnd.toIso8601String(),
+            'payPeriodStart': periodStart.toIso8601String(),
+            'payPeriodEnd': periodEnd.toIso8601String(),
+            'dueDate': periodEnd.toIso8601String(),
+            'lastModified': summary.runDate.toIso8601String(),
             'createdAt': nowIso,
             'payrollDate': summary.runDate.toIso8601String(),
+            'paidAt': summary.runDate.toIso8601String(),
           };
           final existingPayrollIndex = DummyData.payroll.indexWhere(
             (payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey,
@@ -1016,7 +1050,7 @@ class SalaryDayScheduler {
       listen: false,
     );
     final successfulResults = summary.results.where((r) => r.success).toList();
-    final payPeriodDate = DateTime.parse('${summary.periodLabel}-01');
+    final payPeriodDate = periodEnd;
     final latestPayrollSnapshot = await firestoreService.payrollStream.first
         .timeout(const Duration(seconds: 20));
     final latestPayrollRecords = latestPayrollSnapshot.docs
@@ -1044,36 +1078,18 @@ class SalaryDayScheduler {
           ? r.workerId
           : r.email.trim().toLowerCase();
       if (payrollIdentity.isEmpty) continue;
-      final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
-      final record = {
-        'workerId': r.workerId,
-        'name': r.workerName,
-        'email': r.email,
-        'status': 'Paid',
-        'totalWorkDays': r.totalWorkDays,
-        'absents': r.absents.toString(),
-        'halfDays': r.halfDays,
-        'paidLeaves': r.paidLeaves,
-        'unpaidLeaves': r.unpaidLeaves,
-        'leaves': r.leaves.toString(),
-        'overtimeAmount': r.overtimeAmount,
-        'absentDeduction': r.absentDeduction,
-        'leaveDeduction': r.leaveDeduction,
-        'deductionsAreTotals': true,
-        'salary': r.salary,
-        'currency': r.currency,
-        'salaryType': r.salaryType,
-        'netSalary': r.netSalary,
-        'netSalaryAmount': r.rawNetSalaryValue,
-        'netSalaryFormatted': r.netSalary,
-        'prorationFactor': r.prorationFactor,
-        'payrollKey': payrollKey,
-        'payPeriod': payPeriodDate,
-        'cancelledAt': null,
-        'lastModified': summary.runDate,
-        'payrollDate': summary.runDate,
-        'paidAt': summary.runDate,
-      };
+      final payrollKey = PayrollService.payrollKeyForPeriod(
+        payrollIdentity,
+        periodStart,
+        periodEnd,
+      );
+      final record = r.toCanonicalPayrollRecord(
+        payrollKey: payrollKey,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        runDate: summary.runDate,
+        salaryPaymentDay: summary.salaryPaymentDay,
+      );
       payrollRecords.add(record);
 
       final netAmount = r.rawNetSalaryValue;
@@ -1084,7 +1100,9 @@ class SalaryDayScheduler {
           'name': r.workerName,
           'date': summary.runDate,
           'paidAt': summary.runDate,
-          'payPeriod': payPeriodDate,
+          'payPeriod': periodEnd,
+          'payPeriodStart': periodStart,
+          'payPeriodEnd': periodEnd,
           'category': 'Salary',
           'amount': netAmount,
           'description':
@@ -1190,10 +1208,20 @@ class SalaryDayScheduler {
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
       final salaryDayForPdf = await _loadSalaryDay(context);
-      final periodStart = PayrollService.payPeriodStart(now, salaryDayForPdf);
-      final periodEnd = PayrollService.payPeriodEnd(now, salaryDayForPdf);
-      final periodDisplay =
-          '${_formatPdfDate(periodStart)} – ${_formatPdfDate(periodEnd)}';
+      final periodReference =
+          PayrollService.parsePayrollPeriodLabel(periodLabel) ?? now;
+      final periodStart = PayrollService.payPeriodStart(
+        periodReference,
+        salaryDayForPdf,
+      );
+      final periodEnd = PayrollService.payPeriodEnd(
+        periodReference,
+        salaryDayForPdf,
+      );
+      final periodDisplay = PayrollService.formatPayPeriodRange(
+        periodStart,
+        periodEnd,
+      );
 
       for (var index = 0; index < selected.length; index++) {
         final r = selected[index];
@@ -1237,7 +1265,9 @@ class SalaryDayScheduler {
           totalWorkDays: r.totalWorkDays,
           daysWorked: _formatDayCount(payableDays),
           absents: _formatDayCount(absentEquivalent),
-          leaves: deductibleLeaves.toString(),
+          leaves: r.leaves.toString(),
+          paidLeaves: r.paidLeaves.toString(),
+          unpaidLeaves: r.unpaidLeaves.toString(),
           overtimeAmount: _invoiceMoney(overtimeAmt, currency),
           salary: r.salary,
           dailyRate: _invoiceMoney(
@@ -1886,7 +1916,15 @@ class SalaryDayScheduler {
                                             stLower.contains('freelance') ||
                                             (stLower != 'monthly' &&
                                                 stLower.isNotEmpty);
-                                        final typeLabel = isContractorWorker
+                                        final storedEmploymentType = r
+                                            .employmentType
+                                            .trim();
+                                        final typeLabel =
+                                            storedEmploymentType.isNotEmpty
+                                            ? LocalizationHelper.localizeType1(
+                                                storedEmploymentType,
+                                              ).toUpperCase()
+                                            : isContractorWorker
                                             ? 'type_contractor'.tr()
                                             : 'type_full_time'.tr();
 
@@ -2286,8 +2324,7 @@ class SalaryDayScheduler {
                                           final value =
                                               PayrollService.formatNumber(
                                                 total,
-                                                locale: context
-                                                    .locale
+                                                locale: context.locale
                                                     .toString(),
                                               );
                                           return prefix.isEmpty
@@ -2583,9 +2620,7 @@ class SalaryDayScheduler {
                                     Text(
                                       AmountText.formatCompact(
                                         result.netSalary,
-                                        locale: detailContext
-                                            .locale
-                                            .toString(),
+                                        locale: detailContext.locale.toString(),
                                       ),
                                       style: const TextStyle(
                                         fontSize: 32,
@@ -2640,8 +2675,7 @@ class SalaryDayScheduler {
                                         result.salary.isNotEmpty
                                             ? AmountText.formatCompact(
                                                 result.salary,
-                                                locale: detailContext
-                                                    .locale
+                                                locale: detailContext.locale
                                                     .toString(),
                                               )
                                             : _zeroAmount(result.salary),
@@ -2654,8 +2688,7 @@ class SalaryDayScheduler {
                                         result.overtimeAmount.isNotEmpty
                                             ? AmountText.formatCompact(
                                                 result.overtimeAmount,
-                                                locale: detailContext
-                                                    .locale
+                                                locale: detailContext.locale
                                                     .toString(),
                                               )
                                             : _zeroAmount(result.salary),
@@ -3162,25 +3195,6 @@ class SalaryDayScheduler {
     return numeric == numeric.roundToDouble()
         ? numeric.toStringAsFixed(0)
         : numeric.toStringAsFixed(1);
-  }
-
-  String _formatPdfDate(DateTime date) {
-    final months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month]} ${date.day}, ${date.year}';
   }
 
   String _invoiceMoney(double amount, String currency) {

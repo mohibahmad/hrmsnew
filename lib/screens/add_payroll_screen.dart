@@ -1,6 +1,5 @@
 import 'dart:async' show TimeoutException;
 import 'dart:ui';
-import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -26,7 +25,7 @@ import '../widgets/notification_sidebar.dart';
 import '../widgets/amount_text.dart';
 import 'package:provider/provider.dart';
 
-Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
+Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
   return InvoiceService.generatePayrollInvoice(
     employeeName: args['employeeName'] as String,
     email: args['email'] as String,
@@ -36,6 +35,8 @@ Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
     daysWorked: args['daysWorked'] as String,
     absents: args['absents'] as String,
     leaves: args['leaves'] as String,
+    paidLeaves: args['paidLeaves'] as String? ?? '',
+    unpaidLeaves: args['unpaidLeaves'] as String? ?? '',
     overtimeAmount: args['overtimeAmount'] as String,
     salary: args['salary'] as String,
     dailyRate: args['dailyRate'] as String,
@@ -53,6 +54,7 @@ Future<Uint8List> _generateInvoiceInIsolate(Map<String, dynamic> args) {
     companyId: args['companyId'] as String? ?? '',
     companyStampImageUrl: args['companyStampImageUrl'] as String?,
     companyLogoUrl: args['companyLogoUrl'] as String?,
+    companyLogoBytes: args['companyLogoBytes'] as Uint8List?,
     workerId: args['workerId'] as String? ?? '',
   );
 }
@@ -115,7 +117,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
-  double _prorationFactor = 1.0;
+  // Working days affect daily rates/deductions, not the period base salary.
+  static const double _prorationFactor = 1.0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
   int? _salaryDay;
@@ -438,7 +441,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               throw TimeoutException('working_days_timeout'.tr());
             },
           );
-      await _computeProration(workingDays);
       if (!mounted) return;
       setState(() {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
@@ -485,39 +487,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         setState(() => _isAttendanceLoading = false);
         if (_savedValuesFingerprint.isEmpty) _captureSavedValues();
       }
-    }
-  }
-
-  Future<void> _computeProration(int workingDays) async {
-    _prorationFactor = 1.0;
-    try {
-      final joiningDate = AppDateUtils.dateFromValue(
-        widget.workerData['joiningDate'] ?? widget.workerData['dateOfJoining'],
-      );
-      if (joiningDate == null) return;
-      final periodStart = PayrollService.payPeriodStart(
-        _payrollMonth,
-        _salaryDay,
-      );
-      final periodEnd = PayrollService.payPeriodEnd(_payrollMonth, _salaryDay);
-      Set<DateTime>? workingDates;
-      try {
-        workingDates = await _firestore.getWorkingDates(
-          from: periodStart,
-          toExclusive: periodEnd,
-        );
-      } catch (_) {
-        workingDates = null;
-      }
-      _prorationFactor = PayrollService.prorationFactor(
-        joiningDate: joiningDate,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-        totalWorkDays: workingDays > 0 ? workingDays : 30,
-        workingDates: workingDates,
-      );
-    } catch (_) {
-      _prorationFactor = 1.0;
     }
   }
 
@@ -589,8 +558,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         ? _workerId.trim()
         : _email.trim().toLowerCase();
     final (periodStart, periodEnd) = _currentPayPeriod;
-    final payrollKey =
-        '${payrollIdentity}_${PayrollService.periodDateKey(periodStart)}_${PayrollService.periodDateKey(periodEnd)}';
+    final payrollKey = PayrollService.payrollKeyForPeriod(
+      payrollIdentity,
+      periodStart,
+      periodEnd,
+    );
     final netAmount =
         (_calcResult['netSalary'] as num?)?.toDouble() ??
         PayrollService.extractSalary(_calculatedNet);
@@ -757,12 +729,15 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               (p['id'] ?? '').toString() == payrollId;
         });
         if (idx != -1) {
+          final cancelledAt = DateTime.now();
           guestPayroll[idx] = {
             ...guestPayroll[idx],
             'status': 'Unpaid',
             'isPaid': false,
             'paid': false,
             'paymentStatus': 'unpaid',
+            'cancelledAt': cancelledAt,
+            'lastModified': cancelledAt,
           }..remove('paidAt');
           guestPayroll[idx].remove('paidOn');
           guestPayroll[idx].remove('paymentDate');
@@ -812,16 +787,25 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
 
     final cr = _calcResult;
-    final payPeriod =
-        '${_payrollMonth.month.toString().padLeft(2, '0')}/${_payrollMonth.year}';
+    final (periodStart, periodEnd) = _currentPayPeriod;
+    final payPeriod = PayrollService.formatPayPeriodRange(
+      periodStart,
+      periodEnd,
+      locale: context.locale.toString(),
+    );
     final fileName =
         'payroll_${_name.replaceAll(' ', '_')}'
-        '_${payPeriod.replaceAll('/', '-')}.pdf';
+        '_${PayrollService.periodDateKey(periodStart)}'
+        '_${PayrollService.periodDateKey(periodEnd)}.pdf';
 
     final companyProfile =
         await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+    final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
+    final companyLogoBytes = await InvoiceService.resolveCompanyLogoBytes(
+      companyLogoUrl,
+    );
 
-    final bytes = await compute(_generateInvoiceInIsolate, {
+    final bytes = await _generatePayrollInvoice({
       'employeeName': _name,
       'email': _email,
       'position': _position,
@@ -830,6 +814,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'daysWorked': (cr['workedDays'] ?? 0).toString(),
       'absents': _absentsCtrl.text.trim(),
       'leaves': _leavesCtrl.text.trim(),
+      'paidLeaves': _paidLeaves.toString(),
+      'unpaidLeaves': _unpaidLeaves.toString(),
       'overtimeAmount': _overtimeAmountCtrl.text.trim(),
       'salary': _salaryStr,
       'dailyRate': (cr['formattedDailyRate'] as String?) ?? '',
@@ -849,7 +835,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'companyId': (companyProfile['companyId'] ?? '').toString(),
       'companyStampImageUrl': (companyProfile['companyStampUrl'] ?? '')
           .toString(),
-      'companyLogoUrl': (companyProfile['profilePicUrl'] ?? '').toString(),
+      'companyLogoUrl': companyLogoUrl,
+      'companyLogoBytes': companyLogoBytes,
       'workerId': _workerId,
     });
 
@@ -1533,10 +1520,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   Widget _buildEmployeeBanner() {
     final (firstDay, lastDay) = _currentPayPeriod;
-    final monthFmt = DateFormat('MMM', context.locale.toString());
-    final period =
-        '${monthFmt.format(firstDay)} ${firstDay.day} – '
-        '${monthFmt.format(lastDay)} ${lastDay.day}, ${lastDay.year}';
+    final period = PayrollService.formatPayPeriodRange(
+      firstDay,
+      lastDay,
+      locale: context.locale.toString(),
+    );
 
     return Container(
       width: double.infinity,
@@ -1895,13 +1883,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           _breakdownRow(
             'gross_pay'.tr(),
             fmt('formattedGross'),
-            '${cr['workedDays'] ?? 0} ${'days'.tr()}',
+            '${cr['workedDays'] ?? 0} ${(cr['workedDays'] ?? 0).toString() == '1' ? 'day'.tr() : 'days'.tr()}',
           ),
           _breakdownRow('overtime_pay'.tr(), fmt('formattedOvertime'), null),
           _breakdownRow(
             'absent_deduction'.tr(),
             fmt('formattedAbsentDeduct'),
-            '${cr['absentDays'] ?? 0} ${'days'.tr()}',
+            '${cr['absentDays'] ?? 0} ${(cr['absentDays'] ?? 0).toString() == '1' ? 'day'.tr() : 'days'.tr()}',
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(

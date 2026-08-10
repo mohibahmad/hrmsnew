@@ -57,4 +57,89 @@ void main() {
     expect(currentKeys, hasLength(2));
     expect(previousKeys.containsAll(currentKeys), isFalse);
   });
+
+  test('approved paid leave on the reference date counts in payroll', () {
+    final counts = TimeOffService.monthlyLeaveCounts(
+      {'id': 'noah-id', 'email': 'noah@example.com'},
+      [
+        {
+          'workerId': 'noah-id',
+          'action': 'Annual Leave',
+          'status': 'Approved',
+          'selectedDates': [DateTime(2026, 8, 10), DateTime(2026, 8, 11)],
+        },
+      ],
+      month: DateTime(2026, 8),
+      referenceDate: DateTime(2026, 8, 10),
+    );
+
+    expect(counts['paidLeaves'], 1);
+    expect(counts['unpaidLeaves'], 0);
+    expect(counts['leaves'], 1);
+  });
+
+  test('legacy Avery leave counters normalize from total and remaining', () {
+    final normalized = TimeOffService.canonicalWorkerLeaveFields({
+      'annualLeaves': 14,
+      'availableAnnualLeaves': '0',
+      'annualLeavesUsed': '2',
+      'sickLeaves': '6',
+      'availableSickLeaves': '0',
+      'sickLeavesUsed': '0',
+      'casualLeaves': '3',
+      'availableCasualLeaves': '0',
+      'casualLeavesUsed': '0',
+      'medicalLeaves': '4',
+      'availableMedicalLeaves': '4',
+      'medicalLeavesUsed': '0',
+      'leavesUsed': '2',
+      'leaveBalances': {
+        'annualLeave': '12',
+        'sickLeave': '6',
+        'casualLeave': '3',
+        'medicalLeave': '4',
+      },
+    });
+
+    expect(normalized['annualLeavesUsed'], 14);
+    expect(normalized['sickLeavesUsed'], 6);
+    expect(normalized['casualLeavesUsed'], 3);
+    expect(normalized['medicalLeavesUsed'], 0);
+    expect(normalized['leavesUsed'], 23);
+    expect(normalized['leaveBalances'], {
+      'annualLeave': 0,
+      'sickLeave': 0,
+      'casualLeave': 0,
+      'medicalLeave': 4,
+    });
+
+    for (final key in [
+      'annualLeaves',
+      'availableAnnualLeaves',
+      'annualLeavesUsed',
+      'sickLeaves',
+      'availableSickLeaves',
+      'sickLeavesUsed',
+      'casualLeaves',
+      'availableCasualLeaves',
+      'casualLeavesUsed',
+      'medicalLeaves',
+      'availableMedicalLeaves',
+      'medicalLeavesUsed',
+      'leavesUsed',
+    ]) {
+      expect(normalized[key], isA<int>(), reason: '$key must be numeric');
+    }
+  });
+
+  test('balance override recalculates used without inflating allowance', () {
+    final normalized = TimeOffService.canonicalWorkerLeaveFields(
+      {'annualLeaves': 14, 'availableAnnualLeaves': 0, 'annualLeavesUsed': 14},
+      remainingBalances: {'annualLeave': 2},
+    );
+
+    expect(normalized['annualLeaves'], 14);
+    expect(normalized['availableAnnualLeaves'], 2);
+    expect(normalized['annualLeavesUsed'], 12);
+  });
 }

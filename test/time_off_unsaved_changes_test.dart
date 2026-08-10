@@ -72,8 +72,25 @@ void main() {
     },
   );
 
+  test('edit form becomes dirty when its leave type changes', () {
+    expect(
+      hasUnsavedTimeOffChanges(
+        hasSelectedDates: false,
+        hasNotes: false,
+        isEditing: true,
+        typeChanged: true,
+        datesChanged: false,
+      ),
+      isTrue,
+    );
+  });
+
   test('one selected medical leave day previews balance 4 as 3', () {
     expect(projectedTimeOffBalance(availableDays: 4, requestedDays: 1), 3);
+  });
+
+  test('fully allocated edit record has zero days available for new dates', () {
+    expect(projectedTimeOffBalance(availableDays: 21, requestedDays: 21), 0);
   });
 
   test('all leave totals stay separate from available balances', () {

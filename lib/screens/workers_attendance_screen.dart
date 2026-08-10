@@ -462,9 +462,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return _activePlannedTimeOffForWorker(worker) != null;
   }
 
-  
-  
-  
   Future<void> _autoMarkPlannedLeaves() async {
     if (_isGuest || _autoMarkInProgress || _autoMarkDoneForToday) return;
     if (!_workersLoaded || !_timeOffLoaded || !_attendanceLoaded) return;
@@ -558,9 +555,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
-    final recordWorkerId = (record['workerId'] ?? record['userId'] ?? record['id'] ?? '')
-        .toString()
-        .trim();
+    final recordWorkerId =
+        (record['workerId'] ?? record['userId'] ?? record['id'] ?? '')
+            .toString()
+            .trim();
     if (recordWorkerId.isNotEmpty) {
       return workerId.isNotEmpty && recordWorkerId == workerId;
     }
@@ -583,35 +581,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return WorkerIdentity.normalizeName(item['name']) == workerName;
     }).length;
     return matchingNames == 1;
-  }
-
-  int _paidLeaveDaysUsedForWorker(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> records, {
-    String? excludingRecordId,
-  }) {
-    if (_isGuest) {
-      return TimeOffService.leaveDaysUsedForWorker(
-        worker,
-        records,
-        excludingRecordId: excludingRecordId,
-      );
-    }
-
-    final usedDates = <DateTime>{};
-    for (final record in records) {
-      if (!TimeOffService.isActiveRecord(record)) continue;
-      if (!TimeOffService.isPaidRecord(record)) continue;
-      if (excludingRecordId != null &&
-          record['id']?.toString() == excludingRecordId) {
-        continue;
-      }
-      if (!_authenticatedRecordBelongsToWorker(record, worker)) continue;
-      for (final date in TimeOffService.selectedDatesForRecord(record)) {
-        usedDates.add(DateTime(date.year, date.month, date.day));
-      }
-    }
-    return usedDates.length;
   }
 
   Map<String, dynamic>? _attendanceManagedTimeOffForWorker(
@@ -737,17 +706,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       });
     }
 
-    final usedLeaveDays = _paidLeaveDaysUsedForWorker(worker, projectedRecords);
-
-    final perTypeUsed = _isGuest
-        ? <String, int>{'Sick Leave': 0, 'Casual Leave': 0, 'Medical Leave': 0, 'Annual Leave': 0}
-        : TimeOffService.paidDaysUsedForWorkerByType(worker, projectedRecords);
-
-    
-    
-    
+    final canonicalLeaveFields = TimeOffService.canonicalWorkerLeaveFields(
+      worker,
+    );
     final Map<String, dynamic> perTypeBalances = Map<String, dynamic>.from(
-      (worker['leaveBalances'] as Map<String, dynamic>?) ?? {},
+      canonicalLeaveFields['leaveBalances'] as Map,
     );
 
     String balanceFieldFor(String type) =>
@@ -760,32 +723,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         };
 
     int balanceFor(String field) {
-      if (perTypeBalances.containsKey(field)) {
-        return int.tryParse(perTypeBalances[field]?.toString() ?? '0') ?? 0;
-      }
-      return switch (field) {
-        'annualLeave' => int.tryParse(
-                (worker['availableAnnualLeaves'] ?? worker['annualLeaves'] ?? '0')
-                    .toString()) ??
-            0,
-        'sickLeave' => int.tryParse(
-                (worker['availableSickLeaves'] ?? worker['sickLeaves'] ?? '0')
-                    .toString()) ??
-            0,
-        'casualLeave' => int.tryParse(
-                (worker['availableCasualLeaves'] ?? worker['casualLeaves'] ?? '0')
-                    .toString()) ??
-            0,
-        'medicalLeave' => int.tryParse(
-                (worker['availableMedicalLeaves'] ?? worker['medicalLeaves'] ?? '0')
-                    .toString()) ??
-            0,
-        _ => 0,
-      };
+      return int.tryParse(perTypeBalances[field]?.toString() ?? '0') ?? 0;
     }
 
-    
-    
     const allBalanceFields = [
       'annualLeave',
       'sickLeave',
@@ -796,8 +736,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       perTypeBalances.putIfAbsent(field, () => balanceFor(field));
     }
 
-    
-    
     final previousType = existing != null
         ? (existing['type'] ?? existing['action'] ?? '').toString()
         : '';
@@ -806,29 +744,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       perTypeBalances[previousField] = balanceFor(previousField) + 1;
     }
 
-    
     final newField = balanceFieldFor(leaveType);
     if (shouldHaveLeave && newField.isNotEmpty) {
-      perTypeBalances[newField] =
-          (balanceFor(newField) - 1).clamp(0, 99999);
+      perTypeBalances[newField] = (balanceFor(newField) - 1).clamp(0, 99999);
     }
 
-    final balanceUpdate = <String, dynamic>{
-      'availableAnnualLeaves':
-          (perTypeBalances['annualLeave'] ?? 0).toString(),
-      'availableSickLeaves':
-          (perTypeBalances['sickLeave'] ?? 0).toString(),
-      'availableCasualLeaves':
-          (perTypeBalances['casualLeave'] ?? 0).toString(),
-      'availableMedicalLeaves':
-          (perTypeBalances['medicalLeave'] ?? 0).toString(),
-      'leavesUsed': usedLeaveDays.toString(),
-      'annualLeavesUsed': (perTypeUsed['Annual Leave'] ?? 0).toString(),
-      'sickLeavesUsed': (perTypeUsed['Sick Leave'] ?? 0).toString(),
-      'casualLeavesUsed': (perTypeUsed['Casual Leave'] ?? 0).toString(),
-      'medicalLeavesUsed': (perTypeUsed['Medical Leave'] ?? 0).toString(),
-      'leaveBalances': perTypeBalances,
-    };
+    final balanceUpdate = TimeOffService.canonicalWorkerLeaveFields(
+      worker,
+      remainingBalances: perTypeBalances,
+    );
 
     final result = await _firestore.saveAttendanceWithLeaveSync(
       attendanceRecord: attendanceData,
@@ -871,8 +795,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return '';
     }
 
-    
-    
     if (_isWorkerOnPlannedTimeOff(worker)) {
       return 'Leave';
     }
@@ -882,7 +804,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return directStatus;
     }
     final directLower = directStatus.toLowerCase();
-    if (!_isGuest && const {'present', 'absent', 'leave'}.contains(directLower)) {
+    if (!_isGuest &&
+        const {'present', 'absent', 'leave'}.contains(directLower)) {
       if (directLower == 'present') return 'Present';
       if (directLower == 'absent') return 'Absent';
       if (directLower == 'leave') return 'Leave';
@@ -912,7 +835,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final normAttStatus = attStatus.toLowerCase();
     if (normAttStatus == 'present' || normAttStatus == 'p') return 'Present';
     if (normAttStatus == 'absent' || normAttStatus == 'a') return 'Absent';
-    if (normAttStatus == 'leave' || normAttStatus == 'l' || normAttStatus == 'approved') return 'Leave';
+    if (normAttStatus == 'leave' ||
+        normAttStatus == 'l' ||
+        normAttStatus == 'approved')
+      return 'Leave';
     return '';
   }
 
@@ -1101,7 +1027,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return Map<String, dynamic>.from(attendanceOrWorker);
     }
     return {...attendanceOrWorker, ...worker};
-  }  List<Map<String, dynamic>> get _filteredWorkers {
+  }
+
+  List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
       if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
         return false;
@@ -1127,7 +1055,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           email.contains(query) ||
           workerStatus.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch && workerStatus == _selectedStatusFilter.toLowerCase();
+      return matchesSearch &&
+          workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();
   }
 
@@ -1337,8 +1266,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
                                                 color: textDark,
-                                                fontFamily:
-                                                    'SF Pro Display',
+                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                             _buildStatusFilterDropdown(),
@@ -1433,8 +1361,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Widget _buildStatusFilterDropdown() {
-    
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final width = _statusFilterButtonKey.currentContext?.size?.width;
@@ -1740,11 +1666,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               ? initialStatus
               : 'Present';
           final initialType = (todayRecord['type'] ?? '').toString();
-          const absentTypes = {
-            'Without Notice',
-            'Family Emergency',
-            'Other',
-          };
+          const absentTypes = {'Without Notice', 'Family Emergency', 'Other'};
           const leaveTypes = {
             'Annual Leave',
             'Sick Leave',
@@ -1792,9 +1714,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               {
                 'value': 'Sick Leave',
                 'key': 'sick_leave_type',
-                'disabled': canSelectLeaveType('Sick Leave')
-                    ? 'false'
-                    : 'true',
+                'disabled': canSelectLeaveType('Sick Leave') ? 'false' : 'true',
               },
               {
                 'value': 'Casual Leave',
@@ -2194,7 +2114,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         workerData['profileImage'],
                                                   };
                                                   if (type != null) {
-                                                    attendanceData['type'] = type;
+                                                    attendanceData['type'] =
+                                                        type;
                                                   } else {
                                                     // Present has no reason/type -
                                                     // remove stale values from a
@@ -2205,7 +2126,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   }
                                                   if (desc != null &&
                                                       desc.isNotEmpty) {
-                                                    attendanceData['desc'] = desc;
+                                                    attendanceData['desc'] =
+                                                        desc;
                                                   } else {
                                                     attendanceData['desc'] =
                                                         FieldValue.delete();

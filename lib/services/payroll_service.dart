@@ -91,9 +91,12 @@ class PayrollService {
     int? salaryDay,
   ) {
     final calendarMonth = currentPayrollMonth(referenceDate: referenceDate);
+    // A payroll period becomes payable only when its end/due date arrives.
+    // Before that date, keep the most recently due period active instead of
+    // exposing the next cycle as payable.
     return isPayrollPeriodDue(referenceDate, calendarMonth, salaryDay)
-        ? nextPayrollMonth(calendarMonth)
-        : calendarMonth;
+        ? calendarMonth
+        : DateTime(calendarMonth.year, calendarMonth.month - 1, 1);
   }
 
   static bool isPayDateReminderDue(
@@ -131,10 +134,55 @@ class PayrollService {
   static String payrollPeriodLabel(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
 
+  static String formatPayPeriodRange(
+    DateTime start,
+    DateTime end, {
+    String? locale,
+  }) {
+    String monthLabel(DateTime date) {
+      try {
+        return DateFormat('MMM', locale).format(date);
+      } catch (_) {
+        return const [
+          '',
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ][date.month];
+      }
+    }
+
+    final startLabel = '${monthLabel(start)} ${start.day}';
+    final endLabel = '${monthLabel(end)} ${end.day}';
+    if (start.year == end.year) {
+      return '$startLabel – $endLabel, ${end.year}';
+    }
+    return '$startLabel, ${start.year} – $endLabel, ${end.year}';
+  }
+
   /// Renders a date as `yyyy-MM-dd` for use inside period-based payroll keys.
   static String _pad2(int n) => n.toString().padLeft(2, '0');
   static String periodDateKey(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${_pad2(d.month)}-${_pad2(d.day)}';
+
+  static String payrollKeyForPeriod(
+    String identity,
+    DateTime periodStart,
+    DateTime periodEnd,
+  ) {
+    final normalizedIdentity = identity.trim().toLowerCase();
+    if (normalizedIdentity.isEmpty) return '';
+    return '${normalizedIdentity}_${periodDateKey(periodStart)}_${periodDateKey(periodEnd)}';
+  }
 
   static DateTime? parsePayrollPeriodLabel(dynamic value) {
     final match = RegExp(
@@ -319,6 +367,21 @@ class PayrollService {
     }.contains(status);
   }
 
+  static String workerEmploymentType(Map<String, dynamic> worker) {
+    for (final key in [
+      'type1',
+      'employmentType',
+      'employment_type',
+      'workType',
+      'workerType',
+      'contractType',
+    ]) {
+      final value = (worker[key] ?? '').toString().trim();
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
   static bool isPayrollRecordPaid(Map<String, dynamic> record) {
     final explicitSalaryValues = [
       record['salaryAmount'],
@@ -355,6 +418,20 @@ class PayrollService {
     return _parseDate(record['paidAt']) != null ||
         _parseDate(record['paidOn']) != null ||
         _parseDate(record['paymentDate']) != null;
+  }
+
+  static bool _isCancelledPayrollRecord(Map<String, dynamic> record) {
+    final status = (record['status'] ?? '').toString().trim().toLowerCase();
+    if (status == 'cancelled' || status == 'canceled') return true;
+
+    // Cancelling a paid payroll moves it back to `Unpaid` so it can be run
+    // again, but the cancellation marker must keep its old calculation inputs
+    // from seeding the fresh payroll form.
+    for (final key in ['cancelledAt', 'canceledAt']) {
+      final marker = record[key];
+      if (marker != null && marker.toString().trim().isNotEmpty) return true;
+    }
+    return false;
   }
 
   static bool _isTruthy(dynamic value) {
@@ -492,13 +569,7 @@ class PayrollService {
 
     final monthlyPayrollDocs = rawPayrollDocs
         .where((record) {
-          final status = (record['status'] ?? '')
-              .toString()
-              .trim()
-              .toLowerCase();
-          if (status == 'cancelled' || status == 'canceled') {
-            return false;
-          }
+          if (_isCancelledPayrollRecord(record)) return false;
 
           return isRecordInMonth(
             record,
@@ -519,8 +590,11 @@ class PayrollService {
       final identity = workerId.isNotEmpty ? workerId : email;
       final newPayrollKey = identity.isEmpty
           ? ''
-          : '${identity}_${periodDateKey(payPeriodStart(targetMonth, salaryDay))}_${periodDateKey(payPeriodEnd(targetMonth, salaryDay))}'
-                .toLowerCase();
+          : payrollKeyForPeriod(
+              identity,
+              payPeriodStart(targetMonth, salaryDay),
+              payPeriodEnd(targetMonth, salaryDay),
+            );
       final legacyPayrollKey = identity.isEmpty
           ? ''
           : '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
@@ -530,9 +604,15 @@ class PayrollService {
       final canonicalRecord = canonicalKeys.isEmpty
           ? null
           : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
-              (record) => canonicalKeys.contains(
-                (record?['payrollKey'] ?? '').toString().trim().toLowerCase(),
-              ),
+              (record) =>
+                  record != null &&
+                  !_isCancelledPayrollRecord(record) &&
+                  canonicalKeys.contains(
+                    (record['payrollKey'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase(),
+                  ),
               orElse: () => null,
             );
       final canonicalRecordMovedOut =

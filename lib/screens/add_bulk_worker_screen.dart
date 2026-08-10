@@ -13,6 +13,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
 import '../services/error_reporter.dart';
+import '../services/time_off_service.dart';
 import '../services/bulk_worker_csv_service.dart';
 import '../services/bulk_worker_media_service.dart';
 import '../utils/snackbar_utils.dart';
@@ -1906,15 +1907,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         _validWorkers[workerIndex][fieldKey] = result;
         if (fieldKey == 'annualLeaves') {
           final annualLeaves = int.tryParse(result) ?? 0;
-          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves
-              .toString();
-          _validWorkers[workerIndex]['leavesUsed'] = '0';
+          _validWorkers[workerIndex]['annualLeaves'] = annualLeaves;
+          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves;
+          _validWorkers[workerIndex]['leavesUsed'] = 0;
         } else if (fieldKey == 'sickLeaves' ||
             fieldKey == 'casualLeaves' ||
             fieldKey == 'medicalLeaves') {
-          _validWorkers[workerIndex][fieldKey] = (int.tryParse(result) ?? 0)
-              .toString();
+          final days = int.tryParse(result) ?? 0;
+          _validWorkers[workerIndex][fieldKey] = days;
+          final availableKey =
+              'available${fieldKey[0].toUpperCase()}${fieldKey.substring(1)}';
+          _validWorkers[workerIndex][availableKey] = days;
         }
+        _validWorkers[workerIndex].addAll(
+          TimeOffService.canonicalWorkerLeaveFields(_validWorkers[workerIndex]),
+        );
         // Recompute missing columns so that a column the user has now filled
         // for every worker no longer appears in the missing-columns banner.
         _missingColumns = _missingColumns

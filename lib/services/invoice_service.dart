@@ -31,6 +31,8 @@ class InvoiceService {
     required String daysWorked,
     required String absents,
     required String leaves,
+    String paidLeaves = '',
+    String unpaidLeaves = '',
     required String overtimeAmount,
     required String salary,
     required String dailyRate,
@@ -51,23 +53,16 @@ class InvoiceService {
     String companyId = '',
     String? companyStampImageUrl,
     String? companyLogoUrl,
+    Uint8List? companyLogoBytes,
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
     String workerId = '',
   }) async {
-    
-    
-    
-    
-    
     final detectedCurrency = _displayCurrency(
       currency.isEmpty ? _detectCurrency(salary) : currency,
     );
     final pdf = pw.Document();
 
-    
-    
-    
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
@@ -75,9 +70,6 @@ class InvoiceService {
       regularFont = pw.Font.ttf(fontData);
       boldFont = pw.Font.ttf(fontData);
     } catch (e) {
-      
-      
-      
       debugPrint(
         'InvoiceService: could not load assets/fonts/SF-Pro.ttf for the '
         'PDF invoice (falling back to Helvetica): $e',
@@ -98,17 +90,10 @@ class InvoiceService {
 
     pw.MemoryImage? logoImage;
     try {
-      if (companyLogoUrl != null && companyLogoUrl.isNotEmpty) {
-        final logoBytes = await _loadCompanyLogoBytes(companyLogoUrl);
-        if (logoBytes != null) {
-          logoImage = pw.MemoryImage(logoBytes);
-        }
-      }
-      if (logoImage == null) {
-        final byteData = await rootBundle.load('assets/app_icon.png');
-        logoImage = pw.MemoryImage(
-          byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
-        );
+      final logoBytes =
+          companyLogoBytes ?? await resolveCompanyLogoBytes(companyLogoUrl);
+      if (logoBytes != null) {
+        logoImage = pw.MemoryImage(logoBytes);
       }
     } catch (_) {
       logoImage = null;
@@ -137,6 +122,14 @@ class InvoiceService {
     final hasLeaveDeduction = _parseValue(leaveDeduction) > 0;
     final hasTaxDeduction = _parseValue(taxDeduction) > 0;
     final hasDeductions = _parseValue(totalDeductions) > 0;
+    final invoiceLeaves = resolveInvoiceLeaveDays(
+      leaves: leaves,
+      paidLeaves: paidLeaves,
+      unpaidLeaves: unpaidLeaves,
+    );
+    final deductibleLeaveDays = unpaidLeaves.trim().isNotEmpty
+        ? unpaidLeaves.trim()
+        : leaves;
 
     pdf.addPage(
       pw.MultiPage(
@@ -157,26 +150,7 @@ class InvoiceService {
                             height: 32,
                             child: pw.Image(logoImage, fit: pw.BoxFit.contain),
                           )
-                        : pw.Container(
-                            width: 32,
-                            height: 32,
-                            decoration: pw.BoxDecoration(
-                              color: appBlue,
-                              borderRadius: const pw.BorderRadius.all(
-                                pw.Radius.circular(6),
-                              ),
-                            ),
-                            child: pw.Center(
-                              child: pw.Text(
-                                'H',
-                                style: pw.TextStyle(
-                                  fontSize: 14,
-                                  color: white,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
+                        : pw.SizedBox(width: 32, height: 32),
                     pw.SizedBox(width: 12),
                     pw.Text(
                       companyName.isEmpty ? 'HRMS' : companyName,
@@ -224,7 +198,8 @@ class InvoiceService {
                       companyAddress,
                       if (companyEmail.trim().isNotEmpty) companyEmail,
                       if (companyPhone.trim().isNotEmpty) companyPhone,
-                      if (companyId.trim().isNotEmpty) '${_l('company_id_label', 'Company ID:')} $companyId',
+                      if (companyId.trim().isNotEmpty)
+                        '${_l('company_id_label', 'Company ID:')} $companyId',
                     ],
                     textColor: textColor,
                   ),
@@ -254,7 +229,8 @@ class InvoiceService {
             _tableHeader(navy: navy, white: white),
 
             _tableRow(
-              description: '${_l('basic_salary', 'Basic Salary')} ($totalWorkDays ${_l('working_days', 'working days')})',
+              description:
+                  '${_l('basic_salary', 'Basic Salary')} ($totalWorkDays ${_l('working_days', 'working days')})',
               rate: _money(dailyRate, defaultCurrency: detectedCurrency),
               quantity: totalWorkDays,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
@@ -274,7 +250,10 @@ class InvoiceService {
 
             if (hasAbsentDeduction)
               _tableRow(
-                description: _l('unpaid_absence_deduction', 'Unpaid Absence Deduction'),
+                description: _l(
+                  'unpaid_absence_deduction',
+                  'Unpaid Absence Deduction',
+                ),
                 rate: _perDayRate(
                   absentDeduction,
                   absents,
@@ -289,13 +268,16 @@ class InvoiceService {
 
             if (hasLeaveDeduction)
               _tableRow(
-                description: _l('unpaid_leave_deduction', 'Unpaid Leave Deduction'),
+                description: _l(
+                  'unpaid_leave_deduction',
+                  'Unpaid Leave Deduction',
+                ),
                 rate: _perDayRate(
                   leaveDeduction,
-                  leaves,
+                  deductibleLeaveDays,
                   defaultCurrency: detectedCurrency,
                 ),
-                quantity: leaves,
+                quantity: deductibleLeaveDays,
                 total:
                     '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
@@ -304,7 +286,8 @@ class InvoiceService {
 
             if (hasTaxDeduction)
               _tableRow(
-                description: '${_l('tax_deduction', 'Tax Deduction')} (${taxRatePercent.isEmpty ? '0' : taxRatePercent}%)',
+                description:
+                    '${_l('tax_deduction', 'Tax Deduction')} (${taxRatePercent.isEmpty ? '0' : taxRatePercent}%)',
                 rate: '${taxRatePercent.isEmpty ? '0' : taxRatePercent}%',
                 quantity: '1',
                 total:
@@ -360,10 +343,26 @@ class InvoiceService {
                         _money(dailyRate, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
-                      _smallInfoLine(_l('payable_days', 'Payable Days'), daysWorked, textColor),
-                      _smallInfoLine(_l('working_days', 'Working Days'), totalWorkDays, textColor),
-                      _smallInfoLine(_l('absents', 'Absents'), absents, textColor),
-                      _smallInfoLine(_l('leaves', 'Leaves'), leaves, textColor),
+                      _smallInfoLine(
+                        _l('payable_days', 'Payable Days'),
+                        daysWorked,
+                        textColor,
+                      ),
+                      _smallInfoLine(
+                        _l('working_days', 'Working Days'),
+                        totalWorkDays,
+                        textColor,
+                      ),
+                      _smallInfoLine(
+                        _l('absents', 'Absents'),
+                        absents,
+                        textColor,
+                      ),
+                      _smallInfoLine(
+                        _l('leaves', 'Leaves'),
+                        invoiceLeaves,
+                        textColor,
+                      ),
                     ],
                   ),
                 ),
@@ -451,7 +450,10 @@ class InvoiceService {
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
                 child: pw.Text(
-                  _l('thank_you_contribution', 'Thank you for your contribution!'),
+                  _l(
+                    'thank_you_contribution',
+                    'Thank you for your contribution!',
+                  ),
                   style: pw.TextStyle(fontSize: 14, color: appBlue),
                 ),
               ),
@@ -470,6 +472,20 @@ class InvoiceService {
     );
 
     return pdf.save();
+  }
+
+  static String resolveInvoiceLeaveDays({
+    required String leaves,
+    String paidLeaves = '',
+    String unpaidLeaves = '',
+  }) {
+    final total = _parseValue(leaves);
+    final splitTotal = _parseValue(paidLeaves) + _parseValue(unpaidLeaves);
+    final resolved = total > splitTotal ? total : splitTotal;
+    if (resolved == resolved.roundToDouble()) {
+      return resolved.toStringAsFixed(0);
+    }
+    return resolved.toStringAsFixed(1);
   }
 
   static pw.Widget _informationBlock({
@@ -737,10 +753,12 @@ class InvoiceService {
     }
 
     final value = _parseValue(trimmed).abs();
-    final formatted = value.toStringAsFixed(2).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
+    final formatted = value
+        .toStringAsFixed(2)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
     return '$prefix $formatted';
   }
 
@@ -756,10 +774,7 @@ class InvoiceService {
       return _money('0', defaultCurrency: defaultCurrency);
     }
     final rate = amount / days;
-    
-    
-    
-    
+
     final roundedRate = ((rate * 100) + 1e-9).floorToDouble() / 100;
     return _money(
       roundedRate.toStringAsFixed(2),
@@ -781,9 +796,6 @@ class InvoiceService {
     return prefix[0].toUpperCase() + prefix.substring(1);
   }
 
-  
-  
-  
   static const Set<String> _arabicScriptCurrencies = {
     'AED',
     'SAR',
@@ -800,11 +812,6 @@ class InvoiceService {
     'ر.ع.': 'OMR',
   };
 
-  
-  
-  
-  
-  
   static String _displayCurrency(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return 'Rs';
@@ -820,13 +827,11 @@ class InvoiceService {
   }
 
   static double _parseValue(String formatted) {
-    
-    
-    
     final trimmed = formatted.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
-    final numericPart =
-        firstDigit == null ? trimmed : trimmed.substring(firstDigit.start);
+    final numericPart = firstDigit == null
+        ? trimmed
+        : trimmed.substring(firstDigit.start);
     final cleaned = numericPart.replaceAll(RegExp(r'[^0-9.]'), '');
 
     final value = double.tryParse(cleaned) ?? 0;
@@ -868,35 +873,38 @@ class InvoiceService {
       stampImage: stampImage,
       accentColor: color,
       mutedColor: mutedColor,
-      authorizedSignatoryText: _l('authorized_signatory', 'Authorized Signatory'),
+      authorizedSignatoryText: _l(
+        'authorized_signatory',
+        'Authorized Signatory',
+      ),
       companyIdLabel: _l('company_id_label', 'Company ID:'),
     );
   }
 
   static bool _isValidPdfImageBytes(Uint8List bytes) {
     if (bytes.lengthInBytes < 4) return false;
-    
+
     if (bytes[0] == 0x89 &&
         bytes[1] == 0x50 &&
         bytes[2] == 0x4E &&
         bytes[3] == 0x47) {
       return true;
     }
-    
+
     if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
       return true;
     }
-    
+
     if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) {
       return true;
     }
-    
+
     if (bytes.lengthInBytes >= 12) {
       final riff = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
       final webp = ascii.decode(bytes.sublist(8, 12), allowInvalid: true);
       if (riff == 'RIFF' && webp == 'WEBP') return true;
     }
-    
+
     if (bytes[0] == 0x42 && bytes[1] == 0x4D) {
       return true;
     }
@@ -913,7 +921,9 @@ class InvoiceService {
       if (value.startsWith('data:')) {
         final separator = value.indexOf(',');
         if (separator > 0) {
-          final encoded = value.substring(separator + 1).replaceAll(RegExp(r'\s+'), '');
+          final encoded = value
+              .substring(separator + 1)
+              .replaceAll(RegExp(r'\s+'), '');
           if (encoded.isNotEmpty) bytes = base64Decode(encoded);
         }
       } else {
@@ -932,6 +942,21 @@ class InvoiceService {
       if (_isValidPdfImageBytes(bytes)) return bytes;
     } catch (_) {}
     return null;
+  }
+
+  static Future<Uint8List?> resolveCompanyLogoBytes(String? source) async {
+    final customLogo = await _loadCompanyLogoBytes(source);
+    if (customLogo != null) return customLogo;
+
+    try {
+      final byteData = await rootBundle.load('assets/app_icon.png');
+      return byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<Uint8List?> _loadCompanyStampBytes(String? source) async {

@@ -147,7 +147,11 @@ class AppDateUtils {
   /// Falls back to the canonical dd/MM/yyyy format on any failure.
   static String formatLocaleDate(DateTime date, {String? locale}) {
     try {
-      return DateFormat.yMd(locale ?? Intl.getCurrentLocale()).format(date);
+      final loc = locale ?? Intl.getCurrentLocale();
+      if (loc.startsWith('en')) {
+        return DateFormat('dd/MM/yyyy').format(date);
+      }
+      return DateFormat.yMd(loc).format(date);
     } catch (_) {
       return formatDate(date);
     }

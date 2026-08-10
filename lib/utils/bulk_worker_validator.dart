@@ -3,6 +3,7 @@ import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/validators.dart';
+import '../services/time_off_service.dart';
 
 const List<String> kRequiredFields = [
   'name',
@@ -356,34 +357,36 @@ Map<String, String> validateWorkerData(
     final annualLeaves = int.tryParse(annualLeavesText);
     if (annualLeaves == null || annualLeaves < 0 || annualLeaves > 366) {
       fieldErrors['annualLeaves'] = 'invalid_number'.tr();
-      workerData['availableAnnualLeaves'] = '0';
+      workerData['annualLeaves'] = 0;
+      workerData['availableAnnualLeaves'] = 0;
     } else {
-      workerData['annualLeaves'] = annualLeaves.toString();
-      workerData['availableAnnualLeaves'] = annualLeaves.toString();
+      workerData['annualLeaves'] = annualLeaves;
+      workerData['availableAnnualLeaves'] = annualLeaves;
     }
   } else {
-    workerData['availableAnnualLeaves'] = '0';
+    workerData['annualLeaves'] = 0;
+    workerData['availableAnnualLeaves'] = 0;
   }
-  workerData['leavesUsed'] = '0';
+  workerData['leavesUsed'] = 0;
 
   for (final key in ['sickLeaves', 'casualLeaves', 'medicalLeaves']) {
     final text = workerData[key]?.toString().trim() ?? '';
     if (text.isEmpty) {
-      workerData[key] = '0';
-      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = '0';
+      workerData[key] = 0;
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = 0;
       continue;
     }
     final days = int.tryParse(text);
     if (days == null || days < 0 || days > 366) {
       fieldErrors[key] = 'invalid_number'.tr();
-      workerData[key] = '0';
-      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = '0';
+      workerData[key] = 0;
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = 0;
     } else {
-      workerData[key] = days.toString();
-      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = days
-          .toString();
+      workerData[key] = days;
+      workerData['available${key[0].toUpperCase()}${key.substring(1)}'] = days;
     }
   }
+  workerData.addAll(TimeOffService.canonicalWorkerLeaveFields(workerData));
 
   final joiningDateText = workerData['joiningDate']?.toString().trim() ?? '';
   if (joiningDateText.isNotEmpty) {

@@ -120,9 +120,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
   String _payPeriodLabelFor(DateTime month) {
     final start = PayrollService.payPeriodStart(month, _salaryPaymentDay);
     final end = PayrollService.payPeriodEnd(month, _salaryPaymentDay);
-    final monthFmt = DateFormat('MMM', context.locale.toString());
-    return '${monthFmt.format(start)} ${start.day} – '
-        '${monthFmt.format(end)} ${end.day}, ${end.year}';
+    return PayrollService.formatPayPeriodRange(
+      start,
+      end,
+      locale: context.locale.toString(),
+    );
   }
 
   @override
@@ -325,7 +327,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final savedMonth = PayrollService.parsePayrollPeriodLabel(
       savedPayrollPeriod,
     );
-    final calendarMonth = PayrollService.currentPayrollMonth();
     final latestOpenMonth = PayrollService.latestOpenPayrollMonth(
       DateTime.now(),
       salaryDay,
@@ -334,7 +335,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         savedMonth != null &&
         PayrollService.isMonthBefore(latestOpenMonth, savedMonth);
     final activeMonth = savedMonth == null || savedMonthIsFuture
-        ? calendarMonth
+        ? latestOpenMonth
         : savedMonth;
     if (savedMonth == null || savedMonthIsFuture) {
       try {
@@ -684,7 +685,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             savedMonth != null &&
                 !PayrollService.isMonthBefore(latestOpenMonth, savedMonth)
             ? savedMonth
-            : _payrollMonth;
+            : latestOpenMonth;
         if (salaryDay == _salaryPaymentDay &&
             currency == _companyCurrency &&
             activeMonth == _payrollMonth) {
@@ -932,7 +933,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
         ? const Color(0xFF0247C4)
         : const Color(0xFF004FDE);
 
-    final payDateText = DateFormat.yMMMd(context.locale.toString()).format(dueDate);
+    final payDateText = DateFormat.yMMMd(
+      context.locale.toString(),
+    ).format(dueDate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -1640,8 +1643,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final pos = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final matchesSearch =
-          name.contains(query) || pos.contains(query);
+      final matchesSearch = name.contains(query) || pos.contains(query);
 
       if (!matchesSearch) return false;
       return _matchesFilter(doc, _selectedFilter);
@@ -2021,7 +2023,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final counts = PayrollService.attendanceCounts(data);
       final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
       final absents = (counts['absents'] ?? 0).toString();
+      final paidLeaves = (counts['paidLeaves'] ?? 0).toString();
       final unpaidLeaves = (counts['unpaidLeaves'] ?? 0).toString();
+      final totalLeaves = (counts['leaves'] ?? 0).toString();
       final totalDays = PayrollService.parseIntSafe(totalWorkDays);
       final workedDays =
           (totalDays -
@@ -2068,14 +2072,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
         double.infinity,
       );
 
+      final savedPeriodStart = AppDateUtils.dateFromValue(
+        data['payPeriodStart'],
+      );
+      final savedPeriodEnd = AppDateUtils.dateFromValue(data['payPeriodEnd']);
+      final payPeriod = savedPeriodStart != null && savedPeriodEnd != null
+          ? PayrollService.formatPayPeriodRange(
+              savedPeriodStart,
+              savedPeriodEnd,
+              locale: context.locale.toString(),
+            )
+          : _payPeriodLabelFor(_payrollMonth);
+
       Map<String, dynamic> companyProfile = const {};
       try {
         companyProfile = await _firestore.getUserProfile() ?? const {};
       } catch (_) {}
-      final period = (data['payrollPeriod'] ?? '').toString().trim();
-      final payPeriod = period.isNotEmpty
-          ? period
-          : PayrollService.payrollPeriodLabel(_payrollMonth);
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: (data['name'] ?? '').toString(),
         email: (data['email'] ?? '').toString(),
@@ -2084,7 +2096,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
         totalWorkDays: totalWorkDays,
         daysWorked: '$workedDays',
         absents: absents,
-        leaves: unpaidLeaves,
+        leaves: totalLeaves,
+        paidLeaves: paidLeaves,
+        unpaidLeaves: unpaidLeaves,
         overtimeAmount: AmountText.formatFull(overtime),
         salary: AmountText.formatFull(salary),
         dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00')

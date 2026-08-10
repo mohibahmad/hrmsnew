@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_utils.dart';
@@ -40,6 +41,7 @@ class FirestoreService {
   static FirestoreService get instance => _instance!;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final Set<String> _leaveNormalizationInFlight = <String>{};
 
   FirestoreService() {
     _instance = this;
@@ -374,8 +376,12 @@ class FirestoreService {
     int count = 0;
     for (final worker in workers) {
       final docRef = coll.doc();
+      final canonicalWorker = {
+        ...worker,
+        ...TimeOffService.canonicalWorkerLeaveFields(worker),
+      };
       batch.set(docRef, {
-        ..._withNormalizedCurrency(worker),
+        ..._withNormalizedCurrency(canonicalWorker),
         'createdAt': FieldValue.serverTimestamp(),
       });
       count++;
@@ -424,8 +430,10 @@ class FirestoreService {
             normalizedName.isNotEmpty && sameNameWorkers.length == 1,
       );
     }
+    final workerUpdate = <String, dynamic>{...currentWorker, ...data};
     await coll.doc(id).update({
       ..._withNormalizedCurrency(data),
+      ...TimeOffService.canonicalWorkerLeaveFields(workerUpdate),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -490,7 +498,34 @@ class FirestoreService {
   ) async {
     final coll = _workers;
     if (coll == null || id.isEmpty) return;
-    await coll.doc(id).update(leaveData);
+    final workerRef = coll.doc(id);
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(workerRef);
+      if (!snapshot.exists) throw StateError('Worker does not exist');
+      final current = (snapshot.data() as Map<String, dynamic>?) ?? {};
+      final merged = <String, dynamic>{...current, ...leaveData};
+      transaction.update(workerRef, {
+        ...leaveData,
+        ...TimeOffService.canonicalWorkerLeaveFields(merged),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  /// Repairs legacy worker leave documents only when their values or Firestore
+  /// types differ from the canonical numeric schema. This is safe to call from
+  /// a workers stream because the second snapshot becomes a no-op.
+  Future<void> normalizeWorkerLeaveSchemaIfNeeded(
+    String id,
+    Map<String, dynamic> worker,
+  ) async {
+    final coll = _workers;
+    if (coll == null || id.isEmpty) return;
+    if (TimeOffService.hasCanonicalWorkerLeaveFields(worker)) return;
+    await coll.doc(id).update({
+      ...TimeOffService.canonicalWorkerLeaveFields(worker),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> updateWorkerFields(
@@ -555,15 +590,24 @@ class FirestoreService {
         annualLeaveDays,
       );
 
-      batch.update(coll.doc(workerId), {
+      final workerWithPolicy = <String, dynamic>{
+        ...worker,
         'annualLeaves': annualLeaveDays,
         'sickLeaves': sickLeaveDays,
         'casualLeaves': casualLeaveDays,
         'medicalLeaves': medicalLeaveDays,
-        'availableAnnualLeaves': remaining,
-        'availableSickLeaves': sickLeaveDays,
-        'availableCasualLeaves': casualLeaveDays,
-        'availableMedicalLeaves': medicalLeaveDays,
+      };
+      final balances = <String, dynamic>{
+        'annualLeave': remaining,
+        'sickLeave': sickLeaveDays,
+        'casualLeave': casualLeaveDays,
+        'medicalLeave': medicalLeaveDays,
+      };
+      batch.update(coll.doc(workerId), {
+        ...TimeOffService.canonicalWorkerLeaveFields(
+          workerWithPolicy,
+          remainingBalances: balances,
+        ),
         'leavePolicy': policyName,
       });
       pending++;
@@ -627,6 +671,9 @@ class FirestoreService {
         updates['casualLeaves'] = casual;
         updates['medicalLeaves'] = medical;
         updates['leavePolicy'] = policyName;
+        updates.addAll(
+          TimeOffService.canonicalWorkerLeaveFields({...worker, ...updates}),
+        );
       } else if (policyType == 'Payroll Policy') {
         updates['paymentFrequency'] =
             policyData['paymentFrequency'] ?? 'Monthly';
@@ -769,7 +816,31 @@ class FirestoreService {
   Stream<QuerySnapshot> get workersStream {
     final coll = _workers;
     if (coll == null) return const Stream.empty();
-    return coll.orderBy('createdAt', descending: true).snapshots();
+    return coll.orderBy('createdAt', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      for (final document in snapshot.docs) {
+        final worker = document.data() as Map<String, dynamic>;
+        if (TimeOffService.hasCanonicalWorkerLeaveFields(worker) ||
+            !_leaveNormalizationInFlight.add(document.id)) {
+          continue;
+        }
+        unawaited(
+          normalizeWorkerLeaveSchemaIfNeeded(document.id, worker)
+              .catchError((Object error, StackTrace stackTrace) {
+                ErrorReporter.report(
+                  error,
+                  stackTrace,
+                  context: 'NormalizeWorkerLeaveSchema',
+                );
+              })
+              .whenComplete(
+                () => _leaveNormalizationInFlight.remove(document.id),
+              ),
+        );
+      }
+      return snapshot;
+    });
   }
 
   Future<QuerySnapshot> getWorkersOnce() async {
@@ -1841,62 +1912,21 @@ class FirestoreService {
         if (workerSnapshot.exists) {
           final workerData =
               (workerSnapshot.data() as Map<String, dynamic>?) ?? {};
-          int currentBalance = 0;
-          final leaveBalances =
-              workerData['leaveBalances'] as Map<String, dynamic>?;
-          if (leaveBalances != null && leaveBalances.containsKey(leaveField)) {
-            currentBalance =
-                int.tryParse(leaveBalances[leaveField]?.toString() ?? '0') ?? 0;
-          } else {
-            currentBalance = switch (leaveField) {
-              'annualLeave' =>
-                int.tryParse(
-                      (workerData['availableAnnualLeaves'] ??
-                              workerData['annualLeaves'] ??
-                              '0')
-                          .toString(),
-                    ) ??
-                    0,
-              'sickLeave' =>
-                int.tryParse(
-                      (workerData['availableSickLeaves'] ??
-                              workerData['sickLeaves'] ??
-                              '0')
-                          .toString(),
-                    ) ??
-                    0,
-              'casualLeave' =>
-                int.tryParse(
-                      (workerData['availableCasualLeaves'] ??
-                              workerData['casualLeaves'] ??
-                              '0')
-                          .toString(),
-                    ) ??
-                    0,
-              'medicalLeave' =>
-                int.tryParse(
-                      (workerData['availableMedicalLeaves'] ??
-                              workerData['medicalLeaves'] ??
-                              '0')
-                          .toString(),
-                    ) ??
-                    0,
-              _ => 0,
-            };
-          }
+          final canonical = TimeOffService.canonicalWorkerLeaveFields(
+            workerData,
+          );
+          final leaveBalances = Map<String, dynamic>.from(
+            canonical['leaveBalances'] as Map,
+          );
+          final currentBalance =
+              int.tryParse(leaveBalances[leaveField]?.toString() ?? '0') ?? 0;
 
           final newBalance = currentBalance + requestedDays;
-          workerBalanceUpdate = {
-            'leaveBalances.$leaveField': newBalance,
-            if (leaveField == 'annualLeave')
-              'availableAnnualLeaves': newBalance.toString(),
-            if (leaveField == 'sickLeave')
-              'availableSickLeaves': newBalance.toString(),
-            if (leaveField == 'casualLeave')
-              'availableCasualLeaves': newBalance.toString(),
-            if (leaveField == 'medicalLeave')
-              'availableMedicalLeaves': newBalance.toString(),
-          };
+          leaveBalances[leaveField] = newBalance;
+          workerBalanceUpdate = TimeOffService.canonicalWorkerLeaveFields(
+            workerData,
+            remainingBalances: leaveBalances,
+          );
         }
       }
 
@@ -1980,49 +2010,13 @@ class FirestoreService {
         }
       }
 
+      final canonical = TimeOffService.canonicalWorkerLeaveFields(workerData);
       final Map<String, dynamic> leaveBalances = Map<String, dynamic>.from(
-        (workerData['leaveBalances'] as Map<String, dynamic>?) ?? {},
+        canonical['leaveBalances'] as Map,
       );
 
       int getFieldBalance(String field) {
-        if (leaveBalances.containsKey(field)) {
-          return int.tryParse(leaveBalances[field]?.toString() ?? '0') ?? 0;
-        }
-        return switch (field) {
-          'annualLeave' =>
-            int.tryParse(
-                  (workerData['availableAnnualLeaves'] ??
-                          workerData['annualLeaves'] ??
-                          '0')
-                      .toString(),
-                ) ??
-                0,
-          'sickLeave' =>
-            int.tryParse(
-                  (workerData['availableSickLeaves'] ??
-                          workerData['sickLeaves'] ??
-                          '0')
-                      .toString(),
-                ) ??
-                0,
-          'casualLeave' =>
-            int.tryParse(
-                  (workerData['availableCasualLeaves'] ??
-                          workerData['casualLeaves'] ??
-                          '0')
-                      .toString(),
-                ) ??
-                0,
-          'medicalLeave' =>
-            int.tryParse(
-                  (workerData['availableMedicalLeaves'] ??
-                          workerData['medicalLeaves'] ??
-                          '0')
-                      .toString(),
-                ) ??
-                0,
-          _ => 0,
-        };
+        return int.tryParse(leaveBalances[field]?.toString() ?? '0') ?? 0;
       }
 
       if (oldLeaveField != null && oldDays > 0) {
@@ -2037,25 +2031,10 @@ class FirestoreService {
       final updatedNewVal = (currentNewVal - requestedDays).clamp(0, 9999);
       leaveBalances[leaveField] = updatedNewVal;
 
-      final Map<String, dynamic> workerUpdates = {
-        'leaveBalances': leaveBalances,
-      };
-      if (leaveBalances.containsKey('annualLeave')) {
-        workerUpdates['availableAnnualLeaves'] = leaveBalances['annualLeave']
-            .toString();
-      }
-      if (leaveBalances.containsKey('sickLeave')) {
-        workerUpdates['availableSickLeaves'] = leaveBalances['sickLeave']
-            .toString();
-      }
-      if (leaveBalances.containsKey('casualLeave')) {
-        workerUpdates['availableCasualLeaves'] = leaveBalances['casualLeave']
-            .toString();
-      }
-      if (leaveBalances.containsKey('medicalLeave')) {
-        workerUpdates['availableMedicalLeaves'] = leaveBalances['medicalLeave']
-            .toString();
-      }
+      final workerUpdates = TimeOffService.canonicalWorkerLeaveFields(
+        workerData,
+        remainingBalances: leaveBalances,
+      );
 
       transaction.update(workerRef, workerUpdates);
 

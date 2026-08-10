@@ -456,7 +456,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _existingCvUrl = widget.workerToEdit!['cv']?.toString();
       if (_existingCvUrl != null && _existingCvUrl!.isNotEmpty) {
         _isCvUploaded = true;
-        _cvName = _cleanFileName(_existingCvUrl!);
+        _cvName =
+            _firstNonEmpty([
+              widget.workerToEdit!['cvFileName']?.toString(),
+              widget.workerToEdit!['cv_file_name']?.toString(),
+              widget.workerToEdit!['cvName']?.toString(),
+            ]) ??
+            _cleanFileName(_existingCvUrl!);
       }
       _joiningDate = _workerDateText(widget.workerToEdit!['joiningDate']);
       _selectedJoiningDate = AppDateUtils.dateFromValue(
@@ -1622,6 +1628,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'idFront': frontIdUrl,
         'idBack': backIdUrl,
         'cv': cvUrl,
+        if (cvUrl != null && cvUrl.trim().isNotEmpty)
+          'cvFileName': _cvName ?? _cleanFileName(cvUrl),
         'payroll_initialized': true,
       };
 

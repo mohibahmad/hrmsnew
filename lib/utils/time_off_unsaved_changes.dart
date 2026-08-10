@@ -6,7 +6,7 @@ bool hasUnsavedTimeOffChanges({
   required bool datesChanged,
 }) {
   if (isEditing) {
-    return hasNotes || datesChanged;
+    return hasNotes || typeChanged || datesChanged;
   }
   return hasSelectedDates || hasNotes || typeChanged;
 }
