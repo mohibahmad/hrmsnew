@@ -235,9 +235,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_isAggregateOverview && source != null) {
       _editingRecord = null;
       _editingId = null;
-      _timeOffType = TimeOffService.normalizeLeaveType(
-        (source['action'] ?? source['type'] ?? 'Annual Leave').toString(),
-      );
+      _timeOffType = 'Annual Leave';
       final aggregateDates = source['_aggregateDatesByType'];
       final datesForType = aggregateDates is Map
           ? aggregateDates[_timeOffType]
