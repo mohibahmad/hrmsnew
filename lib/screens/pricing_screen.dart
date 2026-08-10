@@ -9,7 +9,11 @@ import 'package:provider/provider.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final bool isPremium;
-  const SubscriptionDialog({super.key, this.isPremium = false});
+
+  const SubscriptionDialog({
+    super.key,
+    this.isPremium = false,
+  });
 
   @override
   State<SubscriptionDialog> createState() => _SubscriptionDialogState();
@@ -19,21 +23,26 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final Color primaryBlue = const Color(0xFF0247C4);
   final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
+
   int _selectedPlanIndex = 1;
   bool _isSaving = false;
+
   late AuthService _authService;
   late FirestoreService _firestore;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+
+    _authService = Provider.of<AuthService>(
+      context,
+      listen: false,
+    );
+
+    _firestore = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
   }
 
   @override
@@ -55,18 +64,20 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   height: 610,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
+                    color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [],
                   ),
                   child: Row(
                     children: [
+                      // LEFT PANEL
                       Expanded(
                         flex: 11,
                         child: Container(
                           decoration: const BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage('assets/splashscreenbg.png'),
+                              image: AssetImage(
+                                'assets/splashscreenbg.png',
+                              ),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -76,12 +87,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               const SizedBox(height: 20),
 
                               ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(16),
                                 child: Image.asset(
                                   'assets/app_icon.png',
                                   width: 70,
@@ -89,51 +99,84 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
-                              const SizedBox(height: 36),
+
+                              const SizedBox(height: 50),
 
                               Text(
                                 'all_in_one_hr'.tr(),
-                                style: TextStyle(
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'SF Pro Display',
                                   letterSpacing: 0.5,
+                                  height: 1.1,
                                 ),
                               ),
-                              const SizedBox(height: 26),
 
-                              _buildFeatureItem('secure_staff_records'.tr()),
-                              _buildFeatureItem('modern_hrms_experience'.tr()),
-                              _buildFeatureItem('leave_shift_management'.tr()),
-                              _buildFeatureItem('employee_asset_tracking'.tr()),
-                              _buildFeatureItem(
-                                'smart_workforce_management'.tr(),
-                              ),
-                              _buildFeatureItem(
-                                'attendance_payroll_automation'.tr(),
+
+                              // IMPORTANT:
+                              // Expanded + spaceEvenly prevents localized
+                              // text from pushing final bullet outside panel.
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildFeatureItem(
+                                      'secure_staff_records'.tr(),
+                                    ),
+                                    _buildFeatureItem(
+                                      'modern_hrms_experience'.tr(),
+                                    ),
+                                    _buildFeatureItem(
+                                      'leave_shift_management'.tr(),
+                                    ),
+                                    _buildFeatureItem(
+                                      'employee_asset_tracking'.tr(),
+                                    ),
+                                    _buildFeatureItem(
+                                      'smart_workforce_management'.tr(),
+                                    ),
+                                    _buildFeatureItem(
+                                      'attendance_payroll_automation'.tr(),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
 
+                      // RIGHT PANEL
                       Expanded(
                         flex: 11,
                         child: Container(
-                          color: Color(0xFFFFFFFF),
+                          color: const Color(0xFFFFFFFF),
                           width: double.infinity,
                           height: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(48, 16, 48, 18),
+                          padding: const EdgeInsets.fromLTRB(
+                            48,
+                            16,
+                            48,
+                            18,
+                          ),
                           child: SingleChildScrollView(
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.only(
+                                    bottom: 10,
+                                  ),
                                   child: Text(
                                     'choose_your_plan'.tr(),
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: primaryBlue,
                                       fontSize: 28,
@@ -142,6 +185,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
+
                                 Text(
                                   'select_subscription'.tr(),
                                   textAlign: TextAlign.center,
@@ -153,6 +197,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
+
                                 const SizedBox(height: 20),
 
                                 _buildPlanCard(
@@ -160,6 +205,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   title: 'monthly'.tr(),
                                   price: '\$6.99',
                                 ),
+
                                 _buildPlanCard(
                                   index: 1,
                                   title: 'six_month'.tr(),
@@ -167,6 +213,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   isPopular: true,
                                   badgeText: 'popular',
                                 ),
+
                                 _buildPlanCard(
                                   index: 2,
                                   title: 'yearly'.tr(),
@@ -174,6 +221,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   isPopular: true,
                                   badgeText: 'hottest',
                                 ),
+
                                 const SizedBox(height: 6),
 
                                 SizedBox(
@@ -183,69 +231,83 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     onPressed: _isSaving
                                         ? null
                                         : () async {
-                                            setState(() => _isSaving = true);
+                                            setState(() {
+                                              _isSaving = true;
+                                            });
+
                                             try {
-                                              await PreferencesService.setPremium(
-                                                true,
-                                              );
+                                              await PreferencesService
+                                                  .setPremium(true);
+
                                               final isGuest =
                                                   _authService
                                                       .currentUser
                                                       ?.isAnonymous ??
                                                   false;
+
                                               if (!isGuest) {
                                                 try {
                                                   await _firestore
                                                       .updateUserProfile({
-                                                        'isPremium': true,
-                                                      });
+                                                    'isPremium': true,
+                                                  });
                                                 } catch (_) {}
                                               }
                                             } finally {
                                               if (mounted) {
-                                                setState(
-                                                  () => _isSaving = false,
-                                                );
+                                                setState(() {
+                                                  _isSaving = false;
+                                                });
                                               }
                                             }
+
                                             if (context.mounted) {
-                                              Navigator.of(context).pop(true);
+                                              Navigator.of(context)
+                                                  .pop(true);
                                             }
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: primaryBlue,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(50),
+                                        borderRadius:
+                                            BorderRadius.circular(50),
                                       ),
                                     ),
                                     child: _isSaving
                                         ? const SizedBox(
                                             width: 26,
                                             height: 20,
-                                            child: CircularProgressIndicator(
+                                            child:
+                                                CircularProgressIndicator(
                                               strokeWidth: 2,
                                               color: Colors.white,
                                             ),
                                           )
                                         : Text(
                                             'continue'.tr(),
-                                            style: TextStyle(
-                                              color: Color(0xFFFFFFFF),
+                                            style: const TextStyle(
+                                              color:
+                                                  Color(0xFFFFFFFF),
                                               fontSize: 20,
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
+                                              fontWeight:
+                                                  FontWeight.w600,
+                                              fontFamily:
+                                                  'SF Pro Display',
                                             ),
                                           ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 14),
 
                                 GestureDetector(
-                                  onTap: () => Navigator.of(context).pop(false),
+                                  onTap: () {
+                                    Navigator.of(context).pop(false);
+                                  },
                                   child: Text(
                                     'continue_free_plan'.tr(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Color(0xFF0242AE),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -253,21 +315,18 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
+
                                 const SizedBox(height: 19),
 
-                                Padding(
-                                  padding: EdgeInsets.zero,
-                                  child: Text(
-                                    'subscription_disclaimer'.tr(),
-                                    textAlign: TextAlign.center,
-
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 11,
-                                      height: 1.3,
-                                      fontWeight: FontWeight.w400,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
+                                Text(
+                                  'subscription_disclaimer'.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 11,
+                                    height: 1.3,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
 
@@ -276,42 +335,48 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: Padding(
-                                    padding: EdgeInsets.symmetric(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
                                     ),
                                     child: Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment
+                                              .spaceBetween,
                                       children: [
                                         Flexible(
                                           child: _buildFooterLink(
                                             'privacy_policy'.tr(),
-                                            onTap: () => launchUrl(
-                                              Uri.parse(
-                                                'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
-                                              ),
-                                            ),
+                                            onTap: () {
+                                              launchUrl(
+                                                Uri.parse(
+                                                  'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
+
                                         _buildFooterDivider(),
+
                                         Flexible(
                                           child: _buildFooterLink(
                                             'restore'.tr(),
                                             onTap: () {},
                                           ),
                                         ),
+
                                         _buildFooterDivider(),
+
                                         Flexible(
-                                          child: GestureDetector(
-                                            onTap: () => launchUrl(
-                                              Uri.parse(
-                                                'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-                                              ),
-                                            ),
-                                            behavior: HitTestBehavior.opaque,
-                                            child: _buildFooterLink(
-                                              'terms_of_use'.tr(),
-                                            ),
+                                          child: _buildFooterLink(
+                                            'terms_of_use'.tr(),
+                                            onTap: () {
+                                              launchUrl(
+                                                Uri.parse(
+                                                  'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -335,30 +400,33 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   }
 
   Widget _buildFeatureItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Row(
-        children: [
-          const ImageIcon(
-            AssetImage('assets/left_arrow.png'),
-            color: Color(0xFFFFFFFF),
-            size: 18,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 19,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.9,
-                fontFamily: 'SF Pro Display',
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const ImageIcon(
+          AssetImage('assets/left_arrow.png'),
+          color: Color(0xFFFFFFFF),
+          size: 18,
+        ),
+
+        const SizedBox(width: 14),
+
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.5,
+              height: 1.15,
+              fontFamily: 'SF Pro Display',
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -369,7 +437,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     bool isPopular = false,
     String badgeText = 'popular',
   }) {
-    bool isSelected = _selectedPlanIndex == index;
+    final bool isSelected = _selectedPlanIndex == index;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -382,13 +451,20 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         decoration: BoxDecoration(
           color: cardLightBlue,
           borderRadius: BorderRadius.circular(6),
-          border: isSelected ? Border.all(color: primaryBlue, width: 2) : null,
+          border: isSelected
+              ? Border.all(
+                  color: primaryBlue,
+                  width: 2,
+                )
+              : null,
         ),
         child: Stack(
           children: [
             Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -396,7 +472,10 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                       height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: primaryBlue, width: 2),
+                        border: Border.all(
+                          color: primaryBlue,
+                          width: 2,
+                        ),
                       ),
                       child: isSelected
                           ? Center(
@@ -411,17 +490,25 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                             )
                           : const SizedBox(),
                     ),
+
                     const SizedBox(width: 12),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: primaryBlue,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
+
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: primaryBlue,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
                     ),
-                    const Spacer(),
+
+                    const SizedBox(width: 10),
+
                     Text(
                       price,
                       style: TextStyle(
@@ -453,7 +540,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   ),
                   child: Text(
                     badgeText.tr(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
@@ -469,11 +556,17 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     );
   }
 
-  Widget _buildFooterLink(String text, {VoidCallback? onTap}) {
+  Widget _buildFooterLink(
+    String text, {
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Text(
         text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: primaryBlue,
           fontSize: 11,
@@ -486,7 +579,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFooterDivider() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+      ),
       child: Text(
         '|',
         style: TextStyle(
