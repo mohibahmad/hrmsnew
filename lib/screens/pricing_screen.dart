@@ -108,7 +108,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
-                                  fontSize: 28,
+                                  fontSize: 26,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'SF Pro Display',
                                   letterSpacing: 0.5,
@@ -506,19 +506,24 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         ),
                       ),
                     ),
-
-                    const SizedBox(width: 10),
-
-                    Text(
-                      price,
-                      style: TextStyle(
-                        color: primaryBlue,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
                   ],
+                ),
+              ),
+            ),
+
+            Positioned(
+              right: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Text(
+                  price,
+                  style: TextStyle(
+                    color: primaryBlue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
               ),
             ),
