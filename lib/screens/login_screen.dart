@@ -409,29 +409,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
 
-      // Handle cancellation silently – user pressed Cancel, no error.
+      // User cancelled (tapped Cancel / swiped away) – don't show a scary
+      // "authentication failed" toast. Let them know they can use their
+      // password to sign in instead.
       if (result == BiometricAuthResult.cancelled) {
+        if (mounted) _showBiometricPasswordHint();
         return;
       }
 
       if (result != BiometricAuthResult.success) {
-        // Determine the right error message based on the result type.
-        String errorMsg;
+        // Determine the right message based on the result type.
         switch (result) {
           case BiometricAuthResult.lockedOut:
-            errorMsg = 'biometric_locked_out'.tr();
+            if (mounted) {
+              _showErrorSnackBar('biometric_locked_out'.tr());
+            }
             break;
           case BiometricAuthResult.permanentlyLockedOut:
-            errorMsg = 'biometric_permanently_locked_out'.tr();
+            if (mounted) {
+              _showErrorSnackBar('biometric_permanently_locked_out'.tr());
+            }
             break;
           case BiometricAuthResult.notAvailable:
-            errorMsg = 'biometric_not_enrolled'.tr();
+            if (mounted) {
+              _showErrorSnackBar('biometric_not_enrolled'.tr());
+            }
             break;
           default:
-            errorMsg = 'biometric_auth_failed'.tr();
-        }
-        if (mounted) {
-          _showErrorSnackBar(errorMsg);
+            // generic failure / any cancel-mapped case → just suggest the
+            // password flow instead of the harsh "Authentication failed".
+            if (mounted) _showBiometricPasswordHint();
         }
         return;
       }
@@ -479,6 +486,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     FlashySnackBar.show(context, message: message, isError: true);
+  }
+
+  void _showBiometricPasswordHint() {
+    FlashySnackBar.show(
+      context,
+      message: 'biometric_cancelled_password_hint'.tr(),
+    );
   }
 
   void _showDeletedAccountSnackBar() {

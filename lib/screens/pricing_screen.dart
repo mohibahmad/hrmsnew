@@ -21,11 +21,11 @@ class SubscriptionDialog extends ConsumerStatefulWidget {
 }
 
 class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
-  final Color primaryBlue = const Color(0xFF0247C4);
-  final Color leftPanelBlue = const Color(0xFF0247C4);
-  final Color cardLightBlue = const Color(0xFFE5EEFC);
+  final Color primaryBlue = const Color(0xFF0B4DB7);
+  final Color leftPanelBlue = const Color(0xFF0B4DB7);
+  final Color cardLightBlue = const Color(0xFFDBE7F9);
 
-  int _selectedPlanIndex = 1;
+  int _selectedPlanIndex = 0;
   bool _isSaving = false;
 
   late AuthService _authService;
@@ -76,13 +76,13 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                             ),
                           ),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
+                            horizontal: 33,
                             vertical: 20,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 10),
 
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
@@ -94,7 +94,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                 ),
                               ),
 
-                              const SizedBox(height: 50),
+                              const SizedBox(height: 35),
 
                               Text(
                                 'all_in_one_hr'.tr(),
@@ -153,12 +153,13 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                           width: double.infinity,
                           height: double.infinity,
                           padding: const EdgeInsets.fromLTRB(
-                            34,
-                            16,
-                            34,
-                            18,
+                            33,
+                            20,
+                            33,
+                            20,
                           ),
                           child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
                             child: Column(
                               mainAxisAlignment:
                                   MainAxisAlignment.start,
@@ -192,7 +193,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 14),
 
                                 _buildPlanCard(
                                   index: 0,
@@ -216,11 +217,11 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   badgeText: 'hottest',
                                 ),
 
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
 
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 50,
+                                  height: 48,
                                   child: ElevatedButton(
                                     onPressed: _isSaving
                                         ? null
@@ -283,7 +284,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                             style: const TextStyle(
                                               color:
                                                   Color(0xFFFFFFFF),
-                                              fontSize: 20,
+                                              fontSize: 19,
                                               fontWeight:
                                                   FontWeight.w600,
                                               fontFamily:
@@ -293,7 +294,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 10),
 
                                 GestureDetector(
                                   onTap: () {
@@ -301,22 +302,22 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   },
                                   child: Text(
                                     'continue_free_plan'.tr(),
-                                    style: const TextStyle(
-                                      color: Color(0xFF0242AE),
-                                      fontSize: 12,
+                                    style: TextStyle(
+                                      color: primaryBlue,
+                                      fontSize: 11.5,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
 
-                                const SizedBox(height: 19),
+                                const SizedBox(height: 14),
 
                                 Text(
                                   'subscription_disclaimer'.tr(),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                    color: Colors.black,
+                                    color: Color(0xFF222222),
                                     fontSize: 11,
                                     height: 1.3,
                                     fontWeight: FontWeight.w400,
@@ -324,57 +325,45 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 36),
+                                const SizedBox(height: 44),
 
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment
-                                              .spaceBetween,
-                                      children: [
-                                        Flexible(
-                                          child: _buildFooterLink(
-                                            'privacy_policy'.tr(),
-                                            onTap: () {
-                                              launchUrl(
-                                                Uri.parse(
-                                                  'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
+                                FractionallySizedBox(
+                                  widthFactor: 1.1,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _buildFooterLink(
+                                        'privacy_policy'.tr(),
+                                        onTap: () {
+                                          launchUrl(
+                                            Uri.parse(
+                                              'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                            ),
+                                          );
+                                        },
+                                      ),
 
-                                        _buildFooterDivider(),
+                                      _buildFooterDivider(),
 
-                                        Flexible(
-                                          child: _buildFooterLink(
-                                            'restore'.tr(),
-                                            onTap: () {},
-                                          ),
-                                        ),
+                                      _buildFooterLink(
+                                        'restore'.tr(),
+                                        onTap: () {},
+                                      ),
 
-                                        _buildFooterDivider(),
+                                      _buildFooterDivider(),
 
-                                        Flexible(
-                                          child: _buildFooterLink(
-                                            'terms_of_use'.tr(),
-                                            onTap: () {
-                                              launchUrl(
-                                                Uri.parse(
-                                                  'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      _buildFooterLink(
+                                        'terms_of_use'.tr(),
+                                        onTap: () {
+                                          launchUrl(
+                                            Uri.parse(
+                                              'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -564,11 +553,9 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: primaryBlue,
-          fontSize: 11,
+          fontSize: 11.5,
           fontWeight: FontWeight.w500,
           fontFamily: 'SF Pro Display',
         ),
@@ -579,14 +566,12 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
   Widget _buildFooterDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: 8,
+        horizontal: 10,
       ),
-      child: Text(
-        '|',
-        style: TextStyle(
-          color: primaryBlue.withValues(alpha: 0.5),
-          fontSize: 11,
-        ),
+      child: Container(
+        width: 1,
+        height: 14,
+        color: primaryBlue,
       ),
     );
   }

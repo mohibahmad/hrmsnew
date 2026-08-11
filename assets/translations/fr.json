@@ -1283,6 +1283,7 @@
   "enable": "Activer",
   "login_with_biometric_reason": "S'authentifier avec {biometric} pour se connecter.",
   "biometric_auth_failed": "L'authentification biométrique a échoué. Veuillez réessayer.",
+  "biometric_cancelled_password_hint": "Vous pouvez vous connecter avec votre mot de passe.",
   "biometric_not_enrolled": "Configurez d'abord l'authentification biométrique dans les réglages de l'appareil, puis réessayez.",
   "biometric_credentials_not_found": "Identifiants enregistrés introuvables. Veuillez vous connecter manuellement.",
   "biometric_enrollment_message": "Souhaitez-vous activer {biometric} pour une connexion plus rapide la prochaine fois ? Vos identifiants seront stockés de manière sécurisée sur cet appareil.",

@@ -240,7 +240,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     final companyStamp = _profileImageText(profile['companyStampUrl']);
     setState(() {
       _businessNameController.text = _profileText(profile['businessName']);
-      _companyIdController.text = _profileText(profile['companyId']);
+      _companyIdController.text =
+          _profileText(profile['companyId']).toUpperCase();
       _emailController.text = _profileText(
         profile['email'],
         fallback: _authService.currentUser?.email ?? '',
@@ -271,7 +272,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         setState(() {
           _businessNameController.text =
               guestData?['businessName'] ?? 'ABC Corporation';
-          _companyIdController.text = guestData?['companyId'] ?? '';
+          _companyIdController.text =
+              (guestData?['companyId'] ?? '').toUpperCase();
           _emailController.text = guestData?['email'] ?? 'guest_email'.tr();
           _currencyController.text = CurrencyUtils.normalize(
             guestData?['currency'],
@@ -454,7 +456,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 
   Future<bool> _saveProfile() async {
     final businessName = _businessNameController.text.trim();
-    final companyId = _companyIdController.text.trim();
+    final companyId = _companyIdController.text.trim().toUpperCase();
     final email = _emailController.text.trim().toLowerCase();
     final contact1 = _contact1Controller.text.trim();
     final contact2 = _contact2Controller.text.trim();
@@ -1513,10 +1515,19 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9+\-\s()]'),
                             ),
-                          if (isCompanyId)
+                          if (isCompanyId) ...[
+                            // Live-transform typed characters to uppercase so
+                            // "pk-ab123" becomes "PK-AB123" as you type, then
+                            // keep only valid characters (A-Z, 0-9, -).
+                            TextInputFormatter.withFunction(
+                              (oldValue, newValue) => newValue.copyWith(
+                                text: newValue.text.toUpperCase(),
+                              ),
+                            ),
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[A-Z0-9-]'),
                             ),
+                          ],
                         ]
                       : null,
                   decoration: InputDecoration(

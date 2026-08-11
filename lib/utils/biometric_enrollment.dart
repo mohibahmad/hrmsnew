@@ -35,33 +35,47 @@ Future<bool> offerBiometricLogin({
     ),
   );
 
-  // Handle cancellation silently – user pressed Cancel, no error.
+  // User cancelled (tapped Cancel / swiped away) – don't show a scary
+  // "authentication failed" toast. Suggest the password flow instead.
   if (result == BiometricAuthResult.cancelled) {
+    if (context.mounted) _showPasswordHint(context);
     return false;
   }
 
   if (result != BiometricAuthResult.success) {
-    // Determine the right error message based on the result type.
-    String errorMsg;
+    // Determine the right message based on the result type.
     switch (result) {
       case BiometricAuthResult.lockedOut:
-        errorMsg = 'biometric_locked_out'.tr();
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'biometric_locked_out'.tr(),
+            isError: true,
+          );
+        }
         break;
       case BiometricAuthResult.permanentlyLockedOut:
-        errorMsg = 'biometric_permanently_locked_out'.tr();
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'biometric_permanently_locked_out'.tr(),
+            isError: true,
+          );
+        }
         break;
       case BiometricAuthResult.notAvailable:
-        errorMsg = 'biometric_not_enrolled'.tr();
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'biometric_not_enrolled'.tr(),
+            isError: true,
+          );
+        }
         break;
       default:
-        errorMsg = 'biometric_auth_failed'.tr();
-    }
-    if (context.mounted) {
-      FlashySnackBar.show(
-        context,
-        message: errorMsg,
-        isError: true,
-      );
+        // generic failure / any cancel-mapped case → just suggest the password
+        // flow instead of the harsh "Authentication failed".
+        if (context.mounted) _showPasswordHint(context);
     }
     return false;
   }
@@ -92,4 +106,13 @@ Future<bool> offerBiometricLogin({
     );
   }
   return true;
+}
+
+/// Friendly non-error toast shown when the user skips/cancels the biometric
+/// prompt, suggesting they sign in with their password instead.
+void _showPasswordHint(BuildContext context) {
+  FlashySnackBar.show(
+    context,
+    message: 'biometric_cancelled_password_hint'.tr(),
+  );
 }

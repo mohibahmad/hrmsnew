@@ -1290,6 +1290,7 @@
   "enable": "Enable",
   "login_with_biometric_reason": "Authenticate with {biometric} to sign in.",
   "biometric_auth_failed": "Biometric authentication failed. Please try again.",
+  "biometric_cancelled_password_hint": "You can sign in with your password instead.",
   "biometric_not_enrolled": "Set up biometric authentication in your device settings first, then try again.",
   "biometric_credentials_not_found": "Saved credentials not found. Please login manually.",
   "biometric_enrollment_message": "Would you like to enable {biometric} for faster login next time? Your credentials will be stored securely on this device.",

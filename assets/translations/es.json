@@ -1285,6 +1285,7 @@
   "enable": "Habilitar",
   "login_with_biometric_reason": "Autenticar con {biometric} para iniciar sesión.",
   "biometric_auth_failed": "La autenticación biométrica falló. Por favor, inténtelo de nuevo.",
+  "biometric_cancelled_password_hint": "Puedes iniciar sesión con tu contraseña.",
   "biometric_not_enrolled": "Configure primero la autenticación biométrica en los ajustes del dispositivo y vuelva a intentarlo.",
   "biometric_credentials_not_found": "Credenciales guardadas no encontradas. Inicie sesión manualmente.",
   "biometric_enrollment_message": "¿Desea habilitar {biometric} para un inicio de sesión más rápido la próxima vez? Sus credenciales se almacenarán de forma segura en este dispositivo.",
