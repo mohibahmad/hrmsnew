@@ -39,6 +39,32 @@ Uint8List? _compressImageBytes(Uint8List rawBytes) {
   }
 }
 
+Uint8List? _compressStampBytes(Uint8List rawBytes) {
+  try {
+    final decoded = img.decodeImage(rawBytes);
+    if (decoded == null) return null;
+
+    const int maxStampSide = 700;
+    final longestSide = decoded.width > decoded.height
+        ? decoded.width
+        : decoded.height;
+    final resized = longestSide <= maxStampSide
+        ? decoded
+        : img.copyResize(
+            decoded,
+            width: decoded.width >= decoded.height ? maxStampSide : null,
+            height: decoded.height > decoded.width ? maxStampSide : null,
+          );
+
+    final isPng = _companyStampFormat(rawBytes) == 'png';
+    return Uint8List.fromList(
+      isPng ? img.encodePng(resized) : img.encodeJpg(resized, quality: 85),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
 const int _maxProfileImageBytes = 10 * 1024 * 1024;
 const int _maxCompanyStampBytes = 5 * 1024 * 1024;
 
@@ -240,8 +266,9 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     final companyStamp = _profileImageText(profile['companyStampUrl']);
     setState(() {
       _businessNameController.text = _profileText(profile['businessName']);
-      _companyIdController.text =
-          _profileText(profile['companyId']).toUpperCase();
+      _companyIdController.text = _profileText(
+        profile['companyId'],
+      ).toUpperCase();
       _emailController.text = _profileText(
         profile['email'],
         fallback: _authService.currentUser?.email ?? '',
@@ -272,8 +299,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         setState(() {
           _businessNameController.text =
               guestData?['businessName'] ?? 'ABC Corporation';
-          _companyIdController.text =
-              (guestData?['companyId'] ?? '').toUpperCase();
+          _companyIdController.text = (guestData?['companyId'] ?? '')
+              .toUpperCase();
           _emailController.text = guestData?['email'] ?? 'guest_email'.tr();
           _currencyController.text = CurrencyUtils.normalize(
             guestData?['currency'],
@@ -571,6 +598,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     Reference? uploadedRef;
     Reference? uploadedStampRef;
     var profileSaved = false;
+    var errorAlreadyShown = false;
 
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -580,112 +608,148 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       String? cachedLocalStampPath;
 
       if (!isGuest) {
-        if (_newProfileImageBytes != null || _newProfileImagePath != null) {
-          final fileName =
-              'profile_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          uploadedRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_pics')
-              .child(fileName);
+        final hasNewProfileImage =
+            _newProfileImageBytes != null || _newProfileImagePath != null;
+        final hasNewStamp = _newCompanyStampBytes != null;
 
-          try {
-            Uint8List? rawBytes = _newProfileImageBytes;
-            if (rawBytes == null && _newProfileImagePath != null) {
-              final imageFile = File(_newProfileImagePath!);
-              final imageLength = await imageFile.length();
-              if (imageLength > _maxProfileImageBytes) {
-                throw const FileSystemException(
-                  'Profile image is larger than 10 MB.',
-                );
-              }
-              rawBytes = await imageFile.readAsBytes();
-            }
+        // 1) Compress any new images locally first so the uploads send the
+        //    smallest possible payloads (company stamps were previously sent
+        //    uncompressed and could be up to 5 MB - the main cause of slow
+        //    saves).
+        Uint8List? profileUploadBytes;
+        String? profileCacheName;
+        Uint8List? stampUploadBytes;
+        String? stampFormat;
+        String? stampCacheName;
 
-            if (rawBytes == null || rawBytes.isEmpty) {
-              throw const FileSystemException('Unable to read image bytes.');
-            }
-            if (rawBytes.length > _maxProfileImageBytes) {
+        if (hasNewProfileImage) {
+          Uint8List? rawBytes = _newProfileImageBytes;
+          if (rawBytes == null && _newProfileImagePath != null) {
+            final imageFile = File(_newProfileImagePath!);
+            final imageLength = await imageFile.length();
+            if (imageLength > _maxProfileImageBytes) {
               throw const FileSystemException(
                 'Profile image is larger than 10 MB.',
               );
             }
-
-            final compressedBytes = await compute(
-              _compressImageBytes,
-              rawBytes,
-            );
-            if (compressedBytes == null || compressedBytes.isEmpty) {
-              throw const FormatException('Unsupported profile image format.');
-            }
-
-            await uploadedRef.putData(
-              compressedBytes,
-              SettableMetadata(contentType: 'image/jpeg'),
-            );
-            downloadUrl = await uploadedRef.getDownloadURL();
-            cachedLocalPicPath = await PreferencesService.persistImageLocally(
-              bytes: compressedBytes,
-              fileName:
-                  'company_logo_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            );
-          } catch (error, stackTrace) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'UploadProfileImage',
-            );
-            final failedRef = uploadedRef;
-            try {
-              await failedRef.delete();
-            } catch (_) {}
-            if (mounted) {
-              setState(() => _isLoading = false);
-            
-              final isUnsupportedFormat =
-                  error is FormatException &&
-                  (error.message)
-                      .toLowerCase()
-                      .contains('unsupported');
-              FlashySnackBar.show(
-                context,
-                message: isUnsupportedFormat
-                    ? 'profile_image_format_unsupported'.tr()
-                    : 'profile_image_upload_failed_detail'.tr(
-                        namedArgs: {'error': error.toString()},
-                      ),
-                isError: true,
-              );
-            }
-            return false;
+            rawBytes = await imageFile.readAsBytes();
           }
+
+          if (rawBytes == null || rawBytes.isEmpty) {
+            throw const FileSystemException('Unable to read image bytes.');
+          }
+          if (rawBytes.length > _maxProfileImageBytes) {
+            throw const FileSystemException(
+              'Profile image is larger than 10 MB.',
+            );
+          }
+
+          final compressedBytes = await compute(_compressImageBytes, rawBytes);
+          if (compressedBytes == null || compressedBytes.isEmpty) {
+            throw const FormatException('Unsupported profile image format.');
+          }
+          profileUploadBytes = compressedBytes;
+          profileCacheName =
+              'company_logo_${DateTime.now().millisecondsSinceEpoch}.jpg';
         }
 
-        if (_newCompanyStampBytes != null) {
-          final stampBytes = _newCompanyStampBytes!;
-          final stampFormat = _companyStampFormat(stampBytes);
-          if (stampFormat == null || stampBytes.isEmpty) {
+        if (hasNewStamp) {
+          final rawStampBytes = _newCompanyStampBytes!;
+          final detectedFormat = _companyStampFormat(rawStampBytes);
+          if (detectedFormat == null || rawStampBytes.isEmpty) {
             throw const FormatException('Unsupported company stamp format.');
           }
-          final stampFileName =
-              'company_stamp_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.$stampFormat';
-          uploadedStampRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_pics')
-              .child(stampFileName);
-          await uploadedStampRef.putData(
-            stampBytes,
-            SettableMetadata(
-              contentType: stampFormat == 'png' ? 'image/png' : 'image/jpeg',
-            ),
+          final compressedStamp = await compute(
+            _compressStampBytes,
+            rawStampBytes,
           );
-          stampDownloadUrl = await uploadedStampRef.getDownloadURL();
-          cachedLocalStampPath = await PreferencesService.persistImageLocally(
-            bytes: stampBytes,
-            fileName:
-                'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$stampFormat',
-          );
+          if (compressedStamp == null || compressedStamp.isEmpty) {
+            throw const FormatException('Unsupported company stamp format.');
+          }
+          stampUploadBytes = compressedStamp;
+          stampFormat = detectedFormat;
+          stampCacheName =
+              'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$detectedFormat';
         }
 
+        // 2) Upload profile picture and company stamp in PARALLEL instead of
+        //    one after the other - both uploads and their download-URL
+        //    round-trips overlap, cutting total save time.
+        final uploadTasks = <Future<void>>[];
+
+        if (profileUploadBytes != null) {
+          uploadTasks.add(() async {
+            try {
+              final fileName =
+                  'profile_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              uploadedRef = FirebaseStorage.instance
+                  .ref()
+                  .child('profile_pics')
+                  .child(fileName);
+              await uploadedRef!.putData(
+                profileUploadBytes!,
+                SettableMetadata(contentType: 'image/jpeg'),
+              );
+              downloadUrl = await uploadedRef!.getDownloadURL();
+              cachedLocalPicPath = await PreferencesService.persistImageLocally(
+                bytes: profileUploadBytes,
+                fileName: profileCacheName!,
+              );
+            } catch (error, stackTrace) {
+              ErrorReporter.report(
+                error,
+                stackTrace,
+                context: 'UploadProfileImage',
+              );
+              final failedRef = uploadedRef;
+              if (failedRef != null) {
+                try {
+                  await failedRef.delete();
+                } catch (_) {}
+              }
+              if (mounted) {
+                final isUnsupportedFormat =
+                    error is FormatException &&
+                    (error.message).toLowerCase().contains('unsupported');
+                FlashySnackBar.show(
+                  context,
+                  message: isUnsupportedFormat
+                      ? 'profile_image_format_unsupported'.tr()
+                      : 'profile_image_upload_failed_detail'.tr(
+                          namedArgs: {'error': error.toString()},
+                        ),
+                  isError: true,
+                );
+              }
+              errorAlreadyShown = true;
+              rethrow;
+            }
+          }());
+        }
+
+        if (stampUploadBytes != null) {
+          uploadTasks.add(() async {
+            final stampFileName =
+                'company_stamp_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.$stampFormat';
+            uploadedStampRef = FirebaseStorage.instance
+                .ref()
+                .child('profile_pics')
+                .child(stampFileName);
+            await uploadedStampRef!.putData(
+              stampUploadBytes!,
+              SettableMetadata(
+                contentType: stampFormat == 'png' ? 'image/png' : 'image/jpeg',
+              ),
+            );
+            stampDownloadUrl = await uploadedStampRef!.getDownloadURL();
+            cachedLocalStampPath = await PreferencesService.persistImageLocally(
+              bytes: stampUploadBytes,
+              fileName: stampCacheName!,
+            );
+          }());
+        }
+
+        await Future.wait(uploadTasks);
         await _firestore.updateUserProfile({
           'businessName': businessName,
           'companyId': companyId,
@@ -733,9 +797,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
               context: 'CacheProfileImage',
             );
           });
-          if (cachedLocalPicPath != null && cachedLocalPicPath.isNotEmpty) {
+          final localProfilePicPath = cachedLocalPicPath;
+          if (localProfilePicPath != null && localProfilePicPath.isNotEmpty) {
             PreferencesService.setProfilePicLocalPath(
-              cachedLocalPicPath,
+              localProfilePicPath,
             ).catchError((_) {});
           }
         }
@@ -888,13 +953,15 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       }
       if (mounted) {
         setState(() => _isLoading = false);
-        FlashySnackBar.show(
-          context,
-          message: 'error_saving_profile'.tr(
-            namedArgs: {'error': error.toString()},
-          ),
-          isError: true,
-        );
+        if (!errorAlreadyShown) {
+          FlashySnackBar.show(
+            context,
+            message: 'error_saving_profile'.tr(
+              namedArgs: {'error': error.toString()},
+            ),
+            isError: true,
+          );
+        }
       }
       return false;
     }
