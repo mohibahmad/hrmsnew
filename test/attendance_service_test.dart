@@ -58,6 +58,79 @@ void main() {
     );
   });
 
+  test('today summary counts only the latest status for each worker', () {
+    final today = DateTime(2026, 8, 11);
+    final workers = <Map<String, dynamic>>[
+      {'id': 'worker-1', 'name': 'One', 'email': 'one@example.com'},
+      {'id': 'worker-2', 'name': 'Two', 'email': 'two@example.com'},
+      {'id': 'worker-3', 'name': 'Three', 'email': 'three@example.com'},
+      {'id': 'worker-4', 'name': 'Four', 'email': 'four@example.com'},
+    ];
+    final rawRecords = <Map<String, dynamic>>[
+      {
+        'id': 'worker-1-old',
+        'workerId': 'worker-1',
+        'attendanceDate': today,
+        'status': 'Absent',
+        'updatedAt': DateTime(2026, 8, 11, 8),
+      },
+      {
+        'id': 'worker-1-new',
+        'workerId': 'worker-1',
+        'attendanceDate': today,
+        'status': 'Present',
+        'updatedAt': DateTime(2026, 8, 11, 9),
+      },
+      {
+        'id': 'worker-2-old',
+        'workerId': 'worker-2',
+        'attendanceDate': today,
+        'status': 'Present',
+        'updatedAt': DateTime(2026, 8, 11, 8),
+      },
+      {
+        'id': 'worker-2-new',
+        'workerId': 'worker-2',
+        'attendanceDate': today,
+        'status': 'Present',
+        'updatedAt': DateTime(2026, 8, 11, 9),
+      },
+      {
+        'id': 'worker-3',
+        'workerId': 'worker-3',
+        'attendanceDate': today,
+        'status': 'Present',
+      },
+      {
+        'id': 'worker-4',
+        'workerId': 'worker-4',
+        'attendanceDate': today,
+        'status': 'Present',
+      },
+    ];
+    final timeOffRecords = <Map<String, dynamic>>[
+      {
+        'id': 'leave-4',
+        'workerId': 'worker-4',
+        'status': 'Approved',
+        'action': 'Annual Leave',
+        'selectedDates': [today],
+      },
+    ];
+
+    final todayWorkerRecords = AttendanceService.combineAttendance(
+      workersList: workers,
+      rawAttendanceDocs: rawRecords,
+    );
+    final counts = AttendanceService.countRecordsByStatus(
+      todayWorkerRecords,
+      timeOffRecords,
+    );
+
+    expect(todayWorkerRecords, hasLength(4));
+    expect(counts, {'present': 3, 'absent': 0, 'leave': 1});
+  });
+
   test('today leave assignment keys detect a second worker added live', () {
     final today = DateTime(2026, 8, 10);
     final existing = <Map<String, dynamic>>[

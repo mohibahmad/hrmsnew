@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
+import 'package:hrms/utils/date_utils.dart';
 import 'package:hrms/utils/chart_utils.dart';
 
 void main() {
@@ -35,6 +37,29 @@ void main() {
 
       expect(result, hasLength(2));
     });
+
+    test('This Year includes legacy A status and date field as absent', () {
+      final result = attendanceRecordsForPeriod(
+        [
+          {'id': 'legacy-absent', 'date': DateTime(2026, 3, 10), 'status': 'A'},
+          {
+            'id': 'current-present',
+            'attendanceDate': DateTime(2026, 8, 11),
+            'status': 'Present',
+          },
+        ],
+        'This Year',
+        now: now,
+      );
+
+      expect(result, hasLength(2));
+      expect(
+        result.where(
+          (record) => normalizedAttendanceStatus(record) == 'absent',
+        ),
+        hasLength(1),
+      );
+    });
   });
 
   group('getChartData adaptive behavior', () {
@@ -67,6 +92,51 @@ void main() {
       expect(month.values.reduce((a, b) => a + b), 1);
       expect(sixMonths.values.reduce((a, b) => a + b), 2);
       expect(year.values.reduce((a, b) => a + b), 2);
+    });
+
+    test('This Week labels and values run from Monday through Sunday', () {
+      final now = DateTime.now();
+      final monday = AppDateUtils.periodStart('Week', now);
+      final tuesday = monday.add(const Duration(days: 1));
+
+      final chart = getChartData(
+        'This Week',
+        [
+          {'attendanceDate': tuesday, 'status': 'Present'},
+        ],
+        false,
+        'en_US',
+      );
+
+      final expectedLabels = List.generate(
+        7,
+        (index) => DateFormat(
+          'E',
+          'en_US',
+        ).format(monday.add(Duration(days: index))).toUpperCase(),
+      );
+      expect(chart.labels, expectedLabels);
+      expect(chart.values[0], 0);
+      expect(chart.values[1], 1);
+      expect(chart.values.skip(2), everyElement(0));
+    });
+
+    test('empty This Week chart still labels Monday through Sunday', () {
+      final now = DateTime.now();
+      final monday = AppDateUtils.periodStart('Week', now);
+
+      final chart = getChartData('This Week', const [], false, 'en_US');
+
+      expect(
+        chart.labels,
+        List.generate(
+          7,
+          (index) => DateFormat(
+            'E',
+            'en_US',
+          ).format(monday.add(Duration(days: index))).toUpperCase(),
+        ),
+      );
     });
 
     test('excludes records outside the selected period', () {

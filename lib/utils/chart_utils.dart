@@ -26,6 +26,19 @@ class NiceChartRange {
   NiceChartRange(this.maxY, this.interval);
 }
 
+String normalizedAttendanceStatus(Map<String, dynamic> record) {
+  final status = (record['status'] ?? '').toString().trim().toLowerCase();
+  return switch (status) {
+    'present' || 'p' => 'present',
+    'absent' || 'a' => 'absent',
+    _ => status,
+  };
+}
+
+DateTime? _dashboardAttendanceDate(Map<String, dynamic> record) {
+  return AppDateUtils.dateFromValue(record['attendanceDate'] ?? record['date']);
+}
+
 /// Returns every Present/Absent attendance record inside [period].
 ///
 /// Dashboard totals are based on the attendance collection itself. They must
@@ -41,10 +54,10 @@ List<Map<String, dynamic>> attendanceRecordsForPeriod(
   final end = AppDateUtils.periodEnd(period, referenceDate);
 
   return records.where((record) {
-    final status = (record['status'] ?? '').toString().trim().toLowerCase();
+    final status = normalizedAttendanceStatus(record);
     if (status != 'present' && status != 'absent') return false;
 
-    final date = AppDateUtils.canonicalAttendanceDate(record);
+    final date = _dashboardAttendanceDate(record);
     if (date == null) return false;
     final day = DateTime(date.year, date.month, date.day);
     return !day.isBefore(start) && !day.isAfter(end);
@@ -60,8 +73,8 @@ bool _isNewerAttendanceRecord(
   Map<String, dynamic> candidate,
   Map<String, dynamic> existing,
 ) {
-  final candidateDate = AppDateUtils.canonicalAttendanceDate(candidate);
-  final existingDate = AppDateUtils.canonicalAttendanceDate(existing);
+  final candidateDate = _dashboardAttendanceDate(candidate);
+  final existingDate = _dashboardAttendanceDate(existing);
 
   if (candidateDate != null && existingDate != null) {
     if (candidateDate.isAfter(existingDate)) return true;
@@ -128,7 +141,7 @@ String? _attendanceBucketKey(
   String period,
   DateTime now,
 ) {
-  final date = AppDateUtils.canonicalAttendanceDate(record);
+  final date = _dashboardAttendanceDate(record);
   if (date == null) return null;
 
   return '${date.year}-${date.month}-${date.day}';
@@ -239,7 +252,7 @@ ChartData getChartData(
       case 'Week':
         final labels = <String>[];
         final startOfWeek = AppDateUtils.periodStart('Week', now);
-        for (int i = 6; i >= 0; i--) {
+        for (int i = 0; i < 7; i++) {
           final date = startOfWeek.add(Duration(days: i));
           labels.add(DateFormat('E', locale).format(date).toUpperCase());
         }
@@ -276,7 +289,7 @@ ChartData getChartData(
   for (final doc in docs) {
     // Dashboard charts use only the canonical attendanceDate. createdAt is
     // metadata and must not move a historical record into today's chart.
-    final dt = AppDateUtils.canonicalAttendanceDate(doc);
+    final dt = _dashboardAttendanceDate(doc);
     if (dt != null) {
       parsedRecords.add(dt);
     }
@@ -308,7 +321,8 @@ ChartData getChartData(
       final labels = <String>[];
       final values = List.filled(7, 0.0);
 
-      for (int i = 6; i >= 0; i--) {
+      // Values use Monday as index 0, so labels must use the same order.
+      for (int i = 0; i < 7; i++) {
         final date = start.add(Duration(days: i));
         labels.add(DateFormat('E', locale).format(date).toUpperCase());
       }

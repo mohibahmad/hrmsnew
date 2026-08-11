@@ -152,7 +152,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
     String status,
   ) {
     return records.where((record) {
-      return (record['status'] ?? '').toString().trim().toLowerCase() == status;
+      return normalizedAttendanceStatus(record) == status;
     }).toList();
   }
 
@@ -227,7 +227,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 38,
+                  reservedSize: 48,
                   interval: 1,
                   getTitlesWidget: (value, meta) {
                     if ((value - value.round()).abs() > 0.001) {
@@ -243,25 +243,41 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                     }
                     return SideTitleWidget(
                       meta: meta,
-                      space: 10,
-                      child: Text(
-                        presentChartData.labels[index],
-                        style: TextStyle(
-                          color: const Color(0xFF65717E),
-                          fontSize: presentChartData.labels.length >= 10
-                              ? 11.5
-                              : 13,
-                          letterSpacing: 0.5,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                      space: 0,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 2,
+                            height: 8,
+                            color: const Color(0xFF9AA1A8),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            presentChartData.labels[index],
+                            style: TextStyle(
+                              color: const Color(0xFF65717E),
+                              fontSize: presentChartData.labels.length >= 10
+                                  ? 11.5
+                                  : 13,
+                              letterSpacing: 0.5,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
                 ),
               ),
             ),
-            borderData: FlBorderData(show: false),
+            borderData: FlBorderData(
+              show: true,
+              border: const Border(
+                bottom: BorderSide(color: Color(0xFF9AA1A8), width: 1),
+              ),
+            ),
             barGroups: List.generate(presentChartData.values.length, (index) {
               final present = presentChartData.values[index] * animation;
               final absent = absentChartData.values[index] * animation;

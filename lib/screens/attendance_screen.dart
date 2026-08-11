@@ -1012,12 +1012,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           rawAttendanceDocs: periodAttendance,
         ).map((record) {
           final recordDate = AppDateUtils.attendanceRecordDate(record);
+          final statusDate =
+              recordDate ??
+              (_selectedTimeframe == 'Today'
+                  ? AppDateUtils.periodStart('Today', DateTime.now())
+                  : null);
           final isOnLeave =
-              recordDate != null &&
+              statusDate != null &&
               TimeOffService.isWorkerOnLeave(
                 record,
                 _timeOffRecords,
-                onDate: recordDate,
+                onDate: statusDate,
               );
           if (isOnLeave) {
             return {...record, 'status': 'Leave'};
@@ -1029,8 +1034,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _isLoading = false;
     }
 
+    // Today is a worker snapshot, so count the same latest per-worker records
+    // rendered by the table. Raw documents can contain multiple edits for one
+    // worker and would otherwise inflate or contradict the summary cards.
+    final countableRecords = _selectedTimeframe == 'Today'
+        ? _attendanceDocs
+        : periodAttendance;
     final counts = AttendanceService.countRecordsByStatus(
-      periodAttendance,
+      countableRecords,
       _timeOffRecords,
     );
     _presentCount = counts['present'] ?? 0;

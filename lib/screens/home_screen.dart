@@ -902,10 +902,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// belong to current workers. Dashboard filtering uses only the canonical
   /// `attendanceDate`; `createdAt` and document IDs are metadata.
   List<Map<String, dynamic>> _getFilteredAttendanceDocs() {
-    final isGuest =
-        (_authService.currentUser?.isAnonymous ?? false) ||
-        PreferencesService.cachedIsGuest;
-
+    // A signed-in account must always use the live Firestore attendance
+    // stream. A stale cached guest preference must never replace real records
+    // with demo data after login.
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
     return attendanceRecordsForPeriod(rawDocs, _selectedPeriod);
   }

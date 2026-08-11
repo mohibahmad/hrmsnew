@@ -1679,7 +1679,11 @@ class FirestoreService {
   Stream<QuerySnapshot> get attendanceStream {
     final coll = _attendance;
     if (coll == null) return const Stream.empty();
-    return coll.orderBy('createdAt', descending: true).snapshots();
+    // Do not order this live source by createdAt. Firestore orderBy excludes
+    // documents where that field is missing, which can hide valid legacy or
+    // updated attendance records (commonly an Absent record) from dashboard
+    // totals. Consumers normalize and sort records after receiving them.
+    return coll.snapshots();
   }
 
   Stream<QuerySnapshot> attendanceStreamForPeriod({
