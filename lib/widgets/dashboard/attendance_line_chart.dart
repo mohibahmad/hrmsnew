@@ -26,7 +26,7 @@ BarTouchTooltipData buildAttendanceBarTooltipData(NumberFormat numberFmt) {
     fitInsideHorizontally: true,
     fitInsideVertically: true,
     getTooltipItem: (group, groupIndex, rod, rodIndex) {
-      final isPresent = rodIndex == 0;
+      final isPresent = rod.color == _presentColor;
       final color = isPresent ? _presentColor : _absentColor;
       return BarTooltipItem(
         '${isPresent ? 'Present' : 'Absent'}: ${numberFmt.format(rod.toY)}',
@@ -138,7 +138,6 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                     child: _buildBarChart(
                       presentChartData: presentChartData,
                       absentChartData: absentChartData,
-                      hasAbsentData: hasAbsentData,
                       locale: locale,
                     ),
                   ),
@@ -160,7 +159,6 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
   Widget _buildBarChart({
     required ChartData presentChartData,
     required ChartData absentChartData,
-    required bool hasAbsentData,
     required String locale,
   }) {
     final numberFmt = NumberFormat.decimalPattern(locale);
@@ -230,8 +228,12 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 38,
+                  interval: 1,
                   getTitlesWidget: (value, meta) {
-                    final index = value.toInt();
+                    if ((value - value.round()).abs() > 0.001) {
+                      return const SizedBox.shrink();
+                    }
+                    final index = value.round();
                     if (index < 0 || index >= presentChartData.labels.length) {
                       return const SizedBox.shrink();
                     }
@@ -262,14 +264,11 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
             barGroups: List.generate(presentChartData.values.length, (index) {
               final present = presentChartData.values[index] * animation;
               final absent = absentChartData.values[index] * animation;
-              return BarChartGroupData(
-                x: index,
-                barsSpace: 7,
-                barRods: [
-                  _buildRod(present, _presentColor),
-                  if (hasAbsentData) _buildRod(absent, _absentColor),
-                ],
-              );
+              final rods = <BarChartRodData>[
+                if (present > 0) _buildRod(present, _presentColor),
+                if (absent > 0) _buildRod(absent, _absentColor),
+              ];
+              return BarChartGroupData(x: index, barsSpace: 7, barRods: rods);
             }),
           ),
           duration: Duration.zero,

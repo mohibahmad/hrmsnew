@@ -29,6 +29,7 @@ import '../services/dashboard_chart_service.dart';
 import '../services/dummy_data.dart';
 import '../services/error_reporter.dart';
 import '../utils/date_utils.dart';
+import '../utils/chart_utils.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/sidebar_widget.dart';
@@ -906,43 +907,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         PreferencesService.cachedIsGuest;
 
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
-
-    final workersList = isGuest ? DummyData.workers : _workersDocs;
-    final validWorkerIds = <String>{};
-    final validEmails = <String>{};
-    for (final w in workersList) {
-      final id = (w['id'] ?? w['workerId'] ?? '').toString().trim();
-      if (id.isNotEmpty) validWorkerIds.add(id);
-      final email = (w['email'] ?? '').toString().trim().toLowerCase();
-      if (email.isNotEmpty) validEmails.add(email);
-    }
-
-    return rawDocs.where((attendance) {
-      final s = (attendance['status'] ?? '').toString().trim().toLowerCase();
-      if (s != 'present' && s != 'absent') return false;
-      if (!AppDateUtils.isAttendanceRecordWithinPeriod(
-        attendance,
-        _selectedPeriod,
-      )) {
-        return false;
-      }
-
-      if (workersList.isNotEmpty) {
-        final rId = (attendance['workerId'] ?? attendance['id'] ?? '')
-            .toString()
-            .trim();
-        final rEmail = (attendance['email'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        final belongsToWorker =
-            (rId.isNotEmpty && validWorkerIds.contains(rId)) ||
-            (rEmail.isNotEmpty && validEmails.contains(rEmail));
-        if (!belongsToWorker) return false;
-      }
-
-      return true;
-    }).toList();
+    return attendanceRecordsForPeriod(rawDocs, _selectedPeriod);
   }
 
   String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
@@ -1379,6 +1344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: Text(
                         'attendance_overview'.tr(),
                         style: TextStyle(
@@ -1388,8 +1354,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 6),
                     Expanded(
+                      flex: 2,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1429,16 +1396,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
+                            flex: 3,
                             child: AttendanceLineChart(
                               period: _selectedPeriod,
-                              isEmpty:
-                                  filteredAttendanceDocs.isEmpty ||
-                                  _totalWorkersCount == 0,
+                              isEmpty: filteredAttendanceDocs.isEmpty,
                               attendanceDocs: filteredAttendanceDocs,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
+                            flex: 2,
                             child: LeaveTypesPieChart(
                               period: _selectedPeriod,
                               isEmpty:

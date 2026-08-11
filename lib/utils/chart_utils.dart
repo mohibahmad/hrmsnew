@@ -6,10 +6,9 @@ class ChartData {
   final List<String> labels;
   final List<double> values;
 
-   
   final bool isAdaptive;
 
-   final DateTime? rangeStart;
+  final DateTime? rangeStart;
   final DateTime? rangeEnd;
 
   ChartData(
@@ -25,6 +24,31 @@ class NiceChartRange {
   final double maxY;
   final double interval;
   NiceChartRange(this.maxY, this.interval);
+}
+
+/// Returns every Present/Absent attendance record inside [period].
+///
+/// Dashboard totals are based on the attendance collection itself. They must
+/// not disappear just because an older record has only a worker name or its
+/// worker document was later edited/removed.
+List<Map<String, dynamic>> attendanceRecordsForPeriod(
+  List<Map<String, dynamic>> records,
+  String period, {
+  DateTime? now,
+}) {
+  final referenceDate = now ?? DateTime.now();
+  final start = AppDateUtils.periodStart(period, referenceDate);
+  final end = AppDateUtils.periodEnd(period, referenceDate);
+
+  return records.where((record) {
+    final status = (record['status'] ?? '').toString().trim().toLowerCase();
+    if (status != 'present' && status != 'absent') return false;
+
+    final date = AppDateUtils.canonicalAttendanceDate(record);
+    if (date == null) return false;
+    final day = DateTime(date.year, date.month, date.day);
+    return !day.isBefore(start) && !day.isAfter(end);
+  }).toList();
 }
 
 DateTime? _attendanceRevisionDate(Map<String, dynamic> record) {
@@ -48,7 +72,6 @@ bool _isNewerAttendanceRecord(
     return false;
   }
 
-   
   final candidateRevision = _attendanceRevisionDate(candidate);
   final existingRevision = _attendanceRevisionDate(existing);
   if (candidateRevision != null && existingRevision != null) {
@@ -57,7 +80,6 @@ bool _isNewerAttendanceRecord(
   return candidateRevision != null && existingRevision == null;
 }
 
- 
 List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
   List<Map<String, dynamic>> records, {
   String? period,
@@ -109,7 +131,6 @@ String? _attendanceBucketKey(
   final date = AppDateUtils.canonicalAttendanceDate(record);
   if (date == null) return null;
 
-  
   return '${date.year}-${date.month}-${date.day}';
 }
 
@@ -204,72 +225,6 @@ ChartData getChartData(
     'This Year' => 'Yearly',
     final value => value,
   };
-
-  if (isGuest) {
-    switch (normalizedPeriod) {
-      case 'Today':
-        final labels = <String>[];
-        for (int i = 6; i >= 0; i--) {
-          final date = now.subtract(Duration(days: i));
-          labels.add(DateFormat('E', locale).format(date).toUpperCase());
-        }
-        return ChartData(labels, [0, 0, 0, 0, 0, 0, 0]);
-
-      case 'Week':
-        final labels = <String>[];
-        final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
-        final startOfWeek = AppDateUtils.periodStart('Week', now);
-        for (int i = 6; i >= 0; i--) {
-          final date = startOfWeek.add(Duration(days: i));
-          labels.add(DateFormat('E', locale).format(date).toUpperCase());
-        }
-        return ChartData(labels, values);
-
-      case 'Month':
-        final labels = [
-          'week_label_1'.tr(),
-          'week_label_2'.tr(),
-          'week_label_3'.tr(),
-          'week_label_4'.tr(),
-        ];
-        final values = [48.0, 55.0, 50.0, 62.0];
-        return ChartData(labels, values);
-
-      case '6 Month':
-        final labels = <String>[];
-        final values = [420.0, 450.0, 480.0, 510.0, 490.0, 530.0];
-        for (int i = 5; i >= 0; i--) {
-          final date = DateTime(now.year, now.month - i, 1);
-          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
-        }
-        return ChartData(labels, values);
-
-      case 'Yearly':
-      default:
-        final labels = <String>[];
-        final dummyValues = [
-          95.0,
-          120.0,
-          240.0,
-          330.0,
-          290.0,
-          510.0,
-          960.0,
-          850.0,
-          910.0,
-          980.0,
-          1020.0,
-          1050.0,
-        ];
-        final values = <double>[];
-        for (int i = 0; i < 12; i++) {
-          final date = DateTime(now.year, i + 1, 1);
-          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
-          values.add(dummyValues[i]);
-        }
-        return ChartData(labels, values);
-    }
-  }
 
   if (docs.isEmpty) {
     switch (normalizedPeriod) {
