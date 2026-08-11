@@ -1607,7 +1607,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 fontFamily: 'SF Pro Display',
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 40),
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 double spacing = 16.0;

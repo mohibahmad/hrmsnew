@@ -1440,10 +1440,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           : (calculation['leaveDeduction'] as double? ?? 0.0);
       final overtimeValue = PayrollService.extractSalary(overtime);
       final totalDeductions = absentDeductionTotal + leaveDeductionTotal;
-      final netSalary = (grossSalary + overtimeValue - totalDeductions).clamp(
-        0.0,
-        double.infinity,
-      );
+      final savedNetSalary = data['netSalaryAmount'];
+      final netSalary = savedNetSalary is num
+          ? savedNetSalary.toDouble()
+          : (grossSalary + overtimeValue - totalDeductions)
+                .clamp(0.0, double.infinity)
+                .toDouble();
 
       final savedPeriodStart = AppDateUtils.dateFromValue(
         data['payPeriodStart'],
@@ -1614,11 +1616,19 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             }(),
           }
         : basePreviewCalculation;
+    final savedNetSalary = data['netSalaryAmount'];
+    final savedNetSalaryDisplay = savedNetSalary is num
+        ? PayrollService.formatAmountInCurrency(
+            savedNetSalary,
+            _companyCurrency,
+          )
+        : (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '')
+              .toString()
+              .trim();
     final String salaryAfterDeduction = AmountText.formatFull(
-      (previewCalculation['formattedNet'] ??
-              data['netSalary'] ??
-              data['salaryAfterDeduction'] ??
-              '0')
+      (savedNetSalaryDisplay.isNotEmpty
+              ? savedNetSalaryDisplay
+              : previewCalculation['formattedNet'] ?? '0')
           .toString(),
       locale: context.locale.toString(),
     );

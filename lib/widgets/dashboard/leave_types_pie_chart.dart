@@ -32,6 +32,8 @@ const _fallbackPalette = <Color>[
   Color(0xFFFF8C69),
 ];
 
+const double _pieRadius = 90;
+
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
@@ -113,50 +115,53 @@ class LeaveTypesPieChart extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 20),
-                  Center(
-                    child: SizedBox(
-                      width: 380,
-                      height: 260,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          PieChart(
-                            PieChartData(
-                              sectionsSpace: 0.0,
-                              centerSpaceRadius: 0,
-                              startDegreeOffset: startAngle,
-                              sections: [
-                                for (final entry in sortedTypes)
-                                  PieChartSectionData(
-                                    color: typeColors[entry.key]!,
-                                    value: typePercents[entry.key]!,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                              ],
+                  Expanded(
+                    child: Center(
+                      child: SizedBox(
+                        width: 380,
+                        height: 260,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PieChart(
+                              PieChartData(
+                                sectionsSpace: 0.0,
+                                centerSpaceRadius: 0,
+                                startDegreeOffset: startAngle,
+                                sections: [
+                                  for (final entry in sortedTypes)
+                                    PieChartSectionData(
+                                      color: typeColors[entry.key]!,
+                                      value: typePercents[entry.key]!,
+                                      radius: _pieRadius,
+                                      showTitle: false,
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          CustomPaint(
-                            size: const Size(380, 260),
-                            painter: _DynamicCalloutPainter(
-                              center: const Offset(190, 130),
-                              radius: 85,
-                              entries: [
-                                for (final entry in sortedTypes)
-                                  _CalloutEntry(
-                                    type: entry.key,
-                                    percent: typePercents[entry.key]!,
-                                    displayPercent: displayPercents[entry.key]!,
-                                    midAngle: midAngles[entry.key]!,
-                                  ),
-                              ],
+                            CustomPaint(
+                              size: const Size(380, 260),
+                              painter: _DynamicCalloutPainter(
+                                center: const Offset(190, 130),
+                                radius: _pieRadius,
+                                entries: [
+                                  for (final entry in sortedTypes)
+                                    _CalloutEntry(
+                                      type: entry.key,
+                                      percent: typePercents[entry.key]!,
+                                      displayPercent:
+                                          displayPercents[entry.key]!,
+                                      midAngle: midAngles[entry.key]!,
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: _buildLegend(

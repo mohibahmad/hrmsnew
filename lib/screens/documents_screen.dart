@@ -874,6 +874,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     String label, {
     bool isPdf = false,
     bool isDoc = false,
+    Uint8List? pdfBytes,
   }) {
     if (url == null || url.isEmpty) return;
     if (!isPdf && !isDoc) {
@@ -899,6 +900,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         isImage: isImage,
         isPdf: isPdf,
         isDoc: isDoc,
+        pdfBytes: pdfBytes,
       ),
       transitionBuilder: (ctx, anim, secAnim, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
@@ -1407,7 +1409,14 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                     : 'image/jpeg';
                 final dataUrl =
                     'data:$safeMimeType;base64,${base64Encode(bytes)}';
-                _viewDocument(dataUrl, true, label, isDoc: isDoc);
+                _viewDocument(
+                  dataUrl,
+                  true,
+                  label,
+                  isPdf: isPdf,
+                  isDoc: isDoc,
+                  pdfBytes: bytes,
+                );
               } else if (existingUrl != null && existingUrl.isNotEmpty) {
                 _viewDocument(
                   existingUrl,
@@ -1686,6 +1695,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           _cvName ?? 'cv_resume'.tr(),
           isPdf: isPdf,
           isDoc: isDoc,
+          pdfBytes: _cvBytes,
         );
       } else if (cvUrl != null && cvUrl.isNotEmpty) {
         _viewDocument(
@@ -1793,8 +1803,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
 class _FullScreenPdfPreview extends StatefulWidget {
   final String? url;
+  final Uint8List? bytes;
 
-  const _FullScreenPdfPreview({this.url});
+  const _FullScreenPdfPreview({this.url, this.bytes});
 
   @override
   State<_FullScreenPdfPreview> createState() => _FullScreenPdfPreviewState();
@@ -1832,15 +1843,26 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         throw StateError('failed_to_load_pdf'.tr());
       }
 
-      Uint8List bytes;
-      if (source.startsWith('http://') || source.startsWith('https://')) {
-        final downloaded = await UploadService.downloadRemoteFile(
-          url: source,
-          folder: 'document_previews',
-          fallbackFileName: 'document.pdf',
-          fallbackMimeType: 'application/pdf',
-        );
-        bytes = downloaded.bytes;
+      Uint8List bytes = widget.bytes ?? Uint8List(0);
+      if (bytes.isNotEmpty) {
+        // Use the bytes that produced the inline preview. Re-downloading the
+        // same PDF can fail after a Firebase URL/token refresh.
+      } else if (source.startsWith('http://') ||
+          source.startsWith('https://')) {
+        try {
+          final storageBytes = await FirebaseStorage.instance
+              .refFromURL(source)
+              .getData(UploadService.maxFileBytes);
+          bytes = storageBytes ?? Uint8List(0);
+        } catch (_) {
+          final downloaded = await UploadService.downloadRemoteFile(
+            url: source,
+            folder: 'document_previews',
+            fallbackFileName: 'document.pdf',
+            fallbackMimeType: 'application/pdf',
+          );
+          bytes = downloaded.bytes;
+        }
       } else if (source.startsWith('data:application/pdf')) {
         if (!source.contains(',')) {
           throw FormatException('invalid_pdf_data'.tr());
@@ -2053,6 +2075,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   final bool isImage;
   final bool isPdf;
   final bool isDoc;
+  final Uint8List? pdfBytes;
 
   const _FullScreenDocumentViewer({
     required this.url,
@@ -2060,6 +2083,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
     required this.isImage,
     this.isPdf = false,
     this.isDoc = false,
+    this.pdfBytes,
   });
 
   @override
@@ -2211,7 +2235,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                     ? Container(
                         color: const Color(0xFFFFFFFF),
                         width: double.infinity,
-                        child: _FullScreenPdfPreview(url: widget.url),
+                        child: _FullScreenPdfPreview(
+                          url: widget.url,
+                          bytes: widget.pdfBytes,
+                        ),
                       )
                     : widget.isDoc
                     ? Container(

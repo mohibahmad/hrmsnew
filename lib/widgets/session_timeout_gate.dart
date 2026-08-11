@@ -14,10 +14,6 @@ typedef BiometricNameLoader = Future<String> Function();
 typedef BiometricUnlock = Future<BiometricAuthResult> Function();
 
 DateTime _systemNow() => DateTime.now();
-
-
-
-
 class SessionTimeoutGate extends StatefulWidget {
   const SessionTimeoutGate({
     super.key,
@@ -27,7 +23,7 @@ class SessionTimeoutGate extends StatefulWidget {
     required this.loadBiometricName,
     required this.authenticate,
     required this.onSignInAgain,
-    this.timeout = const Duration(minutes: 1),
+    this.timeout = const Duration(minutes: 3),
     this.clock = _systemNow,
   });
 
