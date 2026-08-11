@@ -1433,11 +1433,10 @@ class _WorkerProfilePreviewDialogState
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
-                                      child: Image.asset(
-                                        'assets/email.png',
-                                        width: 20,
-                                        height: 20,
-                                        fit: BoxFit.contain,
+                                      child: SvgPicture.asset(
+                                        'assets/email.svg',
+                                        width: 16,
+                                        height: 16,
                                       ),
                                     ),
                                     const SizedBox(width: 10),
