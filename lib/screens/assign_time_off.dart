@@ -14,8 +14,10 @@ import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/time_off_unsaved_changes.dart';
+import '../utils/time_off_draft.dart';
 import '../utils/date_utils.dart';
 import '../utils/image_utils.dart';
+import '../utils/localization_helper.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
@@ -155,6 +157,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   bool _hasDateSelectionChanged = false;
   bool _hasNotesChanged = false;
   bool _isAggregateOverview = false;
+  final Map<String, PendingTimeOffDraft> _pendingDrafts = {};
 
   @override
   void initState() {
@@ -232,6 +235,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _resetFormFields() {
+    _pendingDrafts.clear();
     final source = _editingRecord ?? _selectedWorker;
     _hasTypeChanged = false;
     _hasDateSelectionChanged = false;
@@ -306,13 +310,53 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _hasNotesChanged = false;
   }
 
-  bool get _hasUnsavedChanges => hasUnsavedTimeOffChanges(
+  bool get _currentHasUnsavedChanges => hasUnsavedTimeOffChanges(
     hasSelectedDates: _hasDateSelectionChanged,
     hasNotes: _hasNotesChanged,
     isEditing: _editingId != null,
     typeChanged: _hasTypeChanged,
     datesChanged: _hasDateSelectionChanged,
   );
+
+  bool get _hasUnsavedChanges =>
+      _currentHasUnsavedChanges ||
+      _pendingDrafts.values.any((draft) => draft.hasChanges);
+
+  PendingTimeOffDraft _currentDraft() => PendingTimeOffDraft(
+    leaveType: _timeOffType,
+    editingId: _editingId,
+    editingRecord: _editingRecord == null
+        ? null
+        : Map<String, dynamic>.from(_editingRecord!),
+    selectedDates: Set<DateTime>.from(_selectedDates),
+    notes: _notesController.text.trim(),
+    typeChanged: _hasTypeChanged,
+    datesChanged: _hasDateSelectionChanged,
+    notesChanged: _hasNotesChanged,
+  );
+
+  void _stashCurrentDraft() {
+    final draft = _currentDraft();
+    if (draft.hasChanges) {
+      _pendingDrafts[_timeOffType] = draft;
+    } else {
+      _pendingDrafts.remove(_timeOffType);
+    }
+  }
+
+  void _applyPendingDraft(PendingTimeOffDraft draft) {
+    _timeOffType = draft.leaveType;
+    _editingId = draft.editingId;
+    _editingRecord = draft.editingRecord == null
+        ? null
+        : Map<String, dynamic>.from(draft.editingRecord!);
+    _selectedDates = Set<DateTime>.from(draft.selectedDates);
+    _notesController.text = draft.notes;
+    _hasTypeChanged = draft.typeChanged;
+    _hasDateSelectionChanged = draft.datesChanged;
+    _hasNotesChanged = draft.notesChanged;
+    if (_selectedDates.isNotEmpty) _syncSelectionBounds();
+  }
 
   List<DateTime> get _sortedSelectedDates {
     final dates = _selectedDates.toList()..sort();
@@ -568,8 +612,13 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
-    if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
-    if (!mounted) return;
+    _stashCurrentDraft();
+
+    final pendingDraft = _pendingDrafts[normalizedType];
+    if (pendingDraft != null) {
+      setState(() => _applyPendingDraft(pendingDraft));
+      return;
+    }
 
     final record = TimeOffService.recordForWorkerLeaveType(
       _selectedWorkerForService,
@@ -1517,13 +1566,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   (widget.viewOnly ||
                       _selectedWorker == null ||
                       _isLoading ||
-                      // Inspecting a zero-balance type is allowed, but it must
-                      // not be possible to assign or save against it.
-                      _baseAvailableDaysForType(_timeOffType) <= 0 ||
                       _isAggregateOverview ||
-                      (_editingId == null && _selectedDates.isEmpty) ||
-                      (_editingId != null && !_hasUnsavedChanges) ||
-                      _requestedDaysExceedAvailable)
+                      !_hasUnsavedChanges)
                   ? null
                   : () {
                       final isGuest =
@@ -2432,7 +2476,13 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Future<void> _handleSave() async {
     if (widget.viewOnly) return;
     if (_isLoading) return;
-    if (_editingId != null && !_hasUnsavedChanges) return;
+    if (!_hasUnsavedChanges) return;
+
+    _stashCurrentDraft();
+    if (_pendingDrafts.isNotEmpty) {
+      await _savePendingDrafts();
+      return;
+    }
 
     if (_editingRecord != null &&
         !TimeOffService.isEditableRecord(_editingRecord!)) {
@@ -2825,7 +2875,180 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     }
   }
 
+  Future<void> _savePendingDrafts() async {
+    final worker = _selectedWorker;
+    if (worker == null) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_worker_first'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (!_isEligibleWorker(worker)) {
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
+        isError: true,
+      );
+      return;
+    }
 
+    final workerIdentity = worker['workerId'] ?? worker['id'] ?? '';
+    final workerId = workerIdentity.toString().trim();
+    if (workerId.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'assign_time_off_failed'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    final drafts = _pendingDrafts.values
+        .where((draft) => draft.hasChanges)
+        .toList();
+    final pendingDates = <DateTime>{};
+    for (final draft in drafts) {
+      if (draft.editingRecord != null &&
+          !TimeOffService.isEditableRecord(draft.editingRecord!)) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      if (draft.selectedDates.any(_isNonWorkingDate)) {
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_non_working_day_blocked'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      for (final date in draft.selectedDates) {
+        if (!pendingDates.add(_dateOnly(date))) {
+          FlashySnackBar.show(
+            context,
+            message: 'time_off_dates_overlap'.tr(),
+            isError: true,
+          );
+          return;
+        }
+      }
+      if (TimeOffService.hasOverlappingApprovedLeave(
+        _selectedWorkerForService,
+        _timeoffRecords,
+        draft.selectedDates,
+        excludingRecordId: draft.editingId,
+      )) {
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      final available = TimeOffService.availableBalanceForEditingRecord(
+        _selectedWorkerForService,
+        draft.leaveType,
+        draft.editingRecord,
+      );
+      if (_paidLeaveTypes.contains(draft.leaveType) &&
+          draft.selectedDates.length > available) {
+        FlashySnackBar.show(
+          context,
+          message: 'only_leave_days_available'.tr(
+            namedArgs: {
+              'count': '$available',
+              'type': LocalizationHelper.localizeLeaveType(draft.leaveType),
+            },
+          ),
+          isError: true,
+        );
+        return;
+      }
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      for (final draft in drafts) {
+        if (draft.selectedDates.isEmpty && draft.editingId != null) {
+          await _firestore.cancelTimeOffWithWorkerBalance(
+            timeOffId: draft.editingId!,
+            workerId: workerId,
+          );
+          continue;
+        }
+        if (draft.selectedDates.isEmpty) continue;
+
+        final sortedDates = draft.selectedDates.toList()..sort();
+        final record = <String, dynamic>{
+          'workerId': workerId,
+          'name': worker['name'] ?? 'Worker',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? 'Worker',
+          'contact': _getWorkerPhone(worker),
+          'action': draft.leaveType,
+          'type': draft.leaveType,
+          'startDate': _dateOnlyString(sortedDates.first),
+          'endDate': _dateOnlyString(sortedDates.last),
+          'selectedDates': sortedDates.map(_dateOnlyString).toList(),
+          'notes': draft.notes,
+          'requestedDays': sortedDates.length,
+          'status': 'Approved',
+          'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
+          'workerName': worker['name'] ?? 'Worker',
+          'workerAvatar': worker['profileImage'] ?? '',
+        };
+        await _firestore.saveTimeOffWithWorkerBalance(
+          timeOffId: draft.editingId,
+          record: record,
+          workerId: workerId,
+          leaveType: draft.leaveType,
+          requestedDays: sortedDates.length,
+        );
+      }
+
+      if (!mounted) return;
+      _pendingDrafts.clear();
+      _markFormClean();
+      FlashySnackBar.show(
+        context,
+        message: 'assign_time_off_success'.tr(
+          namedArgs: {'name': (worker['name'] ?? 'Worker').toString()},
+        ),
+      );
+      widget.onBack();
+    } on DuplicateTimeOffDateException {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
+      }
+    } on PastTimeOffEditException {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Widget _buildTimeOffMetricCard({
     required Widget icon,

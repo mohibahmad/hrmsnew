@@ -8,7 +8,6 @@ import '../../utils/svg_fill_color_mapper.dart';
 import '../../utils/localization_helper.dart';
 import '../custom_timeframe_dropdown.dart';
 
-
 const _knownTypeColors = <String, Color>{
   'Casual Leave': Color(0xFF84A9FF),
   'Sick Leave': Color(0xFFFF4A5E),
@@ -47,7 +46,6 @@ class LeaveTypesPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     final counts = <String, int>{};
     for (final att in leaveDocs) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
@@ -60,11 +58,9 @@ class LeaveTypesPieChart extends StatelessWidget {
     final int total = counts.values.fold(0, (s, v) => s + v);
     final bool reallyEmpty = isEmpty || total == 0;
 
-    
     final sortedTypes = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    
     int fallbackIdx = 0;
     final typeColors = <String, Color>{};
     for (final entry in sortedTypes) {
@@ -73,20 +69,21 @@ class LeaveTypesPieChart extends StatelessWidget {
           _fallbackPalette[fallbackIdx++ % _fallbackPalette.length];
     }
 
-    
     final typePercents = <String, double>{};
     for (final entry in sortedTypes) {
       typePercents[entry.key] = (entry.value / total) * 100;
     }
+    final displayPercents = calculateRoundedLeavePercentages(
+      sortedTypes,
+      total,
+    );
 
-    
     const double startAngle = 108;
     final sweeps = <String, double>{};
     for (final entry in sortedTypes) {
       sweeps[entry.key] = (typePercents[entry.key]! / 100) * 360;
     }
 
-    
     final midAngles = <String, double>{};
     double runningAngle = startAngle;
     for (final entry in sortedTypes) {
@@ -149,6 +146,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                                   _CalloutEntry(
                                     type: entry.key,
                                     percent: typePercents[entry.key]!,
+                                    displayPercent: displayPercents[entry.key]!,
                                     midAngle: midAngles[entry.key]!,
                                   ),
                               ],
@@ -161,7 +159,11 @@ class LeaveTypesPieChart extends StatelessWidget {
                   const SizedBox(height: 30),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: _buildLegend(sortedTypes, typeColors, typePercents),
+                    child: _buildLegend(
+                      sortedTypes,
+                      typeColors,
+                      displayPercents,
+                    ),
                   ),
                 ],
               )
@@ -200,9 +202,8 @@ class LeaveTypesPieChart extends StatelessWidget {
   Widget _buildLegend(
     List<MapEntry<String, int>> sortedTypes,
     Map<String, Color> typeColors,
-    Map<String, double> typePercents,
+    Map<String, int> displayPercents,
   ) {
-    
     final rows = <Widget>[];
     for (int i = 0; i < sortedTypes.length; i += 2) {
       if (i > 0) rows.add(const SizedBox(height: 12));
@@ -214,7 +215,7 @@ class LeaveTypesPieChart extends StatelessWidget {
           child: buildLegendItem(
             typeColors[first.key]!,
             '${LocalizationHelper.localizeLeaveType(first.key)}: '
-            '${typePercents[first.key]!.toInt()}%',
+            '${displayPercents[first.key]}%',
           ),
         ),
       );
@@ -227,7 +228,7 @@ class LeaveTypesPieChart extends StatelessWidget {
             child: buildLegendItem(
               typeColors[second.key]!,
               '${LocalizationHelper.localizeLeaveType(second.key)}: '
-              '${typePercents[second.key]!.toInt()}%',
+              '${displayPercents[second.key]}%',
             ),
           ),
         );
@@ -266,13 +267,54 @@ class LeaveTypesPieChart extends StatelessWidget {
   }
 }
 
+/// Rounds leave shares to whole percentages while keeping their total at 100.
+///
+/// The largest fractional remainders receive the leftover percentage points.
+Map<String, int> calculateRoundedLeavePercentages(
+  List<MapEntry<String, int>> entries,
+  int total,
+) {
+  if (entries.isEmpty || total <= 0) return const {};
+
+  final percentages = <String, int>{};
+  final remainders = <({String type, double remainder, int index})>[];
+  var allocated = 0;
+
+  for (var index = 0; index < entries.length; index++) {
+    final entry = entries[index];
+    final exact = entry.value * 100 / total;
+    final roundedDown = exact.floor();
+    percentages[entry.key] = roundedDown;
+    allocated += roundedDown;
+    remainders.add((
+      type: entry.key,
+      remainder: exact - roundedDown,
+      index: index,
+    ));
+  }
+
+  remainders.sort((a, b) {
+    final byRemainder = b.remainder.compareTo(a.remainder);
+    return byRemainder != 0 ? byRemainder : a.index.compareTo(b.index);
+  });
+
+  for (var index = 0; index < 100 - allocated; index++) {
+    final type = remainders[index].type;
+    percentages[type] = percentages[type]! + 1;
+  }
+
+  return percentages;
+}
+
 class _CalloutEntry {
   final String type;
   final double percent;
+  final int displayPercent;
   final double midAngle;
   const _CalloutEntry({
     required this.type,
     required this.percent,
+    required this.displayPercent,
     required this.midAngle,
   });
 }
@@ -359,7 +401,7 @@ class _DynamicCalloutPainter extends CustomPainter {
 
         final textPainter = TextPainter(
           text: TextSpan(
-            text: '${entry.percent.toInt()}%',
+            text: '${entry.displayPercent}%',
             style: const TextStyle(
               color: Colors.black,
               fontSize: 16,
@@ -388,6 +430,7 @@ class _DynamicCalloutPainter extends CustomPainter {
     if (entries.length != oldDelegate.entries.length) return true;
     for (int i = 0; i < entries.length; i++) {
       if (entries[i].percent != oldDelegate.entries[i].percent ||
+          entries[i].displayPercent != oldDelegate.entries[i].displayPercent ||
           entries[i].midAngle != oldDelegate.entries[i].midAngle) {
         return true;
       }

@@ -363,14 +363,38 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     if (!confirmed) return;
 
     try {
+      final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
+      final isPayrollExpense = _isPayrollExpense(doc);
       if (isGuest) {
         setState(() {
           _expensesDocs.removeWhere((e) => e['id'] == docId);
+          if (isPayrollExpense) {
+            _payrollAmountsByKey.remove(payrollKey);
+          }
         });
         DummyData.expenses.removeWhere((e) => e['id'] == docId);
+        if (isPayrollExpense) {
+          final payrollIndex = DummyData.payroll.indexWhere(
+            (record) =>
+                (record['payrollKey'] ?? '').toString().trim() == payrollKey,
+          );
+          if (payrollIndex != -1) {
+            DummyData.payroll[payrollIndex] = {
+              ...DummyData.payroll[payrollIndex],
+              ...PayrollService.reopenedPayrollFields(),
+            };
+          }
+        }
         await DummyData.saveToPrefs();
       } else {
-        await _firestore.deleteExpense(docId);
+        if (isPayrollExpense) {
+          await _firestore.deletePayrollLinkedExpense(
+            expenseId: docId,
+            payrollKey: payrollKey,
+          );
+        } else {
+          await _firestore.deleteExpense(docId);
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -534,36 +558,69 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   };
                                   try {
                                     if (isGuest) {
+                                      final salaryUpdates =
+                                          PayrollService.editedNetSalaryFields(
+                                            amt,
+                                            currency: _currencyCode,
+                                          );
                                       setState(() {
                                         final idx = _expensesDocs.indexWhere(
                                           (e) => e['id'] == docId,
                                         );
-                                        if (idx != -1)
+                                        if (idx != -1) {
                                           _expensesDocs[idx] = {
+                                            ..._expensesDocs[idx],
                                             ...updatedMap,
                                             'id': docId,
                                           };
+                                        }
+                                        if (wasPayrollExpense) {
+                                          _payrollAmountsByKey[payrollKey] =
+                                              amt;
+                                        }
                                       });
                                       final dummyIdx = DummyData.expenses
                                           .indexWhere((e) => e['id'] == docId);
-                                      if (dummyIdx != -1)
+                                      if (dummyIdx != -1) {
                                         DummyData.expenses[dummyIdx] = {
+                                          ...DummyData.expenses[dummyIdx],
                                           ...updatedMap,
                                           'id': docId,
                                         };
+                                      }
+                                      if (wasPayrollExpense) {
+                                        final payrollIndex = DummyData.payroll
+                                            .indexWhere(
+                                              (record) =>
+                                                  (record['payrollKey'] ?? '')
+                                                      .toString()
+                                                      .trim() ==
+                                                  payrollKey,
+                                            );
+                                        if (payrollIndex != -1) {
+                                          DummyData.payroll[payrollIndex] = {
+                                            ...DummyData.payroll[payrollIndex],
+                                            ...salaryUpdates,
+                                          };
+                                        }
+                                      }
                                       await DummyData.saveToPrefs();
                                     } else {
-                                      await _firestore.updateExpense(
-                                        docId,
-                                        updatedMap,
-                                      );
                                       if (wasPayrollExpense &&
                                           payrollKey.isNotEmpty) {
                                         await _firestore
-                                            .updatePayrollByPayrollKey(
-                                              payrollKey,
-                                              {'netSalaryAmount': amt},
+                                            .updatePayrollLinkedExpense(
+                                              expenseId: docId,
+                                              payrollKey: payrollKey,
+                                              expenseData: updatedMap,
+                                              netAmount: amt,
+                                              currency: _currencyCode,
                                             );
+                                      } else {
+                                        await _firestore.updateExpense(
+                                          docId,
+                                          updatedMap,
+                                        );
                                       }
                                     }
                                   } catch (e) {

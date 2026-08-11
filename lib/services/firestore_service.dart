@@ -12,6 +12,7 @@ import 'error_reporter.dart';
 import 'time_off_service.dart';
 import 'upload_service.dart';
 import 'preferences_service.dart';
+import 'payroll_service.dart';
 
 class BulkWorkerResult {
   final int imported;
@@ -1094,6 +1095,47 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
+  Future<void> updatePayrollLinkedExpense({
+    required String expenseId,
+    required String payrollKey,
+    required Map<String, dynamic> expenseData,
+    required double netAmount,
+    required String currency,
+  }) async {
+    Validators.validateExpense(expenseData);
+    final expensesColl = _expenses;
+    final payrollColl = _payroll;
+    final normalizedKey = payrollKey.trim();
+    if (expensesColl == null || payrollColl == null) {
+      throw StateError('No authenticated user');
+    }
+    if (expenseId.trim().isEmpty || normalizedKey.isEmpty) {
+      throw ArgumentError('Expense id and payroll key are required');
+    }
+
+    final payrollDocs = await payrollColl
+        .where('payrollKey', isEqualTo: normalizedKey)
+        .get();
+    final batch = _db.batch();
+    batch.update(expensesColl.doc(expenseId.trim()), {
+      ...expenseData,
+      'amount': netAmount,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    final salaryUpdates = PayrollService.editedNetSalaryFields(
+      netAmount,
+      currency: currency,
+    );
+    for (final payroll in payrollDocs.docs) {
+      batch.update(payroll.reference, {
+        ...salaryUpdates,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastModified': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
   Future<void> upsertPayrollExpense(
     Map<String, dynamic> expense, {
     required String payrollKey,
@@ -1134,6 +1176,44 @@ class FirestoreService {
     final coll = _expenses;
     if (coll == null) return;
     await coll.doc(id).delete();
+  }
+
+  Future<void> deletePayrollLinkedExpense({
+    required String expenseId,
+    required String payrollKey,
+  }) async {
+    final expensesColl = _expenses;
+    final payrollColl = _payroll;
+    final normalizedKey = payrollKey.trim();
+    if (expensesColl == null || payrollColl == null) {
+      throw StateError('No authenticated user');
+    }
+    if (expenseId.trim().isEmpty || normalizedKey.isEmpty) {
+      throw ArgumentError('Expense id and payroll key are required');
+    }
+
+    final payrollDocs = await payrollColl
+        .where('payrollKey', isEqualTo: normalizedKey)
+        .get();
+    final batch = _db.batch();
+    batch.delete(expensesColl.doc(expenseId.trim()));
+    for (final payroll in payrollDocs.docs) {
+      batch.update(payroll.reference, {
+        ...PayrollService.reopenedPayrollFields(),
+        'paidAt': FieldValue.delete(),
+        'paidOn': FieldValue.delete(),
+        'paymentDate': FieldValue.delete(),
+        'cancelledAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastModified': FieldValue.serverTimestamp(),
+      });
+    }
+    if (_notifications != null) {
+      batch.delete(
+        _notifications!.doc(_payrollNotificationDocumentId(normalizedKey)),
+      );
+    }
+    await batch.commit();
   }
 
   Stream<QuerySnapshot> get expensesStream {

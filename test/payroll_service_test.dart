@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/payroll_service.dart';
+import 'package:hrms/services/preferences_service.dart';
 import 'package:hrms/services/salary_day_scheduler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('payroll period uses the selected calendar month', () {
@@ -185,5 +187,74 @@ void main() {
     );
 
     expect(payable.map((worker) => worker['id']), ['payable']);
+  });
+
+  test('salary expense edits update every payroll net salary field', () {
+    final updates = PayrollService.editedNetSalaryFields(4250, currency: 'USD');
+
+    expect(updates['netSalaryAmount'], 4250.0);
+    expect(updates['netSalary'], r'$ 4,250');
+    expect(updates['netSalaryFormatted'], r'$ 4,250');
+    expect(updates['salaryAfterDeduction'], r'$ 4,250');
+    expect(updates['amount'], 4250.0);
+  });
+
+  test('deleted salary expense reopens its payroll as payable', () {
+    final updates = PayrollService.reopenedPayrollFields();
+
+    expect(updates['status'], 'Unpaid');
+    expect(updates['isPaid'], isFalse);
+    expect(updates['paid'], isFalse);
+    expect(updates['paymentStatus'], 'unpaid');
+  });
+
+  test('payroll reminder covers three days before and after month end', () {
+    expect(
+      PayrollService.reminderWindowForDate(DateTime(2026, 8, 28))?.dayOffset,
+      -3,
+    );
+    expect(
+      PayrollService.reminderWindowForDate(DateTime(2026, 8, 31))?.dayOffset,
+      0,
+    );
+
+    final overdue = PayrollService.reminderWindowForDate(DateTime(2026, 9, 3));
+    expect(overdue?.payrollMonth, DateTime(2026, 8, 1));
+    expect(overdue?.dayOffset, 3);
+    expect(PayrollService.reminderWindowForDate(DateTime(2026, 9, 4)), isNull);
+  });
+
+  test('payroll reminder can be snoozed and ignored per period', () async {
+    SharedPreferences.setMockInitialValues({});
+    final now = DateTime(2026, 8, 28, 9);
+
+    expect(
+      await PreferencesService.isPayrollReminderSuppressed('2026-08', now: now),
+      isFalse,
+    );
+    await PreferencesService.snoozePayrollReminder('2026-08', now: now);
+    expect(
+      await PreferencesService.isPayrollReminderSuppressed(
+        '2026-08',
+        now: now.add(const Duration(hours: 23)),
+      ),
+      isTrue,
+    );
+    expect(
+      await PreferencesService.isPayrollReminderSuppressed(
+        '2026-08',
+        now: now.add(const Duration(hours: 25)),
+      ),
+      isFalse,
+    );
+
+    await PreferencesService.ignorePayrollReminder('2026-08');
+    expect(
+      await PreferencesService.isPayrollReminderSuppressed(
+        '2026-08',
+        now: now.add(const Duration(days: 5)),
+      ),
+      isTrue,
+    );
   });
 }

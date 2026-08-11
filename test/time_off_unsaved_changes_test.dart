@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/time_off_service.dart';
 import 'package:hrms/utils/time_off_unsaved_changes.dart';
+import 'package:hrms/utils/time_off_draft.dart';
 
 void main() {
   test('new form stays clean when nothing has been changed', () {
@@ -270,5 +271,37 @@ void main() {
     expect(dates['Sick Leave'], hasLength(1));
     expect(dates['Casual Leave'], isEmpty);
     expect(dates['Medical Leave'], isEmpty);
+  });
+
+  test('pending dates stay attached to their selected leave type', () {
+    final medicalDraft = PendingTimeOffDraft(
+      leaveType: 'Medical Leave',
+      editingId: null,
+      editingRecord: null,
+      selectedDates: {DateTime(2026, 8, 12)},
+      notes: '',
+      typeChanged: false,
+      datesChanged: true,
+      notesChanged: false,
+    );
+    final sickDraft = PendingTimeOffDraft(
+      leaveType: 'Sick Leave',
+      editingId: null,
+      editingRecord: null,
+      selectedDates: {DateTime(2026, 8, 13)},
+      notes: '',
+      typeChanged: false,
+      datesChanged: true,
+      notesChanged: false,
+    );
+
+    final drafts = {
+      medicalDraft.leaveType: medicalDraft,
+      sickDraft.leaveType: sickDraft,
+    };
+
+    expect(drafts.values.every((draft) => draft.hasChanges), isTrue);
+    expect(drafts['Medical Leave']!.selectedDates, {DateTime(2026, 8, 12)});
+    expect(drafts['Sick Leave']!.selectedDates, {DateTime(2026, 8, 13)});
   });
 }

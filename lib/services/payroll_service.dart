@@ -2,6 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../utils/currency_utils.dart';
 
+class PayrollReminderWindow {
+  final DateTime payrollMonth;
+  final DateTime dueDate;
+
+  /// Negative before the due date, zero on it, positive after it.
+  final int dayOffset;
+
+  const PayrollReminderWindow({
+    required this.payrollMonth,
+    required this.dueDate,
+    required this.dayOffset,
+  });
+
+  String get periodKey => PayrollService.payrollPeriodLabel(payrollMonth);
+}
+
 class PayrollService {
   static final PayrollService _instance = PayrollService._();
   factory PayrollService() => _instance;
@@ -100,6 +116,56 @@ class PayrollService {
     final lastDay = DateTime(date.year, date.month + 1, 0).day;
     return date.day > lastDay - reminderDays;
   }
+
+  static PayrollReminderWindow? reminderWindowForDate(
+    DateTime date, {
+    int leadDays = 3,
+    int overdueDays = 3,
+  }) {
+    final today = DateTime(date.year, date.month, date.day);
+    final currentDueDate = payPeriodEnd(today);
+    final daysUntilCurrentDue = currentDueDate.difference(today).inDays;
+    if (daysUntilCurrentDue >= 0 && daysUntilCurrentDue <= leadDays) {
+      return PayrollReminderWindow(
+        payrollMonth: DateTime(today.year, today.month, 1),
+        dueDate: currentDueDate,
+        dayOffset: -daysUntilCurrentDue,
+      );
+    }
+
+    final previousDueDate = DateTime(today.year, today.month, 0);
+    final daysAfterPreviousDue = today.difference(previousDueDate).inDays;
+    if (daysAfterPreviousDue > 0 && daysAfterPreviousDue <= overdueDays) {
+      return PayrollReminderWindow(
+        payrollMonth: DateTime(previousDueDate.year, previousDueDate.month, 1),
+        dueDate: previousDueDate,
+        dayOffset: daysAfterPreviousDue,
+      );
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> editedNetSalaryFields(
+    double amount, {
+    required String currency,
+  }) {
+    final normalizedAmount = amount.clamp(0, double.infinity).toDouble();
+    final formatted = formatAmountInCurrency(normalizedAmount, currency);
+    return {
+      'netSalaryAmount': normalizedAmount,
+      'netSalary': formatted,
+      'netSalaryFormatted': formatted,
+      'salaryAfterDeduction': formatted,
+      'amount': normalizedAmount,
+    };
+  }
+
+  static Map<String, dynamic> reopenedPayrollFields() => const {
+    'status': 'Unpaid',
+    'isPaid': false,
+    'paid': false,
+    'paymentStatus': 'unpaid',
+  };
 
   static bool workerJoinedBeforePeriodEnd(
     Map<String, dynamic> worker,

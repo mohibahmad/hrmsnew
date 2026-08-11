@@ -452,6 +452,8 @@ class _EditDocumentsPage extends ConsumerStatefulWidget {
 }
 
 class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
+  static const double _idPreviewHeight = 270;
+
   static const List<String> _cvAllowedExtensions = [
     'jpg',
     'jpeg',
@@ -1418,7 +1420,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             }
           : onTap,
       child: Container(
-        height: 250,
+        height: _idPreviewHeight,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

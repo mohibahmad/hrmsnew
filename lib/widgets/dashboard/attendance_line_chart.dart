@@ -15,6 +15,40 @@ int _labelStepFor(int count) {
   return 10;
 }
 
+LineTouchTooltipData buildAttendanceTooltipData(NumberFormat numberFmt) {
+  return LineTouchTooltipData(
+    getTooltipColor: (spot) => const Color(0xFF2C3E50),
+    tooltipBorderRadius: const BorderRadius.all(Radius.circular(8)),
+    fitInsideHorizontally: true,
+    fitInsideVertically: true,
+    getTooltipItems: (spots) {
+      return spots.map((spot) {
+        final isPresent = spot.bar.color == const Color(0xFF97FFA9);
+        final label = isPresent ? 'Present' : 'Absent';
+        final color = isPresent
+            ? const Color(0xFF97FFA9)
+            : const Color(0xFFE74C3C);
+
+        return LineTooltipItem(
+          '$label: ${numberFmt.format(spot.y)}',
+          const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontFamily: 'SF Pro Display',
+          ),
+          children: [
+            TextSpan(
+              text: ' ',
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        );
+      }).toList();
+    },
+  );
+}
+
 class AttendanceLineChart extends ConsumerStatefulWidget {
   final String period;
   final bool isEmpty;
@@ -171,46 +205,8 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                                   minY: 0,
                                   maxY: range.maxY,
                                   lineTouchData: LineTouchData(
-                                    touchTooltipData: LineTouchTooltipData(
-                                      getTooltipColor: (spot) =>
-                                          const Color(0xFF2C3E50),
-                                      tooltipBorderRadius:
-                                          const BorderRadius.all(
-                                            Radius.circular(8),
-                                          ),
-                                      getTooltipItems: (spots) {
-                                        return spots.map((spot) {
-                                          final isPresent =
-                                              spot.bar.color ==
-                                              const Color(0xFF97FFA9);
-                                          final label = isPresent
-                                              ? 'Present'
-                                              : 'Absent';
-                                          final color = isPresent
-                                              ? const Color(0xFF97FFA9)
-                                              : const Color(0xFFE74C3C);
-
-                                          return LineTooltipItem(
-                                            '$label: ${numberFmt.format(spot.y)}',
-                                            TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                            children: [
-                                              TextSpan(
-                                                text: ' ',
-                                                style: TextStyle(
-                                                  color: color,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList();
-                                      },
-                                    ),
+                                    touchTooltipData:
+                                        buildAttendanceTooltipData(numberFmt),
                                     touchSpotThreshold: 10,
                                     handleBuiltInTouches: true,
                                   ),

@@ -16,6 +16,10 @@ class PreferencesService {
   static const String _companyCurrencyKey = 'company_currency';
   static const String _rateUsNeverShowKey = 'rate_us_never_show';
   static const String _rateUsRemindLaterKey = 'rate_us_remind_later';
+  static const String _payrollReminderIgnoredPrefix =
+      'payroll_reminder_ignored_';
+  static const String _payrollReminderSnoozedPrefix =
+      'payroll_reminder_snoozed_';
   static const String _rateUsFirstExpenseKey = 'rate_us_first_expense';
   static const String _rateUsFirstWorkerKey = 'rate_us_first_worker';
   static const String _rateUsFirstHolidayKey = 'rate_us_first_holiday';
@@ -314,6 +318,39 @@ class PreferencesService {
     await prefs.setString(_rateUsRemindLaterKey, remindDate.toIso8601String());
   }
 
+  static Future<bool> isPayrollReminderSuppressed(
+    String periodKey, {
+    DateTime? now,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('$_payrollReminderIgnoredPrefix$periodKey') ?? false) {
+      return true;
+    }
+    final snoozedUntil = DateTime.tryParse(
+      prefs.getString('$_payrollReminderSnoozedPrefix$periodKey') ?? '',
+    );
+    return snoozedUntil != null &&
+        (now ?? DateTime.now()).isBefore(snoozedUntil);
+  }
+
+  static Future<void> snoozePayrollReminder(
+    String periodKey, {
+    DateTime? now,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final snoozedUntil = (now ?? DateTime.now()).add(const Duration(days: 1));
+    await prefs.setString(
+      '$_payrollReminderSnoozedPrefix$periodKey',
+      snoozedUntil.toIso8601String(),
+    );
+  }
+
+  static Future<void> ignorePayrollReminder(String periodKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_payrollReminderIgnoredPrefix$periodKey', true);
+    await prefs.remove('$_payrollReminderSnoozedPrefix$periodKey');
+  }
+
   static Future<bool> _getBool(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(key) ?? false;
@@ -443,6 +480,17 @@ class PreferencesService {
     await prefs.remove(_companyWorkingDaysKey);
     await prefs.remove(_sessionLockedKey);
     await prefs.remove(_guestPayrollKey);
+    for (final key
+        in prefs
+            .getKeys()
+            .where(
+              (key) =>
+                  key.startsWith(_payrollReminderIgnoredPrefix) ||
+                  key.startsWith(_payrollReminderSnoozedPrefix),
+            )
+            .toList()) {
+      await prefs.remove(key);
+    }
     if (!preserveBiometricCredentials) {
       await clearBiometricCredentials();
     }

@@ -26,6 +26,8 @@ import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
 
+enum _PayrollReminderAction { remindLater, ignore, payAll }
+
 class PayrollScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final bool isActive;
@@ -72,6 +74,11 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool _initialized = false;
   bool _isLoadingAttendance = false;
   bool _attendanceFetchPending = false;
+  bool _reminderCheckScheduled = false;
+  bool _reminderHandledForActivation = false;
+  bool _reminderDialogOpen = false;
+  bool _workersLoaded = false;
+  bool _payrollLoaded = false;
   Timer? _attendanceDebounce;
   List<Map<String, dynamic>> _payableWorkersForPeriod(DateTime month) {
     return PayrollService.payableWorkersForPeriod(
@@ -149,6 +156,170 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     }
     _isLoading = false;
+    _schedulePayrollReminderCheck();
+  }
+
+  void _schedulePayrollReminderCheck() {
+    if (!widget.isActive ||
+        _reminderCheckScheduled ||
+        _reminderHandledForActivation) {
+      return;
+    }
+    _reminderCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reminderCheckScheduled = false;
+      if (mounted) _maybeShowPayrollReminder();
+    });
+  }
+
+  Future<void> _maybeShowPayrollReminder() async {
+    if (!widget.isActive ||
+        _isLoading ||
+        !_workersLoaded ||
+        !_payrollLoaded ||
+        _reminderHandledForActivation ||
+        _reminderDialogOpen) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final window = PayrollService.reminderWindowForDate(now);
+    if (window == null) {
+      _reminderHandledForActivation = true;
+      return;
+    }
+    final payableWorkers = _payableWorkersForPeriod(window.payrollMonth);
+    if (payableWorkers.isEmpty) {
+      _reminderHandledForActivation = true;
+      return;
+    }
+    if (await PreferencesService.isPayrollReminderSuppressed(
+      window.periodKey,
+      now: now,
+    )) {
+      _reminderHandledForActivation = true;
+      return;
+    }
+    if (!mounted || !widget.isActive) return;
+
+    _reminderHandledForActivation = true;
+    _reminderDialogOpen = true;
+    final action = await showDialog<_PayrollReminderAction>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        final offset = window.dayOffset;
+        final status = offset < -1
+            ? 'payroll_due_in_days'.tr(namedArgs: {'days': '${offset.abs()}'})
+            : offset == -1
+            ? 'payroll_due_tomorrow'.tr()
+            : offset == 0
+            ? 'payroll_due_today'.tr()
+            : offset == 1
+            ? 'payroll_overdue_one_day'.tr()
+            : 'payroll_overdue_days'.tr(namedArgs: {'days': '$offset'});
+        final dueDate = AppDateUtils.fromValueLocalized(
+          window.dueDate,
+          locale: context.locale.toString(),
+        );
+        final visibleNames = payableWorkers
+            .take(4)
+            .map((worker) => (worker['name'] ?? 'Worker').toString())
+            .join(', ');
+        final extraCount = payableWorkers.length - 4;
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.notifications_active_rounded,
+                color: Color(0xFF0247C4),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text('pay_due_reminder'.tr())),
+            ],
+          ),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: offset > 0
+                        ? const Color(0xFFE74C3C)
+                        : const Color(0xFF0247C4),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'payroll_due_message'.tr(
+                    namedArgs: {
+                      'count': '${payableWorkers.length}',
+                      'date': dueDate,
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  extraCount > 0 ? '$visibleNames +$extraCount' : visibleNames,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                _PayrollReminderAction.remindLater,
+              ),
+              child: Text('remind_me_later'.tr()),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, _PayrollReminderAction.ignore),
+              child: Text('ignore'.tr()),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF27AE60),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, _PayrollReminderAction.payAll),
+              child: Text('pay_all'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+    _reminderDialogOpen = false;
+
+    switch (action) {
+      case _PayrollReminderAction.remindLater:
+        await PreferencesService.snoozePayrollReminder(
+          window.periodKey,
+          now: now,
+        );
+        break;
+      case _PayrollReminderAction.ignore:
+        await PreferencesService.ignorePayrollReminder(window.periodKey);
+        break;
+      case _PayrollReminderAction.payAll:
+        await _handlePayAllForMonth(window.payrollMonth);
+        break;
+      case null:
+        break;
+    }
   }
 
   void _scheduleAttendanceFetch() {
@@ -332,6 +503,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   @override
   void didUpdateWidget(covariant PayrollScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!widget.isActive) {
+      _reminderHandledForActivation = false;
+    } else if (!oldWidget.isActive) {
+      _schedulePayrollReminderCheck();
+    }
+
     if (!_initialized || !(_authService.currentUser?.isAnonymous ?? false)) {
       return;
     }
@@ -369,6 +546,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
+            _workersLoaded = true;
             _workersList = snapshot.docs
                 .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
                 .toList();
@@ -380,6 +558,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payrollSub = _firestore.payrollStream.listen((snapshot) {
         if (mounted) {
           setState(() {
+            _payrollLoaded = true;
             _rawPayrollDocs = snapshot.docs
                 .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
                 .toList();
@@ -398,6 +577,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       }, onError: _handlePayrollStreamError);
     } else {
       setState(() {
+        _workersLoaded = true;
+        _payrollLoaded = true;
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
         _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
         _combinePayroll();
@@ -416,12 +597,18 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   Future<void> _handlePayAll() async {
-    if (_isRunningPayroll || _currentPayablePayrollWorkers.isEmpty) return;
+    await _handlePayAllForMonth(_payrollMonth);
+  }
+
+  Future<void> _handlePayAllForMonth(DateTime payrollMonth) async {
+    if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty) {
+      return;
+    }
     setState(() => _isRunningPayroll = true);
     try {
       final summary = await PayrollRunner().payAll(
         context,
-        payrollMonth: _payrollMonth,
+        payrollMonth: payrollMonth,
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(
