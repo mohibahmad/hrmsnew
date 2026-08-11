@@ -907,7 +907,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // with demo data after login.
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
-    return attendanceRecordsForPeriod(rawDocs, _selectedPeriod);
+    final periodDocs = attendanceRecordsForPeriod(rawDocs, _selectedPeriod);
+    if (isGuest || !_workersLoaded || _workersDocs.isEmpty) return periodDocs;
+
+    // Match the Mark Attendance screen: only records that belong to a current
+    // worker are counted, and each worker contributes at most one (latest)
+    // record per day. Without this, attendance documents for deleted/archived
+    // workers or documents with inconsistent identity fields would inflate the
+    // Present/Absent bars and disagree with the Mark Attendance screen.
+    return latestAttendanceRecordPerWorker(
+      periodDocs,
+      period: _selectedPeriod,
+      workerIdResolver: _dashboardAttendanceWorkerId,
+    );
+  }
+
+  /// Canonical id of the current worker that [attendance] belongs to, or null
+  /// when the record doesn't belong to any current worker. Mirrors the Mark
+  /// Attendance screen's identity matching (workerId, then email, then name) so
+  /// duplicate documents created with different identity fields still resolve
+  /// to the same worker.
+  String? _dashboardAttendanceWorkerId(Map<String, dynamic> attendance) {
+    final rawWorkerId = (attendance['workerId'] ?? '').toString().trim();
+    if (rawWorkerId.isNotEmpty && _existingWorkerIds.contains(rawWorkerId)) {
+      return rawWorkerId;
+    }
+
+    final email = (attendance['email'] ?? '').toString().trim().toLowerCase();
+    final name = (attendance['name'] ?? attendance['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    for (final worker in _workersDocs) {
+      final workerId =
+          (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+      if (email.isNotEmpty &&
+          (worker['email'] ?? '').toString().trim().toLowerCase() == email) {
+        return workerId;
+      }
+      if (name.isNotEmpty &&
+          (worker['name'] ?? '').toString().trim().toLowerCase() == name) {
+        return workerId;
+      }
+    }
+    return null;
   }
 
   String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
@@ -1082,6 +1125,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final shouldDiscard = await _workersKey.currentState!
                             .confirmDiscardChanges();
                         if (!shouldDiscard) return;
+                      }
+                      // When leaving the Workers screen, close the "Add Bulk
+                      // Workers" flow automatically if no CSV has been uploaded
+                      // yet. This ensures coming back to Workers shows the worker
+                      // list instead of a stale, empty bulk-add screen. If a CSV
+                      // has been uploaded, hasUnsavedChanges above already asked
+                      // the user whether to discard their work.
+                      if (_selectedIndex == 1) {
+                        _workersKey.currentState?.closeIdleBulkAddFlow();
                       }
                       if (_showAssignTimeOff) {
                         final shouldDiscard = await UnsavedChangesDialog.show(
@@ -1344,7 +1396,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 3,
+                      flex: 1,
                       child: Text(
                         'attendance_overview'.tr(),
                         style: TextStyle(
@@ -1356,7 +1408,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      flex: 2,
+                      flex: 1,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1396,7 +1448,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            flex: 3,
+                            flex: 1,
                             child: AttendanceLineChart(
                               period: _selectedPeriod,
                               isEmpty: filteredAttendanceDocs.isEmpty,
@@ -1405,7 +1457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           const SizedBox(width: 6),
                           Expanded(
-                            flex: 2,
+                            flex: 1,
                             child: LeaveTypesPieChart(
                               period: _selectedPeriod,
                               isEmpty:

@@ -110,6 +110,21 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
     return true;
   }
 
+  /// Closes the idle "Add Bulk Workers" flow without a discard prompt when the
+  /// user hasn't parsed/uploaded a CSV yet (no unsaved data to lose). This
+  /// guarantees that navigating to another sidebar screen and back to Workers
+  /// shows the worker list instead of the stale, empty bulk-add screen. When a
+  /// CSV has been uploaded, [hasUnsavedChanges] is true and the caller keeps
+  /// using [confirmDiscardChanges] to ask the user before losing their data.
+  void closeIdleBulkAddFlow() {
+    if (!_isAddingBulkWorker) return;
+    if (_bulkWorkerKey.currentState?.hasUnsavedChanges == true) return;
+    if (!mounted) return;
+    setState(() {
+      _isAddingBulkWorker = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isAddingWorker) {

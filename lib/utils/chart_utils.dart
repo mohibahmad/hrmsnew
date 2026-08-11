@@ -35,6 +35,16 @@ String normalizedAttendanceStatus(Map<String, dynamic> record) {
   };
 }
 
+List<Map<String, dynamic>> attendanceRecordsForStatus(
+  List<Map<String, dynamic>> records,
+  String status,
+) {
+  final normalizedStatus = status.trim().toLowerCase();
+  return records
+      .where((record) => normalizedAttendanceStatus(record) == normalizedStatus)
+      .toList();
+}
+
 DateTime? _dashboardAttendanceDate(Map<String, dynamic> record) {
   return AppDateUtils.dateFromValue(record['attendanceDate'] ?? record['date']);
 }
@@ -97,6 +107,12 @@ List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
   List<Map<String, dynamic>> records, {
   String? period,
   DateTime? now,
+  /// Optional resolver that maps a record to the canonical id of a current
+  /// worker. When provided:
+  ///  - records that don't belong to any current worker are skipped, and
+  ///  - all documents for the same worker are grouped together even when their
+  ///    stored identity fields differ (workerId vs email vs name).
+  String? Function(Map<String, dynamic> record)? workerIdResolver,
 }) {
   final latestByWorker = <String, Map<String, dynamic>>{};
   final referenceDate = now ?? DateTime.now();
@@ -109,13 +125,21 @@ List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
         .trim()
         .toLowerCase();
     final recordId = (record['id'] ?? '').toString().trim();
-    final workerKey = workerId.isNotEmpty
-        ? 'id:$workerId'
-        : email.isNotEmpty
-        ? 'email:$email'
-        : name.isNotEmpty
-        ? 'name:$name'
-        : 'record:$recordId';
+
+    String? workerKey;
+    if (workerIdResolver != null) {
+      final resolvedId = workerIdResolver(record);
+      if (resolvedId == null || resolvedId.isEmpty) continue;
+      workerKey = 'id:$resolvedId';
+    } else {
+      workerKey = workerId.isNotEmpty
+          ? 'id:$workerId'
+          : email.isNotEmpty
+          ? 'email:$email'
+          : name.isNotEmpty
+          ? 'name:$name'
+          : 'record:$recordId';
+    }
 
     final bucketKey = period == null
         ? ''

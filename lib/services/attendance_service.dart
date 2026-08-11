@@ -331,10 +331,36 @@ class AttendanceService {
     List<Map<String, dynamic>> records,
     List<Map<String, dynamic>> timeOffRecords,
   ) {
+    final latestByWorkerAndDay = <String, Map<String, dynamic>>{};
+    for (final record in records) {
+      final workerId = (record['workerId'] ?? '').toString().trim();
+      final email = WorkerIdentity.normalizeEmail(record['email']);
+      final name = WorkerIdentity.normalizeName(
+        record['name'] ?? record['workerName'],
+      );
+      final recordId = (record['id'] ?? '').toString().trim();
+      final workerKey = workerId.isNotEmpty
+          ? 'id:$workerId'
+          : email.isNotEmpty
+          ? 'email:$email'
+          : name.isNotEmpty
+          ? 'name:$name'
+          : 'record:$recordId';
+      final recordDate = AppDateUtils.attendanceRecordDate(record);
+      final dayKey = recordDate == null
+          ? 'undated:$recordId'
+          : _dateKey(recordDate);
+      final key = '$workerKey|$dayKey';
+      final existing = latestByWorkerAndDay[key];
+      if (existing == null || _candidateIsNewer(existing, record)) {
+        latestByWorkerAndDay[key] = record;
+      }
+    }
+
     int present = 0;
     int absent = 0;
     int leave = 0;
-    for (final record in records) {
+    for (final record in latestByWorkerAndDay.values) {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
       final isOnLeave =
           recordDate != null &&

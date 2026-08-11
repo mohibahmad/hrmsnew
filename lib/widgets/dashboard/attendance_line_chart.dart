@@ -75,12 +75,25 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
 
   @override
   Widget build(BuildContext context) {
-    final latestAttendanceDocs = latestAttendanceRecordPerWorker(
+    // Collapse attendance documents to a single, latest record per worker per
+    // day so the chart reflects the number of distinct people who are
+    // present/absent rather than how many attendance documents exist. A worker
+    // with duplicate documents on the same day (e.g. multiple Present docs, or
+    // a later correction) is therefore counted only once, preventing inflated
+    // bars on the Today view. Workers can still appear on different days for
+    // the Week/Month/Year views.
+    final dedupedDocs = latestAttendanceRecordPerWorker(
       widget.attendanceDocs,
       period: widget.period,
     );
-    final presentAttendanceDocs = _forStatus(latestAttendanceDocs, 'present');
-    final absentAttendanceDocs = _forStatus(latestAttendanceDocs, 'absent');
+    final presentAttendanceDocs = attendanceRecordsForStatus(
+      dedupedDocs,
+      'present',
+    );
+    final absentAttendanceDocs = attendanceRecordsForStatus(
+      dedupedDocs,
+      'absent',
+    );
     final locale = context.locale.toString();
 
     final presentChartData = getChartData(
@@ -95,10 +108,6 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
       false,
       locale,
     );
-    final hasAbsentData =
-        absentAttendanceDocs.isNotEmpty &&
-        absentChartData.values.any((value) => value > 0);
-
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -125,10 +134,8 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildLegendItem(_presentColor, 'Present'),
-                        if (hasAbsentData) ...[
-                          const SizedBox(width: 24),
-                          _buildLegendItem(_absentColor, 'Absent'),
-                        ],
+                        const SizedBox(width: 24),
+                        _buildLegendItem(_absentColor, 'Absent'),
                       ],
                     ),
                   ),
@@ -147,15 +154,6 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
     );
   }
 
-  List<Map<String, dynamic>> _forStatus(
-    List<Map<String, dynamic>> records,
-    String status,
-  ) {
-    return records.where((record) {
-      return normalizedAttendanceStatus(record) == status;
-    }).toList();
-  }
-
   Widget _buildBarChart({
     required ChartData presentChartData,
     required ChartData absentChartData,
@@ -167,6 +165,12 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
         ? 1.0
         : allValues.reduce((a, b) => a > b ? a : b);
     final range = getNiceRange(rawMaxY);
+    // Leave headroom above the tallest bar so the hover tooltip (which is drawn
+    // above the bar) is not clipped at the top of the chart. When a bar already
+    // fills the axis, its tooltip would overflow the plot area and get cut.
+    final chartMaxY = rawMaxY > 0 && (rawMaxY / range.maxY) > 0.8
+        ? ((rawMaxY / 0.8) / range.interval).ceil() * range.interval
+        : range.maxY;
     final labelStep = _labelStepFor(presentChartData.labels.length);
 
     return TweenAnimationBuilder<double>(
@@ -178,7 +182,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
         return BarChart(
           BarChartData(
             minY: 0,
-            maxY: range.maxY,
+            maxY: chartMaxY,
             alignment: BarChartAlignment.spaceAround,
             groupsSpace: 18,
             barTouchData: BarTouchData(
