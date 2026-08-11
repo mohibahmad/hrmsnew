@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers.dart';
 import '../../services/auth_service.dart';
 
-class TopHeader extends StatelessWidget {
+class TopHeader extends ConsumerWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onNotificationTap;
   final int unreadCount;
@@ -16,8 +17,8 @@ class TopHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final user = context.read<AuthService>().currentUser;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authServiceProvider).currentUser;
     String name = user?.displayName ?? 'User';
     if (name.trim().isEmpty || name == 'User') {
       name = 'user_name'.tr();

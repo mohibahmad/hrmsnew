@@ -12,7 +12,8 @@ import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
 import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/worker_identity.dart';
@@ -72,7 +73,7 @@ String _localizedAttendanceType(String type) {
   }
 }
 
-class WorkersAttendanceScreen extends StatefulWidget {
+class WorkersAttendanceScreen extends ConsumerStatefulWidget {
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final bool hideSidebar;
@@ -86,11 +87,12 @@ class WorkersAttendanceScreen extends StatefulWidget {
   });
 
   @override
-  State<WorkersAttendanceScreen> createState() =>
+  ConsumerState<WorkersAttendanceScreen> createState() =>
       _WorkersAttendanceScreenState();
 }
 
-class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
+class _WorkersAttendanceScreenState
+    extends ConsumerState<WorkersAttendanceScreen> {
   final _searchController = TextEditingController();
   final GlobalKey _statusFilterButtonKey = GlobalKey();
   double? _statusFilterButtonWidth;
@@ -148,8 +150,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final currentUser = _authService.currentUser;
     if (currentUser != null && !currentUser.isAnonymous) {
       _firestore
@@ -857,18 +859,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     for (final h in _holidays) {
       if (h['isEnabled'] == false) continue;
       final isRecurring = h['isRecurring'] == true;
-      final rawYear = h['year'];
-      final holidayYear = rawYear is num
-          ? rawYear.toInt()
-          : int.tryParse((rawYear ?? '').toString());
-      if (!isRecurring && holidayYear != null && holidayYear != now.year) {
+      final holidayDate = app_date_utils.AppDateUtils.holidayRecordDate(
+        h,
+        fallbackYear: now.year,
+      );
+      if (holidayDate == null) continue;
+      if (!isRecurring && holidayDate.year != now.year) {
         continue;
       }
-      final monthNum = app_date_utils.AppDateUtils.parseMonth(
-        (h['month'] ?? '').toString(),
-      );
-      final dayNum = int.tryParse((h['day'] ?? '').toString());
-      if (monthNum == now.month && dayNum == now.day) {
+      if (holidayDate.month == now.month && holidayDate.day == now.day) {
         todayHolidays.add(h);
       }
     }
@@ -2450,8 +2449,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       );
     }
     if (_filteredWorkers.isEmpty) {
-      return Center(
+      return Container(
+        width: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(
@@ -2548,8 +2554,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
     final visibleAttendance = _visibleTodayAttendance;
     if (visibleAttendance.isEmpty) {
-      return Center(
+      return Container(
+        width: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(

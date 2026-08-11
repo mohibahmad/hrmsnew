@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../screens/login_screen.dart';
 
 Future<void> showLogoutDialog(BuildContext context) async {
@@ -36,7 +36,9 @@ Future<void> showLogoutDialog(BuildContext context) async {
 
   if (confirmed == true) {
     try {
-      await context.read<AuthService>().signOut(preserveBiometricLogin: true);
+      await ProviderScope.containerOf(context)
+          .read(authServiceProvider)
+          .signOut(preserveBiometricLogin: true);
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),

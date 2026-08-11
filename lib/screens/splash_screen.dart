@@ -3,7 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
@@ -11,14 +12,14 @@ import '../services/preferences_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
   late AuthService _authService;
@@ -44,8 +45,8 @@ class _SplashScreenState extends State<SplashScreen>
     _navigationScheduled = true;
 
     precacheImage(const AssetImage('assets/splashscreenbg.png'), context);
-    _authService = context.read<AuthService>();
-    _firestoreService = context.read<FirestoreService>();
+    _authService = ref.read(authServiceProvider);
+    _firestoreService = ref.read(firestoreServiceProvider);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navigateWhenReady();

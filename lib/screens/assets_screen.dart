@@ -11,7 +11,8 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../utils/premium_gate.dart';
 import '../utils/date_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -38,6 +39,33 @@ String _adts(dynamic value) {
   return value.toString();
 }
 
+String _formatPositionTitleCase(dynamic value) {
+  final text = (value ?? '').toString().trim();
+  if (text.isEmpty) return '';
+  const acronyms = {
+    'hr',
+    'it',
+    'qa',
+    'ui',
+    'ux',
+    'ui/ux',
+    'ceo',
+    'cto',
+    'cfo',
+    'coo',
+    'php',
+    'sql',
+  };
+  return text
+      .split(RegExp(r'\s+'))
+      .map((word) {
+        final lower = word.toLowerCase();
+        if (acronyms.contains(lower)) return lower.toUpperCase();
+        return '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
+}
+
 bool _assetBool(dynamic value, {bool defaultValue = false}) {
   if (value is bool) return value;
   if (value is num) return value != 0;
@@ -60,7 +88,7 @@ bool _assetReturned(Map<String, dynamic> data) {
   return text.isNotEmpty && text != 'in_use' && text != '__in_use__';
 }
 
-class AssetsScreen extends StatefulWidget {
+class AssetsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -73,10 +101,10 @@ class AssetsScreen extends StatefulWidget {
   });
 
   @override
-  State<AssetsScreen> createState() => _AssetsScreenState();
+  ConsumerState<AssetsScreen> createState() => _AssetsScreenState();
 }
 
-class _AssetsScreenState extends State<AssetsScreen> {
+class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   final _searchController = TextEditingController();
@@ -114,7 +142,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
-
     final validWorkers = workers
         .where(
           (worker) =>
@@ -171,8 +198,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _assets = DummyData.assets.map((data) {
@@ -248,18 +275,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   void _loadWorkers() {
     _workersSub?.cancel();
-    _workersSub = _firestore.workersStream.listen(
-      (snapshot) {
-        if (!mounted) return;
-        _setWorkerOptions(
-          snapshot.docs.map(
-            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-          ),
-        );
-        setState(() {});
-      },
-      onError: (_) {},
-    );
+    _workersSub = _firestore.workersStream.listen((snapshot) {
+      if (!mounted) return;
+      _setWorkerOptions(
+        snapshot.docs.map(
+          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        ),
+      );
+      setState(() {});
+    }, onError: (_) {});
   }
 
   List<AssetData> get _filteredAssets {
@@ -427,26 +451,47 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     final workerProfileImage =
                                         workerData['profileImage']?.toString();
                                     try {
-                                      final policies = await _firestore.getPolicies();
-                                      final assetPolicyList = policies.where((p) => p['typeId'] == 'Asset Policy').toList();
+                                      final policies = await _firestore
+                                          .getPolicies();
+                                      final assetPolicyList = policies
+                                          .where(
+                                            (p) =>
+                                                p['typeId'] == 'Asset Policy',
+                                          )
+                                          .toList();
                                       if (assetPolicyList.isNotEmpty) {
-                                        final assetPolicy = assetPolicyList.first;
-                                        final int maxAssets = int.tryParse(assetPolicy['maxAssetsPerWorker']?.toString() ?? '3') ?? 3;
-                                        
-                                        final assignedAssets = _assets.where((a) {
-                                          final wId = (a.workerId ?? '').toString();
+                                        final assetPolicy =
+                                            assetPolicyList.first;
+                                        final int maxAssets =
+                                            int.tryParse(
+                                              assetPolicy['maxAssetsPerWorker']
+                                                      ?.toString() ??
+                                                  '3',
+                                            ) ??
+                                            3;
+
+                                        final assignedAssets = _assets.where((
+                                          a,
+                                        ) {
+                                          final wId = (a.workerId ?? '')
+                                              .toString();
                                           final wName = a.name;
                                           final returned = a.isReturned;
-                                          return !returned && (wId == selectedWorkerId || wName == actualWorkerName);
+                                          return !returned &&
+                                              (wId == selectedWorkerId ||
+                                                  wName == actualWorkerName);
                                         }).length;
 
                                         if (assignedAssets >= maxAssets) {
                                           setModalState(() => isSaving = false);
                                           FlashySnackBar.show(
                                             context,
-                                            message: 'worker_asset_limit_reached'.tr(
-                                              namedArgs: {'maxAssets': '$maxAssets'},
-                                            ),
+                                            message:
+                                                'worker_asset_limit_reached'.tr(
+                                                  namedArgs: {
+                                                    'maxAssets': '$maxAssets',
+                                                  },
+                                                ),
                                             isError: true,
                                           );
                                           return;
@@ -461,13 +506,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         (workerData['cnic'] ??
                                                 workerData['nationalId'])
                                             ?.toString();
-                                    final workerDateOfJoining =
-                                        _adts(workerData['dateOfJoining']);
-                                    final workerJoiningDate =
-                                        _adts(
-                                          workerData['joiningDate'] ??
-                                              workerData['dateOfJoining'],
-                                        );
+                                    final workerDateOfJoining = _adts(
+                                      workerData['dateOfJoining'],
+                                    );
+                                    final workerJoiningDate = _adts(
+                                      workerData['joiningDate'] ??
+                                          workerData['dateOfJoining'],
+                                    );
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -476,14 +521,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'dateLoaned': loanedDate,
                                       'dateReturned': isReturned
                                           ? returnedDate
-                                          : _inUseKey,
+                                          : null,
                                       'isReturned': isReturned,
                                       'profileImage': workerProfileImage ?? '',
                                       'email': workerEmail ?? '',
                                       'phone': workerPhone ?? '',
                                       'cnic': workerCnic ?? '',
-                                      'dateOfJoining':
-                                          workerDateOfJoining,
+                                      'dateOfJoining': workerDateOfJoining,
                                     };
                                     final firestoreAssetMap = <String, dynamic>{
                                       ...assetMap,
@@ -503,15 +547,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         'dateLoaned': formatDate(loanedDate),
                                         'dateReturned': isReturned
                                             ? formatDate(returnedDate)
-                                            : _inUseKey,
+                                            : null,
                                         'isReturned': isReturned,
                                         'profileImage':
                                             workerProfileImage ?? '',
                                         'email': workerEmail ?? '',
                                         'phone': workerPhone ?? '',
                                         'cnic': workerCnic ?? '',
-                                        'dateOfJoining':
-                                            workerDateOfJoining,
+                                        'dateOfJoining': workerDateOfJoining,
                                       };
                                       setState(() {
                                         _assets.insert(
@@ -523,7 +566,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             formatDate(loanedDate),
                                             isReturned
                                                 ? formatDate(returnedDate)
-                                                : _inUseKey,
+                                                : '',
                                             isReturned,
                                             workerId: selectedWorkerId,
                                             profileImage: workerProfileImage,
@@ -599,8 +642,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           selectedWorkerName = val;
                           if (val != null && _workersMap.containsKey(val)) {
                             final workerData = _workersMap[val]!;
-                            positionController.text =
-                                (workerData['position'] ?? '').toString();
+                            positionController.text = _formatPositionTitleCase(
+                              workerData['position'],
+                            );
                           } else {
                             positionController.text = '';
                           }
@@ -763,9 +807,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: Colors.black,
+              color: readOnly ? const Color(0xFF9E9E9E) : Colors.black,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
             ),
@@ -1426,7 +1470,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                data.position,
+                _formatPositionTitleCase(data.position),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1640,7 +1684,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
   void _showEditAssetModal(AssetData data) {
     String? selectedWorkerName = _optionForAsset(data);
     final typeController = TextEditingController(text: data.type);
-    final positionController = TextEditingController(text: data.position);
+    final positionController = TextEditingController(
+      text: _formatPositionTitleCase(data.position),
+    );
     final now = DateTime.now();
     final minimumAssetDate = DateTime(1900, 1, 1);
     DateTime loanedDate = _parseDate(data.dateLoaned) ?? now;
@@ -1803,13 +1849,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         (workerData['cnic'] ??
                                                 workerData['nationalId'])
                                             ?.toString();
-                                    final workerDateOfJoining =
-                                        _adts(workerData['dateOfJoining']);
-                                    final workerJoiningDate =
-                                        _adts(
-                                          workerData['joiningDate'] ??
-                                              workerData['dateOfJoining'],
-                                        );
+                                    final workerDateOfJoining = _adts(
+                                      workerData['dateOfJoining'],
+                                    );
+                                    final workerJoiningDate = _adts(
+                                      workerData['joiningDate'] ??
+                                          workerData['dateOfJoining'],
+                                    );
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -1818,14 +1864,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'dateLoaned': loanedDate,
                                       'dateReturned': isReturned
                                           ? returnedDate
-                                          : _inUseKey,
+                                          : null,
                                       'isReturned': isReturned,
                                       'profileImage': workerProfileImage ?? '',
                                       'email': workerEmail ?? '',
                                       'phone': workerPhone ?? '',
                                       'cnic': workerCnic ?? '',
-                                      'dateOfJoining':
-                                          workerDateOfJoining,
+                                      'dateOfJoining': workerDateOfJoining,
                                     };
                                     final firestoreAssetMap = <String, dynamic>{
                                       ...assetMap,
@@ -1849,7 +1894,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             formatDate(loanedDate),
                                             isReturned
                                                 ? formatDate(returnedDate)
-                                                : _inUseKey,
+                                                : '',
                                             isReturned,
                                             id: data.id,
                                             workerId: selectedWorkerId,
@@ -1909,7 +1954,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                 formatDate(loanedDate),
                                                 isReturned
                                                     ? formatDate(returnedDate)
-                                                    : _inUseKey,
+                                                    : '',
                                                 isReturned,
                                                 id: data.id,
                                                 workerId: selectedWorkerId,
@@ -1967,8 +2012,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           selectedWorkerName = val;
                           if (val != null && _workersMap.containsKey(val)) {
                             final workerData = _workersMap[val]!;
-                            positionController.text =
-                                (workerData['position'] ?? '').toString();
+                            positionController.text = _formatPositionTitleCase(
+                              workerData['position'],
+                            );
                           } else {
                             positionController.text = '';
                           }
@@ -2082,35 +2128,41 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 80),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFCBCBCB),
-                BlendMode.srcIn,
-              ),
+    final double containerHeight = (MediaQuery.of(context).size.height - 279)
+        .clamp(495.0, 1200.0);
+    return Container(
+      width: double.infinity,
+      height: containerHeight,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
             ),
-            const SizedBox(height: 16),
-            Text(
-              isSearchEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
-              ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0247C4),
+              fontFamily: 'SF Pro Display',
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

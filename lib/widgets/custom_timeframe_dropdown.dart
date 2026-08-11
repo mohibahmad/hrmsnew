@@ -35,6 +35,8 @@ class CustomTimeframeDropdown extends StatefulWidget {
       case 'Yearly':
       case 'This Year':
         return 'this_year'.tr();
+      case 'All Time':
+        return 'all_time'.tr();
       default:
         return period;
     }
@@ -78,6 +80,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       case 'Yearly':
       case 'This Year':
         return 'This Year';
+      case 'All Time':
+        return 'All Time';
       default:
         return period;
     }

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -25,7 +26,7 @@ import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
 
-class PayrollScreen extends StatefulWidget {
+class PayrollScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final bool isActive;
   final VoidCallback onProfileTap;
@@ -42,10 +43,10 @@ class PayrollScreen extends StatefulWidget {
   });
 
   @override
-  State<PayrollScreen> createState() => _PayrollScreenState();
+  ConsumerState<PayrollScreen> createState() => _PayrollScreenState();
 }
 
-class _PayrollScreenState extends State<PayrollScreen> {
+class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   final _searchController = TextEditingController();
@@ -319,8 +320,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _loadCompanySettings();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -926,41 +927,45 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
-    double dynamicHeight = MediaQuery.of(context).size.height - 450;
-    if (dynamicHeight < 300) dynamicHeight = 300;
-    return SizedBox(
+    final double dynamicHeight = (MediaQuery.of(context).size.height - 329)
+        .clamp(440.0, 1200.0);
+    return Container(
       width: double.infinity,
       height: dynamicHeight,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFCBCBCB),
-                BlendMode.srcIn,
-              ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
             ),
-            const SizedBox(height: 16),
-            Text(
-              isSearchEmpty
-                  ? 'no_search_results'.tr()
-                  : 'no_payroll_records'.tr(),
-              style: TextStyle(
-                color: Color(0xFF0247C4),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty
+                ? 'no_search_results'.tr()
+                : 'no_payroll_records'.tr(),
+            style: TextStyle(
+              color: Color(0xFF0247C4),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
-          ],
-        ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ],
       ),
     );
   }

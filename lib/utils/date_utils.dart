@@ -189,6 +189,8 @@ class AppDateUtils {
       case 'Yearly':
       case 'This Year':
         return DateTime(today.year, 1, 1);
+      case 'All Time':
+        return DateTime(1, 1, 1);
       default:
         return today;
     }
@@ -217,6 +219,8 @@ class AppDateUtils {
       case 'Yearly':
       case 'This Year':
         return DateTime(now.year, 12, 31);
+      case 'All Time':
+        return DateTime(9999, 12, 31);
       default:
         return today;
     }
@@ -263,11 +267,44 @@ class AppDateUtils {
     return null;
   }
 
+  /// Canonical attendance date used by Dashboard timeframe filters/charts.
+  /// `createdAt` is metadata and must never decide which attendance day a
+  /// record belongs to.
+  static DateTime? canonicalAttendanceDate(Map<String, dynamic> record) {
+    return dateFromValue(record['attendanceDate']);
+  }
+
+  /// Returns the canonical date for a holiday record.
+  ///
+  /// New records use a single `date` Timestamp. Legacy records that stored
+  /// separate day/month/year fields remain readable during migration.
+  static DateTime? holidayRecordDate(
+    Map<String, dynamic> record, {
+    int? fallbackYear,
+  }) {
+    for (final key in ['date', 'holidayDate']) {
+      final date = dateFromValue(record[key]);
+      if (date != null) return DateTime(date.year, date.month, date.day);
+    }
+
+    final rawDay = record['day'];
+    final day = rawDay is num
+        ? rawDay.toInt()
+        : int.tryParse((rawDay ?? '').toString().trim());
+    final month = parseMonth((record['month'] ?? '').toString());
+    final rawYear = record['year'];
+    final year = rawYear is num
+        ? rawYear.toInt()
+        : int.tryParse((rawYear ?? '').toString().trim()) ?? fallbackYear;
+    if (day == null || month == null || year == null) return null;
+    return _validatedDate(year, month, day);
+  }
+
   static bool isAttendanceRecordWithinPeriod(
     Map<String, dynamic> record,
     String period,
   ) {
-    final date = attendanceRecordDate(record);
+    final date = canonicalAttendanceDate(record);
     if (date == null) return false;
     return isTimestampWithinPeriod(date, period);
   }

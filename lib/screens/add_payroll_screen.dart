@@ -23,7 +23,8 @@ import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
 import '../widgets/amount_text.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
   return InvoiceService.generatePayrollInvoice(
@@ -59,7 +60,7 @@ Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
   );
 }
 
-class AddPayrollScreen extends StatefulWidget {
+class AddPayrollScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> workerData;
   final DateTime payrollMonth;
   final VoidCallback? onNotificationTap;
@@ -78,10 +79,10 @@ class AddPayrollScreen extends StatefulWidget {
   });
 
   @override
-  State<AddPayrollScreen> createState() => _AddPayrollScreenState();
+  ConsumerState<AddPayrollScreen> createState() => _AddPayrollScreenState();
 }
 
-class _AddPayrollScreenState extends State<AddPayrollScreen> {
+class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   static const Color _primaryBlue = Color(0xFF0A44C2);
   static const Color _darkBlue = Color(0xFF082C7C);
   static const Color _textDark = Color(0xFF111827);
@@ -157,8 +158,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
 
     _salaryCtrl.text = AmountText.formatFull(
       _salaryStr,

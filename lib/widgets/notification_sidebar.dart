@@ -4,13 +4,14 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/delete_dialog.dart';
 
-class NotificationSidebar extends StatefulWidget {
+class NotificationSidebar extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final ValueChanged<String>? onNotificationTap;
   const NotificationSidebar({
@@ -20,10 +21,10 @@ class NotificationSidebar extends StatefulWidget {
   });
 
   @override
-  State<NotificationSidebar> createState() => _NotificationSidebarState();
+  ConsumerState<NotificationSidebar> createState() => _NotificationSidebarState();
 }
 
-class _NotificationSidebarState extends State<NotificationSidebar>
+class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
@@ -37,8 +38,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),

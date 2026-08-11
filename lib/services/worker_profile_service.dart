@@ -209,6 +209,18 @@ class WorkerProfileService {
   }
 
   static Future<Uint8List?> _downloadImage(Uri uri) async {
+    if (kIsWeb) {
+      try {
+        final data = await NetworkAssetBundle(
+          uri,
+        ).load(uri.toString()).timeout(_imageLoadTimeout);
+        if (data.lengthInBytes > _maxProfileImageBytes) return null;
+        return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      } catch (_) {
+        return null;
+      }
+    }
+
     final client = HttpClient()..connectionTimeout = _imageLoadTimeout;
     try {
       final request = await client.getUrl(uri).timeout(_imageLoadTimeout);

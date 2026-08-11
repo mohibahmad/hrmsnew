@@ -32,7 +32,8 @@ import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 const List<String> _months = [
   'January',
@@ -99,17 +100,17 @@ List<Uint8List> _compressImagesTask(List<Uint8List> images) {
   return [for (final bytes in images) _compressImageBytesSync(bytes)];
 }
 
-class AddNewWorkerFlow extends StatefulWidget {
+class AddNewWorkerFlow extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
   final Map<String, dynamic>? workerToEdit;
 
   const AddNewWorkerFlow({super.key, this.onBack, this.workerToEdit});
 
   @override
-  State<AddNewWorkerFlow> createState() => _AddNewWorkerFlowState();
+  ConsumerState<AddNewWorkerFlow> createState() => _AddNewWorkerFlowState();
 }
 
-class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
+class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   late AuthService _authService;
   late FirestoreService _firestore;
   int _activeTabIndex = 0;
@@ -487,8 +488,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
 
     _nameController.addListener(_onControllerChanged);
     _nameController.addListener(() {

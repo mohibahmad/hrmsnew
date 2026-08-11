@@ -24,8 +24,12 @@ class DashboardChartService {
     final normalized = period.trim();
     return switch (normalized) {
       'Weekly' => 'Week',
+      'This Week' => 'Week',
       'Monthly' => 'Month',
+      'This Month' => 'Month',
       '6 Monthly' => '6 Month',
+      'Last 6 Months' => '6 Month',
+      'This Year' => 'Yearly',
       _ => normalized,
     };
   }
@@ -54,9 +58,7 @@ class DashboardChartService {
       }
 
       final rawValue = valueOf(record);
-      final value = (rawValue.isFinite && rawValue > 0)
-          ? rawValue
-          : 0.0;
+      final value = (rawValue.isFinite && rawValue > 0) ? rawValue : 0.0;
       if (value == 0) continue;
 
       final date = (dateOf ?? salaryRecordDate)(record);
@@ -115,6 +117,28 @@ class DashboardChartService {
       return DashboardChartSeries(points: points, total: runningTotal);
     }
 
+    if (normalizedPeriod == 'All Time') {
+      if (datedValues.isEmpty) {
+        return const DashboardChartSeries(points: [], total: 0);
+      }
+
+      final totalsByMonth = <int, double>{};
+      for (final item in datedValues) {
+        final monthKey = item.date.year * 12 + item.date.month - 1;
+        totalsByMonth[monthKey] = (totalsByMonth[monthKey] ?? 0) + item.value;
+      }
+      final monthKeys = totalsByMonth.keys.toList()..sort();
+      final points = monthKeys.map((monthKey) {
+        final year = monthKey ~/ 12;
+        final month = monthKey % 12 + 1;
+        return DashboardChartPoint(
+          date: DateTime(year, month, 1),
+          value: totalsByMonth[monthKey]!,
+        );
+      }).toList();
+      return DashboardChartSeries(points: points, total: _sum(points));
+    }
+
     final monthCount = normalizedPeriod == '6 Month' ? 6 : 12;
     final firstMonth = normalizedPeriod == '6 Month'
         ? DateTime(current.year, current.month - 5, 1)
@@ -145,7 +169,8 @@ class DashboardChartService {
     final end = AppDateUtils.periodEnd(period, currentValue);
 
     final target = _dateOnly(date);
-    return !target.isBefore(_dateOnly(start)) && !target.isAfter(_dateOnly(end));
+    return !target.isBefore(_dateOnly(start)) &&
+        !target.isAfter(_dateOnly(end));
   }
 
   static List<Map<String, dynamic>> leaveDaysForPeriod({
@@ -351,35 +376,6 @@ class DashboardChartService {
       'date': record['date'],
     });
     return enteredDate ?? PayrollService.payrollRecordDate(record);
-  }
-
-  static double _salaryValue(Map<String, dynamic> record) {
-    final raw =
-        record['netSalaryAmount'] ??
-        record['amount'] ??
-        record['netSalary'] ??
-        record['salary'];
-
-    if (raw is num) return raw.toDouble();
-
-    return PayrollService.extractSalary(raw?.toString() ?? '');
-  }
-
-  static DashboardChartSeries buildGuestSalarySeries({
-    required List<Map<String, dynamic>> salaryRecords,
-    required List<Map<String, dynamic>> expenses,
-    required double totalSalary,
-    required String period,
-    DateTime? now,
-  }) {
-    return buildSeries(
-      records: salaryRecords,
-      valueOf: _salaryValue,
-      period: period,
-      dateOf: salaryRecordDate,
-      now: now,
-      placeUndatedInCurrentPeriod: true,
-    );
   }
 
   static double _sum(List<DashboardChartPoint> points) =>

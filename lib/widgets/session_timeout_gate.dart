@@ -229,11 +229,17 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     setState(() => _signingOut = true);
     try {
       await PreferencesService.setSessionLocked(false);
-      await widget.onSignInAgain();
-      
-      
-      
-      await WidgetsBinding.instance.endOfFrame;
+      // Defer navigation to after the current frame to avoid
+      // "navigator is locked" assertion during build.
+      final completer = Completer<void>();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await widget.onSignInAgain();
+        } finally {
+          if (!completer.isCompleted) completer.complete();
+        }
+      });
+      await completer.future;
     } finally {
       if (mounted) {
         setState(() {

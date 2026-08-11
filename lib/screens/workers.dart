@@ -23,7 +23,8 @@ import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
 import '../services/worker_profile_service.dart';
 import '../utils/date_utils.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 String? _safeOptionalString(dynamic value) {
   if (value is! String) return null;
@@ -45,7 +46,7 @@ String? _workerDateText(dynamic value) {
   return date != null ? AppDateUtils.formatDate(date) : value.toString();
 }
 
-class WorkersScreen extends StatefulWidget {
+class WorkersScreen extends ConsumerStatefulWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -58,10 +59,10 @@ class WorkersScreen extends StatefulWidget {
   });
 
   @override
-  State<WorkersScreen> createState() => WorkersScreenState();
+  ConsumerState<WorkersScreen> createState() => WorkersScreenState();
 }
 
-class WorkersScreenState extends State<WorkersScreen> {
+class WorkersScreenState extends ConsumerState<WorkersScreen> {
   bool _isAddingWorker = false;
   bool _isAddingBulkWorker = false;
   Map<String, dynamic>? _workerToEdit;
@@ -157,7 +158,7 @@ class WorkersScreenState extends State<WorkersScreen> {
   }
 }
 
-class DashboardWorkerList extends StatefulWidget {
+class DashboardWorkerList extends ConsumerStatefulWidget {
   final VoidCallback onAddWorker;
   final VoidCallback? onAddBulkWorker;
   final ValueChanged<Map<String, dynamic>>? onEditWorker;
@@ -176,10 +177,11 @@ class DashboardWorkerList extends StatefulWidget {
   });
 
   @override
-  State<DashboardWorkerList> createState() => _DashboardWorkerListState();
+  ConsumerState<DashboardWorkerList> createState() =>
+      _DashboardWorkerListState();
 }
 
-class _DashboardWorkerListState extends State<DashboardWorkerList> {
+class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   final Color actionBtnBlue = const Color(0xFF0E53C5);
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF000000);
@@ -205,8 +207,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _allWorkers = [];
     _isLoading = true;
     _loadWorkers();
@@ -283,9 +285,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.trim().toLowerCase();
 
-      final matchesSearch =
-          name.contains(query) ||
-          position.contains(query);
+      final matchesSearch = name.contains(query) || position.contains(query);
       final matchesFilter = _matchesFilter(position, _selectedFilter);
 
       return matchesSearch && matchesFilter;
@@ -627,36 +627,42 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 else if (_filteredWorkers.isEmpty)
                   Builder(
                     builder: (context) {
-                      double dynamicHeight =
-                          MediaQuery.of(context).size.height - 320;
-                      if (dynamicHeight < 300) dynamicHeight = 300;
-                      return SizedBox(
+                      final double dynamicHeight =
+                          (MediaQuery.of(context).size.height - 279).clamp(
+                            495.0,
+                            1200.0,
+                          );
+                      return Container(
                         width: double.infinity,
                         height: dynamicHeight,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SvgPicture.asset(
-                                'assets/placeholder_workers.svg',
-                                width: 120,
-                                height: 100,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/placeholder_workers.svg',
+                              width: 120,
+                              height: 100,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _allWorkers.isEmpty
+                                  ? 'add_workers_found'.tr()
+                                  : 'no_workers_found'.tr(),
+                              style: const TextStyle(
+                                color: Color(0xFF0247C4),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _allWorkers.isEmpty
-                                    ? 'add_workers_found'.tr()
-                                    : 'no_workers_found'.tr(),
-                                style: const TextStyle(
-                                  color: Color(0xFF0247C4),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -1064,10 +1070,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CB6) : Colors.transparent,
@@ -1089,18 +1092,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 }
 
-class WorkerProfilePreviewDialog extends StatefulWidget {
+class WorkerProfilePreviewDialog extends ConsumerStatefulWidget {
   final Map<String, dynamic> worker;
 
   const WorkerProfilePreviewDialog({super.key, required this.worker});
 
   @override
-  State<WorkerProfilePreviewDialog> createState() =>
+  ConsumerState<WorkerProfilePreviewDialog> createState() =>
       _WorkerProfilePreviewDialogState();
 }
 
 class _WorkerProfilePreviewDialogState
-    extends State<WorkerProfilePreviewDialog> {
+    extends ConsumerState<WorkerProfilePreviewDialog> {
   bool _isSharing = false;
   final Color primaryBlue = const Color(0xFF0953D4);
   final Color iconLightBlue = const Color(0xFFE5EEFC);
@@ -1146,9 +1149,10 @@ class _WorkerProfilePreviewDialogState
       final salaryAmount = _v(worker, 'salaryAmount');
       Map<String, dynamic> companyProfile = const {};
       try {
-        companyProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(
-          context.read<FirestoreService>(),
-        );
+        companyProfile =
+            await CompanyProfileHelper.getCompanyProfileWithFirestore(
+              ref.read(firestoreServiceProvider),
+            );
       } catch (e) {
         if (mounted) {
           FlashySnackBar.show(
@@ -1159,10 +1163,13 @@ class _WorkerProfilePreviewDialogState
         }
         return;
       }
-      final companyCurr = companyProfile['currency']?.toString().trim() ?? PreferencesService.cachedCompanyCurrency;
+      final companyCurr =
+          companyProfile['currency']?.toString().trim() ??
+          PreferencesService.cachedCompanyCurrency;
       final currSymbol = CurrencyUtils.symbolFor(companyCurr);
       final rawSalaryStr = salaryAmount.trim();
-      final salaryToFormat = rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
+      final salaryToFormat =
+          rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
           ? '$currSymbol $rawSalaryStr'
           : rawSalaryStr;
       final salary = salaryToFormat.isNotEmpty
@@ -1172,7 +1179,8 @@ class _WorkerProfilePreviewDialogState
             )
           : '';
       final companyName = CompanyProfileHelper.companyNameOrFallback(
-        (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '').toString(),
+        (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '')
+            .toString(),
       );
       final companyId =
           (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
@@ -1183,7 +1191,12 @@ class _WorkerProfilePreviewDialogState
         email: email,
         phone: phone,
         fatherHusbandName: _na(_v(worker, 'fatherName')),
-        position: _v(worker, 'position').split(' ').map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}').join(' '),
+        position: _v(worker, 'position')
+            .split(' ')
+            .map(
+              (w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}',
+            )
+            .join(' '),
         nationalId: _na(_v(worker, 'nationalId')),
         attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
         workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
@@ -1210,7 +1223,8 @@ class _WorkerProfilePreviewDialogState
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
         companyName: companyName,
         companyId: companyId,
-        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '').toString(),
+        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+            .toString(),
       ).timeout(const Duration(seconds: 30));
 
       final safeName = name
@@ -1271,7 +1285,8 @@ class _WorkerProfilePreviewDialogState
     final companyCurr = PreferencesService.cachedCompanyCurrency;
     final currSymbol = CurrencyUtils.symbolFor(companyCurr);
     final rawSalaryStr = salaryAmount.trim();
-    final salaryToFormat = rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
+    final salaryToFormat =
+        rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
         ? '$currSymbol $rawSalaryStr'
         : rawSalaryStr;
     final salary = salaryToFormat.isNotEmpty
@@ -1479,7 +1494,9 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.business_center,
                           'position'.tr(),
-                          LocalizationHelper.localizePosition(_v(worker, 'position')),
+                          LocalizationHelper.localizePosition(
+                            _v(worker, 'position'),
+                          ),
                         ),
                       ),
                       _buildRow(

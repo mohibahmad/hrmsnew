@@ -5,9 +5,10 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
-class SubscriptionDialog extends StatefulWidget {
+class SubscriptionDialog extends ConsumerStatefulWidget {
   final bool isPremium;
 
   const SubscriptionDialog({
@@ -16,10 +17,10 @@ class SubscriptionDialog extends StatefulWidget {
   });
 
   @override
-  State<SubscriptionDialog> createState() => _SubscriptionDialogState();
+  ConsumerState<SubscriptionDialog> createState() => _SubscriptionDialogState();
 }
 
-class _SubscriptionDialogState extends State<SubscriptionDialog> {
+class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
   final Color primaryBlue = const Color(0xFF0247C4);
   final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
@@ -34,15 +35,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _authService = Provider.of<AuthService>(
-      context,
-      listen: false,
-    );
-
-    _firestore = Provider.of<FirestoreService>(
-      context,
-      listen: false,
-    );
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
   }
 
   @override

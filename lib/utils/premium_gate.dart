@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/preferences_service.dart';
-import '../services/auth_service.dart';
 import '../screens/pricing_screen.dart';
 
 class PremiumGate {
@@ -18,7 +18,10 @@ class PremiumGate {
   }
 
   static Future<bool> shouldShowUpgradeDialog(BuildContext context) async {
-    final isGuest = context.read<AuthService>().currentUser?.isAnonymous ?? false;
+    final isGuest = ProviderScope.containerOf(context)
+        .read(authServiceProvider)
+        .currentUser
+        ?.isAnonymous ?? false;
     if (isGuest) return false;
     final isPremium = await PreferencesService.isPremium();
     if (isPremium) return false;

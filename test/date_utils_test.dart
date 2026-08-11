@@ -4,6 +4,40 @@ import 'package:hrms/utils/date_utils.dart';
 import 'package:hrms/utils/validators.dart';
 
 void main() {
+  test('holiday date prefers canonical date over stale derived fields', () {
+    final result = AppDateUtils.holidayRecordDate({
+      'date': DateTime(2025, 8, 14),
+      'day': 14,
+      'month': 'August',
+      'year': 2026,
+      'dayOfWeek': 'Friday',
+    });
+
+    expect(result, DateTime(2025, 8, 14));
+    expect(result!.weekday, DateTime.thursday);
+  });
+
+  test('holiday date keeps legacy day month and year readable', () {
+    final result = AppDateUtils.holidayRecordDate({
+      'day': '14',
+      'month': 'August',
+      'year': '2025',
+    });
+
+    expect(result, DateTime(2025, 8, 14));
+  });
+
+  test('All Time includes records from any year', () {
+    expect(
+      AppDateUtils.isTimestampWithinPeriod(DateTime(1999, 1, 1), 'All Time'),
+      isTrue,
+    );
+    expect(
+      AppDateUtils.isTimestampWithinPeriod(DateTime(2025, 8, 14), 'All Time'),
+      isTrue,
+    );
+  });
+
   group('AppDateUtils.parseDdMmYyyy', () {
     test('parses valid worker dates without swapping day and month', () {
       expect(AppDateUtils.parseDdMmYyyy('27/09/1994'), DateTime(1994, 9, 27));

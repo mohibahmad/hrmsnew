@@ -7,7 +7,8 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -23,14 +24,14 @@ import 'home_screen.dart';
 import '../shared/auth_widgets.dart';
 import 'signup_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -124,8 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestoreService = ref.read(firestoreServiceProvider);
 
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')

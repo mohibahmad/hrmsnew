@@ -4,7 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/error_reporter.dart';
@@ -36,7 +37,7 @@ class Worker {
   );
 }
 
-class TimeOffScreen extends StatefulWidget {
+class TimeOffScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final ValueChanged<Map<String, dynamic>>? onAssignTimeOff;
@@ -51,10 +52,10 @@ class TimeOffScreen extends StatefulWidget {
   });
 
   @override
-  State<TimeOffScreen> createState() => _TimeOffScreenState();
+  ConsumerState<TimeOffScreen> createState() => _TimeOffScreenState();
 }
 
-class _TimeOffScreenState extends State<TimeOffScreen> {
+class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
@@ -461,8 +462,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _rawTimeoffDocs = [];
     _timeoffDocs = [];
     _workersList = [];
@@ -1866,37 +1867,41 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildEmptyState() {
-    double dynamicHeight = MediaQuery.of(context).size.height - 450;
-    if (dynamicHeight < 300) dynamicHeight = 300;
-    return SizedBox(
+    final double dynamicHeight = (MediaQuery.of(context).size.height - 329)
+        .clamp(440.0, 1200.0);
+    return Container(
       width: double.infinity,
       height: dynamicHeight,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFCBCBCB),
-                BlendMode.srcIn,
-              ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'no_time_off_records'.tr(),
-              style: TextStyle(
-                color: Color(0xFF0247C4),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'no_time_off_records'.tr(),
+            style: TextStyle(
+              color: Color(0xFF0247C4),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

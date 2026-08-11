@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import 'date_utils.dart';
@@ -6,13 +5,100 @@ import 'date_utils.dart';
 class ChartData {
   final List<String> labels;
   final List<double> values;
-  ChartData(this.labels, this.values);
+
+  /// True when the chart was built from the records' actual date range
+  /// because none of them fell inside the selected timeframe (e.g. last
+  /// year's attendance while "This Year" is selected).
+  final bool isAdaptive;
+
+  /// First and last day of the data that the chart was built from.
+  final DateTime? rangeStart;
+  final DateTime? rangeEnd;
+
+  ChartData(
+    this.labels,
+    this.values, {
+    this.isAdaptive = false,
+    this.rangeStart,
+    this.rangeEnd,
+  });
 }
 
 class NiceChartRange {
   final double maxY;
   final double interval;
   NiceChartRange(this.maxY, this.interval);
+}
+
+DateTime? _attendanceRevisionDate(Map<String, dynamic> record) {
+  return AppDateUtils.dateFromValue(record['updatedAt']) ??
+      AppDateUtils.dateFromValue(record['createdAt']);
+}
+
+bool _isNewerAttendanceRecord(
+  Map<String, dynamic> candidate,
+  Map<String, dynamic> existing,
+) {
+  final candidateDate = AppDateUtils.canonicalAttendanceDate(candidate);
+  final existingDate = AppDateUtils.canonicalAttendanceDate(existing);
+
+  if (candidateDate != null && existingDate != null) {
+    if (candidateDate.isAfter(existingDate)) return true;
+    if (candidateDate.isBefore(existingDate)) return false;
+  } else if (candidateDate != null) {
+    return true;
+  } else if (existingDate != null) {
+    return false;
+  }
+
+  // A worker can have legacy duplicate documents for the same attendance day.
+  // Prefer the document that was edited most recently so changing Absent to
+  // Present is reflected on the dashboard instead of leaving the stale status.
+  final candidateRevision = _attendanceRevisionDate(candidate);
+  final existingRevision = _attendanceRevisionDate(existing);
+  if (candidateRevision != null && existingRevision != null) {
+    return candidateRevision.isAfter(existingRevision);
+  }
+  return candidateRevision != null && existingRevision == null;
+}
+
+/// Keeps only the most recent attendance status for each worker.
+///
+/// Dashboard status charts represent people, so an older Absent record must
+/// not remain visible after the same worker is marked Present on a later day.
+List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
+  List<Map<String, dynamic>> records,
+) {
+  final latestByWorker = <String, Map<String, dynamic>>{};
+
+  for (final record in records) {
+    final workerId = (record['workerId'] ?? '').toString().trim();
+    final email = (record['email'] ?? '').toString().trim().toLowerCase();
+    final name = (record['name'] ?? record['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final recordId = (record['id'] ?? '').toString().trim();
+    final workerKey = workerId.isNotEmpty
+        ? 'id:$workerId'
+        : email.isNotEmpty
+        ? 'email:$email'
+        : name.isNotEmpty
+        ? 'name:$name'
+        : 'record:$recordId';
+
+    final existing = latestByWorker[workerKey];
+    if (existing == null) {
+      latestByWorker[workerKey] = record;
+      continue;
+    }
+
+    if (_isNewerAttendanceRecord(record, existing)) {
+      latestByWorker[workerKey] = record;
+    }
+  }
+
+  return latestByWorker.values.toList();
 }
 
 NiceChartRange getNiceRange(double rawMax) {
@@ -99,9 +185,16 @@ ChartData getChartData(
   String locale,
 ) {
   final now = DateTime.now();
+  final normalizedPeriod = switch (period.trim()) {
+    'Weekly' || 'This Week' => 'Week',
+    'Monthly' || 'This Month' => 'Month',
+    '6 Months' || '6 Monthly' || 'Last 6 Months' => '6 Month',
+    'This Year' => 'Yearly',
+    final value => value,
+  };
 
   if (isGuest) {
-    switch (period) {
+    switch (normalizedPeriod) {
       case 'Today':
         final labels = <String>[];
         for (int i = 6; i >= 0; i--) {
@@ -167,7 +260,7 @@ ChartData getChartData(
   }
 
   if (docs.isEmpty) {
-    switch (period) {
+    switch (normalizedPeriod) {
       case 'Today':
         final labels = <String>[];
         for (int i = 6; i >= 0; i--) {
@@ -186,15 +279,12 @@ ChartData getChartData(
         return ChartData(labels, List.filled(7, 0.0));
 
       case 'Month':
-        return ChartData(
-          [
-            'week_label_1'.tr(),
-            'week_label_2'.tr(),
-            'week_label_3'.tr(),
-            'week_label_4'.tr(),
-          ],
-          List.filled(4, 0.0),
-        );
+        return ChartData([
+          'week_label_1'.tr(),
+          'week_label_2'.tr(),
+          'week_label_3'.tr(),
+          'week_label_4'.tr(),
+        ], List.filled(4, 0.0));
 
       case '6 Month':
         final labels = <String>[];
@@ -217,22 +307,22 @@ ChartData getChartData(
 
   final parsedRecords = <DateTime>[];
   for (final doc in docs) {
-    final createdAt = doc['createdAt'];
-    DateTime? dt;
-    if (createdAt is Timestamp) {
-      dt = createdAt.toDate();
-    } else if (createdAt is String) {
-      dt = DateTime.tryParse(createdAt);
-    }
+    // Dashboard charts use only the canonical attendanceDate. createdAt is
+    // metadata and must not move a historical record into today's chart.
+    final dt = AppDateUtils.canonicalAttendanceDate(doc);
     if (dt != null) {
       parsedRecords.add(dt);
     }
   }
 
-  final start = AppDateUtils.periodStart(period, now);
-  final end = AppDateUtils.periodEnd(period, now);
+  if (normalizedPeriod == 'All Time' && parsedRecords.isNotEmpty) {
+    return _buildAllTimeMonthlyChartData(parsedRecords, locale);
+  }
 
-  switch (period) {
+  final start = AppDateUtils.periodStart(normalizedPeriod, now);
+  final end = AppDateUtils.periodEnd(normalizedPeriod, now);
+
+  switch (normalizedPeriod) {
     case 'Today':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
@@ -241,9 +331,7 @@ ChartData getChartData(
         labels.add(DateFormat('E', locale).format(date).toUpperCase());
       }
       for (final dt in parsedRecords) {
-        if (dt.year == now.year &&
-            dt.month == now.month &&
-            dt.day == now.day) {
+        if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
           values[6] += 1.0;
         }
       }
@@ -324,4 +412,46 @@ ChartData getChartData(
       }
       return ChartData(labels, values);
   }
+}
+
+/// Groups the complete attendance history by its actual month and year.
+/// Only months that have records become points, so a single recorded month
+/// produces one label/point instead of repeated synthetic buckets.
+ChartData _buildAllTimeMonthlyChartData(
+  List<DateTime> parsedRecords,
+  String locale,
+) {
+  final sorted = [...parsedRecords]..sort();
+  final totalsByMonth = <int, double>{};
+  for (final date in sorted) {
+    final monthKey = date.year * 12 + date.month - 1;
+    totalsByMonth[monthKey] = (totalsByMonth[monthKey] ?? 0) + 1;
+  }
+
+  final monthKeys = totalsByMonth.keys.toList()..sort();
+  final labels = <String>[];
+  final values = <double>[];
+  for (final monthKey in monthKeys) {
+    final year = monthKey ~/ 12;
+    final month = monthKey % 12 + 1;
+    labels.add(
+      DateFormat(
+        'MMM yy',
+        locale,
+      ).format(DateTime(year, month, 1)).toUpperCase(),
+    );
+    values.add(totalsByMonth[monthKey]!);
+  }
+
+  return ChartData(
+    labels,
+    values,
+    isAdaptive: true,
+    rangeStart: DateTime(
+      sorted.first.year,
+      sorted.first.month,
+      sorted.first.day,
+    ),
+    rangeEnd: DateTime(sorted.last.year, sorted.last.month, sorted.last.day),
+  );
 }

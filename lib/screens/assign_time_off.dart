@@ -3,7 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -13,11 +14,13 @@ import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/time_off_unsaved_changes.dart';
+import '../utils/date_utils.dart';
+import '../utils/image_utils.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
 
-class AssignTimeOffScreen extends StatefulWidget {
+class AssignTimeOffScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;
   final VoidCallback? onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -33,7 +36,8 @@ class AssignTimeOffScreen extends StatefulWidget {
   });
 
   @override
-  State<AssignTimeOffScreen> createState() => _AssignTimeOffScreenState();
+  ConsumerState<AssignTimeOffScreen> createState() =>
+      _AssignTimeOffScreenState();
 }
 
 class LeaveColors {
@@ -77,7 +81,7 @@ class LeaveColors {
   }
 }
 
-class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
+class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   static const List<Map<String, String>> _leaveTypeOptions = [
     {'value': 'Annual Leave', 'labelKey': 'annual_leave'},
     {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
@@ -176,8 +180,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _loadWorkers();
   }
 
@@ -605,21 +609,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return '$day/$month/$year';
   }
 
-  static const List<String> _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
   Map<String, dynamic> get _selectedWorkerForService {
@@ -635,20 +624,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Map<String, dynamic>? _holidayForDate(DateTime date) {
-    final monthName = _monthNames[date.month - 1];
     for (final holiday in _holidays) {
       if (holiday['isEnabled'] == false) continue;
-      final holidayDay = int.tryParse((holiday['day'] ?? '').toString());
-      final holidayMonth = (holiday['month'] ?? '').toString();
-      if (holidayDay != date.day || holidayMonth != monthName) continue;
+      final storedDate = AppDateUtils.holidayRecordDate(
+        holiday,
+        fallbackYear: date.year,
+      );
+      if (storedDate == null ||
+          storedDate.day != date.day ||
+          storedDate.month != date.month) {
+        continue;
+      }
       if (_isGuest) return holiday;
 
       final isRecurring = holiday['isRecurring'] == true;
-      final holidayYear = int.tryParse((holiday['year'] ?? '').toString());
-      if (isRecurring ||
-          holidayYear == null ||
-          holidayYear == 0 ||
-          holidayYear == date.year) {
+      final holidayYear = storedDate.year;
+      if (isRecurring || holidayYear == 0 || holidayYear == date.year) {
         return holiday;
       }
     }
@@ -1276,18 +1267,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                                 if (_selectedWorker != null) ...[
                                   Row(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 24,
-                                        backgroundColor: Colors.blue.shade100,
-                                        child: Text(
-                                          (_selectedWorker!['name'] ?? 'U')
-                                              .toString()[0]
-                                              .toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Color(0xFF004FDE),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                      WorkerAvatar(
+                                        imageUrl:
+                                            _selectedWorker!['profileImage']
+                                                ?.toString(),
+                                        name: (_selectedWorker!['name'] ?? 'U')
+                                            .toString(),
+                                        size: 48,
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -2300,99 +2286,86 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildNotesAndSummary() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isNarrow = constraints.maxWidth < 700;
-
-        Widget notesWidget = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'notes_label'.tr(),
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF000000),
+    Widget notesWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'notes_label'.tr(),
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 130,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: TextField(
+            controller: _notesController,
+            readOnly: widget.viewOnly || _isAggregateOverview,
+            onChanged: (_) {
+              setState(() {
+                _hasNotesChanged = true;
+              });
+            },
+            maxLines: null,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black,
+              fontFamily: 'SF Pro Display',
+            ),
+            decoration: InputDecoration.collapsed(
+              hintText: 'please_enter_notes'.tr(),
+              hintStyle: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            const SizedBox(height: 12),
-            Container(
-              height: 130,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: TextField(
-                controller: _notesController,
-                readOnly: widget.viewOnly || _isAggregateOverview,
-                onChanged: (_) {
-                  setState(() {
-                    _hasNotesChanged = true;
-                  });
-                },
-                maxLines: null,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black,
-                  fontFamily: 'SF Pro Display',
-                ),
-                decoration: InputDecoration.collapsed(
-                  hintText: 'please_enter_notes'.tr(),
-                  hintStyle: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 14,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
+          ),
+        ),
+      ],
+    );
 
-        Widget summaryWidget = Column(
-          children: [
-            _buildSummaryRow(
-              _availableLeaveLabel,
-              '$_displayedLeaveBalance',
-              _displayedLeaveBalance > 0 ? Colors.black : Colors.red,
-            ),
-            _buildSummaryRow(
-              'requested_days'.tr(),
-              '$_summaryRequestedDays',
-              Colors.black,
-            ),
-            _buildSummaryRow(
-              'remaining_days'.tr(),
-              '$_remainingDaysAfterRequest',
-              _remainingDaysAfterRequest >= 0 ? Colors.black : Colors.red,
-            ),
-          ],
-        );
+    Widget summaryWidget = Column(
+      children: [
+        _buildSummaryRow(
+          _availableLeaveLabel,
+          '$_displayedLeaveBalance',
+          _displayedLeaveBalance > 0 ? Colors.black : Colors.red,
+        ),
+        _buildSummaryRow(
+          'requested_days'.tr(),
+          '$_summaryRequestedDays',
+          Colors.black,
+        ),
+        _buildSummaryRow(
+          'remaining_days'.tr(),
+          '$_remainingDaysAfterRequest',
+          _remainingDaysAfterRequest >= 0 ? Colors.black : Colors.red,
+        ),
+      ],
+    );
 
-        if (isNarrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [notesWidget, const SizedBox(height: 24), summaryWidget],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 70, child: notesWidget),
-            const SizedBox(width: 24),
-            Expanded(
-              flex: 30,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 32),
-                child: summaryWidget,
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 70, child: notesWidget),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 30,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 32),
+            child: summaryWidget,
+          ),
+        ),
+      ],
     );
   }
 
@@ -3122,9 +3095,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 560,
+          width: 460,
+          height: MediaQuery.sizeOf(ctx).height * 0.68,
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.86,
             maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
           ),
           clipBehavior: Clip.antiAlias,

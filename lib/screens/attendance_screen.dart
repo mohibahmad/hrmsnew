@@ -25,7 +25,8 @@ import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
 import '../services/error_reporter.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color lightBlueBg = Color(0xFFE8F0FE);
@@ -92,7 +93,7 @@ class AttendanceRecord {
   }
 }
 
-class AttendanceScreen extends StatefulWidget {
+class AttendanceScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -107,10 +108,10 @@ class AttendanceScreen extends StatefulWidget {
   });
 
   @override
-  State<AttendanceScreen> createState() => _AttendanceScreenState();
+  ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends State<AttendanceScreen> {
+class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   final _searchController = TextEditingController();
@@ -180,9 +181,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     Set<DateTime> _selectionBeforeDrag = {};
     final GlobalKey _calendarHeaderKey = GlobalKey();
 
-    
-    
-    
     double _measuredHeaderHeight() {
       final context = _calendarHeaderKey.currentContext;
       if (context == null) return 0;
@@ -198,17 +196,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final availableWidth = dialogWidth - (padding * 2);
       final cellWidth = (availableWidth - (gap * 6)) / 7;
       final cellHeight = cellWidth;
-      
-      
-      
-      
+
       final colPitch = cellWidth + gap;
       final rowPitch = cellHeight + gap;
       final measuredHeader = _measuredHeaderHeight();
-      
-      
-      final headerHeight =
-          measuredHeader > 0 ? measuredHeader : 18.0 + 10.0 + 12.0 + 30.0;
+
+      final headerHeight = measuredHeader > 0
+          ? measuredHeader
+          : 18.0 + 10.0 + 12.0 + 30.0;
       final adjustedDy = position.dy - headerHeight;
       if (adjustedDy < 0) return null;
       final column = (position.dx / colPitch).floor();
@@ -288,8 +283,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               onPressed: selectedDates.isEmpty
                                   ? null
                                   : () {
-                                      final sortedDates =
-                                          selectedDates.toList()..sort();
+                                      final sortedDates = selectedDates.toList()
+                                        ..sort();
                                       Navigator.of(context).pop(sortedDates);
                                     },
                               child: Text(
@@ -320,16 +315,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         _dragAnchorDate = date;
                         _dragStartPosition = event.localPosition;
                         _dragMoved = false;
-                        _selectionBeforeDrag = Set<DateTime>.from(selectedDates);
+                        _selectionBeforeDrag = Set<DateTime>.from(
+                          selectedDates,
+                        );
                         setModalState(() {});
                       },
                       onPointerMove: (event) {
                         final startPos = _dragStartPosition;
                         if (startPos != null && !_dragMoved) {
-                          final dx =
-                              (event.localPosition.dx - startPos.dx).abs();
-                          final dy =
-                              (event.localPosition.dy - startPos.dy).abs();
+                          final dx = (event.localPosition.dx - startPos.dx)
+                              .abs();
+                          final dy = (event.localPosition.dy - startPos.dy)
+                              .abs();
                           if (dx > 5 || dy > 5) {
                             _dragMoved = true;
                           }
@@ -346,8 +343,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         setModalState(() {
                           selectedDates.clear();
                           selectedDates.addAll(_selectionBeforeDrag);
-                          final isDragRemoving =
-                              _selectionBeforeDrag.contains(anchor);
+                          final isDragRemoving = _selectionBeforeDrag.contains(
+                            anchor,
+                          );
                           final start = anchor.isBefore(current)
                               ? anchor
                               : current;
@@ -378,7 +376,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   d.day == date.day,
                             );
                             if (isAlreadySelected) {
-                              
                               selectedDates.removeWhere(
                                 (d) =>
                                     d.year == date.year &&
@@ -386,8 +383,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     d.day == date.day,
                               );
                             } else {
-                              
-                              
                               selectedDates.add(date);
                             }
                           });
@@ -415,9 +410,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 calendarDate,
                               )
                             : null,
-                        
-                        
-                        
+
                         isDragRemoving:
                             _dragMoved &&
                             _dragAnchorDate != null &&
@@ -658,10 +651,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           ),
         ),
-        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected,
-            dragAnchor: dragAnchor,
-            dragCurrent: dragCurrent,
-            isDragRemoving: isDragRemoving),
+        _buildDaysGridForRange(
+          calendarDate,
+          selectedDates,
+          onDaySelected,
+          dragAnchor: dragAnchor,
+          dragCurrent: dragCurrent,
+          isDragRemoving: isDragRemoving,
+        ),
       ],
     );
   }
@@ -736,12 +733,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 d.month == date.month &&
                 d.day == date.day,
           );
-          
-          
-          
-          
-          final isDragPreview =
-              dragRange.contains(date) && !isDragRemoving;
+
+          final isDragPreview = dragRange.contains(date) && !isDragRemoving;
           rowChildren.add(
             _buildDayCell('$currentDay', isSelected, isDragPreview, () {
               onDaySelected(date);
@@ -923,10 +916,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
 
         rows.add([]);
-        rows.add([
-          'total_working_days'.tr(),
-          snapshot.totalWorkingDays,
-        ]);
+        rows.add(['total_working_days'.tr(), snapshot.totalWorkingDays]);
         rows.add(['total_present'.tr(), snapshot.presents]);
         rows.add(['total_absent'.tr(), snapshot.absents]);
         rows.add(['total_leave'.tr(), snapshot.leaves]);
@@ -1039,11 +1029,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     }
 
-    
-    
-    
-    
-    
     final counts = AttendanceService.countRecordsByStatus(
       periodAttendance,
       _timeOffRecords,
@@ -1056,26 +1041,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _attendanceRequestId = 0;
   bool _streamSnapshotDelivered = false;
 
-  
-  
-  
-  
-  
   void _subscribeAttendanceStream(DateTime start, DateTime end, int requestId) {
     _attendanceSub?.cancel();
     _attendanceSub = _firestore
         .attendanceStreamForPeriod(start: start, end: end)
         .listen(
           (snapshot) {
-            
-            
             if (!mounted || requestId != _attendanceRequestId) return;
             setState(() {
               _rawAttendanceDocs = snapshot.docs
-                  .map(
-                    (d) =>
-                        {...d.data() as Map<String, dynamic>, 'id': d.id},
-                  )
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
               _attendanceLoaded = true;
               _streamSnapshotDelivered = true;
@@ -1084,11 +1059,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _refreshAttendancePreview();
           },
           onError: (e) {
-            
-            
-            
-            
-            
             ErrorReporter.report(
               e,
               StackTrace.current,
@@ -1103,8 +1073,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   setState(() {
                     _rawAttendanceDocs = snapshot.docs
                         .map(
-                          (d) =>
-                              {...d.data() as Map<String, dynamic>, 'id': d.id},
+                          (d) => {
+                            ...d.data() as Map<String, dynamic>,
+                            'id': d.id,
+                          },
                         )
                         .toList();
                     _attendanceLoaded = true;
@@ -1155,8 +1127,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               requestedPeriod != _selectedTimeframe) {
             return;
           }
-          
-          
+
           if (_streamSnapshotDelivered) return;
           setState(() {
             _rawAttendanceDocs = snapshot.docs
@@ -1198,8 +1169,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = _firestore.workersStream.listen(
@@ -1269,7 +1240,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
-    
     if (AppDateUtils.attendanceRecordDate(doc) == null) return true;
     return AppDateUtils.isAttendanceRecordWithinPeriod(doc, _selectedTimeframe);
   }
@@ -1775,41 +1745,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
-    double dynamicHeight = MediaQuery.of(context).size.height - 520;
-    if (dynamicHeight < 300) dynamicHeight = 300;
+    final double dynamicHeight = (MediaQuery.of(context).size.height - 465)
+        .clamp(480.0, 1200.0);
     return Container(
       width: double.infinity,
       height: dynamicHeight,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFCBCBCB),
-                BlendMode.srcIn,
-              ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
             ),
-            const SizedBox(height: 16),
-            Text(
-              isSearchEmpty
-                  ? 'no_search_results'.tr()
-                  : 'no_attendance_records'.tr(),
-              style: TextStyle(
-                color: Color(0xFF0247C4),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty
+                ? 'no_search_results'.tr()
+                : 'no_attendance_records'.tr(),
+            style: TextStyle(
+              color: Color(0xFF0247C4),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
-          ],
-        ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ],
       ),
     );
   }
@@ -2657,17 +2631,14 @@ class _WorkerAttendancePreviewCardState
     rows.add(['${'report_email'.tr()}: ${widget.record.email}']);
     rows.add([
       '${'report_position'.tr()}: '
-      '${LocalizationHelper.localizePosition(widget.record.role)}',
+          '${LocalizationHelper.localizePosition(widget.record.role)}',
     ]);
     rows.add([]);
     rows.add(['total_working_days'.tr(), _totalRecords]);
     rows.add(['total_present'.tr(), _presents]);
     rows.add(['total_absent'.tr(), _absents]);
     rows.add(['total_leave'.tr(), _leaves]);
-    rows.add([
-      'attendance_percent'.tr(),
-      _percentage.toStringAsFixed(1),
-    ]);
+    rows.add(['attendance_percent'.tr(), _percentage.toStringAsFixed(1)]);
     rows.add([]);
 
     rows.add([

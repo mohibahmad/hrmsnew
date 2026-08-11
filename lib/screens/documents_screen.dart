@@ -20,14 +20,15 @@ import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/localization_helper.dart';
 import '../widgets/notification_bell.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pdfx/pdfx.dart';
 import 'add_worker_flow.dart' show PdfPagePreview, DocPreview;
 import '../utils/guest_restriction.dart';
 import '../utils/document_file_name.dart';
 
-class DocumentsScreen extends StatefulWidget {
+class DocumentsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -40,10 +41,10 @@ class DocumentsScreen extends StatefulWidget {
   });
 
   @override
-  State<DocumentsScreen> createState() => _DocumentsScreenState();
+  ConsumerState<DocumentsScreen> createState() => _DocumentsScreenState();
 }
 
-class _DocumentsScreenState extends State<DocumentsScreen> {
+class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   List<Map<String, dynamic>> _workers = [];
@@ -72,8 +73,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _workers = List<Map<String, dynamic>>.from(DummyData.workers);
@@ -272,39 +273,43 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
     final double dynamicHeight = MediaQuery.of(context).size.height - 450;
-    return SizedBox(
+    return Container(
       width: double.infinity,
       height: dynamicHeight < 300 ? 300 : dynamicHeight,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFCBCBCB),
-                BlendMode.srcIn,
-              ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
             ),
-            const SizedBox(height: 16),
-            Text(
-              isSearchEmpty
-                  ? 'no_search_results'.tr()
-                  : 'no_workers_added_yet'.tr(),
-              style: const TextStyle(
-                color: Color(0xFF0247C4),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty
+                ? 'no_search_results'.tr()
+                : 'no_workers_added_yet'.tr(),
+            style: const TextStyle(
+              color: Color(0xFF0247C4),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
-          ],
-        ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ],
       ),
     );
   }
@@ -427,7 +432,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 }
 
-class _EditDocumentsPage extends StatefulWidget {
+class _EditDocumentsPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> worker;
   final VoidCallback onDocumentsUpdated;
   final VoidCallback onBack;
@@ -443,10 +448,10 @@ class _EditDocumentsPage extends StatefulWidget {
   });
 
   @override
-  State<_EditDocumentsPage> createState() => _EditDocumentsPageState();
+  ConsumerState<_EditDocumentsPage> createState() => _EditDocumentsPageState();
 }
 
-class _EditDocumentsPageState extends State<_EditDocumentsPage> {
+class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   static const List<String> _cvAllowedExtensions = [
     'jpg',
     'jpeg',
@@ -569,8 +574,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
   }
 
   Future<void> _pickFile(String field) async {

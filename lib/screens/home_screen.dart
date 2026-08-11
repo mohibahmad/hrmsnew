@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -38,7 +39,7 @@ import '../widgets/dashboard/attendance_line_chart.dart';
 import '../widgets/dashboard/leave_types_pie_chart.dart';
 import '../widgets/dashboard/holiday_card.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   final int initialIndex;
   final int initialSubIndex;
 
@@ -49,10 +50,10 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   late int _selectedIndex;
   late int _selectedSubIndex;
   String _selectedPeriod = 'This Year';
@@ -307,8 +308,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     _isGuest = _authService.currentUser?.isAnonymous ?? false;
 
     final currentUser = _authService.currentUser;
@@ -717,10 +718,28 @@ class _HomeScreenState extends State<HomeScreen> {
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
     );
+    // The Total Salary card mirrors the salary expenses shown in the
+    // Expenses screen: only expenses whose category is 'salary' count, and
+    // payroll-linked ones are valued from the paid payroll (kept in sync when
+    // the salary expense is edited). No salary expense means no salary data.
+    final salaryExpenseRecords = activeExpenseRecords.where((record) {
+      final category = (record['category'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return category == 'salary';
+    }).toList();
     final salarySeries = DashboardChartService.buildSeries(
-      records: paidPayrollRecords,
-      valueOf: (record) => _parseNumToDouble(record['netSalary']),
+      records: salaryExpenseRecords,
+      valueOf: (record) {
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+        if (payrollKey.isNotEmpty) {
+          return payrollAmountByKey[payrollKey] ?? 0.0;
+        }
+        return _parseNumToDouble(record['amount']);
+      },
       period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
     );
 
     _expenseChartPoints = expenseSeries.points;
@@ -812,16 +831,27 @@ class _HomeScreenState extends State<HomeScreen> {
       dateOf: DashboardChartService.expenseRecordDate,
       placeUndatedInCurrentPeriod: true,
     );
-    final totalDummySalary = payrollRecords.fold<double>(
-      0,
-      (runningTotal, record) =>
-          runningTotal + _parseNumToDouble(record['netSalary']),
-    );
-    final salarySeries = DashboardChartService.buildGuestSalarySeries(
-      salaryRecords: payrollRecords,
-      expenses: DummyData.expenses,
-      totalSalary: totalDummySalary,
+    // Same rule as the real user path: the Total Salary card reflects the
+    // salary expenses (payroll-linked values come from the paid payroll).
+    final salaryExpenseRecords = filteredExpenses.where((record) {
+      final category = (record['category'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return category == 'salary';
+    }).toList();
+    final salarySeries = DashboardChartService.buildSeries(
+      records: salaryExpenseRecords,
+      valueOf: (record) {
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+        if (payrollKey.isNotEmpty) {
+          return payrollAmountByKey[payrollKey] ?? 0.0;
+        }
+        return _parseNumToDouble(record['amount']);
+      },
       period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
+      placeUndatedInCurrentPeriod: true,
     );
 
     _expenseChartPoints = expenseSeries.points;
@@ -867,7 +897,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredAttendanceDocs(String period) {
+  /// Present and absent attendance records for the selected timeframe that
+  /// belong to current workers. Dashboard filtering uses only the canonical
+  /// `attendanceDate`; `createdAt` and document IDs are metadata.
+  List<Map<String, dynamic>> _getFilteredAttendanceDocs() {
     final isGuest =
         (_authService.currentUser?.isAnonymous ?? false) ||
         PreferencesService.cachedIsGuest;
@@ -886,7 +919,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return rawDocs.where((attendance) {
       final s = (attendance['status'] ?? '').toString().trim().toLowerCase();
-      if (s == 'absent' || s == 'a' || s == 'leave' || s == 'l') return false;
+      if (s != 'present' && s != 'absent') return false;
+      if (!AppDateUtils.isAttendanceRecordWithinPeriod(
+        attendance,
+        _selectedPeriod,
+      )) {
+        return false;
+      }
 
       if (workersList.isNotEmpty) {
         final rId = (attendance['workerId'] ?? attendance['id'] ?? '')
@@ -902,9 +941,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!belongsToWorker) return false;
       }
 
-      final date =
-          AppDateUtils.attendanceRecordDate(attendance) ?? DateTime.now();
-      return DashboardChartService.isDateWithinPeriod(date, period);
+      return true;
     }).toList();
   }
 
@@ -933,10 +970,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Today':
         return daysUntilHoliday == 0;
       case 'Week':
+      case 'This Week':
         return daysUntilHoliday <= 7;
       case 'Month':
+      case 'This Month':
         return daysUntilHoliday <= 30;
       case '6 Month':
+      case 'Last 6 Months':
         return daysUntilHoliday <= 180;
       case 'This Year':
         return daysUntilHoliday <= 365;
@@ -1275,6 +1315,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     CustomTimeframeDropdown(
                       selectedPeriod: _selectedPeriod,
+                      options: const [
+                        'Today',
+                        'This Week',
+                        'This Month',
+                        'Last 6 Months',
+                        'This Year',
+                      ],
                       onChanged: _handlePeriodChanged,
                     ),
                   ],
@@ -1296,7 +1343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: SparklineCard(
-                          title: 'total_salary'.tr(),
+                          title: 'salary_paid'.tr(),
                           amount: _formatCompactCurrency(
                             _totalSalarySum,
                             clampToZero: true,
@@ -1313,7 +1360,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: SparklineCard(
-                          title: 'expenses'.tr(),
+                          title: 'total_expenses'.tr(),
                           amount: _formatCompactCurrency(_totalExpensesSum),
                           rawValue: _totalExpensesSum,
                           points: _expenseChartPoints,
@@ -1362,10 +1409,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 20),
                 Builder(
                   builder: (context) {
-                    final double screenWidth = MediaQuery.of(
-                      context,
-                    ).size.width;
-                    final bool isNarrow = screenWidth < 1150;
                     final isGuest =
                         (_authService.currentUser?.isAnonymous ?? false) ||
                         PreferencesService.cachedIsGuest;
@@ -1380,15 +1423,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           period: _selectedPeriod,
                           workers: _workersDocs,
                         );
-                    final filteredAttendanceDocs = _getFilteredAttendanceDocs(
-                      _selectedPeriod,
-                    );
-                    if (isNarrow) {
-                      return Column(
+                    final filteredAttendanceDocs = _getFilteredAttendanceDocs();
+                    return IntrinsicHeight(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Transform.translate(
-                            offset: const Offset(-10, 0),
+                          Expanded(
                             child: AttendanceLineChart(
                               period: _selectedPeriod,
                               isEmpty:
@@ -1397,43 +1437,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               attendanceDocs: filteredAttendanceDocs,
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          LeaveTypesPieChart(
-                            period: _selectedPeriod,
-                            isEmpty:
-                                leaveDocs.isEmpty || _totalWorkersCount == 0,
-                            leaveDocs: leaveDocs,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: LeaveTypesPieChart(
+                              period: _selectedPeriod,
+                              isEmpty:
+                                  leaveDocs.isEmpty || _totalWorkersCount == 0,
+                              leaveDocs: leaveDocs,
+                            ),
                           ),
                         ],
-                      );
-                    } else {
-                      return IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: AttendanceLineChart(
-                                period: _selectedPeriod,
-                                isEmpty:
-                                    filteredAttendanceDocs.isEmpty ||
-                                    _totalWorkersCount == 0,
-                                attendanceDocs: filteredAttendanceDocs,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: LeaveTypesPieChart(
-                                period: _selectedPeriod,
-                                isEmpty:
-                                    leaveDocs.isEmpty ||
-                                    _totalWorkersCount == 0,
-                                leaveDocs: leaveDocs,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 20),
@@ -1496,14 +1511,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             continue;
                           }
                           final holiday = Map<String, dynamic>.from(source);
+                          holiday['day'] = holidayDate.day;
+                          holiday['month'] = DateFormat(
+                            'MMMM',
+                            'en_US',
+                          ).format(holidayDate);
                           holiday['remainingDays'] = daysUntilHoliday
                               .toString();
-                          if (!isGuest) {
-                            holiday['dayOfWeek'] = DateFormat(
-                              'EEEE',
-                              context.locale.toString(),
-                            ).format(holidayDate);
-                          }
+                          holiday['dayOfWeek'] = DateFormat(
+                            'EEEE',
+                            context.locale.toString(),
+                          ).format(holidayDate);
                           activeHolidays.add(holiday);
                         }
                         activeHolidays.sort((a, b) {
@@ -1677,8 +1695,14 @@ DateTime? _guestHolidayDateForDisplay(
   Map<String, dynamic> holiday,
   DateTime referenceDate,
 ) {
-  final month = AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
-  final day = _intValue(holiday['day']);
+  final storedDate = AppDateUtils.holidayRecordDate(
+    holiday,
+    fallbackYear: referenceDate.year,
+  );
+  final month =
+      storedDate?.month ??
+      AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+  final day = storedDate?.day ?? _intValue(holiday['day']);
   if (month == null || day == null) return null;
   var occurrence = _validHolidayDate(referenceDate.year, month, day);
   if (occurrence == null) return null;
@@ -1692,8 +1716,14 @@ DateTime? _holidayDateForDisplay(
   Map<String, dynamic> holiday,
   DateTime referenceDate,
 ) {
-  final month = AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
-  final day = _intValue(holiday['day']);
+  final storedDate = AppDateUtils.holidayRecordDate(
+    holiday,
+    fallbackYear: referenceDate.year,
+  );
+  final month =
+      storedDate?.month ??
+      AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+  final day = storedDate?.day ?? _intValue(holiday['day']);
   if (month == null || day == null) return null;
 
   final today = DateTime(
@@ -1702,7 +1732,7 @@ DateTime? _holidayDateForDisplay(
     referenceDate.day,
   );
   final recurring = holiday['isRecurring'] == true;
-  final storedYear = _intValue(holiday['year']);
+  final storedYear = storedDate?.year ?? _intValue(holiday['year']);
 
   if (!recurring && storedYear != null && storedYear > 0) {
     final exactDate = _validHolidayDate(storedYear, month, day);

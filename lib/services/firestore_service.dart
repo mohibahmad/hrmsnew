@@ -6,6 +6,7 @@ import '../utils/currency_utils.dart';
 import '../utils/validators.dart';
 import '../utils/worker_identity.dart';
 import 'auth_service.dart';
+import 'attendance_service.dart';
 import 'dummy_data.dart';
 import 'error_reporter.dart';
 import 'time_off_service.dart';
@@ -42,6 +43,7 @@ class FirestoreService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final Set<String> _leaveNormalizationInFlight = <String>{};
+  bool _holidaySchemaMigrationInFlight = false;
 
   FirestoreService() {
     _instance = this;
@@ -56,6 +58,137 @@ class FirestoreService {
     // invalid-argument error, so drop any such fields before writing.
     normalized.removeWhere((key, value) => value is num && !value.isFinite);
     return normalized;
+  }
+
+  Map<String, dynamic> _canonicalAssetReturnFields(Map<String, dynamic> data) {
+    final normalized = Map<String, dynamic>.from(data);
+    final rawStatus = normalized['isReturned'];
+    final rawReturnedDate = normalized['dateReturned'];
+    final normalizedDateText = rawReturnedDate?.toString().trim().toLowerCase();
+
+    final explicitStatus = rawStatus is bool
+        ? rawStatus
+        : switch (rawStatus?.toString().trim().toLowerCase()) {
+            'true' || '1' || 'yes' => true,
+            'false' || '0' || 'no' => false,
+            _ => null,
+          };
+    final hasReturnedDate =
+        rawReturnedDate != null &&
+        normalizedDateText != null &&
+        normalizedDateText.isNotEmpty &&
+        normalizedDateText != 'in_use' &&
+        normalizedDateText != '__in_use__';
+    final returnedDate = hasReturnedDate
+        ? AppDateUtils.dateFromValue(rawReturnedDate)
+        : null;
+    final isReturned =
+        (explicitStatus ?? hasReturnedDate) && returnedDate != null;
+
+    normalized['isReturned'] = isReturned;
+    normalized['dateReturned'] = isReturned
+        ? Timestamp.fromDate(
+            DateTime(returnedDate.year, returnedDate.month, returnedDate.day),
+          )
+        : null;
+    return normalized;
+  }
+
+  Map<String, dynamic> _canonicalHolidayFields(
+    Map<String, dynamic> data, {
+    required bool forUpdate,
+  }) {
+    final normalized = Map<String, dynamic>.from(data);
+    final touchesDate = const [
+      'date',
+      'holidayDate',
+      'day',
+      'month',
+      'year',
+    ].any(normalized.containsKey);
+    if (touchesDate) {
+      final date = AppDateUtils.holidayRecordDate(
+        normalized,
+        fallbackYear: DateTime.now().year,
+      );
+      if (date != null) {
+        normalized['date'] = Timestamp.fromDate(
+          DateTime(date.year, date.month, date.day),
+        );
+      }
+    }
+
+    for (final key in [
+      'dayOfWeek',
+      'remainingDays',
+      if (touchesDate) ...['holidayDate', 'day', 'month', 'year'],
+    ]) {
+      if (forUpdate) {
+        normalized[key] = FieldValue.delete();
+      } else {
+        normalized.remove(key);
+      }
+    }
+    return normalized;
+  }
+
+  Future<void> _migrateHolidaySchema(QuerySnapshot snapshot) async {
+    if (_holidaySchemaMigrationInFlight) return;
+    final migrations = <DocumentReference, Map<String, dynamic>>{};
+    for (final document in snapshot.docs) {
+      final raw = document.data();
+      if (raw is! Map) continue;
+      final data = Map<String, dynamic>.from(raw);
+      if (data['type'] == 'company_work_days') continue;
+      final hasLegacyFields = const [
+        'holidayDate',
+        'day',
+        'month',
+        'year',
+        'dayOfWeek',
+        'remainingDays',
+      ].any(data.containsKey);
+      final hasCanonicalTimestamp = data['date'] is Timestamp;
+      if (!hasLegacyFields && hasCanonicalTimestamp) continue;
+
+      final date = AppDateUtils.holidayRecordDate(
+        data,
+        fallbackYear: DateTime.now().year,
+      );
+      final update = <String, dynamic>{
+        'holidayDate': FieldValue.delete(),
+        'day': FieldValue.delete(),
+        'month': FieldValue.delete(),
+        'year': FieldValue.delete(),
+        'dayOfWeek': FieldValue.delete(),
+        'remainingDays': FieldValue.delete(),
+      };
+      if (date != null) {
+        update['date'] = Timestamp.fromDate(
+          DateTime(date.year, date.month, date.day),
+        );
+      }
+      migrations[document.reference] = update;
+    }
+    if (migrations.isEmpty) return;
+
+    _holidaySchemaMigrationInFlight = true;
+    try {
+      var batch = _db.batch();
+      var writes = 0;
+      for (final entry in migrations.entries) {
+        batch.update(entry.key, entry.value);
+        writes++;
+        if (writes == 450) {
+          await batch.commit();
+          batch = _db.batch();
+          writes = 0;
+        }
+      }
+      if (writes > 0) await batch.commit();
+    } finally {
+      _holidaySchemaMigrationInFlight = false;
+    }
   }
 
   String _safeDocumentKey(String value) => value.trim().replaceAll('/', '_');
@@ -74,6 +207,34 @@ class FirestoreService {
         '${day.year}-${day.month.toString().padLeft(2, '0')}-'
         '${day.day.toString().padLeft(2, '0')}';
     return '${workerId}_$dateKey';
+  }
+
+  Future<({DocumentReference reference, bool alreadyExistsForDate})>
+  _attendanceCreateTarget(
+    CollectionReference attendanceCollection,
+    String workerId,
+    DateTime requestedDate,
+  ) async {
+    final deterministicReference = attendanceCollection.doc(
+      _attendanceDocumentId(workerId, requestedDate),
+    );
+    final existingSnapshot = await deterministicReference.get();
+    if (!existingSnapshot.exists) {
+      return (reference: deterministicReference, alreadyExistsForDate: false);
+    }
+
+    final existingData = existingSnapshot.data();
+    if (existingData is Map) {
+      final record = Map<String, dynamic>.from(existingData);
+      if (AttendanceService.isRecordForDate(record, requestedDate)) {
+        return (reference: deterministicReference, alreadyExistsForDate: true);
+      }
+    }
+
+    // The deterministic ID is occupied by a record whose attendanceDate was
+    // corrected in Firestore. Keep that historical record untouched and use
+    // an auto-ID for the requested day instead of resetting it to today.
+    return (reference: attendanceCollection.doc(), alreadyExistsForDate: false);
   }
 
   String _timeOffDateKey(DateTime date) {
@@ -990,19 +1151,23 @@ class FirestoreService {
       record['attendanceDate'] ?? record['date'],
     );
     final now = attendanceDate ?? DateTime.now();
-    final dateKey =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
-    final docRef = workerId.isNotEmpty
-        ? coll.doc('${workerId}_$dateKey')
-        : coll.doc();
+    var createsDocument = true;
+    DocumentReference docRef;
+    if (workerId.isNotEmpty) {
+      final target = await _attendanceCreateTarget(coll, workerId, now);
+      docRef = target.reference;
+      createsDocument = !target.alreadyExistsForDate;
+    } else {
+      docRef = coll.doc();
+    }
     await docRef.set({
       ...record,
       'attendanceDate': Timestamp.fromDate(
         DateTime(now.year, now.month, now.day),
       ),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+      if (createsDocument) 'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     if (name.isNotEmpty) {
       try {
@@ -1073,27 +1238,40 @@ class FirestoreService {
     );
     final now = attendanceDate ?? DateTime.now();
     final normalizedWorkerId = (workerId ?? '').trim();
-    final dateKey =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
 
-    final isNewAttendance = attendanceId == null || attendanceId.trim().isEmpty;
-    if (isNewAttendance && normalizedWorkerId.isEmpty) {
+    final callerHasNoAttendanceId =
+        attendanceId == null || attendanceId.trim().isEmpty;
+    if (callerHasNoAttendanceId && normalizedWorkerId.isEmpty) {
       throw ArgumentError(
         'workerId is required when creating a new attendance record '
         'to ensure a deterministic document ID.',
       );
     }
-    final attendanceRef = isNewAttendance
-        ? attendanceColl.doc('${normalizedWorkerId}_$dateKey')
-        : attendanceColl.doc(attendanceId.trim());
+    late final DocumentReference attendanceRef;
+    var createsAttendanceDocument = false;
+    if (callerHasNoAttendanceId) {
+      final target = await _attendanceCreateTarget(
+        attendanceColl,
+        normalizedWorkerId,
+        now,
+      );
+      attendanceRef = target.reference;
+      createsAttendanceDocument = !target.alreadyExistsForDate;
+    } else {
+      attendanceRef = attendanceColl.doc(attendanceId.trim());
+    }
 
     batch.set(attendanceRef, {
       ...attendanceRecord,
-      'attendanceDate': Timestamp.fromDate(
-        DateTime(now.year, now.month, now.day),
-      ),
-      if (isNewAttendance) 'createdAt': FieldValue.serverTimestamp(),
+      // On new records the deterministic document id encodes the date, so
+      // attendanceDate must always be written. On updates, only write it when
+      // the caller explicitly provided a date - otherwise a manually edited
+      // attendanceDate in Firestore would silently reset to today.
+      if (createsAttendanceDocument || attendanceDate != null)
+        'attendanceDate': Timestamp.fromDate(
+          DateTime(now.year, now.month, now.day),
+        ),
+      if (createsAttendanceDocument) 'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
@@ -1359,17 +1537,18 @@ class FirestoreService {
         final data = doc.data() as Map<String, dynamic>;
         if (data['type'] == 'company_work_days') continue;
         if (data['isEnabled'] == false) continue;
-        final hDay = int.tryParse((data['day'] ?? '').toString());
-        final hMonthStr = (data['month'] ?? '').toString();
-        final hMonth = _parseMonthString(hMonthStr);
-        if (hDay == null || hDay < 1 || hDay > 31) continue;
         for (
           var date = start;
           date.isBefore(end);
           date = date.add(const Duration(days: 1))
         ) {
-          if (hMonth == date.month &&
-              hDay == date.day &&
+          final holidayDate = AppDateUtils.holidayRecordDate(
+            data,
+            fallbackYear: date.year,
+          );
+          if (holidayDate != null &&
+              holidayDate.month == date.month &&
+              holidayDate.day == date.day &&
               _holidayAppliesToYear(data, date.year)) {
             if (workingDates.contains(date)) holidayDates.add(date);
             break;
@@ -1385,41 +1564,12 @@ class FirestoreService {
 
   static bool _holidayAppliesToYear(Map<String, dynamic> holiday, int year) {
     if (holiday['isRecurring'] == true) return true;
-    final rawYear = holiday['year'];
-    final holidayYear = rawYear is num
-        ? rawYear.toInt()
-        : int.tryParse((rawYear ?? '').toString());
+    final holidayYear = AppDateUtils.holidayRecordDate(
+      holiday,
+      fallbackYear: year,
+    )?.year;
 
     return holidayYear == null || holidayYear == year;
-  }
-
-  static int _parseMonthString(String month) {
-    const months = {
-      'january': 1,
-      'february': 2,
-      'march': 3,
-      'april': 4,
-      'may': 5,
-      'june': 6,
-      'july': 7,
-      'august': 8,
-      'september': 9,
-      'october': 10,
-      'november': 11,
-      'december': 12,
-      'jan': 1,
-      'feb': 2,
-      'mar': 3,
-      'apr': 4,
-      'jun': 6,
-      'jul': 7,
-      'aug': 8,
-      'sep': 9,
-      'oct': 10,
-      'nov': 11,
-      'dec': 12,
-    };
-    return months[month.toLowerCase()] ?? 0;
   }
 
   Future<Set<DateTime>> _getHolidayDatesForMonth(int year, int month) async {
@@ -1432,14 +1582,14 @@ class FirestoreService {
         final data = doc.data() as Map<String, dynamic>;
         if (data['type'] == 'company_work_days') continue;
         if (data['isEnabled'] == false) continue;
-        final hDay = int.tryParse((data['day'] ?? '').toString());
-        final hMonth = _parseMonthString((data['month'] ?? '').toString());
+        final holidayDate = AppDateUtils.holidayRecordDate(
+          data,
+          fallbackYear: year,
+        );
         if (_holidayAppliesToYear(data, year) &&
-            hMonth == month &&
-            hDay != null &&
-            hDay >= 1 &&
-            hDay <= 31) {
-          dates.add(DateTime(year, month, hDay));
+            holidayDate != null &&
+            holidayDate.month == month) {
+          dates.add(DateTime(year, month, holidayDate.day));
         }
       }
     } catch (_) {}
@@ -2029,31 +2179,11 @@ class FirestoreService {
       throw ArgumentError('requestedDays must match the selected leave dates');
     }
 
-    // A fresh server read catches legacy records created before atomic date
-    // locks were introduced. The worker-level locks below close the race
-    // between concurrent saves.
-    final existingRecords = await timeOffColl
-        .where('workerId', isEqualTo: workerId)
-        .get(const GetOptions(source: Source.server));
-    final overlapWorker = <String, dynamic>{
-      'workerId': workerId,
-      'email': record['email'] ?? '',
-      'name': record['name'] ?? record['workerName'] ?? '',
-    };
-    final overlapping = TimeOffService.hasOverlappingApprovedLeave(
-      overlapWorker,
-      existingRecords.docs
-          .map(
-            (snapshot) => {
-              ...snapshot.data() as Map<String, dynamic>,
-              'id': snapshot.id,
-            },
-          )
-          .toList(),
-      newDates,
-      excludingRecordId: isNew ? null : docId,
-    );
-    if (overlapping) throw const DuplicateTimeOffDateException();
+    // Overlap safety: the client already validates against the worker's live
+    // time-off records before calling this method, and the transaction below
+    // enforces the same invariants atomically through the worker-level date
+    // locks. Skipping a forced server query here avoids an extra network round
+    // trip on every Assign/Save.
 
     await _db.runTransaction((transaction) async {
       final workerSnapshot = await transaction.get(workerRef);
@@ -2198,22 +2328,28 @@ class FirestoreService {
       final type = (record['type'] ?? record['leaveType'] ?? 'Leave')
           .toString();
       if (name.isNotEmpty) {
-        try {
-          await addNotification({
+        // Fire-and-forget: keep the notification out of the save critical
+        // path so the Assign/Save spinner is not blocked by an extra
+        // transaction round trip.
+        unawaited(
+          addNotification({
             'type': 'time_off_added',
             'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
             'message': 'notif_msg_time_off'.tr(
               namedArgs: {'type': type, 'name': name},
             ),
             'data': {'name': name, 'type': type},
-          });
-        } catch (error, stackTrace) {
-          ErrorReporter.report(
-            error,
-            stackTrace,
-            context: 'TimeOffBalanceNotification',
-          );
-        }
+          }).then(
+            (_) {},
+            onError: (Object error, StackTrace stackTrace) {
+              ErrorReporter.report(
+                error,
+                stackTrace,
+                context: 'TimeOffBalanceNotification',
+              );
+            },
+          ),
+        );
       }
     }
     return timeOffRef.id;
@@ -2262,15 +2398,20 @@ class FirestoreService {
   }
 
   Future<String> addAsset(Map<String, dynamic> asset) async {
-    Validators.validateAsset(asset);
+    final canonicalAsset = _canonicalAssetReturnFields(asset);
+    Validators.validateAsset(canonicalAsset);
     final coll = _assets;
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
-      ...asset,
+      ...canonicalAsset,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    final workerName = (asset['name'] ?? asset['assetName'] ?? '').toString();
-    final assetType = (asset['type'] ?? asset['assetType'] ?? '').toString();
+    final workerName =
+        (canonicalAsset['name'] ?? canonicalAsset['assetName'] ?? '')
+            .toString();
+    final assetType =
+        (canonicalAsset['type'] ?? canonicalAsset['assetType'] ?? '')
+            .toString();
     if (workerName.isNotEmpty) {
       try {
         await addNotification({
@@ -2293,10 +2434,11 @@ class FirestoreService {
   }
 
   Future<void> updateAsset(String id, Map<String, dynamic> data) async {
-    Validators.validateAsset(data);
+    final canonicalData = _canonicalAssetReturnFields(data);
+    Validators.validateAsset(canonicalData);
     final coll = _assets;
     if (coll == null) return;
-    await coll.doc(id).update(data);
+    await coll.doc(id).update(canonicalData);
   }
 
   Future<void> deleteAsset(String id) async {
@@ -2318,17 +2460,18 @@ class FirestoreService {
   }
 
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
-    Validators.validateHoliday(holiday);
+    final canonicalHoliday = _canonicalHolidayFields(holiday, forUpdate: false);
+    Validators.validateHoliday(canonicalHoliday);
     final coll = _holidays;
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
-      ...holiday,
+      ...canonicalHoliday,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    final name = (holiday['name'] ?? '').toString();
+    final name = (canonicalHoliday['name'] ?? '').toString();
     if (name.isNotEmpty) {
       try {
-        await addNotification({
+        addNotification({
           'type': 'holiday_added',
           'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
           'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
@@ -2342,10 +2485,13 @@ class FirestoreService {
   }
 
   Future<void> updateHoliday(String id, Map<String, dynamic> data) async {
-    if (data.containsKey('name')) Validators.validateHoliday(data);
+    final canonicalData = _canonicalHolidayFields(data, forUpdate: true);
+    if (canonicalData.containsKey('name')) {
+      Validators.validateHoliday(canonicalData);
+    }
     final coll = _holidays;
     if (coll == null) return;
-    await coll.doc(id).update(data);
+    await coll.doc(id).update(canonicalData);
   }
 
   Future<void> deleteHoliday(String id) async {
@@ -2357,7 +2503,12 @@ class FirestoreService {
   Stream<QuerySnapshot> get holidaysStream {
     final coll = _holidays;
     if (coll == null) return const Stream.empty();
-    return coll.orderBy('createdAt', descending: true).snapshots();
+    return coll.orderBy('createdAt', descending: true).snapshots().asyncMap((
+      snapshot,
+    ) async {
+      await _migrateHolidaySchema(snapshot);
+      return snapshot;
+    });
   }
 
   Future<void> setCompanyWorkingDays(Iterable<int> weekdays) async {

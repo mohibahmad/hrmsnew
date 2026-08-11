@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../custom_timeframe_dropdown.dart';
 import '../../services/dashboard_chart_service.dart';
 
 class SparklineCard extends StatelessWidget {
@@ -120,7 +119,7 @@ class SparklineCard extends StatelessWidget {
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             FittedBox(
                               fit: BoxFit.scaleDown,
@@ -136,26 +135,6 @@ class SparklineCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Text(
-                              period == 'Month'
-                                  ? (title == 'expenses'.tr()
-                                        ? 'monthly'.tr().toLowerCase()
-                                        : 'month'.tr().toLowerCase())
-                                  : (period == 'Week'
-                                        ? (title == 'expenses'.tr()
-                                              ? 'weekly'.tr().toLowerCase()
-                                              : 'week'.tr().toLowerCase())
-                                        : CustomTimeframeDropdown.localizePeriod(
-                                            period,
-                                          )),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
                           ],
                         ),
                       ),
@@ -168,141 +147,163 @@ class SparklineCard extends StatelessWidget {
                   child: SizedBox(
                     height: 100,
                     child: TweenAnimationBuilder<double>(
-                    key: ValueKey(period),
-                    tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 650),
-                    curve: Curves.easeOutQuart,
-                    builder: (context, animValue, child) {
-                      final spots = points.asMap().entries.map((entry) {
-                        return FlSpot(entry.key.toDouble(), entry.value.value);
-                      }).toList();
-                      final highestValue = points.fold<double>(0, (highest, p) {
-                        return p.value > highest ? p.value : highest;
-                      });
+                      key: ValueKey(period),
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 650),
+                      curve: Curves.easeOutQuart,
+                      builder: (context, animValue, child) {
+                        final spots = points.asMap().entries.map((entry) {
+                          return FlSpot(
+                            entry.key.toDouble(),
+                            entry.value.value,
+                          );
+                        }).toList();
+                        final highestValue = points.fold<double>(0, (
+                          highest,
+                          p,
+                        ) {
+                          return p.value > highest ? p.value : highest;
+                        });
+                        final hasSinglePoint = spots.length == 1;
 
-                      return LineChart(
-                        LineChartData(
-                          minX: 0,
-                          maxX: (spots.length - 1).toDouble(),
-                          minY: 0,
-                          maxY: highestValue > 0 ? highestValue * 1.25 : 1,
-                          lineTouchData: LineTouchData(
-                            touchTooltipData: LineTouchTooltipData(
-                              tooltipBorderRadius: const BorderRadius.all(
-                                Radius.circular(8),
-                              ),
-                              fitInsideHorizontally: true,
-                              fitInsideVertically: false,
-                              maxContentWidth: 180,
-                              tooltipPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              tooltipMargin: 10,
-                              getTooltipItems: (tSpots) {
-                                if (tSpots.isEmpty) return <LineTooltipItem>[];
-                                final seenX = <double>{};
-                                return tSpots.map((tSpot) {
-                                  if (seenX.add(tSpot.x)) {
-                                    final pointIndex = tSpot.x
-                                        .round()
-                                        .clamp(0, points.length - 1)
-                                        .toInt();
-                                    final point = points[pointIndex];
-                                    final dateLabel = _dateLabel(
-                                      context,
-                                      point.date,
-                                    );
-                                    final formattedAmount = formatTooltipAmount(
-                                      value: point.value,
-                                      locale: context.locale.toString(),
-                                      currencySymbol: currencySymbol,
-                                      maxDecimalDigits: tooltipDecimalDigits,
-                                    );
-                                    final label =
-                                        '$dateLabel\n$title: $formattedAmount';
+                        return LineChart(
+                          LineChartData(
+                            minX: hasSinglePoint ? -0.5 : 0,
+                            maxX: hasSinglePoint
+                                ? 0.5
+                                : (spots.length - 1).toDouble(),
+                            minY: 0,
+                            maxY: highestValue > 0 ? highestValue * 1.25 : 1,
+                            lineTouchData: LineTouchData(
+                              touchTooltipData: LineTouchTooltipData(
+                                tooltipBorderRadius: const BorderRadius.all(
+                                  Radius.circular(8),
+                                ),
+                                fitInsideHorizontally: true,
+                                fitInsideVertically: false,
+                                maxContentWidth: 180,
+                                tooltipPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                tooltipMargin: 10,
+                                getTooltipItems: (tSpots) {
+                                  if (tSpots.isEmpty)
+                                    return <LineTooltipItem>[];
+                                  final seenX = <double>{};
+                                  return tSpots.map((tSpot) {
+                                    if (seenX.add(tSpot.x)) {
+                                      final pointIndex = tSpot.x
+                                          .round()
+                                          .clamp(0, points.length - 1)
+                                          .toInt();
+                                      final point = points[pointIndex];
+                                      final dateLabel = _dateLabel(
+                                        context,
+                                        point.date,
+                                      );
+                                      final formattedAmount =
+                                          formatTooltipAmount(
+                                            value: point.value,
+                                            locale: context.locale.toString(),
+                                            currencySymbol: currencySymbol,
+                                            maxDecimalDigits:
+                                                tooltipDecimalDigits,
+                                          );
+                                      final label =
+                                          '$dateLabel\n$title: $formattedAmount';
+                                      return LineTooltipItem(
+                                        label,
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      );
+                                    }
                                     return LineTooltipItem(
-                                      label,
+                                      '',
                                       const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        fontFamily: 'SF Pro Display',
+                                        color: Colors.transparent,
+                                        fontSize: 0,
                                       ),
                                     );
-                                  }
-                                  return LineTooltipItem(
-                                    '',
-                                    const TextStyle(
-                                      color: Colors.transparent,
-                                      fontSize: 0,
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                            ),
-                          ),
-                          gridData: FlGridData(show: false),
-                          titlesData: FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: spots
-                                  .map((s) => FlSpot(s.x, s.y * animValue))
-                                  .toList(),
-                              isCurved: true,
-                              color: lineColor.withValues(alpha: 0.06),
-                              barWidth: 1.2,
-                              isStrokeCapRound: false,
-                              dotData: FlDotData(show: false),
-                            ),
-                            LineChartBarData(
-                              spots: spots
-                                  .map((s) => FlSpot(s.x, s.y * animValue))
-                                  .toList(),
-                              isCurved: true,
-                              color: lineColor,
-                              barWidth: 0.6,
-                              isStrokeCapRound: false,
-                              dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.50)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.50),
-                                    lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.20)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.20),
-                                    lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.0)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.0),
-                                  ],
-                                  stops: [0.0, 0.3, 0.8],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
+                                  }).toList();
+                                },
                               ),
                             ),
-                          ],
-                        ),
-                      );
-                    },
+                            gridData: FlGridData(show: false),
+                            titlesData: FlTitlesData(show: false),
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: spots
+                                    .map((s) => FlSpot(s.x, s.y * animValue))
+                                    .toList(),
+                                isCurved: true,
+                                color: lineColor.withValues(alpha: 0.06),
+                                barWidth: 1.2,
+                                isStrokeCapRound: false,
+                                dotData: FlDotData(show: false),
+                              ),
+                              LineChartBarData(
+                                spots: spots
+                                    .map((s) => FlSpot(s.x, s.y * animValue))
+                                    .toList(),
+                                isCurved: true,
+                                color: lineColor,
+                                barWidth: 0.6,
+                                isStrokeCapRound: false,
+                                dotData: FlDotData(
+                                  show: hasSinglePoint,
+                                  getDotPainter:
+                                      (spot, percent, barData, index) {
+                                        return FlDotCirclePainter(
+                                          radius: 4,
+                                          color: lineColor,
+                                          strokeWidth: 0,
+                                        );
+                                      },
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      lineColor == const Color(0xFF0EA5E9)
+                                          ? const Color(
+                                              0xFF93D7FD,
+                                            ).withValues(alpha: 0.50)
+                                          : const Color(
+                                              0xFF8DA9F1,
+                                            ).withValues(alpha: 0.50),
+                                      lineColor == const Color(0xFF0EA5E9)
+                                          ? const Color(
+                                              0xFF93D7FD,
+                                            ).withValues(alpha: 0.20)
+                                          : const Color(
+                                              0xFF8DA9F1,
+                                            ).withValues(alpha: 0.20),
+                                      lineColor == const Color(0xFF0EA5E9)
+                                          ? const Color(
+                                              0xFF93D7FD,
+                                            ).withValues(alpha: 0.0)
+                                          : const Color(
+                                              0xFF8DA9F1,
+                                            ).withValues(alpha: 0.0),
+                                    ],
+                                    stops: [0.0, 0.3, 0.8],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
                 ),
               ],
             )

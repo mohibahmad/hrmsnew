@@ -13,10 +13,11 @@ import 'login_screen.dart';
 import 'home_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final bool isGuest;
@@ -31,10 +32,10 @@ class SettingsScreen extends StatefulWidget {
   });
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _initialized = false;
@@ -48,8 +49,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
   }
 
   String _getCurrentLanguageName() {

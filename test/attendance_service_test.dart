@@ -39,6 +39,25 @@ void main() {
     expect(result['source'], 'auto_leave');
   });
 
+  test('a Firestore-corrected historical date is not treated as today', () {
+    final record = <String, dynamic>{
+      // The ID can still contain the old creation date after an admin edits
+      // attendanceDate directly in Firestore.
+      'id': 'worker-1_2026-08-10',
+      'attendanceDate': DateTime(2026, 7, 1),
+      'status': 'Present',
+    };
+
+    expect(
+      AttendanceService.isRecordForDate(record, DateTime(2026, 8, 10)),
+      isFalse,
+    );
+    expect(
+      AttendanceService.isRecordForDate(record, DateTime(2026, 7, 1)),
+      isTrue,
+    );
+  });
+
   test('today leave assignment keys detect a second worker added live', () {
     final today = DateTime(2026, 8, 10);
     final existing = <Map<String, dynamic>>[

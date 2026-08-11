@@ -2,20 +2,21 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 import '../services/auth_service.dart';
 import '../shared/auth_widgets.dart';
 import '../utils/snackbar_utils.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   late AuthService _authService;
@@ -27,7 +28,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _authService = Provider.of<AuthService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
   }
 
   @override

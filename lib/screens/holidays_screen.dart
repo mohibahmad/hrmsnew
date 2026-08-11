@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -17,8 +18,9 @@ import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/localization_helper.dart';
+import '../utils/date_utils.dart';
 
-class HolidaysScreen extends StatefulWidget {
+class HolidaysScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -31,10 +33,10 @@ class HolidaysScreen extends StatefulWidget {
   });
 
   @override
-  State<HolidaysScreen> createState() => _HolidaysScreenState();
+  ConsumerState<HolidaysScreen> createState() => _HolidaysScreenState();
 }
 
-class _HolidaysScreenState extends State<HolidaysScreen> {
+class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
   Set<int> _companyWorkingDays = {
     DateTime.monday,
@@ -91,21 +93,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   DateTime? _storedHolidayDate(dynamic value) {
-    final raw = (value ?? '').toString().trim();
-    if (raw.isEmpty) return null;
-    final slashParts = raw.split('/');
-    if (slashParts.length == 3) {
-      final day = int.tryParse(slashParts[0]);
-      final month = int.tryParse(slashParts[1]);
-      final year = int.tryParse(slashParts[2]);
-      if (day != null && month != null && year != null) {
-        final parsed = DateTime(year, month, day);
-        if (parsed.year == year && parsed.month == month && parsed.day == day) {
-          return parsed;
-        }
-      }
-    }
-    return DateTime.tryParse(raw);
+    final parsed = AppDateUtils.dateFromValue(value);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 
   Map<String, List<HolidayItem>> _guestHolidayGroups() {
@@ -155,14 +145,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         (holiday['name'] ?? '').toString().trim() == item.name;
   }
 
-  String _remainingDays(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final selected = DateTime(date.year, date.month, date.day);
-    final days = selected.difference(today).inDays;
-    return days > 0 ? days.toString().padLeft(2, '0') : '00';
-  }
-
   bool _isDuplicateHoliday({
     required String name,
     required String month,
@@ -202,8 +184,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _holidaysByMonth = _guestHolidayGroups();
@@ -249,10 +231,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 if (savedDays.isNotEmpty) workingDays = savedDays;
                 continue;
               }
-              final month = _canonicalMonth(data['month']);
-              final day = _intValue(data['day']);
+              final storedDate = AppDateUtils.holidayRecordDate(data);
+              final month = storedDate != null
+                  ? _calendarMonths[storedDate.month - 1]
+                  : _canonicalMonth(data['month']);
+              final day = storedDate?.day ?? _intValue(data['day']);
               final name = (data['name'] ?? '').toString().trim();
-              final year = _intValue(data['year']);
+              final year = storedDate?.year ?? _intValue(data['year']);
               final isRecurring = data['isRecurring'] == true;
               final isEnabled = data['isEnabled'] != false;
               final id = doc.id;
@@ -612,12 +597,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                       calendarDate.month,
                                       selectedDay!,
                                     );
-                                    final dayOfWeekName = _weekdayLabel(
-                                      dateObj.weekday,
-                                    );
-                                    final remainingDaysStr = _remainingDays(
-                                      dateObj,
-                                    );
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??
                                         false;
@@ -651,10 +630,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     }
 
                                     final holidayMap = {
-                                      'day': selectedDay,
-                                      'month': selectedMonthName,
-                                      'remainingDays': remainingDaysStr,
-                                      'dayOfWeek': dayOfWeekName,
+                                      'date': dateObj,
                                       'name': holidayName,
                                       'isEnabled': true,
                                       'isCustom': true,
@@ -688,14 +664,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                           }
                                           DummyData.holidays[selectedMonthName]!
                                               .insert(0, {
-                                                'day': selectedDay,
-                                                'month': selectedMonthName,
-                                                'remainingDays':
-                                                    remainingDaysStr,
-                                                'dayOfWeek': dayOfWeekName,
+                                                'date':
+                                                    '${selectedDay.toString().padLeft(2, '0')}/'
+                                                    '${calendarDate.month.toString().padLeft(2, '0')}/'
+                                                    '${calendarDate.year}',
                                                 'name': holidayName,
                                                 'isEnabled': true,
-                                                'year': calendarDate.year,
                                                 'isRecurring': false,
                                               });
                                           DummyData.saveToPrefs();
@@ -1604,12 +1578,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                       calendarDate.month,
                                       selectedDay,
                                     );
-                                    final dayOfWeekName = _weekdayLabel(
-                                      dateObj.weekday,
-                                    );
-                                    final remainingDaysStr = _remainingDays(
-                                      dateObj,
-                                    );
                                     try {
                                       if (isGuest) {
                                         setState(() {
@@ -1650,11 +1618,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
                                           updatedHoliday['name'] =
                                               holidayNameController.text.trim();
-                                          updatedHoliday['day'] = selectedDay;
-                                          updatedHoliday['month'] =
-                                              selectedMonthName;
-                                          updatedHoliday['year'] =
-                                              calendarDate.year;
                                           updatedHoliday['isRecurring'] =
                                               item.isRecurring;
                                           updatedHoliday['date'] =
@@ -1678,11 +1641,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                         await _firestore
                                             .updateHoliday(holidayId, {
                                               'name': holidayName,
-                                              'day': selectedDay,
-                                              'month': selectedMonthName,
-                                              'year': calendarDate.year,
-                                              'remainingDays': remainingDaysStr,
-                                              'dayOfWeek': dayOfWeekName,
+                                              'date': dateObj,
                                               'isRecurring': item.isRecurring,
                                             });
                                       }
@@ -2049,36 +2008,40 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 100),
-      child: Center(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'no_holidays_found'.tr(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0247C4),
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
+    final double containerHeight = (MediaQuery.of(context).size.height - 329)
+        .clamp(440.0, 1200.0);
+    return Container(
+      width: double.infinity,
+      height: containerHeight,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'no_holidays_found'.tr(),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0247C4),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ],
       ),
     );
   }

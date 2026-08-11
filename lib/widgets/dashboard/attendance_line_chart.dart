@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers.dart';
 import '../../services/auth_service.dart';
 import '../../utils/chart_utils.dart';
 import '../custom_timeframe_dropdown.dart';
 
-
-
 int _labelStepFor(int count) {
-  if (count <= 8) return 1;
-  if (count <= 16) return 2;
-  if (count <= 24) return 3;
+  if (count <= 12) return 1;
+  if (count <= 24) return 2;
   if (count <= 32) return 5;
   if (count <= 40) return 7;
   return 10;
 }
 
-class AttendanceLineChart extends StatefulWidget {
+class AttendanceLineChart extends ConsumerStatefulWidget {
   final String period;
   final bool isEmpty;
   final List<Map<String, dynamic>> attendanceDocs;
@@ -30,16 +28,17 @@ class AttendanceLineChart extends StatefulWidget {
   });
 
   @override
-  State<AttendanceLineChart> createState() => _AttendanceLineChartState();
+  ConsumerState<AttendanceLineChart> createState() =>
+      _AttendanceLineChartState();
 }
 
-class _AttendanceLineChartState extends State<AttendanceLineChart> {
+class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
   late AuthService _authService;
 
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
   }
 
   @override
@@ -52,9 +51,52 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
 
   @override
   Widget build(BuildContext context) {
+    final latestAttendanceDocs = latestAttendanceRecordPerWorker(
+      widget.attendanceDocs,
+    );
+
+    // Filter present attendance records
+    final presentAttendanceDocs = latestAttendanceDocs.where((attendance) {
+      final status = (attendance['status'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status == 'present';
+    }).toList();
+
+    // Filter absent attendance records
+    final absentAttendanceDocs = latestAttendanceDocs.where((attendance) {
+      final status = (attendance['status'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status == 'absent';
+    }).toList();
+
+    // Get chart data for present
+    final presentChartData = getChartData(
+      widget.period,
+      presentAttendanceDocs,
+      _authService.currentUser?.isAnonymous ?? false,
+      context.locale.toString(),
+    );
+
+    // Get chart data for absent
+    final absentChartData = getChartData(
+      widget.period,
+      absentAttendanceDocs,
+      false,
+      context.locale.toString(),
+    );
+
+    // Check if there's any absent data to display
+    final hasAbsentData =
+        absentAttendanceDocs.isNotEmpty &&
+        absentChartData.values.any((value) => value > 0);
+
     return Card(
       elevation: 0,
-      color: Color(0xFFFFFFFF),
+      color: const Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -75,25 +117,32 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                     height: 330,
                     child: Builder(
                       builder: (context) {
-                        final chartData = getChartData(
-                          widget.period,
-                          widget.attendanceDocs,
-                          _authService.currentUser?.isAnonymous ?? false,
-                          context.locale.toString(),
-                        );
                         // Localized number format for axis/tooltip values
-                        // (e.g. 1200 -> "1 200" in ru/fr, "1.200" in es).
                         final numberFmt = NumberFormat.decimalPattern(
                           context.locale.toString(),
                         );
-                        final double rawMaxY = chartData.values.isEmpty
+
+                        // Calculate max Y for both datasets
+                        final allValues = [
+                          ...presentChartData.values,
+                          ...absentChartData.values,
+                        ];
+                        final double rawMaxY = allValues.isEmpty
                             ? 1.0
-                            : chartData.values
-                                .reduce((a, b) => a > b ? a : b);
+                            : allValues.reduce((a, b) => a > b ? a : b);
+
                         final range = getNiceRange(rawMaxY);
-                        final spots = List.generate(
-                          chartData.values.length,
-                          (i) => FlSpot(i.toDouble(), chartData.values[i]),
+
+                        final presentSpots = List.generate(
+                          presentChartData.values.length,
+                          (i) =>
+                              FlSpot(i.toDouble(), presentChartData.values[i]),
+                        );
+
+                        final absentSpots = List.generate(
+                          absentChartData.values.length,
+                          (i) =>
+                              FlSpot(i.toDouble(), absentChartData.values[i]),
                         );
 
                         return TweenAnimationBuilder<double>(
@@ -111,7 +160,9 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                               child: LineChart(
                                 LineChartData(
                                   minX: -0.4,
-                                  maxX: (spots.length - 1).toDouble() + 0.4,
+                                  maxX:
+                                      (presentSpots.length - 1).toDouble() +
+                                      0.4,
                                   clipData: const FlClipData.none(),
                                   minY: 0,
                                   maxY: range.maxY,
@@ -121,22 +172,43 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                           const Color(0xFF2C3E50),
                                       tooltipBorderRadius:
                                           const BorderRadius.all(
-                                        Radius.circular(8),
-                                      ),
+                                            Radius.circular(8),
+                                          ),
                                       getTooltipItems: (spots) {
                                         return spots.map((spot) {
+                                          final isPresent =
+                                              spot.bar.color ==
+                                              const Color(0xFF21367E);
+                                          final label = isPresent
+                                              ? 'Present'
+                                              : 'Absent';
+                                          final color = isPresent
+                                              ? const Color(0xFF21367E)
+                                              : const Color(0xFFE74C3C);
+
                                           return LineTooltipItem(
-                                            numberFmt.format(spot.y),
-                                            const TextStyle(
+                                            '$label: ${numberFmt.format(spot.y)}',
+                                            TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                               fontFamily: 'SF Pro Display',
                                             ),
+                                            children: [
+                                              TextSpan(
+                                                text: ' ',
+                                                style: TextStyle(
+                                                  color: color,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           );
                                         }).toList();
                                       },
                                     ),
+                                    touchSpotThreshold: 10,
+                                    handleBuiltInTouches: true,
                                   ),
                                   gridData: FlGridData(
                                     show: true,
@@ -148,12 +220,10 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                           0.01) {
                                         return false;
                                       }
-                                      
-                                      
-                                      
+
                                       final idx = value.round();
                                       final labelStep = _labelStepFor(
-                                        chartData.labels.length,
+                                        presentChartData.labels.length,
                                       );
                                       return idx % labelStep == 0;
                                     },
@@ -165,10 +235,10 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                     ),
                                   ),
                                   titlesData: FlTitlesData(
-                                    topTitles: AxisTitles(
+                                    topTitles: const AxisTitles(
                                       sideTitles: SideTitles(showTitles: false),
                                     ),
-                                    rightTitles: AxisTitles(
+                                    rightTitles: const AxisTitles(
                                       sideTitles: SideTitles(showTitles: false),
                                     ),
                                     leftTitles: AxisTitles(
@@ -212,25 +282,33 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                           }
                                           final idx = value.round();
                                           if (idx < 0 ||
-                                              idx >= chartData.labels.length) {
+                                              idx >=
+                                                  presentChartData
+                                                      .labels
+                                                      .length) {
                                             return const SizedBox.shrink();
                                           }
-                                          
-                                          
-                                          
-                                          
+
                                           final labelStep = _labelStepFor(
-                                            chartData.labels.length,
+                                            presentChartData.labels.length,
                                           );
                                           if (idx % labelStep != 0 &&
                                               idx !=
-                                                  chartData.labels.length -
+                                                  presentChartData
+                                                          .labels
+                                                          .length -
                                                       1) {
                                             return const SizedBox.shrink();
                                           }
-                                          const style = TextStyle(
-                                            color: Color(0xFF0247C4),
-                                            fontSize: 13,
+                                          final style = TextStyle(
+                                            color: const Color(0xFF0247C4),
+                                            fontSize:
+                                                presentChartData
+                                                        .labels
+                                                        .length >=
+                                                    10
+                                                ? 11
+                                                : 13,
                                             fontWeight: FontWeight.bold,
                                             fontFamily: 'SF Pro Display',
                                           );
@@ -243,11 +321,13 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                                 Container(
                                                   width: 2,
                                                   height: 8,
-                                                  color: const Color(0xFF939393),
+                                                  color: const Color(
+                                                    0xFF939393,
+                                                  ),
                                                 ),
                                                 const SizedBox(height: 6),
                                                 Text(
-                                                  chartData.labels[idx],
+                                                  presentChartData.labels[idx],
                                                   style: style,
                                                 ),
                                               ],
@@ -271,30 +351,19 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                     ),
                                   ),
                                   lineBarsData: [
-                                    LineChartBarData(
-                                      spots: spots
-                                          .map((s) =>
-                                              FlSpot(s.x, s.y * animValue))
-                                          .toList(),
-                                      isCurved: false,
-                                      color: const Color(0xFF21367E),
-                                      barWidth: 2,
-                                      dotData: FlDotData(
-                                        show: true,
-                                        getDotPainter:
-                                            (spot, percent, barData, index) {
-                                              return FlDotCirclePainter(
-                                                radius: 4,
-                                                color: const Color(0xFF21367E),
-                                                strokeWidth: 0,
-                                              );
-                                            },
-                                      ),
-                                      belowBarData: BarAreaData(
-                                        show: true,
-                                        color: const Color(0xFFDEE6FF),
-                                      ),
+                                    ..._buildVisibleBars(
+                                      presentSpots,
+                                      animValue,
+                                      lineColor: const Color(0xFF21367E),
+                                      fillColor: const Color(0xFFDEE6FF),
                                     ),
+                                    if (hasAbsentData)
+                                      ..._buildVisibleBars(
+                                        absentSpots,
+                                        animValue,
+                                        lineColor: const Color(0xFFE74C3C),
+                                        fillColor: const Color(0xFFFADBD8),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -303,6 +372,17 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                         );
                       },
                     ),
+                  ),
+                  // Legend
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLegendItem(const Color(0xFF21367E), 'Present'),
+                      const SizedBox(width: 30),
+                      if (hasAbsentData)
+                        _buildLegendItem(const Color(0xFFE74C3C), 'Absent'),
+                    ],
                   ),
                 ],
               )
@@ -320,7 +400,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                       const SizedBox(height: 12),
                       Text(
                         'no_attendance_data_yet'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF9CA3AF),
                           fontFamily: 'SF Pro Display',
@@ -332,5 +412,92 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
               ),
       ),
     );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Container(width: 20, height: 4, color: color),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<LineChartBarData> _buildVisibleBars(
+    List<FlSpot> spots,
+    double animValue, {
+    required Color lineColor,
+    required Color fillColor,
+  }) {
+    final bars = <LineChartBarData>[];
+    var index = 0;
+
+    while (index < spots.length) {
+      while (index < spots.length && spots[index].y <= 0) {
+        index++;
+      }
+      if (index >= spots.length) break;
+
+      final firstPositive = index;
+      while (index + 1 < spots.length && spots[index + 1].y > 0) {
+        index++;
+      }
+      final lastPositive = index;
+      final start = firstPositive > 0 ? firstPositive - 1 : firstPositive;
+      final end = lastPositive + 1 < spots.length
+          ? lastPositive + 1
+          : lastPositive;
+      final rawVisibleSpots = spots
+          .sublist(start, end + 1)
+          .map((spot) => FlSpot(spot.x, spot.y * animValue))
+          .toList();
+      final visibleSpots = <FlSpot>[];
+      for (final spot in rawVisibleSpots) {
+        final repeatsPreviousValue =
+            spot.y > 0 &&
+            visibleSpots.isNotEmpty &&
+            visibleSpots.last.y > 0 &&
+            (visibleSpots.last.y - spot.y).abs() < 0.0001;
+        if (repeatsPreviousValue) {
+          // Keep the latest bucket when consecutive months have the same
+          // value, so one count is represented by one visible peak/dot.
+          visibleSpots[visibleSpots.length - 1] = spot;
+        } else {
+          visibleSpots.add(spot);
+        }
+      }
+
+      bars.add(
+        LineChartBarData(
+          spots: visibleSpots,
+          isCurved: false,
+          color: lineColor,
+          barWidth: 2,
+          dotData: FlDotData(
+            show: true,
+            checkToShowDot: (spot, barData) => spot.y > 0,
+            getDotPainter: (spot, percent, barData, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: lineColor,
+                strokeWidth: 0,
+              );
+            },
+          ),
+          belowBarData: BarAreaData(show: true, color: fillColor),
+        ),
+      );
+      index++;
+    }
+
+    return bars;
   }
 }

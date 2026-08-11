@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 
-class NotificationBell extends StatefulWidget {
+class NotificationBell extends ConsumerStatefulWidget {
   final VoidCallback? onTap;
   const NotificationBell({super.key, required this.onTap});
 
   @override
-  State<NotificationBell> createState() => _NotificationBellState();
+  ConsumerState<NotificationBell> createState() => _NotificationBellState();
 }
 
-class _NotificationBellState extends State<NotificationBell> {
+class _NotificationBellState extends ConsumerState<NotificationBell> {
   StreamSubscription? _notifSub;
   int _unreadCount = 0;
   late AuthService _authService;
@@ -23,8 +24,8 @@ class _NotificationBellState extends State<NotificationBell> {
   @override
   void initState() {
     super.initState();
-    _authService = context.read<AuthService>();
-    _firestore = context.read<FirestoreService>();
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _unreadCount = DummyData.notifications

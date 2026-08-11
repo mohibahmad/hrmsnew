@@ -5,12 +5,12 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/file_opener.dart';
 import '../utils/localization_helper.dart';
 import 'dart:io';
-import 'auth_service.dart';
 import 'firestore_service.dart';
 import 'payroll_service.dart';
 import 'preferences_service.dart';
@@ -183,10 +183,10 @@ class PayrollRunner {
     String? positionFilter,
   }) async {
     final isGuest =
-        Provider.of<AuthService>(
-          context,
-          listen: false,
-        ).currentUser?.isAnonymous ??
+        ProviderScope.containerOf(context)
+            .read(authServiceProvider)
+            .currentUser
+            ?.isAnonymous ??
         false;
     if (isGuest) {
       return _runPayrollInternal(
@@ -216,12 +216,13 @@ class PayrollRunner {
     DateTime? payrollMonth,
     String? positionFilter,
   }) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final isGuest = authService.currentUser?.isAnonymous ?? false;
-    final firestoreService = Provider.of<FirestoreService>(
+    final authService = ProviderScope.containerOf(
       context,
-      listen: false,
-    );
+    ).read(authServiceProvider);
+    final isGuest = authService.currentUser?.isAnonymous ?? false;
+    final firestoreService = ProviderScope.containerOf(
+      context,
+    ).read(firestoreServiceProvider);
 
     List<Map<String, dynamic>> workers;
 
@@ -919,10 +920,9 @@ class PayrollRunner {
       return summary.results.where((result) => result.success).length;
     }
 
-    final firestoreService = Provider.of<FirestoreService>(
+    final firestoreService = ProviderScope.containerOf(
       context,
-      listen: false,
-    );
+    ).read(firestoreServiceProvider);
     final successfulResults = summary.results.where((r) => r.success).toList();
     final payPeriodDate = periodEnd;
     final latestPayrollSnapshot = await firestoreService.payrollStream.first
@@ -1075,7 +1075,7 @@ class PayrollRunner {
       final now = DateTime.now();
       final companyProfile =
           await CompanyProfileHelper.getCompanyProfileWithFirestore(
-            context.read<FirestoreService>(),
+            ProviderScope.containerOf(context).read(firestoreServiceProvider),
           );
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
@@ -1217,10 +1217,10 @@ class PayrollRunner {
     PayrollRunSummary summary,
   ) async {
     final isGuest =
-        Provider.of<AuthService>(
-          context,
-          listen: false,
-        ).currentUser?.isAnonymous ??
+        ProviderScope.containerOf(context)
+            .read(authServiceProvider)
+            .currentUser
+            ?.isAnonymous ??
         false;
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 720.0;
@@ -2341,10 +2341,10 @@ class PayrollRunner {
     required double dialogHeight,
   }) {
     final isGuest =
-        Provider.of<AuthService>(
-          context,
-          listen: false,
-        ).currentUser?.isAnonymous ??
+        ProviderScope.containerOf(context)
+            .read(authServiceProvider)
+            .currentUser
+            ?.isAnonymous ??
         false;
 
     return showDialog<AutoPayrollResult>(

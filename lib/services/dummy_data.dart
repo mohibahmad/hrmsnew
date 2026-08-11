@@ -74,7 +74,6 @@ class DummyData {
     };
   }
 
-  
   static Future<void> resetToDefaults() async {
     _captureSourceDefaults();
     final defaults = _sourceDefaults!;
@@ -821,7 +820,7 @@ class DummyData {
       'cnicBackUrl': null,
       'cvUrl': null,
     },
-    
+
     {
       'workerId': '20',
       'name': 'Jordan Casey',
@@ -1250,68 +1249,78 @@ class DummyData {
       'category': 'Salary',
       'amount': 7916.67,
       'payrollKey': 'worker_0_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - Sophia Martinez',
       'category': 'Salary',
       'amount': 7333.33,
       'payrollKey': 'worker_1_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - Daniel Anderson',
       'category': 'Salary',
       'amount': 6833.33,
       'payrollKey': 'worker_2_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - Olivia Thomas',
       'category': 'Salary',
       'amount': 6500.00,
       'payrollKey': 'worker_3_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - Alex Rivera',
       'category': 'Salary',
       'amount': 7666.67,
       'payrollKey': 'worker_30_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - Sarah Thompson',
       'category': 'Salary',
       'amount': 6000.00,
       'payrollKey': 'worker_31_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - David Chen',
       'category': 'Salary',
       'amount': 7083.33,
       'payrollKey': 'worker_32_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Salary - James Wilson',
       'category': 'Salary',
       'amount': 7916.67,
       'payrollKey': 'worker_33_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Office Supplies - Today',
       'category': 'Stationery',
       'amount': 150.0,
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Team Lunch',
       'category': 'Food & Beverage',
       'amount': 420.0,
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'name': 'Office Supplies',
@@ -1343,7 +1352,7 @@ class DummyData {
       'amount': 180.0,
       'createdAt': '02/01/2026',
     },
-    
+
     {
       'name': 'Employee Training: Flutter',
       'category': 'Training & Development',
@@ -1368,7 +1377,7 @@ class DummyData {
       'amount': 1200.0,
       'createdAt': '12/02/2026',
     },
-    
+
     {
       'name': 'Cloud Server - March',
       'category': 'Software & IT',
@@ -1393,7 +1402,7 @@ class DummyData {
       'amount': 890.0,
       'createdAt': '20/03/2026',
     },
-    
+
     {
       'name': 'Team Outing',
       'category': 'Food & Beverage',
@@ -1418,7 +1427,7 @@ class DummyData {
       'amount': 5000.0,
       'createdAt': '05/04/2026',
     },
-    
+
     {
       'name': 'Internet & Phone Bills',
       'category': 'Utilities',
@@ -1443,7 +1452,7 @@ class DummyData {
       'amount': 3500.0,
       'createdAt': '15/05/2026',
     },
-    
+
     {
       'name': 'Office Rent - June',
       'category': 'Rent',
@@ -1468,7 +1477,7 @@ class DummyData {
       'amount': 1200.0,
       'createdAt': '10/06/2026',
     },
-    
+
     {
       'name': 'Freelance Graphic Design',
       'category': 'Professional Services',
@@ -1493,7 +1502,7 @@ class DummyData {
       'amount': 320.0,
       'createdAt': '03/07/2026',
     },
-    
+
     {
       'name': 'Office Rent - August',
       'category': 'Rent',
@@ -1518,7 +1527,7 @@ class DummyData {
       'amount': 450.0,
       'createdAt': '18/08/2026',
     },
-    
+
     {
       'name': 'Cloud Server - September',
       'category': 'Software & IT',
@@ -1543,7 +1552,7 @@ class DummyData {
       'amount': 750.0,
       'createdAt': '22/09/2026',
     },
-    
+
     {
       'name': 'Team Lunch - Q4 Planning',
       'category': 'Food & Beverage',
@@ -1568,7 +1577,7 @@ class DummyData {
       'amount': 200.0,
       'createdAt': '28/10/2026',
     },
-    
+
     {
       'name': 'Internet & Phone Bills',
       'category': 'Utilities',
@@ -1593,7 +1602,7 @@ class DummyData {
       'amount': 620.0,
       'createdAt': '25/11/2026',
     },
-    
+
     {
       'name': 'Year-end Party',
       'category': 'Entertainment',
@@ -1675,7 +1684,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_0_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '1',
@@ -1687,7 +1697,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_1_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '2',
@@ -1699,7 +1710,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_2_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '3',
@@ -1711,7 +1723,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_3_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '30',
@@ -1723,7 +1736,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_30_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '31',
@@ -1735,7 +1749,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_31_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '32',
@@ -1747,7 +1762,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_32_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '33',
@@ -1759,7 +1775,8 @@ class DummyData {
       'period': 'Aug 2026',
       'currency': 'USD',
       'payrollKey': 'worker_33_aug_2026',
-      'createdAt': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      'createdAt':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
     },
     {
       'workerId': '0',
@@ -1961,7 +1978,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '10/09/2026',
     },
-    
+
     {
       'workerId': '0',
       'workerName': 'Michael Johnson',
@@ -2002,7 +2019,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '25/10/2026',
     },
-    
+
     {
       'workerId': '1',
       'workerName': 'Sophia Martinez',
@@ -2043,7 +2060,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '25/11/2026',
     },
-    
+
     {
       'workerId': '2',
       'workerName': 'Daniel Anderson',
@@ -2088,134 +2105,38 @@ class DummyData {
 
   static final Map<String, List<Map<String, dynamic>>> holidays = {
     '2026': [
-      {
-        'name': "New Year's Day",
-        'date': '01/01/2026',
-      },
-      {
-        'name': 'Martin Luther King Jr. Day',
-        'date': '19/01/2026',
-      },
-      {
-        'name': 'Valentine\'s Day',
-        'date': '14/02/2026',
-      },
-      {
-        'name': 'Presidents\' Day',
-        'date': '16/02/2026',
-      },
-      {
-        'name': 'Spring Equinox',
-        'date': '20/03/2026',
-      },
-      {
-        'name': 'Easter Sunday',
-        'date': '05/04/2026',
-      },
-      {
-        'name': 'Earth Day',
-        'date': '22/04/2026',
-      },
-      {
-        'name': 'Memorial Day',
-        'date': '25/05/2026',
-      },
-      {
-        'name': 'Juneteenth',
-        'date': '19/06/2026',
-      },
-      {
-        'name': 'Independence Day',
-        'date': '04/07/2026',
-      },
-      {
-        'name': 'National Intern Day',
-        'date': '30/07/2026',
-      },
-      {
-        'name': 'International Cat Day',
-        'date': '08/08/2026',
-      },
-      {
-        'name': 'Summer Picnic',
-        'date': '14/08/2026',
-      },
-      {
-        'name': 'World Photography Day',
-        'date': '19/08/2026',
-      },
-      {
-        'name': 'Women\'s Equality Day',
-        'date': '26/08/2026',
-      },
-      {
-        'name': 'Labor Day',
-        'date': '07/09/2026',
-      },
-      {
-        'name': 'Patriot Day',
-        'date': '11/09/2026',
-      },
-      {
-        'name': 'International Day of Peace',
-        'date': '21/09/2026',
-      },
-      {
-        'name': 'World Teachers\' Day',
-        'date': '05/10/2026',
-      },
-      {
-        'name': 'Columbus Day',
-        'date': '12/10/2026',
-      },
-      {
-        'name': 'United Nations Day',
-        'date': '24/10/2026',
-      },
-      {
-        'name': 'Halloween',
-        'date': '31/10/2026',
-      },
-      {
-        'name': 'Veterans Day',
-        'date': '11/11/2026',
-      },
-      {
-        'name': 'World Kindness Day',
-        'date': '13/11/2026',
-      },
-      {
-        'name': 'Thanksgiving Day',
-        'date': '26/11/2026',
-      },
-      {
-        'name': 'Black Friday',
-        'date': '27/11/2026',
-      },
-      {
-        'name': 'Human Rights Day',
-        'date': '10/12/2026',
-      },
-      {
-        'name': 'Winter Solstice',
-        'date': '21/12/2026',
-      },
-      {
-        'name': 'Christmas Eve',
-        'date': '24/12/2026',
-      },
-      {
-        'name': 'Christmas Day',
-        'date': '25/12/2026',
-      },
-      {
-        'name': 'Boxing Day',
-        'date': '26/12/2026',
-      },
-      {
-        'name': 'New Year\'s Eve',
-        'date': '31/12/2026',
-      },
+      {'name': "New Year's Day", 'date': '01/01/2026'},
+      {'name': 'Martin Luther King Jr. Day', 'date': '19/01/2026'},
+      {'name': 'Valentine\'s Day', 'date': '14/02/2026'},
+      {'name': 'Presidents\' Day', 'date': '16/02/2026'},
+      {'name': 'Spring Equinox', 'date': '20/03/2026'},
+      {'name': 'Easter Sunday', 'date': '05/04/2026'},
+      {'name': 'Earth Day', 'date': '22/04/2026'},
+      {'name': 'Memorial Day', 'date': '25/05/2026'},
+      {'name': 'Juneteenth', 'date': '19/06/2026'},
+      {'name': 'Independence Day', 'date': '04/07/2026'},
+      {'name': 'National Intern Day', 'date': '30/07/2026'},
+      {'name': 'International Cat Day', 'date': '08/08/2026'},
+      {'name': 'Summer Picnic', 'date': '14/08/2026'},
+      {'name': 'World Photography Day', 'date': '19/08/2026'},
+      {'name': 'Women\'s Equality Day', 'date': '26/08/2026'},
+      {'name': 'Labor Day', 'date': '07/09/2026'},
+      {'name': 'Patriot Day', 'date': '11/09/2026'},
+      {'name': 'International Day of Peace', 'date': '21/09/2026'},
+      {'name': 'World Teachers\' Day', 'date': '05/10/2026'},
+      {'name': 'Columbus Day', 'date': '12/10/2026'},
+      {'name': 'United Nations Day', 'date': '24/10/2026'},
+      {'name': 'Halloween', 'date': '31/10/2026'},
+      {'name': 'Veterans Day', 'date': '11/11/2026'},
+      {'name': 'World Kindness Day', 'date': '13/11/2026'},
+      {'name': 'Thanksgiving Day', 'date': '26/11/2026'},
+      {'name': 'Black Friday', 'date': '27/11/2026'},
+      {'name': 'Human Rights Day', 'date': '10/12/2026'},
+      {'name': 'Winter Solstice', 'date': '21/12/2026'},
+      {'name': 'Christmas Eve', 'date': '24/12/2026'},
+      {'name': 'Christmas Day', 'date': '25/12/2026'},
+      {'name': 'Boxing Day', 'date': '26/12/2026'},
+      {'name': 'New Year\'s Eve', 'date': '31/12/2026'},
     ],
   };
 
@@ -2327,7 +2248,7 @@ class DummyData {
       'position': 'Senior Web Developer',
       'type': 'MacBook Pro',
       'dateLoaned': '15/03/2024',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2336,7 +2257,7 @@ class DummyData {
       'position': 'DevOps Engineer',
       'type': 'Dell Monitor',
       'dateLoaned': '01/06/2024',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2345,7 +2266,7 @@ class DummyData {
       'position': 'HR Manager',
       'type': 'iPhone 15',
       'dateLoaned': '10/09/2024',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2354,7 +2275,7 @@ class DummyData {
       'position': 'Frontend Developer',
       'type': 'Mechanical Keyboard',
       'dateLoaned': '20/07/2024',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2363,7 +2284,7 @@ class DummyData {
       'position': 'UI Designer',
       'type': 'iPad Pro',
       'dateLoaned': '05/11/2024',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2381,7 +2302,7 @@ class DummyData {
       'position': 'Data Analyst',
       'type': 'Laptop',
       'dateLoaned': '15/01/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -2390,7 +2311,7 @@ class DummyData {
       'position': 'Product Manager',
       'type': 'Monitor',
       'dateLoaned': '20/02/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -2399,7 +2320,7 @@ class DummyData {
       'position': 'Graphic Designer',
       'type': 'Mouse',
       'dateLoaned': '10/03/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2417,7 +2338,7 @@ class DummyData {
       'position': 'HR Manager',
       'type': 'Mac',
       'dateLoaned': '05/02/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2426,7 +2347,7 @@ class DummyData {
       'position': 'Frontend Developer',
       'type': 'Table',
       'dateLoaned': '12/04/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -2435,7 +2356,7 @@ class DummyData {
       'position': 'Backend Developer',
       'type': 'Monitor',
       'dateLoaned': '18/06/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2453,7 +2374,7 @@ class DummyData {
       'position': 'UI Designer',
       'type': 'iPad',
       'dateLoaned': '01/07/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2471,7 +2392,7 @@ class DummyData {
       'position': 'Technical Writer',
       'type': 'Keyboard',
       'dateLoaned': '10/08/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/boy.png',
     },
@@ -2480,7 +2401,7 @@ class DummyData {
       'position': 'Mobile Developer',
       'type': 'iPhone',
       'dateLoaned': '15/08/2025',
-      'dateReturned': 'in_use',
+      'dateReturned': null,
       'isReturned': false,
       'profileImage': 'assets/imageplaceholder.png',
     },

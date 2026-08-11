@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../services/auth_service.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../screens/login_screen.dart';
 
 void showGuestRestrictionDialog(BuildContext context) {
-  final authService = Provider.of<AuthService>(context, listen: false);
+  final authService = ProviderScope.containerOf(context).read(
+    authServiceProvider,
+  );
 
   showDialog(
     context: context,

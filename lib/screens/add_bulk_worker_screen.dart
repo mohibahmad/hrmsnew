@@ -26,7 +26,8 @@ import '../utils/bulk_worker_validator.dart';
 import '../models/worker.dart';
 import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../widgets/bulk_worker_edit_dialog.dart';
 import '../widgets/notification_bell.dart';
 
@@ -55,7 +56,7 @@ class UploadProgress {
   });
 }
 
-class AddBulkWorkerScreen extends StatefulWidget {
+class AddBulkWorkerScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
@@ -71,7 +72,7 @@ class AddBulkWorkerScreen extends StatefulWidget {
   AddBulkWorkerScreenState createState() => AddBulkWorkerScreenState();
 }
 
-class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
+class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   static const double _tableContentWidth = 3628;
   static const double _rowHeight = 65.0;
 
@@ -105,8 +106,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
 
     _authSubscription = _authService.authStateChanges.listen((_) {
       _clearIdentityCache();
@@ -2000,7 +2001,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         const SizedBox(height: 12),
                       ],
                       Expanded(child: _buildWorkerTable()),
-                    ],
+                    ] else
+                      Expanded(child: _buildEmptyState()),
                   ],
                 ),
               ),
@@ -2287,6 +2289,89 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 color: Color(0xFF92400E),
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    _hScrollController ??= ScrollController();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Scrollbar(
+              controller: _hScrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                controller: _hScrollController,
+                child: SizedBox(
+                  width: _tableContentWidth,
+                  child: Column(
+                    children: [
+                      _buildTableHeader(),
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.upload_file_rounded,
+                                  size: 40,
+                                  color: Color(0xFF0B50C3),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'upload_csv_to_preview'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E293B),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'upload_csv_hint'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

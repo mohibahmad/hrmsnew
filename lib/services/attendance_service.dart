@@ -52,6 +52,23 @@ class AttendanceService {
     return workerExistedOnDate(worker, attendanceDate);
   }
 
+  /// Whether [record] belongs to the requested calendar day.
+  ///
+  /// Attendance document IDs normally contain their creation date, but an
+  /// administrator can legitimately correct `attendanceDate` in Firestore.
+  /// The field is therefore authoritative; the document ID must not be used
+  /// to overwrite a corrected historical record with today's attendance.
+  static bool isRecordForDate(
+    Map<String, dynamic> record,
+    DateTime requestedDate,
+  ) {
+    final recordDate = AppDateUtils.attendanceRecordDate(record);
+    if (recordDate == null) return false;
+    return recordDate.year == requestedDate.year &&
+        recordDate.month == requestedDate.month &&
+        recordDate.day == requestedDate.day;
+  }
+
   static Map<String, dynamic> applyApprovedTimeOff({
     required Map<String, dynamic> attendanceRecord,
     required Map<String, dynamic> timeOffRecord,

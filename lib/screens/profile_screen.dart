@@ -23,7 +23,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/notification_bell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 
 Uint8List? _compressImageBytes(Uint8List rawBytes) {
   try {
@@ -121,15 +122,15 @@ class ProfileInlineHeader extends StatelessWidget {
   }
 }
 
-class ProfileBody extends StatefulWidget {
+class ProfileBody extends ConsumerStatefulWidget {
   final bool isActive;
   const ProfileBody({super.key, this.isActive = true});
 
   @override
-  State<ProfileBody> createState() => _ProfileBodyState();
+  ConsumerState<ProfileBody> createState() => _ProfileBodyState();
 }
 
-class _ProfileBodyState extends State<ProfileBody> {
+class _ProfileBodyState extends ConsumerState<ProfileBody> {
   late final TextEditingController _businessNameController;
   late final TextEditingController _companyIdController;
   late final TextEditingController _emailController;
@@ -164,8 +165,8 @@ class _ProfileBodyState extends State<ProfileBody> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (_initialized && !isGuest) return;
     _initialized = true;
@@ -563,6 +564,7 @@ class _ProfileBodyState extends State<ProfileBody> {
 
     final oldProfilePicUrl = _profilePicUrl;
     final oldCompanyStampUrl = _companyStampUrl;
+    final wasClearingCompanyStamp = _clearCompanyStamp;
 
     Reference? uploadedRef;
     Reference? uploadedStampRef;
@@ -636,9 +638,20 @@ class _ProfileBodyState extends State<ProfileBody> {
             } catch (_) {}
             if (mounted) {
               setState(() => _isLoading = false);
+              // Surface the real reason instead of hiding it behind a generic
+              // message - otherwise upload failures are impossible to debug.
+              final isUnsupportedFormat =
+                  error is FormatException &&
+                  (error.message ?? '')
+                      .toLowerCase()
+                      .contains('unsupported');
               FlashySnackBar.show(
                 context,
-                message: 'file_upload_failed'.tr(namedArgs: {'file': fileName}),
+                message: isUnsupportedFormat
+                    ? 'profile_image_format_unsupported'.tr()
+                    : 'profile_image_upload_failed_detail'.tr(
+                        namedArgs: {'error': error.toString()},
+                      ),
                 isError: true,
               );
             }
@@ -741,7 +754,8 @@ class _ProfileBodyState extends State<ProfileBody> {
           _clearCompanyStamp = false;
         }
 
-        if (oldProfilePicUrl != null &&
+        if (downloadUrl != null &&
+            oldProfilePicUrl != null &&
             oldProfilePicUrl.isNotEmpty &&
             oldProfilePicUrl != downloadUrl) {
           UploadService.deleteByUrl(oldProfilePicUrl).catchError((
@@ -755,7 +769,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             );
           });
         }
-        if (oldCompanyStampUrl != null &&
+        if ((stampDownloadUrl != null || wasClearingCompanyStamp) &&
+            oldCompanyStampUrl != null &&
             oldCompanyStampUrl.isNotEmpty &&
             oldCompanyStampUrl != stampDownloadUrl) {
           UploadService.deleteByUrl(oldCompanyStampUrl).catchError((

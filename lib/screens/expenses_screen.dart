@@ -4,7 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -22,7 +23,7 @@ import '../services/preferences_service.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/guest_restriction.dart';
 
-class ExpensesScreen extends StatefulWidget {
+class ExpensesScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -35,10 +36,10 @@ class ExpensesScreen extends StatefulWidget {
   });
 
   @override
-  State<ExpensesScreen> createState() => _ExpensesScreenState();
+  ConsumerState<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen> {
+class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
@@ -75,8 +76,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _profileSub = _firestore.userProfileStream.listen((profile) {
@@ -205,6 +206,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       case 'Yearly':
       case 'This Year':
         return 'this_year_expense'.tr();
+      case 'All Time':
+        return 'all_time_expense'.tr();
       case 'Month':
       case 'This Month':
       default:
@@ -1678,6 +1681,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildTodayDropdown() {
     return CustomTimeframeDropdown(
       selectedPeriod: _selectedPeriod,
+      options: const [
+        'Today',
+        'This Week',
+        'This Month',
+        'Last 6 Months',
+        'This Year',
+        'All Time',
+      ],
       onChanged: (value) {
         setState(() {
           _selectedPeriod = value;
@@ -1966,36 +1977,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 80),
-      child: Center(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'add_expenses'.tr(),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0247C4),
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
+    final double containerHeight = (MediaQuery.of(context).size.height - 409)
+        .clamp(495.0, 1200.0);
+    return Container(
+      width: double.infinity,
+      height: containerHeight,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'add_expenses'.tr(),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0247C4),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ],
       ),
     );
   }

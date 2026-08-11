@@ -5,9 +5,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
-import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+
+import 'providers.dart';
 
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
@@ -16,7 +18,6 @@ import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
-import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
 import 'utils/localization_helper.dart';
 import 'utils/navigation_utils.dart';
@@ -79,12 +80,8 @@ Future<void> main() async {
             path: 'assets/translations',
             fallbackLocale: const Locale('en'),
             saveLocale: true,
-            child: MultiProvider(
-              providers: [
-                Provider<FirestoreService>(create: (_) => FirestoreService()),
-                Provider<AuthService>(create: (_) => AuthService()),
-              ],
-              child: const HRMSApp(),
+            child: const ProviderScope(
+              child: HRMSApp(),
             ),
           ),
         );
@@ -178,11 +175,11 @@ Future<void> _initializeMacOSWindow() async {
   }
 }
 
-class HRMSApp extends StatelessWidget {
+class HRMSApp extends ConsumerWidget {
   const HRMSApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       navigatorKey: _rootNavigatorKey,
       title: 'HRMS',
@@ -195,7 +192,7 @@ class HRMSApp extends StatelessWidget {
       builder: (context, child) {
         return SessionTimeoutGate(
           isSessionActive: () {
-            final user = context.read<AuthService>().currentUser;
+            final user = ref.read(authServiceProvider).currentUser;
             return user != null && !user.isAnonymous;
           },
           isBiometricAvailable: BiometricService.isAvailable,
@@ -213,7 +210,7 @@ class HRMSApp extends StatelessWidget {
             );
           },
           onSignInAgain: () async {
-            final authService = context.read<AuthService>();
+            final authService = ref.read(authServiceProvider);
             try {
               await authService.signOut(preserveBiometricLogin: true);
             } catch (error, stackTrace) {
