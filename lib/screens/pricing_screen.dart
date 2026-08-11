@@ -311,7 +311,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 30),
 
                                 Text(
                                   'subscription_disclaimer'.tr(),
@@ -325,7 +325,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   ),
                                 ),
 
-                                const SizedBox(height: 44),
+                                const SizedBox(height: 30),
 
                                 FractionallySizedBox(
                                   widthFactor: 1.1,
@@ -555,7 +555,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: primaryBlue,
-          fontSize: 11.5,
+          fontSize: 11,
           fontWeight: FontWeight.w500,
           fontFamily: 'SF Pro Display',
         ),
@@ -570,7 +570,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
       ),
       child: Container(
         width: 1,
-        height: 14,
+        height: 13,
         color: primaryBlue,
       ),
     );
