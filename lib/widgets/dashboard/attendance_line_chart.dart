@@ -249,8 +249,9 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                         style: TextStyle(
                           color: const Color(0xFF65717E),
                           fontSize: presentChartData.labels.length >= 10
-                              ? 10
-                              : 12,
+                              ? 11.5
+                              : 13,
+                          letterSpacing: 0.5,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'SF Pro Display',
                         ),
