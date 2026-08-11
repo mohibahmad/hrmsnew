@@ -28,7 +28,6 @@ class Validators {
     r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$",
   );
 
-  static final RegExp _phoneDigitsOnly = RegExp(r'\d');
 
   /// Validates that a phone number is not all zeros (e.g., '000000').
   static bool isValidPhone(String? value) {
@@ -92,7 +91,6 @@ class Validators {
 
   static final RegExp _companyId = RegExp(r'^[A-Z0-9-]+$');
   static final RegExp _nationalIdSeparators = RegExp(r'[\s-]');
-  static final RegExp _digitsOnly = RegExp(r'^\d+$');
 
   static bool isValidCompanyId(String? value) {
     final trimmed = value?.trim() ?? '';

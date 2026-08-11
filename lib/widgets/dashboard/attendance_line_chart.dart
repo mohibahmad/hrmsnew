@@ -51,8 +51,12 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
 
   @override
   Widget build(BuildContext context) {
+    // Count each worker once in every visible chart bucket. This preserves all
+    // months in "This Year" while ensuring an updated Present status replaces
+    // a stale Absent status for the same worker and month.
     final latestAttendanceDocs = latestAttendanceRecordPerWorker(
       widget.attendanceDocs,
+      period: widget.period,
     );
 
     // Filter present attendance records
@@ -89,7 +93,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
       context.locale.toString(),
     );
 
-    // Check if there's any absent data to display
+    // Show absent line whenever there is absent data.
     final hasAbsentData =
         absentAttendanceDocs.isNotEmpty &&
         absentChartData.values.any((value) => value > 0);
@@ -178,12 +182,12 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                                         return spots.map((spot) {
                                           final isPresent =
                                               spot.bar.color ==
-                                              const Color(0xFF21367E);
+                                              const Color(0xFF97FFA9);
                                           final label = isPresent
                                               ? 'Present'
                                               : 'Absent';
                                           final color = isPresent
-                                              ? const Color(0xFF21367E)
+                                              ? const Color(0xFF97FFA9)
                                               : const Color(0xFFE74C3C);
 
                                           return LineTooltipItem(
@@ -354,8 +358,8 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                                     ..._buildVisibleBars(
                                       presentSpots,
                                       animValue,
-                                      lineColor: const Color(0xFF21367E),
-                                      fillColor: const Color(0xFFDEE6FF),
+                                      lineColor: const Color(0xFF97FFA9),
+                                      fillColor: const Color(0xFFDCFCE7),
                                     ),
                                     if (hasAbsentData)
                                       ..._buildVisibleBars(
@@ -378,7 +382,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildLegendItem(const Color(0xFF21367E), 'Present'),
+                      _buildLegendItem(const Color(0xFF97FFA9), 'Present'),
                       const SizedBox(width: 30),
                       if (hasAbsentData)
                         _buildLegendItem(const Color(0xFFE74C3C), 'Absent'),

@@ -185,5 +185,45 @@ void main() {
       expect(latest, hasLength(1));
       expect(latest.single['status'], 'Present');
     });
+
+    test('keeps the latest worker status in every month for This Year', () {
+      final now = DateTime.now();
+      final records = <Map<String, dynamic>>[
+        {
+          'workerId': 'worker-1',
+          'attendanceDate': DateTime(now.year, 1, 10),
+          'status': 'Present',
+        },
+        {
+          'workerId': 'worker-1',
+          'attendanceDate': DateTime(now.year, 2, 10),
+          'status': 'Absent',
+        },
+        {
+          'workerId': 'worker-1',
+          'attendanceDate': DateTime(now.year, 8, 9),
+          'status': 'Absent',
+        },
+        {
+          'workerId': 'worker-1',
+          'attendanceDate': DateTime(now.year, 8, 10),
+          'status': 'Present',
+        },
+      ];
+
+      final latest = latestAttendanceRecordPerWorker(
+        records,
+        period: 'This Year',
+        now: now,
+      );
+
+      expect(latest, hasLength(3));
+      expect(
+        latest.singleWhere(
+          (record) => (record['attendanceDate'] as DateTime).month == 8,
+        )['status'],
+        'Present',
+      );
+    });
   });
 }

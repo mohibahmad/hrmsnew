@@ -67,9 +67,12 @@ bool _isNewerAttendanceRecord(
 /// Dashboard status charts represent people, so an older Absent record must
 /// not remain visible after the same worker is marked Present on a later day.
 List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
-  List<Map<String, dynamic>> records,
-) {
+  List<Map<String, dynamic>> records, {
+  String? period,
+  DateTime? now,
+}) {
   final latestByWorker = <String, Map<String, dynamic>>{};
+  final referenceDate = now ?? DateTime.now();
 
   for (final record in records) {
     final workerId = (record['workerId'] ?? '').toString().trim();
@@ -87,18 +90,59 @@ List<Map<String, dynamic>> latestAttendanceRecordPerWorker(
         ? 'name:$name'
         : 'record:$recordId';
 
-    final existing = latestByWorker[workerKey];
+    final bucketKey = period == null
+        ? ''
+        : _attendanceBucketKey(record, period, referenceDate);
+    final groupedKey = bucketKey == null ? workerKey : '$workerKey|$bucketKey';
+
+    final existing = latestByWorker[groupedKey];
     if (existing == null) {
-      latestByWorker[workerKey] = record;
+      latestByWorker[groupedKey] = record;
       continue;
     }
 
     if (_isNewerAttendanceRecord(record, existing)) {
-      latestByWorker[workerKey] = record;
+      latestByWorker[groupedKey] = record;
     }
   }
 
   return latestByWorker.values.toList();
+}
+
+String? _attendanceBucketKey(
+  Map<String, dynamic> record,
+  String period,
+  DateTime now,
+) {
+  final date = AppDateUtils.canonicalAttendanceDate(record);
+  if (date == null) return null;
+
+  final normalizedPeriod = switch (period.trim()) {
+    'Weekly' || 'This Week' => 'Week',
+    'Monthly' || 'This Month' => 'Month',
+    '6 Months' || '6 Monthly' || 'Last 6 Months' => '6 Month',
+    'This Year' => 'Yearly',
+    final value => value,
+  };
+
+  switch (normalizedPeriod) {
+    case 'Today':
+    case 'Week':
+      return '${date.year}-${date.month}-${date.day}';
+    case 'Month':
+      final start = AppDateUtils.periodStart(normalizedPeriod, now);
+      final end = AppDateUtils.periodEnd(normalizedPeriod, now);
+      final totalDays = end.difference(start).inDays + 1;
+      final difference = date.difference(start).inDays;
+      if (difference < 0 || difference >= totalDays) return null;
+      return '${date.year}-${date.month}-week-${difference * 4 ~/ totalDays}';
+    case '6 Month':
+    case 'Yearly':
+    case 'All Time':
+      return '${date.year}-${date.month}';
+    default:
+      return '${date.year}-${date.month}-${date.day}';
+  }
 }
 
 NiceChartRange getNiceRange(double rawMax) {

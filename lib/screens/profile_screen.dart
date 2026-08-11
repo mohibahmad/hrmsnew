@@ -638,11 +638,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
             } catch (_) {}
             if (mounted) {
               setState(() => _isLoading = false);
-              // Surface the real reason instead of hiding it behind a generic
-              // message - otherwise upload failures are impossible to debug.
+            
               final isUnsupportedFormat =
                   error is FormatException &&
-                  (error.message ?? '')
+                  (error.message)
                       .toLowerCase()
                       .contains('unsupported');
               FlashySnackBar.show(

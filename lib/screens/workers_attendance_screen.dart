@@ -2388,7 +2388,11 @@ class _WorkersAttendanceScreenState
         },
       );
     } finally {
-      reasonController.dispose();
+      // Delay disposal to ensure dialog close animation completes,
+      // preventing 'TextEditingController used after dispose' errors.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        reasonController.dispose();
+      });
       if (mounted) {
         setState(() => _isDialogOpen = false);
       }
