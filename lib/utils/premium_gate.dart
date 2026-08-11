@@ -29,6 +29,7 @@ class PremiumGate {
     if (context.mounted) {
       await showDialog(
         context: context,
+        barrierDismissible: false,
         barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
         builder: (context) => const SubscriptionDialog(),
       );
