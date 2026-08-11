@@ -1400,34 +1400,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         : _decodeDataUrl(existingUrl);
 
     return GestureDetector(
-      onTap: hasFile
-          ? () {
-              if (bytes != null) {
-                final mimeType = _getMimeType(fileName ?? 'file');
-                final safeMimeType = mimeType.startsWith('image/')
-                    ? mimeType
-                    : 'image/jpeg';
-                final dataUrl =
-                    'data:$safeMimeType;base64,${base64Encode(bytes)}';
-                _viewDocument(
-                  dataUrl,
-                  true,
-                  label,
-                  isPdf: isPdf,
-                  isDoc: isDoc,
-                  pdfBytes: bytes,
-                );
-              } else if (existingUrl != null && existingUrl.isNotEmpty) {
-                _viewDocument(
-                  existingUrl,
-                  isImage,
-                  label,
-                  isPdf: isPdf,
-                  isDoc: isDoc,
-                );
-              }
-            }
-          : onTap,
+      onTap: onTap,
       child: Container(
         height: _idPreviewHeight,
         width: double.infinity,

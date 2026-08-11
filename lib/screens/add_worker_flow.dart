@@ -1458,6 +1458,42 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         AppDateUtils.parseDdMmYyyy((_joiningDate ?? '').trim());
     if (joiningDate == null) return;
 
+    final hasFrontId =
+        _frontIdBytes != null ||
+        (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
+    if (!hasFrontId) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cnic_front_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    final hasBackId =
+        _backIdBytes != null ||
+        (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty);
+    if (!hasBackId) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cnic_back_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    final hasCv =
+        _cvBytes != null ||
+        (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
+    if (!hasCv) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cv_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });

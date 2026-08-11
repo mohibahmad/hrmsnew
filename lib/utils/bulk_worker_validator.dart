@@ -79,6 +79,7 @@ const Map<String, String> kHeaderMap = {
   'work model': 'type2',
   'experience level': 'experienceLevel',
   'education': 'education',
+  'monthly salary amount': 'salaryAmount',
   'salary amount': 'salaryAmount',
   'leave policy': 'leavePolicy',
   'annual leaves': 'annualLeaves',
