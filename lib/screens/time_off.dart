@@ -62,7 +62,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
-  String _recordsPeriodFilter = 'This Month';
+  String _recordsPeriodFilter = 'All Time';
   DateTimeRange? _customDateRange;
   String _recordsLeaveTypeFilter = 'All';
 
