@@ -47,7 +47,7 @@ class InvoiceService {
     String taxRatePercent = '',
     String invoiceNo = '',
 
-    String companyName = 'HRMS Company',
+    String companyName = 'HRMS',
     String companyAddress = 'Human Resource Management System',
     String companyEmail = 'hr@company.com',
     String companyPhone = '',
@@ -236,8 +236,7 @@ class InvoiceService {
             _tableHeader(navy: navy, white: white),
 
             _tableRow(
-              description:
-                  '${_l('basic_salary', 'Basic Salary')} ($totalWorkDays ${_l('working_days', 'working days')})',
+              description: _l('basic_salary', 'Basic Salary'),
               rate: _money(dailyRate, defaultCurrency: detectedCurrency),
               quantity: totalWorkDays,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
@@ -353,11 +352,6 @@ class InvoiceService {
                       _smallInfoLine(
                         _l('payable_days', 'Payable Days'),
                         daysWorked,
-                        textColor,
-                      ),
-                      _smallInfoLine(
-                        _l('working_days', 'Working Days'),
-                        totalWorkDays,
                         textColor,
                       ),
                       _smallInfoLine(

@@ -1596,22 +1596,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 showGuestRestrictionDialog(context);
                 return;
               }
-              final isPremium = await PreferencesService.isPremium();
               if (!mounted) return;
-              if (!PremiumGate.canAddEntry(
-                currentEntryCount: _expensesDocs.length,
-                isPremium: isPremium,
-                isGuest: isGuest,
-              )) {
-                if (!mounted) return;
-                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                  context,
-                );
-                if (upgraded == true && mounted) {
-                  _showAddExpenseModal(context);
-                }
-                return;
-              }
               _showAddExpenseModal(context);
             },
             style: ElevatedButton.styleFrom(

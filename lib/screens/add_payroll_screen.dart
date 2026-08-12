@@ -48,7 +48,7 @@ Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
     totalDeductions: args['totalDeductions'] as String,
     netSalary: args['netSalary'] as String,
     currency: args['currency'] as String,
-    companyName: args['companyName'] as String? ?? 'HRMS Company',
+    companyName: args['companyName'] as String? ?? 'HRMS',
     companyAddress: args['companyAddress'] as String? ?? '',
     companyEmail: args['companyEmail'] as String? ?? '',
     companyPhone: args['companyPhone'] as String? ?? '',

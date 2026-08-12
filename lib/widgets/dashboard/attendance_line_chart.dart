@@ -303,7 +303,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
       toY: value,
       color: color,
       width: 18,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+      borderRadius: BorderRadius.zero,
     );
   }
 
@@ -339,7 +339,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
           height: 18,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+            borderRadius: BorderRadius.zero,
           ),
         ),
         const SizedBox(width: 8),

@@ -88,7 +88,7 @@ class TimeOffExportService {
     required List<Map<String, dynamic>> records,
     required String periodLabel,
     required String leaveTypeFilter,
-    String companyName = 'HRMS Company',
+    String companyName = 'HRMS',
   }) async {
     final pdf = pw.Document();
 
@@ -125,7 +125,7 @@ class TimeOffExportService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  companyName.isEmpty ? 'HRMS Company' : companyName,
+                  companyName.isEmpty ? 'HRMS' : companyName,
                   style: pw.TextStyle(fontSize: 20, color: navy, fontWeight: pw.FontWeight.bold),
                 ),
                 pw.Text(
@@ -214,7 +214,7 @@ class TimeOffExportService {
     required List<Map<String, dynamic>> records,
     required String periodLabel,
     required String leaveTypeFilter,
-    String companyName = 'HRMS Company',
+    String companyName = 'HRMS',
     String fileName = 'time_off_records.pdf',
   }) async {
     final pdfBytes = await generatePdfReport(

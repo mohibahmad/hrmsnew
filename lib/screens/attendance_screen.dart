@@ -857,12 +857,31 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           '${AttendanceReportService.csvTextDate(range.start).trim()} to '
           '${AttendanceReportService.csvTextDate(range.end).trim()}';
 
+      int overallPresents = 0;
+      int overallAbsents = 0;
+      int overallLeaves = 0;
+
+      for (final worker in _workersList) {
+        final snapshot = AttendanceReportService.snapshotForWorker(
+          worker: worker,
+          attendanceRecords: _rawAttendanceDocs,
+          timeOffRecords: _timeOffRecords,
+          range: range,
+        );
+        overallPresents += snapshot.presents;
+        overallAbsents += snapshot.absents;
+        overallLeaves += snapshot.leaves;
+      }
+
       rows.add(['Attendance Report - $periodLabel']);
       rows.add(['Period: $rangeLabel']);
       rows.add([
         'Generated On: '
             '${AttendanceReportService.csvTextDate(DateTime.now()).trim()}',
       ]);
+      rows.add(['Total Presents Today / Period', overallPresents]);
+      rows.add(['Total Absents Today / Period', overallAbsents]);
+      rows.add(['Total On Leave Today / Period', overallLeaves]);
       rows.add([]);
 
       for (final worker in _workersList) {

@@ -122,49 +122,45 @@ pw.Widget buildCompanyAuthorization({
   double width = 180,
 }) {
   final cleanName = companyName.trim().isEmpty
-      ? 'HRMS Company'
+      ? 'HRMS'
       : companyName.trim();
 
   return pw.SizedBox(
     width: width,
-    child: pw.Row(
+    child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
+        // Stamp centered above signature
         pw.Container(
-          width: 66,
-          height: 66,
+          width: 70,
+          height: 70,
           alignment: pw.Alignment.center,
           child: stampImage != null
               ? pw.Image(stampImage, fit: pw.BoxFit.contain)
               : _buildDefaultHrStamp(),
         ),
-        pw.SizedBox(width: 10),
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                cleanName,
-                style: pw.TextStyle(
-                  color: accentColor,
-                  fontSize: 9,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.Container(height: 0.7, color: accentColor),
-              pw.SizedBox(height: 3),
-              pw.Text(
-                authorizedSignatoryText,
-                style: pw.TextStyle(color: mutedColor, fontSize: 6),
-              ),
-              if (companyId.trim().isNotEmpty)
-                pw.Text(
-                  '${companyIdLabel.isNotEmpty ? '$companyIdLabel ' : ''}${companyId.trim()}',
-                  style: pw.TextStyle(color: mutedColor, fontSize: 6),
-                ),
-            ],
+        pw.SizedBox(height: 4),
+        // Company name with underline
+        pw.Text(
+          cleanName,
+          style: pw.TextStyle(
+            color: accentColor,
+            fontSize: 9,
+            fontWeight: pw.FontWeight.bold,
           ),
         ),
+        pw.SizedBox(height: 2),
+        pw.Container(height: 0.7, color: accentColor),
+        pw.SizedBox(height: 3),
+        pw.Text(
+          authorizedSignatoryText,
+          style: pw.TextStyle(color: mutedColor, fontSize: 6),
+        ),
+        if (companyId.trim().isNotEmpty)
+          pw.Text(
+            '${companyIdLabel.isNotEmpty ? '$companyIdLabel ' : ''}${companyId.trim()}',
+            style: pw.TextStyle(color: mutedColor, fontSize: 6),
+          ),
       ],
     ),
   );

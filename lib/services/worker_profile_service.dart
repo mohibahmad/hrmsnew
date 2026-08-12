@@ -40,7 +40,7 @@ class WorkerProfileService {
     required String address,
     String? profileImageUrl,
     String? generatedOnText,
-    String companyName = 'HRMS Company',
+    String companyName = 'HRMS',
     String companyId = '',
     String? companyStampImageUrl,
   }) async {

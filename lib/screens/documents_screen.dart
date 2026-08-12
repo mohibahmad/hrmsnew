@@ -663,9 +663,30 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   ) async {
     try {
       Uint8List? fileBytes = bytes;
-      if (fileBytes == null && url != null && url.isNotEmpty) {
-        final ref = FirebaseStorage.instance.refFromURL(url);
-        fileBytes = await ref.getData();
+      if ((fileBytes == null || fileBytes.isEmpty) &&
+          url != null &&
+          url.trim().isNotEmpty) {
+        if (url.startsWith('data:')) {
+          final commaIdx = url.indexOf(',');
+          if (commaIdx != -1) {
+            fileBytes = base64Decode(url.substring(commaIdx + 1));
+          }
+        } else {
+          try {
+            final downloaded = await UploadService.downloadRemoteFile(
+              url: url,
+              folder: 'documents',
+              fallbackFileName: defaultName,
+              fallbackMimeType: 'application/octet-stream',
+            );
+            fileBytes = downloaded.bytes;
+          } catch (_) {
+            try {
+              final ref = FirebaseStorage.instance.refFromURL(url);
+              fileBytes = await ref.getData();
+            } catch (_) {}
+          }
+        }
       }
 
       if (fileBytes != null && fileBytes.isNotEmpty) {
@@ -678,10 +699,32 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         if (result != null && result.trim().isNotEmpty) {
           final file = io.File(result);
           await file.writeAsBytes(fileBytes, flush: true);
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_downloaded_successfully'.tr(),
+            );
+          }
           await FileOpener.open(result);
         }
+      } else {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'could_not_download_file'.tr(),
+            isError: true,
+          );
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_download_file'.tr(),
+          isError: true,
+        );
+      }
+    }
   }
 
   Future<void> _uploadAndSave(String field) async {

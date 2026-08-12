@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 class CompanyProfileHelper {
   static String companyNameOrFallback(String? value) {
     final trimmed = (value ?? '').trim();
-    return trimmed.isEmpty ? 'HRMS Company' : trimmed;
+    return trimmed.isEmpty ? 'HRMS' : trimmed;
   }
 
   static Future<Map<String, dynamic>> getCompanyProfileWithFirestore(

@@ -300,6 +300,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   void _showAddAssetModal(BuildContext context) {
     final parentContext = context;
     String? selectedWorkerName;
+    final workerNameController = TextEditingController();
     final typeController = TextEditingController();
     final positionController = TextEditingController();
     DateTime loanedDate = DateTime.now();
@@ -429,15 +430,14 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   }
 
                                   final selectedWorkerData =
-                                      _workersMap[selectedOption];
-                                  if (selectedWorkerData == null) {
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'no_workers_found'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
+                                      _workersMap[selectedOption] ?? {
+                                        'id': 'manual_${DateTime.now().millisecondsSinceEpoch}',
+                                        'name': selectedOption,
+                                        'position': position,
+                                        'email': '',
+                                        'phone': '',
+                                        'joiningDate': '',
+                                      };
 
                                   if (selectedWorkerName != null &&
                                       typeController.text.isNotEmpty &&
@@ -632,24 +632,130 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _buildModalDropdown(
-                      'worker_name'.tr(),
-                      selectedWorkerName,
-                      _workerNames,
-                      'worker_name_hint'.tr(),
-                      (val) {
-                        setModalState(() {
-                          selectedWorkerName = val;
-                          if (val != null && _workersMap.containsKey(val)) {
-                            final workerData = _workersMap[val]!;
-                            positionController.text = _formatPositionTitleCase(
-                              workerData['position'],
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'worker_name'.tr(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Autocomplete<String>(
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return _workerNames;
+                            }
+                            return _workerNames.where((name) =>
+                              name.toLowerCase().contains(
+                                textEditingValue.text.toLowerCase(),
+                              ),
                             );
-                          } else {
-                            positionController.text = '';
-                          }
-                        });
-                      },
+                          },
+                          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                            // sync external controller with autocomplete controller
+                            if (workerNameController.text != controller.text) {
+                              // keep reference
+                            }
+                            return Container(
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: controller,
+                                      focusNode: focusNode,
+                                      decoration: InputDecoration.collapsed(
+                                        hintText: 'worker_name_hint'.tr(),
+                                        hintStyle: TextStyle(
+                                          color: Colors.grey.shade400,
+                                          fontSize: 14,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      onChanged: (val) {
+                                        setModalState(() {
+                                          selectedWorkerName = val.trim().isEmpty ? null : val.trim();
+                                          if (_workersMap.containsKey(val.trim())) {
+                                            positionController.text = _formatPositionTitleCase(
+                                              _workersMap[val.trim()]!['position'],
+                                            );
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
+                                ],
+                              ),
+                            );
+                          },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4,
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 200, maxWidth: 400),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder: (context, index) {
+                                      final option = options.elementAt(index);
+                                      return InkWell(
+                                        onTap: () => onSelected(option),
+                                        splashColor: const Color(0xFF0247C4).withOpacity(0.08),
+                                        highlightColor: const Color(0xFF0247C4).withOpacity(0.05),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          child: Text(
+                                            option,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          onSelected: (String val) {
+                            setModalState(() {
+                              selectedWorkerName = val;
+                              if (_workersMap.containsKey(val)) {
+                                positionController.text = _formatPositionTitleCase(
+                                  _workersMap[val]!['position'],
+                                );
+                              }
+                            });
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
@@ -852,6 +958,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               elevation: 8,
+              menuMaxHeight: 250,
               dropdownColor: Colors.white,
               value: isEmpty ? null : (items.contains(value) ? value : null),
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1205,7 +1312,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       children: [
         Expanded(
           child: Container(
-            height: 44,
+            height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
@@ -1279,23 +1386,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               final isGuest = _authService.currentUser?.isAnonymous ?? false;
               if (isGuest) {
                 if (mounted) showGuestRestrictionDialog(context);
-                return;
-              }
-              final isPremium = await PreferencesService.isPremium();
-              if (!mounted) return;
-              if (!PremiumGate.canAddEntry(
-                currentEntryCount: _assets.length,
-                isPremium: isPremium,
-                isGuest: isGuest,
-              )) {
-                if (!mounted) return;
-                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                  context,
-                );
-                if (!mounted) return;
-                if (upgraded == true) {
-                  _showAddAssetModal(context);
-                }
                 return;
               }
               if (!mounted) return;

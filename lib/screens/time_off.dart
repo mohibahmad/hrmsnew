@@ -942,7 +942,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'search_by_workers_name'.tr(),
+                hintText: 'search_workers_name_position'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -2820,7 +2820,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final companyName = (companyProfile['businessName'] ??
             companyProfile['companyName'] ??
-            'HRMS Company')
+            'HRMS')
         .toString();
     final fileName =
         'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.pdf';

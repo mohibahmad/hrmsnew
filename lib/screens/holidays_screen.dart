@@ -13,7 +13,6 @@ import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import '../utils/premium_gate.dart';
 import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/guest_restriction.dart';
@@ -1191,24 +1190,6 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               if (isGuest) {
                 if (!mounted) return;
                 showGuestRestrictionDialog(context);
-                return;
-              }
-              final isPremium = await PreferencesService.isPremium();
-              if (!mounted) return;
-              if (!PremiumGate.canAddEntry(
-                currentEntryCount: _holidaysByMonth.values.fold<int>(
-                  0,
-                  (sum, list) => sum + list.length,
-                ),
-                isPremium: isPremium,
-                isGuest: isGuest,
-              )) {
-                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                  context,
-                );
-                if (upgraded == true && mounted) {
-                  _showAddHolidayModal(context);
-                }
                 return;
               }
               if (!mounted) return;

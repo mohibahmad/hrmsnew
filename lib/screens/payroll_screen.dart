@@ -960,7 +960,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'search_by_workers_name'.tr(),
+                hintText: 'search_workers_name_position'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -1021,7 +1021,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     filtered.sort((a, b) {
       final paidA = a['isPaid'] == true;
       final paidB = b['isPaid'] == true;
-      if (paidA != paidB) return paidA ? -1 : 1;
+      if (paidA != paidB) return paidA ? 1 : -1;
       final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
       final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
       return nameA.compareTo(nameB);
@@ -1493,7 +1493,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         companyName:
             (companyProfile['businessName'] ??
                     companyProfile['companyName'] ??
-                    'HRMS Company')
+                    'HRMS')
                 .toString(),
         companyAddress: (companyProfile['address'] ?? '').toString(),
         companyEmail: (companyProfile['email'] ?? '').toString(),
@@ -1874,43 +1874,74 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildOvertimeDaysIcon(),
-                                          title: 'overtime_amount'.tr(),
-                                          value: overtimeAmount,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.account_balance_wallet,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
+                                  Builder(builder: (context) {
+                                    final hasDeduction = (double.tryParse(absentDeduction.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0) > 0;
+                                    if (hasDeduction) {
+                                      // Show overtime + salary_after_deduction in row, salary alone below
+                                      return Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildMetricCard(
+                                                  icon: _buildOvertimeDaysIcon(),
+                                                  title: 'overtime_amount'.tr(),
+                                                  value: overtimeAmount,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: _buildMetricCard(
+                                                  icon: const Icon(
+                                                    Icons.account_balance_wallet,
+                                                    color: Color(0xFF004FDE),
+                                                    size: 20,
+                                                  ),
+                                                  title: 'salary_after_deduction'.tr(),
+                                                  value: salaryAfterDeduction,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          title: 'salary_after_deduction'.tr(),
-                                          value: salaryAfterDeduction,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildSalaryIcon(),
-                                          title: 'salary'.tr(),
-                                          value: salary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(child: SizedBox()),
-                                    ],
-                                  ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildMetricCard(
+                                                  icon: _buildSalaryIcon(),
+                                                  title: 'salary'.tr(),
+                                                  value: salary,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              const Expanded(child: SizedBox()),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    } else {
+                                      // No deduction — show overtime + salary side by side
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildMetricCard(
+                                              icon: _buildOvertimeDaysIcon(),
+                                              title: 'overtime_amount'.tr(),
+                                              value: overtimeAmount,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildMetricCard(
+                                              icon: _buildSalaryIcon(),
+                                              title: 'salary'.tr(),
+                                              value: salary,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                  }),
                                 ],
                               ),
                             ),
