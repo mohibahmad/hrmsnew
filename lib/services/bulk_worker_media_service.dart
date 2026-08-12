@@ -115,8 +115,8 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   // while profileImage and cv keep their own key names.
   const mediaFields = <({String key, String field})>[
     (key: 'profileImage', field: 'profileImage'),
-    (key: 'idFront', field: 'frontId'),
-    (key: 'idBack', field: 'backId'),
+    (key: 'frontId', field: 'frontId'),
+    (key: 'backId', field: 'backId'),
     (key: 'cv', field: 'cv'),
   ];
   const uploadBatchSize = 20;
@@ -124,7 +124,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   var totalMedia = 0;
   for (final worker in workers) {
     for (final m in mediaFields) {
-      final value = (worker[m.key] ?? '').toString().trim();
+      final value = (worker[m.key] ?? worker[m.field] ?? '').toString().trim();
       if (value.isNotEmpty) totalMedia++;
     }
   }
@@ -150,7 +150,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     for (final m in mediaFields) {
       final field = m.field;
       final key = m.key;
-      final value = (worker[key] ?? '').toString().trim();
+      final value = (worker[key] ?? worker[field] ?? '').toString().trim();
       final isEmbeddedFile =
           value.startsWith('data:') && value.contains(';base64,');
       final uri = Uri.tryParse(value);
@@ -169,7 +169,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         continue;
       }
 
-      final storedName = (worker['${key}_name'] ?? '').toString().trim();
+      final storedName = (worker['${key}_name'] ?? worker['${field}_name'] ?? '').toString().trim();
       final folder = field == 'profileImage'
           ? 'profile_images'
           : field == 'cv'
@@ -208,24 +208,8 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         );
         embeddedTargets.add((workerIndex: workerIndex, key: key));
       } else {
-        final lowerUrl = value.toLowerCase();
-        if (lowerUrl.contains('firebasestorage.googleapis.com') ||
-            lowerUrl.contains('storage.googleapis.com')) {
-          prepared[workerIndex][key] = value;
-        } else {
-          final remoteKey = (workerIndex, key);
-          remoteItems[remoteKey] = (
-            workerIndex: workerIndex,
-            key: key,
-            field: field,
-            url: value,
-            folder: folder,
-            fallbackName: storedName.isNotEmpty
-                ? storedName
-                : '${key}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
-            fallbackMime: field == 'cv' ? 'application/pdf' : 'image/jpeg',
-          );
-        }
+        // Keep remote HTTP/HTTPS URLs directly without slow re-downloading & re-uploading
+        prepared[workerIndex][key] = value;
       }
     }
   }

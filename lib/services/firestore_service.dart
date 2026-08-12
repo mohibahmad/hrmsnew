@@ -464,9 +464,15 @@ class FirestoreService {
       return BulkWorkerResult(imported: 0, skipped: workersList.length);
 
     final existingSnapshot = await coll.get();
-    final existingWorkers = existingSnapshot.docs
-        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
-        .toList();
+    final existingEmails = <String>{};
+    final existingNationalIds = <String>{};
+    for (final doc in existingSnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final e = WorkerIdentity.normalizeEmail(data['email']);
+      if (e.isNotEmpty) existingEmails.add(e);
+      final n = WorkerIdentity.normalizeNationalId(data['nationalId']);
+      if (n.isNotEmpty) existingNationalIds.add(n);
+    }
 
     final acceptedWorkers = <Map<String, dynamic>>[];
     final validWorkers = <Map<String, dynamic>>[];
@@ -481,18 +487,30 @@ class FirestoreService {
               .trim();
       try {
         Validators.validateWorker(worker);
-        final duplicateField = WorkerIdentity.duplicateField(worker, [
-          ...existingWorkers,
-          ...acceptedWorkers,
-        ]);
-        if (duplicateField != null) {
+        final email = WorkerIdentity.normalizeEmail(worker['email']);
+        final nationalId = WorkerIdentity.normalizeNationalId(
+          worker['nationalId'],
+        );
+
+        String? dupField;
+        if (email.isNotEmpty && existingEmails.contains(email)) {
+          dupField = 'Email';
+        } else if (nationalId.isNotEmpty && existingNationalIds.contains(nationalId)) {
+          dupField = 'Government ID';
+        }
+
+        if (dupField != null) {
           skipped++;
           if (clientRowId.isNotEmpty) skippedClientRowIds.add(clientRowId);
           skipReasons.add(
-            'Duplicate ${duplicateField.name}: ${worker['name'] ?? worker['email'] ?? ''}',
+            'Duplicate $dupField: ${worker['name'] ?? worker['email'] ?? ''}',
           );
           continue;
         }
+
+        if (email.isNotEmpty) existingEmails.add(email);
+        if (nationalId.isNotEmpty) existingNationalIds.add(nationalId);
+
         acceptedWorkers.add(worker);
         validWorkers.add(worker);
       } catch (e) {
