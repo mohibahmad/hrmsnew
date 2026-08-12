@@ -1714,12 +1714,18 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               _dragAnchorDate,
             );
             var exceededAvailableDays = false;
+            final today = DateTime.now();
+            final todayDate = DateTime(today.year, today.month, today.day);
             for (final date in TimeOffService.inclusiveDateRange(
               anchor,
               current,
             )) {
               if (_isNonWorkingDate(date)) continue;
               if (isDragRemoving) {
+                // Past dates from existing records are locked and cannot be
+                // removed via drag. Only future dates can be deselected.
+                final isPastDate = date.isBefore(todayDate);
+                if (isPastDate) continue;
                 candidate.remove(date);
               } else {
                 if (candidate.contains(date)) continue;
@@ -1901,7 +1907,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
-    if (!isRemoving && _selectedWorker != null) {
+    if (_selectedWorker != null) {
       final savedLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
         _timeoffRecords,
@@ -1910,13 +1916,30 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
       if (savedLeave != null) {
         if (TimeOffService.recordHasLeaveType(savedLeave, _timeOffType)) {
-          if (!TimeOffService.isEditableRecord(savedLeave)) {
+          // Past dates from existing records are locked and cannot be removed.
+          // Only future dates can be deselected.
+          final today = DateTime.now();
+          final isPastDate = selectedDate.isBefore(DateTime(today.year, today.month, today.day));
+          if (isRemoving && isPastDate) {
             FlashySnackBar.show(
               context,
               message: 'past_time_off_edit_blocked'.tr(),
               isError: true,
             );
             return;
+          }
+          // For adding new dates on a saved record, allow only if the record
+          // has future dates or the date being added is in the future.
+          if (!isRemoving && !TimeOffService.isEditableRecord(savedLeave)) {
+            // The record has past dates, but we still allow adding future dates.
+            if (selectedDate.isBefore(DateTime(today.year, today.month, today.day))) {
+              FlashySnackBar.show(
+                context,
+                message: 'past_time_off_edit_blocked'.tr(),
+                isError: true,
+              );
+              return;
+            }
           }
           if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
           if (!mounted) return;
@@ -1925,7 +1948,11 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             // Load the owning record before removing its date so any same-type
             // assigned day can be edited directly.
             _applyEditingRecord(savedLeave, preserveCalendarMonth: true);
-            _selectedDates.remove(selectedDate);
+            if (isRemoving) {
+              _selectedDates.remove(selectedDate);
+            } else {
+              _selectedDates.add(selectedDate);
+            }
             _hasDateSelectionChanged = true;
             _syncSelectionBounds();
           });
