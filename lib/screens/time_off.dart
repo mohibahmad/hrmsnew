@@ -715,6 +715,65 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
 
 
+  bool get _isDropdownFilterActive {
+    return _recordsPeriodFilter != 'All Time' || _recordsLeaveTypeFilter != 'All';
+  }
+
+  List<Map<String, dynamic>> get _matchingWorkersForDropdownFilters {
+    final base = _filteredWorkers;
+    if (!_isDropdownFilterActive) return base;
+
+    return base.where((worker) {
+      final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+      final workerEmail =
+          (worker['email'] ?? worker['workerEmail'] ?? '').toString().trim().toLowerCase();
+      return _filteredTimeOffRecords.any((rec) {
+        final recId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
+        final recEmail =
+            (rec['workerEmail'] ?? rec['email'] ?? '').toString().trim().toLowerCase();
+        return (workerId.isNotEmpty && recId.isNotEmpty && recId == workerId) ||
+            (workerEmail.isNotEmpty && recEmail.isNotEmpty && recEmail == workerEmail);
+      });
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _displayWorkers {
+    if (!_isDropdownFilterActive) return _filteredWorkers;
+    return _matchingWorkersForDropdownFilters;
+  }
+
+  String get _activeFilterName {
+    final List<String> parts = [];
+    if (_recordsLeaveTypeFilter != 'All') {
+      parts.add(_localizedLeaveType(_recordsLeaveTypeFilter));
+    }
+    if (_recordsPeriodFilter != 'All Time') {
+      if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+        final start = _customDateRange!.start;
+        final end = _customDateRange!.end;
+        if (start.year == end.year && start.month == end.month && start.day == end.day) {
+          parts.add(DateFormat('dd MMM').format(start));
+        } else {
+          parts.add('${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}');
+        }
+      } else {
+        final periodOptions = [
+          {'value': 'This Month', 'label': _l('this_month', 'This Month')},
+          {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
+          {'value': 'This Year', 'label': _l('this_year', 'This Year')},
+          {'value': 'All Time', 'label': _l('all_time', 'All Time')},
+          {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
+        ];
+        final match = periodOptions.firstWhere(
+          (e) => e['value'] == _recordsPeriodFilter,
+          orElse: () => {'value': _recordsPeriodFilter, 'label': _recordsPeriodFilter},
+        );
+        parts.add(match['label']!);
+      }
+    }
+    return parts.join(' • ');
+  }
+
   List<Map<String, dynamic>> get _filteredWorkers {
     final filtered = _timeoffDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -762,7 +821,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       );
     }
 
-    final filtered = _filteredWorkers;
+    final filtered = _displayWorkers;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -2088,10 +2147,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   Widget _buildEmptyState() {
     final double dynamicHeight = (MediaQuery.of(context).size.height - 329)
         .clamp(440.0, 1200.0);
-    final bool hasActiveFilters =
-        _recordsPeriodFilter != 'All Time' || _recordsLeaveTypeFilter != 'All';
+    final bool hasActiveFilters = _isDropdownFilterActive;
+    final String filterName = _activeFilterName;
     final String emptyMessage = hasActiveFilters
-        ? 'No time off records found for the selected date range and leave type.'
+        ? (filterName.isNotEmpty
+            ? _l('no_records_named_filter', 'No time off records found for "$filterName".')
+            : _l('no_records_selected_filter', 'No time off records found for the selected filter.'))
         : 'no_time_off_records'.tr();
 
     return Container(
@@ -2159,6 +2220,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       orElse: () => {'value': _recordsPeriodFilter, 'label': _recordsPeriodFilter},
     );
     String periodLabel = match['label']!;
+    if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+      final start = _customDateRange!.start;
+      final end = _customDateRange!.end;
+      if (start.year == end.year && start.month == end.month && start.day == end.day) {
+        periodLabel = DateFormat('dd MMM').format(start);
+      } else if (start.year == end.year) {
+        periodLabel = '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}';
+      } else {
+        periodLabel = '${DateFormat('dd MMM yy').format(start)} - ${DateFormat('dd MMM yy').format(end)}';
+      }
+    }
 
     String leaveTypeLabel = _recordsLeaveTypeFilter == 'All'
         ? _l('all_filter', 'All')
@@ -2171,7 +2243,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       children: [
         PopupMenuButton<String>(
           tooltip: '',
-          constraints: const BoxConstraints(minWidth: 140, maxWidth: 170),
+          constraints: const BoxConstraints(minWidth: 140, maxWidth: 220),
           onSelected: (val) {
             if (val == 'Custom Range') {
               _selectCustomDateRange(context);
@@ -2668,8 +2740,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       child: _buildCalendarGrid(calendarDate, selectedDates),
                     ),
                     const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
+                    Align(
+                      alignment: Alignment.centerRight,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: selectedDates.isEmpty
@@ -2679,7 +2751,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                           elevation: 0,
                         ),
                         onPressed: selectedDates.isEmpty
@@ -2689,9 +2761,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                 Navigator.of(context).pop(sortedDates);
                               },
                         child: Text(
-                          _l('apply', 'Apply Dates'),
+                          _l('apply', 'Apply'),
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
                           ),

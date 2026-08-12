@@ -302,7 +302,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
     return BarChartRodData(
       toY: value,
       color: color,
-      width: 12,
+      width: 18,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
     );
   }
