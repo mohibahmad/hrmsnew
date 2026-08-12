@@ -578,7 +578,6 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
   final religionLabel = s['religion_title']!;
   final educationLabel = s['education_title']!;
   final relationshipLabel = s['relationship_status']!;
-  final salaryTypeLabel = s['salary_type']!;
   final addressLabel = s['address']!;
   final salaryLabel = s['salary']!;
   final fieldLabel = s['field']!;
@@ -714,8 +713,8 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
               [
                 relationshipLabel,
                 args.relationshipStatus,
-                salaryTypeLabel,
-                args.salaryType,
+                salaryLabel,
+                args.salary.isNotEmpty ? args.salary : '-',
               ],
               navy,
               isHeader: true,
@@ -724,8 +723,8 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
               [
                 addressLabel,
                 args.address,
-                salaryLabel,
-                args.salary.isNotEmpty ? args.salary : '-',
+                '',
+                '',
               ],
               navy,
               isHeader: true,
