@@ -1634,6 +1634,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         }
       }
 
+      final newAnnual = int.tryParse(_annualLeavesController.text.trim()) ?? 0;
+      final newSick = int.tryParse(_sickLeavesController.text.trim()) ?? 0;
+      final newCasual = int.tryParse(_casualLeavesController.text.trim()) ?? 0;
+      final newMedical = int.tryParse(_medicalLeavesController.text.trim()) ?? 0;
+
       final data = <String, dynamic>{
         'name': name,
         'fatherName': Validators.titleCase(_fatherNameController.text),
@@ -1657,20 +1662,20 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         'experienceLevel': _experienceLevelController.text.trim(),
         'education': _educationController.text.trim(),
         'salaryAmount': validatedSalaryAmount,
-        'annualLeaves': int.tryParse(_annualLeavesController.text.trim()) ?? 0,
-        'availableAnnualLeaves':
-            int.tryParse(_annualLeavesController.text.trim()) ?? 0,
-        'leavesUsed': 0,
-        'sickLeaves': int.tryParse(_sickLeavesController.text.trim()) ?? 0,
-        'availableSickLeaves':
-            int.tryParse(_sickLeavesController.text.trim()) ?? 0,
-        'casualLeaves': int.tryParse(_casualLeavesController.text.trim()) ?? 0,
-        'availableCasualLeaves':
-            int.tryParse(_casualLeavesController.text.trim()) ?? 0,
-        'medicalLeaves':
-            int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
-        'availableMedicalLeaves':
-            int.tryParse(_medicalLeavesController.text.trim()) ?? 0,
+        'annualLeaves': newAnnual,
+        'availableAnnualLeaves': newAnnual,
+        'sickLeaves': newSick,
+        'availableSickLeaves': newSick,
+        'casualLeaves': newCasual,
+        'availableCasualLeaves': newCasual,
+        'medicalLeaves': newMedical,
+        'availableMedicalLeaves': newMedical,
+        'leaveBalances': {
+          'annualLeave': newAnnual,
+          'sickLeave': newSick,
+          'casualLeave': newCasual,
+          'medicalLeave': newMedical,
+        },
         'joiningDate': isGuest
             ? (_joiningDate ?? '')
             : Timestamp.fromDate(
@@ -1684,15 +1689,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           'cvFileName': _cvName ?? _cleanFileName(cvUrl),
         'payroll_initialized': true,
       };
-
-      if (!isEditing) {
-        data['leavesUsed'] = 0;
-        data['availableAnnualLeaves'] =
-            int.tryParse(_annualLeavesController.text.trim()) ?? 0;
-      } else if (!isGuest) {
-        data.remove('leavesUsed');
-        data.remove('availableAnnualLeaves');
-      }
 
       if (widget.workerToEdit != null) {
         final editId = widget.workerToEdit!['id']?.toString();

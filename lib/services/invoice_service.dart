@@ -123,6 +123,12 @@ class InvoiceService {
     final hasLeaveDeduction = _parseValue(leaveDeduction) > 0;
     final hasTaxDeduction = _parseValue(taxDeduction) > 0;
     final hasDeductions = _parseValue(totalDeductions) > 0;
+    final grossVal = _parseValue(grossPay);
+    final overtimeVal = _parseValue(overtimePay);
+    final totalDeductionsVal = _parseValue(totalDeductions);
+    final totalEarningsVal = grossVal + overtimeVal;
+    final rawNetVal = totalEarningsVal - totalDeductionsVal;
+    final isNegativeNet = rawNetVal < 0;
     final invoiceLeaves = resolveInvoiceLeaveDays(
       leaves: leaves,
       paidLeaves: paidLeaves,
@@ -412,10 +418,12 @@ class InvoiceService {
                               style: pw.TextStyle(fontSize: 10, color: white),
                             ),
                             pw.Text(
-                              _money(
-                                netSalary,
-                                defaultCurrency: detectedCurrency,
-                              ),
+                              isNegativeNet
+                                  ? _money('0', defaultCurrency: detectedCurrency)
+                                  : _money(
+                                      netSalary,
+                                      defaultCurrency: detectedCurrency,
+                                    ),
                               style: pw.TextStyle(
                                 fontSize: 10,
                                 color: white,

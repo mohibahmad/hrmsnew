@@ -1021,9 +1021,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     filtered.sort((a, b) {
       final paidA = a['isPaid'] == true;
       final paidB = b['isPaid'] == true;
-      if (paidA && !paidB) return -1;
-      if (!paidA && paidB) return 1;
-      return 0;
+      if (paidA != paidB) return paidA ? -1 : 1;
+      final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
+      final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
+      return nameA.compareTo(nameB);
     });
 
     return filtered;
@@ -1617,19 +1618,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             }(),
           }
         : basePreviewCalculation;
-    final savedNetSalary = data['netSalaryAmount'];
-    final savedNetSalaryDisplay = savedNetSalary is num
-        ? PayrollService.formatAmountInCurrency(
-            savedNetSalary,
-            _companyCurrency,
-          )
-        : (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '')
-              .toString()
-              .trim();
     final String salaryAfterDeduction = AmountText.formatFull(
-      (savedNetSalaryDisplay.isNotEmpty
-              ? savedNetSalaryDisplay
-              : previewCalculation['formattedNet'] ?? '0')
+      (previewCalculation['formattedNet'] ??
+              previewCalculation['formattedNetSalary'] ??
+              '0')
           .toString(),
       locale: context.locale.toString(),
     );

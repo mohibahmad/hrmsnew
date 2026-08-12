@@ -1063,7 +1063,7 @@ class _WorkersAttendanceScreenState
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
-    return _workers.where((worker) {
+    final list = _workers.where((worker) {
       if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
         return false;
       }
@@ -1082,6 +1082,23 @@ class _WorkersAttendanceScreenState
           email.contains(query) ||
           workerStatus.contains(query);
     }).toList();
+
+    list.sort((a, b) {
+      final statusA = _getWorkerStatus(a);
+      final statusB = _getWorkerStatus(b);
+      final isMarkedA = statusA.isNotEmpty;
+      final isMarkedB = statusB.isNotEmpty;
+
+      if (isMarkedA != isMarkedB) {
+        return isMarkedA ? 1 : -1;
+      }
+
+      final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
+      final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
+      return nameA.compareTo(nameB);
+    });
+
+    return list;
   }
 
   Set<String> get _currentWorkerIds {
@@ -1105,7 +1122,7 @@ class _WorkersAttendanceScreenState
   }
 
   List<Map<String, dynamic>> get _visibleTodayAttendance {
-    return _todayAttendance
+    final list = _todayAttendance
         .where((record) => _attendanceBelongsToCurrentWorker(record))
         .map((record) {
           final worker = _resolveWorkerData(record);
@@ -1123,6 +1140,14 @@ class _WorkersAttendanceScreenState
           return status == _selectedStatusFilter.toLowerCase();
         })
         .toList();
+
+    list.sort((a, b) {
+      final nameA = (a['name'] ?? a['workerName'] ?? '').toString().trim().toLowerCase();
+      final nameB = (b['name'] ?? b['workerName'] ?? '').toString().trim().toLowerCase();
+      return nameA.compareTo(nameB);
+    });
+
+    return list;
   }
 
   @override
@@ -1853,55 +1878,53 @@ class _WorkersAttendanceScreenState
                 TimeOffService.getLeaveBalance(workerData, type) > 0;
           }
 
-          String firstAvailableLeaveType() {
-            return leaveTypes.firstWhere(
-              canSelectLeaveType,
-              orElse: () => 'Annual Leave',
-            );
+          String? firstAvailableLeaveType() {
+            for (final type in leaveTypes) {
+              if (canSelectLeaveType(type)) return type;
+            }
+            return null;
           }
 
           String selectedLeaveType = selectedStatus == 'Leave'
-              ? (leaveTypes.contains(initialType)
+              ? (leaveTypes.contains(initialType) && canSelectLeaveType(initialType)
                     ? initialType
-                    : firstAvailableLeaveType())
+                    : (firstAvailableLeaveType() ?? 'Annual Leave'))
               : (absentTypes.contains(initialType)
                     ? initialType
                     : 'Without Notice');
 
-          List<Map<String, String>> reasonOptions() {
+          List<Map<String, dynamic>> reasonOptions() {
             if (selectedStatus == 'Absent') {
               return const [
-                {'value': 'Without Notice', 'key': 'absent_without_notice'},
-                {'value': 'Family Emergency', 'key': 'absent_emergency'},
-                {'value': 'Other', 'key': 'absent_other'},
+                {'value': 'Without Notice', 'key': 'absent_without_notice', 'disabled': 'false'},
+                {'value': 'Family Emergency', 'key': 'absent_emergency', 'disabled': 'false'},
+                {'value': 'Other', 'key': 'absent_other', 'disabled': 'false'},
               ];
             }
             return [
               {
                 'value': 'Annual Leave',
                 'key': 'annual_leave',
-                'disabled': canSelectLeaveType('Annual Leave')
-                    ? 'false'
-                    : 'true',
+                'disabled': canSelectLeaveType('Annual Leave') ? 'false' : 'true',
+                'balance': TimeOffService.getLeaveBalance(workerData, 'Annual Leave'),
               },
               {
                 'value': 'Sick Leave',
                 'key': 'sick_leave_type',
                 'disabled': canSelectLeaveType('Sick Leave') ? 'false' : 'true',
+                'balance': TimeOffService.getLeaveBalance(workerData, 'Sick Leave'),
               },
               {
                 'value': 'Casual Leave',
                 'key': 'casual_leave_type',
-                'disabled': canSelectLeaveType('Casual Leave')
-                    ? 'false'
-                    : 'true',
+                'disabled': canSelectLeaveType('Casual Leave') ? 'false' : 'true',
+                'balance': TimeOffService.getLeaveBalance(workerData, 'Casual Leave'),
               },
               {
                 'value': 'Medical Leave',
                 'key': 'medical_leave_type',
-                'disabled': canSelectLeaveType('Medical Leave')
-                    ? 'false'
-                    : 'true',
+                'disabled': canSelectLeaveType('Medical Leave') ? 'false' : 'true',
+                'balance': TimeOffService.getLeaveBalance(workerData, 'Medical Leave'),
               },
             ];
           }
@@ -2039,6 +2062,18 @@ class _WorkersAttendanceScreenState
                                         child: GestureDetector(
                                           onTap: canSelectLeave && !dialogIsSaving
                                               ? () {
+                                                  final availType =
+                                                      firstAvailableLeaveType();
+                                                  if (availType == null) {
+                                                    FlashySnackBar.show(
+                                                      context,
+                                                      message:
+                                                          'requested_leaves_exceed_available'
+                                                              .tr(),
+                                                      isError: true,
+                                                    );
+                                                    return;
+                                                  }
                                                   setDialogState(() {
                                                     if (selectedStatus !=
                                                         'Leave') {
@@ -2046,7 +2081,7 @@ class _WorkersAttendanceScreenState
                                                     }
                                                     selectedStatus = 'Leave';
                                                     selectedLeaveType =
-                                                        firstAvailableLeaveType();
+                                                        availType;
                                                   });
                                                 }
                                               : null,
@@ -2092,11 +2127,13 @@ class _WorkersAttendanceScreenState
                                         items: reasonOptions()
                                             .map(
                                               (o) => DropdownMenuItem(
-                                                value: o['value'],
+                                                value: o['value'] as String,
                                                 enabled:
                                                     o['disabled'] != 'true',
                                                 child: Text(
-                                                  (o['key'] ?? '').tr(),
+                                                  selectedStatus == 'Absent'
+                                                      ? (o['key'] as String? ?? '').tr()
+                                                      : '${(o['key'] as String? ?? '').tr()} (${o['balance'] ?? 0})',
                                                   style: TextStyle(
                                                     fontSize: 13,
                                                     fontFamily:

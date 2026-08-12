@@ -289,7 +289,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
-    return _allWorkers.where((doc) {
+    final list = _allWorkers.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.trim().toLowerCase();
@@ -299,6 +299,14 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
       return matchesSearch && matchesFilter;
     }).toList();
+
+    list.sort((a, b) {
+      final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
+      final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
+      return nameA.compareTo(nameB);
+    });
+
+    return list;
   }
 
   Future<void> _deleteWorker(String docId) async {
