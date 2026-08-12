@@ -797,7 +797,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     final localizedType2 = LocalizationHelper.localizeType2(type2);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
         color: const Color(0xFFF6F8FA),
         borderRadius: BorderRadius.circular(6),
