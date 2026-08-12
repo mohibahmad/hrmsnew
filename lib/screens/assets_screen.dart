@@ -711,34 +711,55 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             return Align(
                               alignment: Alignment.topLeft,
                               child: Material(
-                                elevation: 4,
+                                elevation: 6,
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxHeight: 200, maxWidth: 400),
-                                  child: ListView.builder(
-                                    padding: EdgeInsets.zero,
-                                    shrinkWrap: true,
-                                    itemCount: options.length,
-                                    itemBuilder: (context, index) {
-                                      final option = options.elementAt(index);
-                                      return InkWell(
-                                        onTap: () => onSelected(option),
-                                        splashColor: const Color(0xFF0247C4).withOpacity(0.08),
-                                        highlightColor: const Color(0xFF0247C4).withOpacity(0.05),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                          child: Text(
-                                            option,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.black,
-                                              fontFamily: 'SF Pro Display',
+                                borderRadius: BorderRadius.zero,
+                                shadowColor: Colors.black.withOpacity(0.12),
+                                child: Container(
+                                  constraints: const BoxConstraints(maxHeight: 220, maxWidth: 420),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: const Color(0xFFE5E7EB),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.zero,
+                                    child: ListView.separated(
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      separatorBuilder: (_, __) => const Divider(
+                                        height: 1,
+                                        thickness: 0.6,
+                                        color: Color(0xFFF3F4F6),
+                                        indent: 14,
+                                        endIndent: 14,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        final option = options.elementAt(index);
+                                        return InkWell(
+                                          onTap: () => onSelected(option),
+                                          splashColor: const Color(0xFF0247C4).withOpacity(0.06),
+                                          highlightColor: const Color(0xFF0247C4).withOpacity(0.04),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 10,
+                                            ),
+                                            child: Text(
+                                              option,
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                color: Color(0xFF1F2937),
+                                                fontFamily: 'SF Pro Display',
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      );
-                                    },
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),

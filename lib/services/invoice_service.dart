@@ -432,7 +432,7 @@ class InvoiceService {
                 ),
               ],
             ),
-            pw.SizedBox(height: 20),
+            pw.SizedBox(height: 8),
             pw.Align(
               alignment: pw.Alignment.centerRight,
               child: _companyAuthorization(

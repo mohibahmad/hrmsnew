@@ -242,15 +242,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       prorationFactor: _prorationFactor,
     );
 
-    final savedNetSalary = widget.workerData['netSalaryAmount'];
-    if (savedNetSalary is num && savedNetSalary > 0) {
-      result['formattedNet'] = PayrollService.formatAmountInCurrency(
-        savedNetSalary.toDouble(),
-        _currencyCode,
-      );
-      result['netSalary'] = savedNetSalary.toDouble();
-    }
-
     setState(() {
       _calcResult = result;
       _calculatedNet = result['formattedNet'] as String? ?? '';
@@ -1819,13 +1810,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
           _breakdownRow(
             'gross_pay'.tr(),
             fmt('formattedGross'),
-            '${_workDaysCtrl.text.trim()} ${int.tryParse(_workDaysCtrl.text.trim()) == 1 ? 'day'.tr() : 'days'.tr()}',
+            null,
           ),
           _breakdownRow('overtime_pay'.tr(), fmt('formattedOvertime'), null),
           _breakdownRow(
             'absent_deduction'.tr(),
             fmt('formattedAbsentDeduct'),
-            '${cr['absentDays'] ?? 0} ${(cr['absentDays'] ?? 0).toString() == '1' ? 'day'.tr() : 'days'.tr()}',
+            null,
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(

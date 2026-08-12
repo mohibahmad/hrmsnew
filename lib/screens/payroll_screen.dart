@@ -1670,7 +1670,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                 child: Center(
                   child: Container(
                     width: dialogWidth,
-                    height: 540,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
@@ -1686,6 +1685,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                       ],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 40,
@@ -1716,14 +1716,18 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  'payroll_data_preview'.tr(),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'payroll_data_preview'.tr(),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1764,7 +1768,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                               const SizedBox(width: 2),
                               GestureDetector(
                                 onTap: () async {
-                                  Navigator.of(context).pop();
                                   await _downloadPayrollInvoice(data);
                                 },
                                 child: MouseRegion(
@@ -1796,8 +1799,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                           email: email,
                           imageUrl: data['profileImage']?.toString(),
                         ),
-                        Expanded(
-                          child: Container(
+                        Container(
                             decoration: const BoxDecoration(
                               color: Color(0xFFFFFFFF),
                               border: Border(
@@ -1819,7 +1821,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                 bottomRight: Radius.circular(6),
                               ),
                             ),
-                            child: SingleChildScrollView(
+                            child: Padding(
                               padding: const EdgeInsets.fromLTRB(
                                 20,
                                 16,
@@ -1876,7 +1878,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                   const SizedBox(height: 12),
                                   Builder(builder: (context) {
                                     final hasDeduction = (double.tryParse(absentDeduction.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0) > 0;
-                                    if (hasDeduction) {
+                                    final hasOvertime = (double.tryParse(overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0) > 0;
+                                    final showNetCard = hasDeduction || hasOvertime;
+
+                                    if (showNetCard) {
                                       // Show overtime + salary_after_deduction in row, salary alone below
                                       return Column(
                                         children: [
@@ -1920,7 +1925,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                         ],
                                       );
                                     } else {
-                                      // No deduction — show overtime + salary side by side
+                                      // No deduction, no overtime — show overtime + salary side by side
                                       return Row(
                                         children: [
                                           Expanded(
@@ -1946,9 +1951,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ),
                 ),
               ),

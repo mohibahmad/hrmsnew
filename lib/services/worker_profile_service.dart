@@ -752,14 +752,14 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             ], navy),
           ],
         ),
-        pw.SizedBox(height: 20),
+        pw.SizedBox(height: 6),
         pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
-        pw.SizedBox(height: 8),
+        pw.SizedBox(height: 10),
 
         pw.Align(
           alignment: pw.Alignment.centerRight,
           child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
               buildCompanyAuthorization(
                 companyName: args.companyName,
@@ -769,13 +769,13 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 mutedColor: PdfColor.fromHex('#6B7280'),
                 authorizedSignatoryText: s['authorized_signatory']!,
               ),
-              pw.SizedBox(height: 6),
+              pw.SizedBox(height: 4),
               pw.Text(
                 args.generatedOnText ??
                     '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
                 style: pw.TextStyle(
-                  fontSize: 9,
-                  color: PdfColor.fromHex('#6B7280'),
+                  fontSize: 7,
+                  color: PdfColor.fromHex('#9CA3AF'),
                 ),
               ),
             ],

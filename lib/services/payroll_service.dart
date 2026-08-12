@@ -1066,14 +1066,12 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
-    final absentRate = absentDeductionPerDay.trim().isNotEmpty
+    final absentDeduction = customAbsentDeduction > 0
         ? customAbsentDeduction
-        : 0.0;
-    final leaveRate = leaveDeductionPerDay.trim().isNotEmpty
+        : absentDays * dailyRate;
+    final leaveDeduction = customLeaveDeduction > 0
         ? customLeaveDeduction
-        : dailyRate;
-    final absentDeduction = absentDays * absentRate;
-    final leaveDeduction = leaveDays * leaveRate;
+        : leaveDays * dailyRate;
 
     final subtotalBeforeTax =
         (grossSalary + overtimePay - absentDeduction - leaveDeduction).clamp(
@@ -1102,8 +1100,8 @@ class PayrollService {
       'overtimeDays': 0,
       'grossSalary': grossSalary,
       'overtimePay': overtimePay,
-      'absentDeductionPerDayApplied': absentRate,
-      'leaveDeductionPerDayApplied': leaveRate,
+      'absentDeductionPerDayApplied': absentDays > 0 ? absentDeduction / absentDays : 0.0,
+      'leaveDeductionPerDayApplied': leaveDays > 0 ? leaveDeduction / leaveDays : 0.0,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
       'taxRatePercent': taxRatePercent,
