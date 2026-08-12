@@ -35,14 +35,10 @@ Future<void> main() async {
       try {
         await EasyLocalization.ensureInitialized();
 
-        // Load CLDR date/time symbols & patterns for all supported locales so
-        // locale-based date formatting (e.g. DateFormat.yMd) works everywhere.
         await initializeDateFormatting();
 
         await PreferencesService.initFromPrefs();
 
-        // Local image caches belong to guest mode only. Authenticated company
-        // branding is loaded from that user's Firebase profile after sign-in.
         if (PreferencesService.cachedIsGuest) {
           final cachedUrl = PreferencesService.cachedProfilePicUrl;
           if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
@@ -80,9 +76,7 @@ Future<void> main() async {
             path: 'assets/translations',
             fallbackLocale: const Locale('en'),
             saveLocale: true,
-            child: const ProviderScope(
-              child: HRMSApp(),
-            ),
+            child: const ProviderScope(child: HRMSApp()),
           ),
         );
       } catch (error, stackTrace) {

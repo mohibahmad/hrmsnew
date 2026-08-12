@@ -12,19 +12,13 @@ enum BiometricAuthResult {
   /// is returned.
   cancelled,
 
-  /// Authentication failed (wrong fingerprint, etc.).
   failed,
 
-  /// Biometric authentication is locked out (too many attempts).
   lockedOut,
 
-  /// Biometric authentication is permanently locked out.
   permanentlyLockedOut,
 
-  /// Biometric authentication is not available on this device.
   notAvailable,
-
-  /// An unexpected error occurred.
   error,
 }
 
