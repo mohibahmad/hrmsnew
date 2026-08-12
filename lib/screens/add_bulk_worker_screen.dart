@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';

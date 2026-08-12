@@ -16,7 +16,6 @@ import '../utils/guest_restriction.dart';
 import '../utils/time_off_unsaved_changes.dart';
 import '../utils/time_off_draft.dart';
 import '../utils/date_utils.dart';
-import '../utils/image_utils.dart';
 import '../utils/localization_helper.dart';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -804,12 +803,41 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return (_displayedLeaveBalance - _summaryRequestedDays).clamp(0, 9999);
   }
 
-  String get _selectedDatesSummary {
-    final dates = _sortedSelectedDates;
-    if (dates.isEmpty) return 'select_date'.tr();
-    final visibleDates = dates.take(3).map(_formatDate).join(', ');
-    final remaining = dates.length - 3;
-    return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
+  /// Every selected date across ALL leave types (the active dropdown type plus
+  /// any stashed pending drafts), paired with its leave type. Sorted by date.
+  List<(DateTime, String)> _allSelectedEntries() {
+    final entries = <(DateTime, String)>[];
+    final seen = <DateTime>{};
+    for (final d in _sortedSelectedDates) {
+      final key = _dateOnly(d);
+      if (seen.add(key)) entries.add((d, _timeOffType));
+    }
+    for (final draft in _pendingDrafts.values) {
+      for (final d in draft.selectedDates.toList()..sort()) {
+        final key = _dateOnly(d);
+        if (seen.add(key)) entries.add((d, draft.leaveType));
+      }
+    }
+    return entries;
+  }
+
+  /// Total unique selected days across ALL leave types.
+  int get _allTypesSelectedDaysCount => _allSelectedEntries().length;
+
+  /// Human readable summary of every selected date across all leave types,
+  /// tagged with the leave-type label for each date.
+  String get _allTypesSelectedDatesSummary {
+    final entries = _allSelectedEntries();
+    if (entries.isEmpty) return 'select_date'.tr();
+    final labels = entries
+        .map(
+          (e) =>
+              '${LocalizationHelper.localizeLeaveType(e.$2)} ${_formatDate(e.$1)}',
+        )
+        .toList();
+    final visible = labels.take(3).join(', ');
+    final remaining = labels.length - 3;
+    return remaining > 0 ? '$visible +$remaining' : visible;
   }
 
   @override
@@ -1246,298 +1274,10 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'selected_dates'.tr(),
-            _selectedDatesSummary,
+            _allTypesSelectedDatesSummary,
             onTap: () {
-              if (_selectedDates.isEmpty) return;
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return Dialog(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    child: Container(
-                      width: 420,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF004FDE),
-                            ),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  onPressed: () => Navigator.pop(context),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      'assign_time_off'.tr(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 30),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (_selectedWorker != null) ...[
-                                  Row(
-                                    children: [
-                                      WorkerAvatar(
-                                        imageUrl:
-                                            _selectedWorker!['profileImage']
-                                                ?.toString(),
-                                        name: (_selectedWorker!['name'] ?? 'U')
-                                            .toString(),
-                                        size: 48,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              (_selectedWorker!['name'] ?? '')
-                                                  .toString(),
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.email,
-                                                  size: 12,
-                                                  color: Colors.grey,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    (_selectedWorker!['email'] ??
-                                                            '')
-                                                        .toString(),
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.grey,
-                                                      fontFamily:
-                                                          'SF Pro Display',
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTimeOffMetricCard(
-                                        icon: const Icon(
-                                          Icons.category,
-                                          color: Color(0xFF004FDE),
-                                          size: 20,
-                                        ),
-                                        title: 'time_off_type'.tr(),
-                                        value: _localizedSelectedLeaveType,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildTimeOffMetricCard(
-                                        icon: const Icon(
-                                          Icons.event_available,
-                                          color: Color(0xFF004FDE),
-                                          size: 20,
-                                        ),
-                                        title: _availableLeaveLabel,
-                                        value: '$_displayedLeaveBalance',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTimeOffMetricCard(
-                                        icon: const Icon(
-                                          Icons.event,
-                                          color: Color(0xFF004FDE),
-                                          size: 20,
-                                        ),
-                                        title: 'requested_days'.tr(),
-                                        value: '$_summaryRequestedDays',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildTimeOffMetricCard(
-                                        icon: const Icon(
-                                          Icons.check_circle_outline,
-                                          color: Color(0xFF004FDE),
-                                          size: 20,
-                                        ),
-                                        title: 'selected_days'.tr(),
-                                        value: '$_selectedDaysCount',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTimeOffMetricCard(
-                                        icon: const Icon(
-                                          Icons.pie_chart,
-                                          color: Color(0xFF004FDE),
-                                          size: 20,
-                                        ),
-                                        title: 'remaining_days'.tr(),
-                                        value: '$_remainingDaysAfterRequest',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () =>
-                                            _showSelectedDatesListDialog(
-                                              context,
-                                            ),
-                                        child: _buildTimeOffMetricCard(
-                                          icon: const Icon(
-                                            Icons.date_range,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
-                                          title: 'selected_dates'.tr(),
-                                          value: _selectedDatesSummary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFFFFF),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFFE8E8E8),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF8F9FA),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: const Color(0xFFEEEEEE),
-                                              ),
-                                            ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.notes,
-                                                color: Color(0xFF004FDE),
-                                                size: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            'notes_label'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF64748B),
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        _notesController.text.trim().isEmpty
-                                            ? 'N/A'
-                                            : _notesController.text,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF0F172A),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
+              if (_allSelectedEntries().isEmpty) return;
+              _showSelectedDatesListDialog(context);
             },
           ),
         ),
@@ -1546,7 +1286,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'selected_days'.tr(),
-            '$_selectedDaysCount',
+            '$_allTypesSelectedDaysCount',
           ),
         ),
         const SizedBox(width: 16),
@@ -3050,69 +2790,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     }
   }
 
-  Widget _buildTimeOffMetricCard({
-    required Widget icon,
-    required String title,
-    required String value,
-  }) {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFEEEEEE)),
-            ),
-            child: Center(child: icon),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF0F172A),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showSelectedDatesListDialog(BuildContext context) {
     final String dayDisplayType = _localizedSelectedLeaveType;
     final localeName = context.locale.toString();
@@ -3169,16 +2846,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
@@ -3283,31 +2950,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                             );
                           },
                         ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0247C4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(
-                      'close'.tr(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ),
               ),
             ],
