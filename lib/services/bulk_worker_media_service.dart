@@ -119,7 +119,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     (key: 'idBack', field: 'backId'),
     (key: 'cv', field: 'cv'),
   ];
-  const uploadBatchSize = 8;
+  const uploadBatchSize = 20;
 
   var totalMedia = 0;
   for (final worker in workers) {
@@ -208,18 +208,24 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         );
         embeddedTargets.add((workerIndex: workerIndex, key: key));
       } else {
-        final remoteKey = (workerIndex, key);
-        remoteItems[remoteKey] = (
-          workerIndex: workerIndex,
-          key: key,
-          field: field,
-          url: value,
-          folder: folder,
-          fallbackName: storedName.isNotEmpty
-              ? storedName
-              : '${key}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
-          fallbackMime: field == 'cv' ? 'application/pdf' : 'image/jpeg',
-        );
+        final lowerUrl = value.toLowerCase();
+        if (lowerUrl.contains('firebasestorage.googleapis.com') ||
+            lowerUrl.contains('storage.googleapis.com')) {
+          prepared[workerIndex][key] = value;
+        } else {
+          final remoteKey = (workerIndex, key);
+          remoteItems[remoteKey] = (
+            workerIndex: workerIndex,
+            key: key,
+            field: field,
+            url: value,
+            folder: folder,
+            fallbackName: storedName.isNotEmpty
+                ? storedName
+                : '${key}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
+            fallbackMime: field == 'cv' ? 'application/pdf' : 'image/jpeg',
+          );
+        }
       }
     }
   }
@@ -269,7 +275,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   final remoteKeys = remoteItems.keys.toList();
 
   if (remoteKeys.isNotEmpty) {
-    const maxConcurrent = 4;
+    const maxConcurrent = 20;
     var nextIndex = 0;
     Object? firstError;
 

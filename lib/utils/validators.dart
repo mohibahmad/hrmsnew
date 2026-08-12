@@ -20,7 +20,7 @@ class Validators {
   Validators._();
 
   /// Minimum allowed salary amount for a real worker.
-  static const double minSalaryAmount = 1000;
+  static const double minSalaryAmount = 0;
 
   static final RegExp _email = RegExp(
     r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@"
@@ -180,14 +180,6 @@ class Validators {
     if (salary == null || !salary.isFinite || salary <= 0) {
       throw ValidationException(
         'please_enter_salary_amount'.tr(),
-        field: 'salaryAmount',
-      );
-    }
-    if (salary < minSalaryAmount) {
-      throw ValidationException(
-        'salary_min_amount_error'.tr(
-          namedArgs: {'amount': minSalaryAmount.toStringAsFixed(0)},
-        ),
         field: 'salaryAmount',
       );
     }

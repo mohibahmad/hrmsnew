@@ -505,7 +505,7 @@ class FirestoreService {
 
     int count = 0;
     if (validWorkers.isNotEmpty) {
-      const batchSize = 500;
+      const batchSize = 100;
       final batches = <Future<void>>[];
       for (var i = 0; i < validWorkers.length; i += batchSize) {
         final chunk = validWorkers.sublist(
@@ -549,8 +549,7 @@ class FirestoreService {
     CollectionReference coll,
     List<Map<String, dynamic>> workers,
   ) async {
-    var batch = _db.batch();
-    int count = 0;
+    final batch = _db.batch();
     for (final worker in workers) {
       final docRef = coll.doc();
       final canonicalWorker = {
@@ -561,15 +560,8 @@ class FirestoreService {
         ..._withNormalizedCurrency(canonicalWorker),
         'createdAt': FieldValue.serverTimestamp(),
       });
-      count++;
-      if (count % 500 == 0) {
-        await batch.commit();
-        batch = _db.batch();
-      }
     }
-    if (count % 500 != 0) {
-      await batch.commit();
-    }
+    await batch.commit();
   }
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {

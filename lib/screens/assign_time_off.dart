@@ -2795,13 +2795,29 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final localeName = context.locale.toString();
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Container(
-          width: 460,
-          height: MediaQuery.sizeOf(ctx).height * 0.68,
-          constraints: BoxConstraints(
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      builder: (ctx) => Stack(
+        fit: StackFit.expand,
+        children: [
+          BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(ctx).pop(),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.45),
+              ),
+            ),
+          ),
+          Center(
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+                child: Container(
+                width: 460,
+                height: MediaQuery.sizeOf(ctx).height * 0.68,
+                constraints: BoxConstraints(
             maxWidth: MediaQuery.sizeOf(ctx).width * 0.86,
             maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
           ),
@@ -2846,6 +2862,16 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
@@ -2955,6 +2981,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             ],
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }

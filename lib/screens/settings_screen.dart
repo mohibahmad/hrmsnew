@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
@@ -759,6 +760,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _rateApp() async {
+    await PreferencesService.setRateUsNeverShow(true);
     try {
       final inAppReview = InAppReview.instance;
       if (await inAppReview.isAvailable()) {

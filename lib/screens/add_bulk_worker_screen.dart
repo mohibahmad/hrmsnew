@@ -1253,11 +1253,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                     ),
                                     child: TextField(
                                       controller: controller,
-                                      readOnly:
-                                          isMediaField &&
-                                          (mediaDataUrl != null ||
-                                              hasExistingUpload),
-                                      autofocus: !isMediaField,
+                                      readOnly: isDateField(fieldKey),
+                                      autofocus: true,
                                       maxLines: isMediaField ? 1 : null,
                                       minLines: 1,
                                       expands: false,
@@ -1314,15 +1311,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                                         horizontal: 10,
                                                       ),
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        (mediaDataUrl != null ||
-                                                            hasExistingUpload)
-                                                        ? const Color(
-                                                            0xFFDCFCE7,
-                                                          )
-                                                        : const Color(
-                                                            0xFFEEF2FF,
-                                                          ),
+                                                    color: const Color(
+                                                      0xFFEEF2FF,
+                                                    ),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           8,
@@ -1333,11 +1324,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                                         MainAxisSize.min,
                                                     children: [
                                                       Icon(
-                                                        (mediaDataUrl != null ||
-                                                                hasExistingUpload)
-                                                            ? Icons
-                                                                  .check_circle_rounded
-                                                            : fieldKey == 'cv'
+                                                        fieldKey == 'cv'
                                                             ? Icons
                                                                   .attach_file_rounded
                                                             : fieldKey ==
@@ -1347,40 +1334,23 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                                             : Icons
                                                                   .badge_rounded,
                                                         size: 18,
-                                                        color:
-                                                            (mediaDataUrl !=
-                                                                    null ||
-                                                                hasExistingUpload)
-                                                            ? const Color(
-                                                                0xFF16A34A,
-                                                              )
-                                                            : const Color(
-                                                                0xFF0247C4,
-                                                              ),
+                                                        color: const Color(
+                                                          0xFF0247C4,
+                                                        ),
                                                       ),
                                                       const SizedBox(width: 4),
                                                       Text(
-                                                        (mediaDataUrl != null ||
-                                                                hasExistingUpload)
-                                                            ? 'uploaded'.tr()
-                                                            : fieldKey == 'cv'
+                                                        fieldKey == 'cv'
                                                             ? 'upload_cv'.tr()
                                                             : 'upload_image'
                                                                   .tr(),
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
                                                               FontWeight.w600,
-                                                          color:
-                                                              (mediaDataUrl !=
-                                                                      null ||
-                                                                  hasExistingUpload)
-                                                              ? const Color(
-                                                                  0xFF16A34A,
-                                                                )
-                                                              : const Color(
-                                                                  0xFF0247C4,
-                                                                ),
+                                                          color: Color(
+                                                            0xFF0247C4,
+                                                          ),
                                                           fontFamily:
                                                               'SF Pro Display',
                                                         ),
@@ -1817,9 +1787,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                         return;
                                       }
 
-                                      final mediaValue = hasExistingUpload
-                                          ? currentValue.trim()
-                                          : val;
+                                      final mediaValue = val.isNotEmpty
+                                          ? val
+                                          : currentValue.trim();
                                       if (mediaValue.startsWith('data:')) {
                                         worker['${fieldKey}_name'] =
                                             _extractFileName(
@@ -2144,6 +2114,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             foregroundColor: const Color(0xFF0B50C3),
             elevation: 0,
             side: const BorderSide(color: Color(0xFF0B50C3)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontSize: 16,
@@ -2161,6 +2134,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             backgroundColor: const Color(0xFF0B50C3),
             foregroundColor: Colors.white,
             elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontSize: 16,

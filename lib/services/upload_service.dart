@@ -205,15 +205,19 @@ class UploadService {
       _notifyProgress(onProgress, completed, total);
     }
 
-    for (var i = 0; i < total; i += maxConcurrent) {
-      final batchEnd = (i + maxConcurrent).clamp(0, total);
-      final batchFutures = <Future<void>>[];
-      for (var j = i; j < batchEnd; j++) {
-        batchFutures.add(uploadSingle(j));
+    final poolSize = maxConcurrent.clamp(1, 30);
+    var nextIndex = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        if (cancelToken?.isCancelled == true) break;
+        final index = nextIndex++;
+        if (index >= total) break;
+        await uploadSingle(index);
       }
-      await Future.wait(batchFutures);
     }
 
+    await Future.wait(List.generate(poolSize, (_) => worker()));
     return results;
   }
 

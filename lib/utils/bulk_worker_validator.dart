@@ -64,6 +64,9 @@ Map<String, String> get kFieldLabels =>
 const Map<String, String> kHeaderMap = {
   'full name': 'name',
   'contact number': 'phone',
+  'company phone no': 'phone',
+  'company phone no.': 'phone',
+  'company phone': 'phone',
   'company no': 'phone',
   'email address': 'email',
   'father name/husband name': 'fatherName',
@@ -346,10 +349,6 @@ Map<String, String> validateWorkerData(
       fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
     } else if (amount <= 0) {
       fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
-    } else if (amount < Validators.minSalaryAmount) {
-      fieldErrors['salaryAmount'] = 'salary_min_amount_error'.tr(
-        namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
-      );
     }
   }
 

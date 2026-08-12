@@ -16,7 +16,8 @@ const int _maxPdfImageDimension = 400;
 
 class WorkerProfileService {
   static const int _maxProfileImageBytes = 10 * 1024 * 1024;
-  static const Duration _imageLoadTimeout = Duration(seconds: 8);
+  static const Duration _imageLoadTimeout = Duration(seconds: 3);
+  static final Map<String, Uint8List?> _imageCache = {};
 
   static Future<Uint8List> generateWorkerProfile({
     required String name,
@@ -162,6 +163,7 @@ class WorkerProfileService {
   static Future<Uint8List?> _loadImageBytes(String? source) async {
     final value = source?.trim() ?? '';
     if (value.isEmpty) return null;
+    if (_imageCache.containsKey(value)) return _imageCache[value];
 
     Uint8List? bytes;
     if (value.startsWith('data:image/')) {
@@ -181,9 +183,12 @@ class WorkerProfileService {
     if (bytes == null ||
         bytes.isEmpty ||
         bytes.lengthInBytes > _maxProfileImageBytes) {
+      _imageCache[value] = null;
       return null;
     }
-    return _isSupportedImageBytes(bytes) ? bytes : null;
+    final result = _isSupportedImageBytes(bytes) ? bytes : null;
+    _imageCache[value] = result;
+    return result;
   }
 
   static Uint8List? _decodeDataImage(String value) {

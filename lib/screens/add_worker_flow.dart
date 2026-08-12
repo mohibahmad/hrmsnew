@@ -861,17 +861,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       return false;
     }
 
-    if (salaryAmount < Validators.minSalaryAmount) {
-      FlashySnackBar.show(
-        context,
-        message: 'salary_min_amount_error'.tr(
-          namedArgs: {'amount': Validators.minSalaryAmount.toStringAsFixed(0)},
-        ),
-        isError: true,
-      );
-      return false;
-    }
-
     final annualLeaves = int.tryParse(annualLeavesText);
     if (annualLeaves == null || annualLeaves < 0) {
       FlashySnackBar.show(
@@ -1093,8 +1082,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         final file = result.files.first;
         final bytes = await _readPickedFileBytes(
           file,
-          maxBytes: 20 * 1024 * 1024,
-          sizeLabel: '20MB',
+          maxBytes: 10 * 1024 * 1024,
+          sizeLabel: '10MB',
         );
         if (bytes == null || !mounted) return;
         setState(() {
@@ -3439,11 +3428,37 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   late DateTime _calendarMonth;
   DateTime? _selectedDate;
   bool _dependenciesReady = false;
+  final FocusNode _salaryFocusNode = FocusNode();
+  bool _salaryFocused = false;
+
+  bool get _showSalaryCurrency {
+    return _salaryFocused || widget.salaryAmountController.text.trim().isNotEmpty;
+  }
 
   @override
   void initState() {
     super.initState();
     _parseSelectedDate();
+    _salaryFocusNode.addListener(_onSalaryFocusChange);
+    widget.salaryAmountController.addListener(_onSalaryValueChanged);
+  }
+
+  void _onSalaryFocusChange() {
+    setState(() {
+      _salaryFocused = _salaryFocusNode.hasFocus;
+    });
+  }
+
+  void _onSalaryValueChanged() {
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _salaryFocusNode.removeListener(_onSalaryFocusChange);
+    widget.salaryAmountController.removeListener(_onSalaryValueChanged);
+    _salaryFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -4048,10 +4063,12 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'salary_amount_label'.tr(),
+                            'monthly_salary'.tr(),
                             'enter_your_amount'.tr(),
                             controller: widget.salaryAmountController,
                             isAmount: true,
+                            showCurrency: _showSalaryCurrency,
+                            focusNode: _salaryFocusNode,
                           ),
                         ),
                       ],
@@ -4843,8 +4860,10 @@ Widget _buildInputField(
   bool isContact = false,
   bool isNationalId = false,
   bool isReligion = false,
+  bool showCurrency = false,
   TextEditingController? controller,
   TextAlign textAlign = TextAlign.start,
+  FocusNode? focusNode,
 }) {
   final isEmailField = isEmail;
   final isNumeric = isAmount || isLeaves || isContact || isNationalId;
@@ -4874,6 +4893,7 @@ Widget _buildInputField(
           textAlign: textAlign,
           maxLines: isTextArea ? 4 : 1,
           controller: controller,
+          focusNode: focusNode,
           keyboardType: isNumeric
               ? (isAmount
                     ? const TextInputType.numberWithOptions(decimal: true)
@@ -4959,6 +4979,15 @@ Widget _buildInputField(
             contentPadding: isTextArea
                 ? const EdgeInsets.only(top: 14)
                 : const EdgeInsets.symmetric(vertical: 12),
+            prefixText: (isAmount && showCurrency)
+                ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} '
+                : null,
+            prefixStyle: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
+            ),
             suffixIcon: isDropdown
                 ? Icon(
                     Icons.arrow_drop_down,

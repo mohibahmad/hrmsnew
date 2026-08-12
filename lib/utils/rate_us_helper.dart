@@ -7,11 +7,13 @@ Future<void> showRateUsDialogNow() async {
 }
 
 Future<bool> tryShowRateUsDialog() async {
+  if (await PreferencesService.getRateUsNeverShow()) return false;
   _requestReview();
   return true;
 }
 
 Future<bool> tryShowFirstMilestoneRateUs(String milestone) async {
+  if (await PreferencesService.getRateUsNeverShow()) return false;
   bool alreadyTriggered;
   Future<void> Function() markTriggered;
   switch (milestone) {
@@ -48,6 +50,7 @@ Future<bool> tryShowFirstMilestoneRateUs(String milestone) async {
 }
 
 Future<void> _requestReview() async {
+  await PreferencesService.setRateUsNeverShow(true);
   try {
     final inAppReview = InAppReview.instance;
     if (await inAppReview.isAvailable()) {
