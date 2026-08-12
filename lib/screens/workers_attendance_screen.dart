@@ -1337,8 +1337,8 @@ class _WorkersAttendanceScreenState
     final attendanceId = (todayRecord['id'] ?? '').toString().trim();
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final type = status == 'Present' ? null : 'Without Notice';
-    final desc = status == 'Present' ? null : 'Absent';
+    final type = status == 'Leave' ? 'Annual Leave' : null;
+    final String? desc = null;
 
     try {
       if (!isGuest) {
@@ -2215,20 +2215,19 @@ class _WorkersAttendanceScreenState
                                                 }
                                                 return;
                                               }
-
                                               final isGuest =
                                                   _authService
                                                       .currentUser
                                                       ?.isAnonymous ??
                                                   false;
                                               final type =
-                                                  selectedStatus == 'Present'
-                                                  ? null
-                                                  : selectedLeaveType;
+                                                  selectedStatus == 'Leave'
+                                                  ? selectedLeaveType
+                                                  : null;
                                               final desc =
-                                                  selectedStatus == 'Present'
-                                                  ? null
-                                                  : reason;
+                                                  selectedStatus == 'Leave'
+                                                  ? reason
+                                                  : null;
                                               try {
                                                 if (!isGuest) {
                                                   if (workerId.isEmpty) {
@@ -3113,7 +3112,7 @@ class TodayAttendanceItem extends StatelessWidget {
                 ),
               ],
             ),
-            if (data["type"] != null) ...[
+            if (data["type"] != null && data['status'] == 'Leave') ...[
               const SizedBox(height: 12),
               Text(
                 (data['status'] == 'Leave'
