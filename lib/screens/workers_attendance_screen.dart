@@ -1952,12 +1952,16 @@ class _WorkersAttendanceScreenState
                           ),
 
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                            padding: EdgeInsets.fromLTRB(
+                              24,
+                              defaultStatus == 'Leave' ? 12 : 16,
+                              24,
+                              20,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (titleKey == 'edit_attendance' ||
-                                    defaultStatus != 'Leave') ...[
+                                if (defaultStatus != 'Leave') ...[
                                   Row(
                                     children: [
                                       Expanded(
@@ -2033,7 +2037,8 @@ class _WorkersAttendanceScreenState
                                   ),
                                 ],
                                 if (selectedStatus == 'Leave') ...[
-                                  const SizedBox(height: 16),
+                                  if (defaultStatus != 'Leave')
+                                    const SizedBox(height: 16),
                                   Text(
                                     reasonLabelKey().tr(),
                                     style: const TextStyle(
@@ -2178,7 +2183,7 @@ class _WorkersAttendanceScreenState
                                     ElevatedButton(
                                       onPressed:
                                           dialogIsSaving ||
-                                              (selectedStatus != 'Present' &&
+                                              (selectedStatus == 'Leave' &&
                                                   reasonController.text
                                                       .trim()
                                                       .isEmpty)
@@ -2191,7 +2196,7 @@ class _WorkersAttendanceScreenState
                                               final reason = reasonController
                                                   .text
                                                   .trim();
-                                              if (selectedStatus != 'Present' &&
+                                              if (selectedStatus == 'Leave' &&
                                                   reason.isEmpty) {
                                                 if (mounted) {
                                                   FlashySnackBar.show(
