@@ -2517,22 +2517,22 @@ class _WorkerAttendancePreviewCardState
                 rows: [
                   _buildDetailRow(
                     'total_working_days'.tr(),
-                    '$_totalRecords ${'days_unit'.tr()}',
+                    '$_totalRecords ${_totalRecords == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'total_presents'.tr(),
-                    '$_presents ${'days_unit'.tr()}',
+                    '$_presents ${_presents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
                     darkGreen,
                   ),
                   _buildDetailRow(
                     'total_absents'.tr(),
-                    '$_absents ${'days_unit'.tr()}',
+                    '$_absents ${_absents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
                     darkRed,
                   ),
                   _buildDetailRow(
                     'total_leaves'.tr(),
-                    '$_leaves ${'days_unit'.tr()}',
+                    '$_leaves ${_leaves == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
                     darkOrange,
                   ),
                   _buildDetailRow(

@@ -526,6 +526,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                     );
                                     return;
                                   }
+                                  if (amt > 999999999) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'amount_cannot_exceed_max'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
                                   if (description.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
@@ -891,6 +900,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                     );
                                     return;
                                   }
+                                  if (amt > 999999999) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'amount_cannot_exceed_max'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
 
                                   try {
                                     final policies = await _firestore
@@ -1177,9 +1195,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             inputFormatters: isAmount
                 ? [
                     FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d{0,18}(?:\.\d{0,2})?$'),
+                      RegExp(r'^\d{0,9}(?:\.\d{0,2})?$'),
                     ),
-                    LengthLimitingTextInputFormatter(21),
+                    LengthLimitingTextInputFormatter(12),
                   ]
                 : maxLength != null
                 ? [LengthLimitingTextInputFormatter(maxLength)]

@@ -213,6 +213,12 @@ class Validators {
         field: 'amount',
       );
     }
+    if (amount > 999999999) {
+      throw ValidationException(
+        'amount_cannot_exceed_max'.tr(),
+        field: 'amount',
+      );
+    }
   }
 
   static void validateAttendance(Map<String, dynamic> a) {

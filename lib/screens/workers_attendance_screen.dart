@@ -793,6 +793,34 @@ class _WorkersAttendanceScreenState
   }
 
   String _getWorkerStatus(Map<String, dynamic> worker) {
+    final attRecord = _todayAttendance.cast<Map<String, dynamic>?>().firstWhere(
+      (attendance) {
+        if (attendance == null) return false;
+        final belongs = _isGuest
+            ? (WorkerIdentity.normalizeEmail(attendance['email']) ==
+                    WorkerIdentity.normalizeEmail(worker['email']) ||
+                ((worker['id'] ?? '').toString().trim().isNotEmpty &&
+                    (attendance['workerId'] ?? '').toString().trim() ==
+                        (worker['id'] ?? '').toString().trim()))
+            : _authenticatedRecordBelongsToWorker(attendance, worker);
+        if (!belongs) return false;
+        return AttendanceService.isRecordForDate(attendance, DateTime.now());
+      },
+      orElse: () => null,
+    );
+
+    if (attRecord != null) {
+      final attStatus = attRecord['status']?.toString().trim() ?? '';
+      final normAttStatus = attStatus.toLowerCase();
+      if (normAttStatus == 'present' || normAttStatus == 'p') return 'Present';
+      if (normAttStatus == 'absent' || normAttStatus == 'a') return 'Absent';
+      if (normAttStatus == 'leave' ||
+          normAttStatus == 'l' ||
+          normAttStatus == 'approved') {
+        return 'Leave';
+      }
+    }
+
     if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
       return '';
     }
@@ -813,34 +841,6 @@ class _WorkersAttendanceScreenState
       if (directLower == 'leave') return 'Leave';
     }
 
-    final attRecord = _todayAttendance.cast<Map<String, dynamic>?>().firstWhere(
-      (attendance) {
-        if (attendance == null) return false;
-        if (_isGuest) {
-          final workerId = (worker['id'] ?? '').toString().trim();
-          final attendanceWorkerId = (attendance['workerId'] ?? '')
-              .toString()
-              .trim();
-          if (workerId.isNotEmpty && attendanceWorkerId.isNotEmpty) {
-            return workerId == attendanceWorkerId;
-          }
-          return WorkerIdentity.normalizeEmail(attendance['email']) ==
-              WorkerIdentity.normalizeEmail(worker['email']);
-        }
-        return _authenticatedRecordBelongsToWorker(attendance, worker);
-      },
-      orElse: () => null,
-    );
-    if (attRecord == null) return '';
-
-    final attStatus = attRecord['status']?.toString().trim() ?? '';
-    final normAttStatus = attStatus.toLowerCase();
-    if (normAttStatus == 'present' || normAttStatus == 'p') return 'Present';
-    if (normAttStatus == 'absent' || normAttStatus == 'a') return 'Absent';
-    if (normAttStatus == 'leave' ||
-        normAttStatus == 'l' ||
-        normAttStatus == 'approved')
-      return 'Leave';
     return '';
   }
 

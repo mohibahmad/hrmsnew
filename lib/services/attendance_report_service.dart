@@ -48,10 +48,11 @@ class AttendanceReportService {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final normalizedPeriod = switch (period.trim()) {
-      'Weekly' => 'Week',
-      'Monthly' => 'Month',
-      '6 Monthly' => '6 Month',
-      '6 Months' => '6 Month',
+      'Weekly' || 'This Week' => 'Week',
+      'Monthly' || 'This Month' => 'Month',
+      '6 Monthly' || '6 Months' || 'Last 6 Months' => '6 Month',
+      'Yearly' || 'This Year' => 'Yearly',
+      'All Time' => 'All Time',
       _ => period.trim(),
     };
 
@@ -61,19 +62,17 @@ class AttendanceReportService {
       'Month' => DateTime(today.year, today.month, 1),
       '6 Month' => DateTime(today.year, today.month - 5, 1),
       'Yearly' => DateTime(today.year, 1, 1),
+      'All Time' => DateTime(1970, 1, 1),
       _ => today,
     };
 
-    
-    
-    
-    
     final end = switch (normalizedPeriod) {
       'Today' => today,
       'Week' => start.add(const Duration(days: 6)),
       'Month' => DateTime(today.year, today.month + 1, 0),
       '6 Month' => DateTime(today.year, today.month + 1, 0),
       'Yearly' => DateTime(today.year, 12, 31),
+      'All Time' => DateTime(2099, 12, 31),
       _ => today,
     };
 
@@ -145,21 +144,28 @@ class AttendanceReportService {
       attendanceRecords: attendanceRecords,
     );
 
+    final leaveDates = TimeOffService.allLeaveDatesForWorker(
+      worker,
+      timeOffRecords,
+    );
+    final leaveDateKeys = leaveDates.map(_dateKey).toSet();
+
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
       if (date == null || !range.contains(date)) continue;
 
+      final status = (record['status'] ?? '').toString().trim().toLowerCase();
       final key = _dateKey(date);
+
+      // If an attendance document has status Leave (e.g. auto-marked), but that date
+      // is not in the worker's approved leave dates, ignore the spurious auto-leave record.
+      if (status == 'leave' && !leaveDateKeys.contains(key)) continue;
+
       final existing = recordsByDay[key];
       if (existing == null || _shouldReplaceRecord(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);
       }
     }
-
-    final leaveDates = TimeOffService.allLeaveDatesForWorker(
-      worker,
-      timeOffRecords,
-    );
 
     final leaveIndex = <String, Map<String, dynamic>>{};
     for (final leave in timeOffRecords) {

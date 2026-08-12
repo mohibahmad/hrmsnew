@@ -18,6 +18,9 @@ import 'assign_time_off.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import '../services/attendance_report_service.dart';
+import '../services/time_off_export_service.dart';
+import '../utils/date_utils.dart';
 
 class Worker {
   final String name;
@@ -59,6 +62,66 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
+  String _recordsPeriodFilter = 'This Month';
+  DateTimeRange? _customDateRange;
+  String _recordsLeaveTypeFilter = 'All';
+
+  List<Map<String, dynamic>> get _filteredTimeOffRecords {
+    final query = _searchQuery.trim().toLowerCase();
+
+    return _rawTimeoffDocs.where((record) {
+      if (query.isNotEmpty) {
+        final workerName = (record['workerName'] ??
+                record['name'] ??
+                record['email'] ??
+                record['workerEmail'] ??
+                '')
+            .toString()
+            .toLowerCase();
+        if (!workerName.contains(query)) return false;
+      }
+
+      if (_recordsLeaveTypeFilter != 'All') {
+        final rawType = (record['leaveType'] ?? record['type'] ?? '').toString();
+        final normType = TimeOffService.normalizeLeaveType(rawType);
+        final normSelected =
+            TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
+        if (normType != normSelected) return false;
+      }
+
+      final recordDate =
+          AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
+      if (recordDate == null) return true;
+
+      final recordDay =
+          DateTime(recordDate.year, recordDate.month, recordDate.day);
+
+      if (_recordsPeriodFilter == 'Custom Range') {
+        if (_customDateRange != null) {
+          final start = DateTime(
+            _customDateRange!.start.year,
+            _customDateRange!.start.month,
+            _customDateRange!.start.day,
+          );
+          final end = DateTime(
+            _customDateRange!.end.year,
+            _customDateRange!.end.month,
+            _customDateRange!.end.day,
+            23,
+            59,
+            59,
+          );
+          if (recordDay.isBefore(start) || recordDay.isAfter(end)) return false;
+        }
+      } else if (_recordsPeriodFilter != 'All Time') {
+        final range =
+            AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
+        if (!range.contains(recordDay)) return false;
+      }
+
+      return true;
+    }).toList();
+  }
 
   List<Map<String, dynamic>> _rawTimeoffDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
@@ -86,6 +149,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     super.dispose();
   }
 
+  String _l(String key, String fallback) {
+    final translated = key.tr().trim();
+    return translated.isEmpty || translated == key ? fallback : translated;
+  }
+
   String _normalizedValue(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
@@ -95,8 +163,64 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       'Sick Leave' => 'sick_leave_type'.tr(),
       'Casual Leave' => 'casual_leave_type'.tr(),
       'Medical Leave' => 'medical_leave_type'.tr(),
-      final value => value,
+      _ => type,
     };
+  }
+
+  int _getTimeOffCountForWorker(Map<String, dynamic> worker) {
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString();
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+
+    int totalDays = 0;
+
+    for (final record in _rawTimeoffDocs) {
+      final recId = (record['workerId'] ?? record['id'] ?? '').toString();
+      final recEmail = (record['workerEmail'] ?? record['email'] ?? '').toString().trim().toLowerCase();
+
+      final matchesWorker = (workerId.isNotEmpty && recId == workerId) ||
+          (workerEmail.isNotEmpty && recEmail == workerEmail);
+
+      if (!matchesWorker) continue;
+
+      if (_recordsLeaveTypeFilter != 'All') {
+        final rawType = (record['leaveType'] ?? record['type'] ?? '').toString();
+        final normType = TimeOffService.normalizeLeaveType(rawType);
+        final normSelected = TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
+        if (normType != normSelected) continue;
+      }
+
+      final recordDate = AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
+      if (recordDate == null) continue;
+
+      final recordDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
+
+      if (_recordsPeriodFilter == 'Custom Range') {
+        if (_customDateRange != null) {
+          final start = DateTime(
+            _customDateRange!.start.year,
+            _customDateRange!.start.month,
+            _customDateRange!.start.day,
+          );
+          final end = DateTime(
+            _customDateRange!.end.year,
+            _customDateRange!.end.month,
+            _customDateRange!.end.day,
+            23,
+            59,
+            59,
+          );
+          if (recordDay.isBefore(start) || recordDay.isAfter(end)) continue;
+        }
+      } else if (_recordsPeriodFilter != 'All Time') {
+        final range = AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
+        if (!range.contains(recordDay)) continue;
+      }
+
+      final days = int.tryParse((record['days'] ?? record['duration'] ?? '1').toString()) ?? 1;
+      totalDays += days;
+    }
+
+    return totalDays;
   }
 
   bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
@@ -552,6 +676,45 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     return position.toLowerCase().contains(filter.toLowerCase());
   }
 
+  bool _recordMatchesDateFilter(Map<String, dynamic> record) {
+    final recordDate = AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
+    if (recordDate == null) return false;
+
+    final recordDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
+
+    if (_recordsPeriodFilter == 'Custom Range') {
+      if (_customDateRange == null) return true;
+      final start = DateTime(
+        _customDateRange!.start.year,
+        _customDateRange!.start.month,
+        _customDateRange!.start.day,
+      );
+      final end = DateTime(
+        _customDateRange!.end.year,
+        _customDateRange!.end.month,
+        _customDateRange!.end.day,
+        23,
+        59,
+        59,
+      );
+      return !recordDay.isBefore(start) && !recordDay.isAfter(end);
+    } else if (_recordsPeriodFilter != 'All Time') {
+      final range = AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
+      return range.contains(recordDay);
+    }
+    return true;
+  }
+
+  bool _recordMatchesLeaveTypeFilter(Map<String, dynamic> record) {
+    if (_recordsLeaveTypeFilter == 'All') return true;
+    final rawType = (record['leaveType'] ?? record['type'] ?? record['action'] ?? '').toString();
+    final normType = TimeOffService.normalizeLeaveType(rawType);
+    final normSelected = TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
+    return normType == normSelected;
+  }
+
+
+
   List<Map<String, dynamic>> get _filteredWorkers {
     final filtered = _timeoffDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -559,9 +722,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       final query = _searchQuery.toLowerCase();
 
       final matchesSearch = name.contains(query) || position.contains(query);
-
       if (!matchesSearch) return false;
-      return _matchesFilter(position, _selectedTab);
+
+      final matchesTab = _matchesFilter(position, _selectedTab);
+      if (!matchesTab) return false;
+
+      return true;
     }).toList();
 
     if (_isGuestMode) {
@@ -610,30 +776,34 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 10),
-
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _buildFilterTabs(),
                   const SizedBox(height: 20),
-                  Text(
-                    'time_off_list'.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'time_off_list'.tr(),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      _buildRecordsFiltersAndExportRow(),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-
+                  const SizedBox(height: 16),
                   _isLoading
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 80),
                           child: Center(child: CircularProgressIndicator()),
                         )
                       : (filtered.isEmpty
-                            ? _buildEmptyState()
-                            : _buildDataTable(filtered)),
+                          ? _buildEmptyState()
+                          : _buildDataTable(filtered)),
                 ],
               ),
             ),
@@ -941,6 +1111,35 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     ? const Color(0xFFDC2626)
                     : const Color(0xFF0D4CC6);
 
+                final workerId = (doc['id'] ?? doc['workerId'] ?? '').toString().trim();
+                final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+                final matchingWorkerLeaves = _filteredTimeOffRecords.where((rec) {
+                  final recId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
+                  final recEmail =
+                      (rec['workerEmail'] ?? rec['email'] ?? '').toString().trim().toLowerCase();
+                  return (workerId.isNotEmpty && recId.isNotEmpty && recId == workerId) ||
+                      (workerEmail.isNotEmpty && recEmail.isNotEmpty && recEmail == workerEmail);
+                }).toList();
+
+                String leaveDatesSubtitle = '';
+                if (matchingWorkerLeaves.isNotEmpty) {
+                  final firstRec = matchingWorkerLeaves.first;
+                  final type = TimeOffService.leaveType(firstRec);
+                  final start = AppDateUtils.dateFromValue(firstRec['startDate'] ?? firstRec['date']);
+                  final end = AppDateUtils.dateFromValue(firstRec['endDate'] ?? firstRec['date']);
+                  final rawDays = firstRec['days'] ?? firstRec['duration'] ?? firstRec['requestedDays'] ?? '1';
+
+                  if (start != null && end != null) {
+                    if (start.year == end.year && start.month == end.month && start.day == end.day) {
+                      leaveDatesSubtitle = '$type • ${DateFormat('dd MMM yyyy').format(start)} ($rawDays ${rawDays.toString() == '1' ? 'day' : 'days'})';
+                    } else {
+                      leaveDatesSubtitle = '$type • ${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM yyyy').format(end)} ($rawDays days)';
+                    }
+                  } else if (start != null) {
+                    leaveDatesSubtitle = '$type • ${DateFormat('dd MMM yyyy').format(start)} ($rawDays days)';
+                  }
+                }
+
                 return GestureDetector(
                   onTap: () {
                     final isGuest =
@@ -1021,6 +1220,26 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         maxLines: 1,
                                       ),
+                                      if (leaveDatesSubtitle.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                                          ),
+                                          child: Text(
+                                            leaveDatesSubtitle,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0247C4),
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -1725,7 +1944,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       ),
                       child: Text(
                         '${_localizedLeaveType(type)}: '
-                        '${assignedDatesByType[type]!.length} ${'days'.tr()}',
+                        '${assignedDatesByType[type]!.length} ${assignedDatesByType[type]!.length == 1 ? 'day'.tr() : 'days'.tr()}',
                         style: TextStyle(
                           color: color,
                           fontSize: 10,
@@ -1869,6 +2088,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   Widget _buildEmptyState() {
     final double dynamicHeight = (MediaQuery.of(context).size.height - 329)
         .clamp(440.0, 1200.0);
+    final bool hasActiveFilters =
+        _recordsPeriodFilter != 'All Time' || _recordsLeaveTypeFilter != 'All';
+    final String emptyMessage = hasActiveFilters
+        ? 'No time off records found for the selected date range and leave type.'
+        : 'no_time_off_records'.tr();
+
     return Container(
       width: double.infinity,
       height: dynamicHeight,
@@ -1892,17 +2117,978 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              emptyMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF0247C4),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildRecordsFiltersAndExportRow() {
+    final periodOptions = [
+      {'value': 'This Month', 'label': _l('this_month', 'This Month')},
+      {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
+      {'value': 'This Year', 'label': _l('this_year', 'This Year')},
+      {'value': 'All Time', 'label': _l('all_time', 'All Time')},
+      {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
+    ];
+
+    final leaveTypeOptions = [
+      {'value': 'All', 'label': _l('all_filter', 'All')},
+      {'value': 'Sick Leave', 'label': _localizedLeaveType('Sick Leave')},
+      {'value': 'Casual Leave', 'label': _localizedLeaveType('Casual Leave')},
+      {'value': 'Medical Leave', 'label': _localizedLeaveType('Medical Leave')},
+      {'value': 'Annual Leave', 'label': _localizedLeaveType('Annual Leave')},
+    ];
+
+    final match = periodOptions.firstWhere(
+      (e) => e['value'] == _recordsPeriodFilter,
+      orElse: () => {'value': _recordsPeriodFilter, 'label': _recordsPeriodFilter},
+    );
+    String periodLabel = match['label']!;
+
+    String leaveTypeLabel = _recordsLeaveTypeFilter == 'All'
+        ? _l('all_filter', 'All')
+        : _localizedLeaveType(_recordsLeaveTypeFilter);
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        PopupMenuButton<String>(
+          tooltip: '',
+          constraints: const BoxConstraints(minWidth: 140, maxWidth: 170),
+          onSelected: (val) {
+            if (val == 'Custom Range') {
+              _selectCustomDateRange(context);
+            } else {
+              setState(() {
+                _recordsPeriodFilter = val;
+              });
+            }
+          },
+          offset: const Offset(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+          color: const Color(0xFFFFFFFF),
+          elevation: 4,
+          itemBuilder: (context) {
+            return periodOptions.map((f) {
+              final bool selected = _recordsPeriodFilter == f['value'];
+              final label = f['label']!;
+              return PopupMenuItem<String>(
+                value: f['value']!,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                        color: selected
+                            ? const Color(0xFF0247C4)
+                            : Colors.transparent,
+                      ),
+                      child: selected
+                          ? const Icon(
+                              Icons.check,
+                              size: 10,
+                              color: Color(0xFFFFFFFF),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                          color: selected ? const Color(0xFF0247C4) : const Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          child: Container(
+            height: 43,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0247C4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.calendar_month_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  periodLabel,
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+        PopupMenuButton<String>(
+          tooltip: '',
+          constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
+          onSelected: (val) {
+            setState(() {
+              _recordsLeaveTypeFilter = val;
+            });
+          },
+          offset: const Offset(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+          color: const Color(0xFFFFFFFF),
+          elevation: 4,
+          itemBuilder: (context) {
+            return leaveTypeOptions.map((f) {
+              final bool selected = _recordsLeaveTypeFilter == f['value'];
+              return PopupMenuItem<String>(
+                value: f['value']!,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                        color: selected
+                            ? const Color(0xFF0247C4)
+                            : Colors.transparent,
+                      ),
+                      child: selected
+                          ? const Icon(
+                              Icons.check,
+                              size: 10,
+                              color: Color(0xFFFFFFFF),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        f['label']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                          color: selected ? const Color(0xFF0247C4) : const Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          child: Container(
+            height: 43,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0247C4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/filter.png',
+                  width: 18,
+                  height: 18,
+                  color: const Color(0xFFFFFFFF),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  leaveTypeLabel,
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+        InkWell(
+          onTap: _handleExportCsv,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 43,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF27AE60),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.file_download_outlined, size: 20, color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  _l('export_csv', 'Export CSV'),
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  DateTime? _dateAtPosition(Offset position, DateTime monthDate) {
+    const double cellWidth = 48.0;
+    const double cellHeight = 40.0;
+    const double headerHeight = 30.0;
+
+    final column = (position.dx / cellWidth).floor();
+    final row = ((position.dy - headerHeight) / cellHeight).floor();
+
+    if (column < 0 || column > 6 || row < 0) return null;
+
+    final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final startOffset = firstDayOfMonth.weekday % 7;
+
+    final day = (row * 7) + column - startOffset + 1;
+    if (day < 1 || day > daysInMonth) return null;
+    return DateTime(monthDate.year, monthDate.month, day);
+  }
+
+  Widget _buildCalendarGrid(DateTime calendarDate, Set<DateTime> selectedDates) {
+    final weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    final firstDayOfMonth = DateTime(calendarDate.year, calendarDate.month, 1);
+    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    final startOffset = firstDayOfMonth.weekday % 7;
+    final totalCells = ((startOffset + daysInMonth) / 7).ceil() * 7;
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: weekdays.map((day) {
+            return SizedBox(
+              width: 44,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0247C4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Center(
+                    child: Text(
+                      day,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisExtent: 40,
+          ),
+          itemCount: totalCells,
+          itemBuilder: (context, index) {
+            final dayNumber = index - startOffset + 1;
+            if (dayNumber < 1 || dayNumber > daysInMonth) {
+              return const SizedBox();
+            }
+            final cellDate = DateTime(calendarDate.year, calendarDate.month, dayNumber);
+            final isSelected = selectedDates.any(
+              (d) => d.year == cellDate.year && d.month == cellDate.month && d.day == cellDate.day,
+            );
+
+            return Container(
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  '$dayNumber',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _selectCustomDateRange(BuildContext context) async {
+    DateTime calendarDate = DateTime.now();
+    Set<DateTime> selectedDates = {};
+    if (_customDateRange != null) {
+      for (var d = _customDateRange!.start;
+          !d.isAfter(_customDateRange!.end);
+          d = d.add(const Duration(days: 1))) {
+        selectedDates.add(DateTime(d.year, d.month, d.day));
+      }
+      calendarDate = _customDateRange!.start;
+    }
+
+    DateTime? dragAnchorDate;
+    Offset? dragStartPosition;
+    bool dragMoved = false;
+    Set<DateTime> selectionBeforeDrag = {};
+
+    final result = await showDialog<List<DateTime>?>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              backgroundColor: const Color(0xFFFFFFFF),
+              elevation: 10,
+              child: Container(
+                width: 380,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            left: 0,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                              onPressed: () => Navigator.of(context).pop(),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                          Center(
+                            child: Text(
+                              'select_dates'.tr(),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF000000),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 22),
+                          onPressed: () {
+                            setModalState(() {
+                              calendarDate = DateTime(calendarDate.year, calendarDate.month - 1);
+                            });
+                          },
+                        ),
+                        Text(
+                          DateFormat('MMMM yyyy').format(calendarDate).toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 22),
+                          onPressed: () {
+                            setModalState(() {
+                              calendarDate = DateTime(calendarDate.year, calendarDate.month + 1);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Listener(
+                      onPointerDown: (event) {
+                        final date = _dateAtPosition(event.localPosition, calendarDate);
+                        dragAnchorDate = date;
+                        dragStartPosition = event.localPosition;
+                        dragMoved = false;
+                        selectionBeforeDrag = Set<DateTime>.from(selectedDates);
+                        setModalState(() {});
+                      },
+                      onPointerMove: (event) {
+                        final startPos = dragStartPosition;
+                        if (startPos != null && !dragMoved) {
+                          final dx = (event.localPosition.dx - startPos.dx).abs();
+                          final dy = (event.localPosition.dy - startPos.dy).abs();
+                          if (dx > 5 || dy > 5) {
+                            dragMoved = true;
+                          }
+                        }
+                        if (!dragMoved) return;
+                        final anchor = dragAnchorDate;
+                        if (anchor == null) return;
+                        final current = _dateAtPosition(event.localPosition, calendarDate);
+                        if (current == null) return;
+                        setModalState(() {
+                          selectedDates.clear();
+                          selectedDates.addAll(selectionBeforeDrag);
+                          final isDragRemoving = selectionBeforeDrag.contains(anchor);
+                          final start = anchor.isBefore(current) ? anchor : current;
+                          final end = anchor.isAfter(current) ? anchor : current;
+                          for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+                            if (isDragRemoving) {
+                              selectedDates.remove(d);
+                            } else {
+                              selectedDates.add(d);
+                            }
+                          }
+                        });
+                      },
+                      onPointerUp: (event) {
+                        if (!dragMoved && dragAnchorDate != null) {
+                          final date = dragAnchorDate!;
+                          setModalState(() {
+                            final isAlreadySelected = selectedDates.any(
+                              (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+                            );
+                            if (isAlreadySelected) {
+                              selectedDates.removeWhere(
+                                (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+                              );
+                            } else {
+                              selectedDates.add(date);
+                            }
+                          });
+                        }
+                        dragAnchorDate = null;
+                        dragStartPosition = null;
+                        dragMoved = false;
+                        selectionBeforeDrag = {};
+                        setModalState(() {});
+                      },
+                      child: _buildCalendarGrid(calendarDate, selectedDates),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedDates.isEmpty
+                              ? const Color(0xFFE2E8F0)
+                              : const Color(0xFF0247C4),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          elevation: 0,
+                        ),
+                        onPressed: selectedDates.isEmpty
+                            ? null
+                            : () {
+                                final sortedDates = selectedDates.toList()..sort();
+                                Navigator.of(context).pop(sortedDates);
+                              },
+                        child: Text(
+                          _l('apply', 'Apply Dates'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _customDateRange = DateTimeRange(start: result.first, end: result.last);
+        _recordsPeriodFilter = 'Custom Range';
+      });
+    }
+  }
+
+  Future<void> _handleExportCsv() async {
+    final records = _filteredTimeOffRecords;
+    if (records.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'no_time_off_records'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    final periodLabel = _recordsPeriodFilter == 'Custom Range' &&
+            _customDateRange != null
+        ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
+        : _recordsPeriodFilter;
+
+    final fileName =
+        'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.csv';
+    final success = await TimeOffExportService.exportCsv(
+      records: records,
+      fileName: fileName,
+    );
+    if (success && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
+      );
+    }
+  }
+
+  Future<void> _handleExportPdf() async {
+    final records = _filteredTimeOffRecords;
+    if (records.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'no_time_off_records'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    final periodLabel = _recordsPeriodFilter == 'Custom Range' &&
+            _customDateRange != null
+        ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
+        : _recordsPeriodFilter;
+
+    Map<String, dynamic> companyProfile = const {};
+    try {
+      companyProfile = await _firestore.getUserProfile() ?? const {};
+    } catch (_) {}
+
+    final companyName = (companyProfile['businessName'] ??
+            companyProfile['companyName'] ??
+            'HRMS Company')
+        .toString();
+    final fileName =
+        'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.pdf';
+
+    final success = await TimeOffExportService.exportPdf(
+      records: records,
+      periodLabel: periodLabel,
+      leaveTypeFilter: _recordsLeaveTypeFilter,
+      companyName: companyName,
+      fileName: fileName,
+    );
+    if (success && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
+      );
+    }
+  }
+
+  Widget _buildEmptyRecordsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 80),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.event_busy_rounded, size: 48, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
           Text(
             'no_time_off_records'.tr(),
-            style: TextStyle(
-              color: Color(0xFF0247C4),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
               fontFamily: 'SF Pro Display',
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildTimeOffRecordsTable(List<Map<String, dynamic>> records) {
+    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
+      440.0,
+      1200.0,
+    );
+
+    return Container(
+      height: tableHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'worker_name_header'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'time_off_type'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'from'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'to'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    'days'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'status'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              itemCount: records.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              itemBuilder: (context, index) {
+                final r = records[index];
+                final name =
+                    (r['workerName'] ?? r['name'] ?? r['email'] ?? '').toString();
+                final rawType =
+                    (r['leaveType'] ?? r['type'] ?? 'Leave').toString();
+                final typeLabel = _localizedLeaveType(rawType);
+                final fromDate =
+                    AppDateUtils.dateFromValue(r['startDate'] ?? r['date']);
+                final toDate = AppDateUtils.dateFromValue(
+                    r['endDate'] ?? r['startDate'] ?? r['date']);
+                final fromStr = fromDate != null
+                    ? DateFormat('dd MMM yyyy').format(fromDate)
+                    : '-';
+                final toStr = toDate != null
+                    ? DateFormat('dd MMM yyyy').format(toDate)
+                    : '-';
+
+                final rawDays = r['days'] ?? r['numberOfDays'] ?? r['totalDays'];
+                final daysStr =
+                    (rawDays != null && rawDays.toString().isNotEmpty)
+                        ? rawDays.toString()
+                        : (r['selectedDates'] is List &&
+                                (r['selectedDates'] as List).isNotEmpty
+                            ? (r['selectedDates'] as List).length.toString()
+                            : '1');
+
+                final status = (r['status'] ?? 'Approved').toString();
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _leaveTypeBgColor(rawType),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              typeLabel,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _leaveTypeTextColor(rawType),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          fromStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF475569),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          toStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF475569),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          daysStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _statusBgColor(status),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _statusTextColor(status),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _leaveTypeBgColor(String rawType) {
+    final norm = TimeOffService.normalizeLeaveType(rawType);
+    return switch (norm) {
+      'Sick Leave' => const Color(0xFFFEE2E2),
+      'Casual Leave' => const Color(0xFFFFEDD5),
+      'Medical Leave' => const Color(0xFFF3E8FF),
+      'Annual Leave' => const Color(0xFFE0F2FE),
+      _ => const Color(0xFFF1F5F9),
+    };
+  }
+
+  Color _leaveTypeTextColor(String rawType) {
+    final norm = TimeOffService.normalizeLeaveType(rawType);
+    return switch (norm) {
+      'Sick Leave' => const Color(0xFFB91C1C),
+      'Casual Leave' => const Color(0xFFC2410C),
+      'Medical Leave' => const Color(0xFF6B21A8),
+      'Annual Leave' => const Color(0xFF0369A1),
+      _ => const Color(0xFF475569),
+    };
+  }
+
+  Color _statusBgColor(String status) {
+    final norm = status.toLowerCase();
+    if (norm.contains('approved')) return const Color(0xFFDCFCE7);
+    if (norm.contains('pending')) return const Color(0xFFFEF9C3);
+    if (norm.contains('cancel') || norm.contains('reject')) {
+      return const Color(0xFFFEE2E2);
+    }
+    if (norm.contains('auto')) return const Color(0xFFFFF3E0);
+    return const Color(0xFFF1F5F9);
+  }
+
+  Color _statusTextColor(String status) {
+    final norm = status.toLowerCase();
+    if (norm.contains('approved')) return const Color(0xFF15803D);
+    if (norm.contains('pending')) return const Color(0xFFA16207);
+    if (norm.contains('cancel') || norm.contains('reject')) {
+      return const Color(0xFFB91C1C);
+    }
+    if (norm.contains('auto')) return const Color(0xFFB45309);
+    return const Color(0xFF475569);
   }
 }

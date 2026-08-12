@@ -45,6 +45,7 @@ class InvoiceService {
     required String currency,
     String taxDeduction = '',
     String taxRatePercent = '',
+    String invoiceNo = '',
 
     String companyName = 'HRMS Company',
     String companyAddress = 'Human Resource Management System',
@@ -106,16 +107,16 @@ class InvoiceService {
         : pw.MemoryImage(companyStampBytes);
 
     final now = DateTime.now();
-
-    final safeWorkerId = workerId
-        .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')
-        .toUpperCase();
-    final invoiceNumber =
-        'PAY-${now.year}'
+    final datePrefix =
+        '${now.year}'
         '${_twoDigits(now.month)}'
-        '${_twoDigits(now.day)}-'
-        '${payPeriod.replaceAll(RegExp(r'[^0-9]'), '')}'
-        '${safeWorkerId.isNotEmpty ? '-$safeWorkerId' : ''}';
+        '${_twoDigits(now.day)}';
+
+    final invoiceNumber = _buildReadableInvoiceNumber(
+      explicitInvoiceNumber: invoiceNo,
+      datePrefix: datePrefix,
+      workerId: workerId,
+    );
 
     final hasOvertime = _parseValue(overtimePay) > 0;
     final hasAbsentDeduction = _parseValue(absentDeduction) > 0;
@@ -1060,6 +1061,35 @@ class InvoiceService {
     } catch (_) {
       return null;
     }
+  }
+
+  static String _buildReadableInvoiceNumber({
+    String explicitInvoiceNumber = '',
+    required String datePrefix,
+    required String workerId,
+  }) {
+    final trimmed = explicitInvoiceNumber.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+
+    String suffix = '001';
+    final numericOnly = workerId.replaceAll(RegExp(r'[^0-9]'), '');
+    if (numericOnly.isNotEmpty) {
+      final numVal = int.tryParse(numericOnly);
+      if (numVal != null) {
+        final val = numVal == 0 ? 1 : numVal;
+        suffix = val.toString().padLeft(3, '0');
+        if (suffix.length > 3) {
+          suffix = suffix.substring(suffix.length - 3);
+        }
+      }
+    } else if (workerId.trim().isNotEmpty) {
+      final code = (workerId.trim().hashCode.abs() % 900 + 100).toString();
+      suffix = code;
+    }
+
+    return 'PAY-$datePrefix-$suffix';
   }
 
   static Future<bool> shareInvoice(Uint8List bytes, String fileName) async {

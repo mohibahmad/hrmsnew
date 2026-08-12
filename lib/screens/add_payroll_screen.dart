@@ -242,6 +242,15 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       prorationFactor: _prorationFactor,
     );
 
+    final savedNetSalary = widget.workerData['netSalaryAmount'];
+    if (savedNetSalary is num && savedNetSalary > 0) {
+      result['formattedNet'] = PayrollService.formatAmountInCurrency(
+        savedNetSalary.toDouble(),
+        _currencyCode,
+      );
+      result['netSalary'] = savedNetSalary.toDouble();
+    }
+
     setState(() {
       _calcResult = result;
       _calculatedNet = result['formattedNet'] as String? ?? '';

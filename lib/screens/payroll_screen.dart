@@ -1505,6 +1505,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
             .toString(),
         companyLogoUrl: (companyProfile['profilePic'] ?? '').toString(),
+        workerId: (data['workerId'] ?? data['id'] ?? '').toString(),
       );
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),

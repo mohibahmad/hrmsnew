@@ -2514,14 +2514,14 @@ class PayrollRunner {
                                     rows: [
                                       _metricRow(
                                         'absents'.tr(),
-                                        '${result.absents} ${'days_suffix'.tr()}',
+                                        '${result.absents} ${result.absents == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
                                       ),
                                       _metricRow(
                                         'leaves'.tr(),
-                                        '${result.leaves} ${'days_suffix'.tr()}',
+                                        '${result.leaves} ${result.leaves == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),

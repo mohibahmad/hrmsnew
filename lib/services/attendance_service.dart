@@ -45,11 +45,8 @@ class AttendanceService {
     required Map<String, dynamic> worker,
     required Map<String, dynamic> attendanceRecord,
   }) {
-    final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
-    if (attendanceDate == null) {
-      return true;
-    }
-    return workerExistedOnDate(worker, attendanceDate);
+    // If an explicit attendance record exists for this worker, do not discard it.
+    return true;
   }
 
   /// Whether [record] belongs to the requested calendar day.
