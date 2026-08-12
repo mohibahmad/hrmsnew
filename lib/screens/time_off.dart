@@ -758,10 +758,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         }
       } else {
         final periodOptions = [
+          {'value': 'All Time', 'label': _l('all_time', 'All Time')},
           {'value': 'This Month', 'label': _l('this_month', 'This Month')},
           {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
           {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-          {'value': 'All Time', 'label': _l('all_time', 'All Time')},
           {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
         ];
         final match = periodOptions.firstWhere(
@@ -2200,10 +2200,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   Widget _buildRecordsFiltersAndExportRow() {
     final periodOptions = [
+      {'value': 'All Time', 'label': _l('all_time', 'All Time')},
       {'value': 'This Month', 'label': _l('this_month', 'This Month')},
       {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
       {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-      {'value': 'All Time', 'label': _l('all_time', 'All Time')},
       {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
     ];
 
