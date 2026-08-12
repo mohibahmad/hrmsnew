@@ -779,6 +779,40 @@ class _WorkersAttendanceScreenState
       if (shouldHaveLeave && attendanceTimeOff != null) {
         _timeOffRecords.insert(0, {...attendanceTimeOff, 'id': savedTimeOffId});
       }
+      final savedAttId = result.attendanceId.isNotEmpty
+          ? result.attendanceId
+          : (attendanceId ?? '');
+      final existingIndex = _todayAttendance.indexWhere(
+        (r) =>
+            (r['id'] ?? '').toString().trim() == savedAttId ||
+            (attendanceId != null &&
+                attendanceId.isNotEmpty &&
+                (r['id'] ?? '').toString().trim() == attendanceId) ||
+            _authenticatedRecordBelongsToWorker(r, worker),
+      );
+
+      final cleanAttData = Map<String, dynamic>.from(attendanceData);
+      if (selectedStatus != 'Leave') {
+        cleanAttData.remove('type');
+        cleanAttData.remove('desc');
+      }
+
+      final updatedLocalRecord = <String, dynamic>{
+        if (existingIndex != -1) ..._todayAttendance[existingIndex],
+        ...cleanAttData,
+        if (savedAttId.isNotEmpty) 'id': savedAttId,
+      };
+      if (selectedStatus != 'Leave') {
+        updatedLocalRecord.remove('type');
+        updatedLocalRecord.remove('desc');
+      }
+
+      if (existingIndex != -1) {
+        _todayAttendance[existingIndex] = updatedLocalRecord;
+      } else if (savedAttId.isNotEmpty) {
+        _todayAttendance.insert(0, updatedLocalRecord);
+      }
+
       final workerIndex = _workers.indexWhere(
         (item) =>
             (item['id'] ?? item['workerId'] ?? '').toString().trim() ==
