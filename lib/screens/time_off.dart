@@ -2250,6 +2250,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             } else {
               setState(() {
                 _recordsPeriodFilter = val;
+                _customDateRange = null;
               });
             }
           },
@@ -2586,7 +2587,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   Future<void> _selectCustomDateRange(BuildContext context) async {
     DateTime calendarDate = DateTime.now();
     Set<DateTime> selectedDates = {};
-    if (_customDateRange != null) {
+    if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
       for (var d = _customDateRange!.start;
           !d.isAfter(_customDateRange!.end);
           d = d.add(const Duration(days: 1))) {
