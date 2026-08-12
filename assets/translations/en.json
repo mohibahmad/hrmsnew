@@ -400,7 +400,7 @@
   "date_format": "DD/MM/YYYY",
   "select_from_gallery": "Select from Gallery",
   "workforce": "Workforce",
-  "search_by_workers_name": "Search by worker name",
+  "search_by_workers_name": "Search by worker name / position",
   "today_attendance": "Today Attendance",
   "today_is_holiday": "Today is Holiday",
   "holiday_attendance_disabled": "Attendance marking is disabled today",

@@ -400,7 +400,7 @@
   "date_format": "JJ/MM/AAAA",
   "select_from_gallery": "Sélectionner depuis la galerie",
   "workforce": "Effectifs",
-  "search_by_workers_name": "Rechercher par nom du travailleur",
+  "search_by_workers_name": "Rechercher par nom/position du travailleur",
   "today_attendance": "Présence aujourd'hui",
   "today_is_holiday": "Aujourd'hui est un jour férié",
   "holiday_attendance_disabled": "Le marquage de présence est désactivé aujourd'hui",

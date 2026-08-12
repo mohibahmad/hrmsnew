@@ -1448,7 +1448,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       );
                     },
                     decoration: InputDecoration(
-                      hintText: 'search_by_workers_name'.tr(),
+                      hintText: 'search_workers_name_position'.tr(),
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,

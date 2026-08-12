@@ -400,7 +400,7 @@
   "date_format": "DD/MM/AAAA",
   "select_from_gallery": "Seleccionar de la Galería",
   "workforce": "Personal",
-  "search_by_workers_name": "Buscar por nombre del trabajador",
+  "search_by_workers_name": "Buscar por nombre/puesto del trabajador",
   "today_attendance": "Asistencia de Hoy",
   "today_is_holiday": "Hoy es Feriado",
   "holiday_attendance_disabled": "El marcado de asistencia está deshabilitado hoy",

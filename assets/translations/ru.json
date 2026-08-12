@@ -401,7 +401,7 @@
   "date_format": "ДД/ММ/ГГГГ",
   "select_from_gallery": "Выбрать из галереи",
   "workforce": "Персонал",
-  "search_by_workers_name": "Поиск по имени сотрудника",
+  "search_by_workers_name": "Поиск по имени/должности сотрудника",
   "today_attendance": "Посещаемость сегодня",
   "today_is_holiday": "Сегодня праздник",
   "holiday_attendance_disabled": "Отметка посещаемости сегодня отключена",
