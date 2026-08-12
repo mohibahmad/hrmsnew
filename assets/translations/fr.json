@@ -428,6 +428,8 @@
   "on_leave": "En Congé",
   "auto_marked_on_leave": "Marqué automatiquement en congé",
   "attendance_marked": "Présence marquée",
+  "attendance_marked_present": "{name} marqué comme Présent",
+  "attendance_marked_absent": "{name} marqué comme Absent",
   "present_days": "Jours Présents",
   "absent_days": "Jours Absents",
   "leave_days": "Jours de Congé",

@@ -1309,6 +1309,150 @@ class _WorkersAttendanceScreenState
     );
   }
 
+  Future<void> _saveDirectAttendance(
+    BuildContext context,
+    Map<String, dynamic> data,
+    String status,
+  ) async {
+    final workerData = _resolveWorkerData(data);
+    final workerId = (workerData['id'] ?? workerData['workerId'] ?? '').toString().trim();
+    final name = (workerData['name'] ?? '').toString();
+    final email = (workerData['email'] ?? '').toString();
+    final normalizedEmail = WorkerIdentity.normalizeEmail(email);
+
+    var todayRecord = AttendanceService.recordsForWorker(
+      worker: workerData,
+      attendanceRecords: _todayAttendance,
+    ).firstWhere(_isTodayAttendance, orElse: () => <String, dynamic>{});
+    if (todayRecord.isEmpty &&
+        normalizedEmail.isNotEmpty &&
+        (_isGuest || workerId.isEmpty)) {
+      todayRecord = _todayAttendance.firstWhere(
+        (record) =>
+            WorkerIdentity.normalizeEmail(record['email']) == normalizedEmail &&
+            _isTodayAttendance(record),
+        orElse: () => <String, dynamic>{},
+      );
+    }
+    final attendanceId = (todayRecord['id'] ?? '').toString().trim();
+
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final type = status == 'Present' ? null : 'Without Notice';
+    final desc = status == 'Present' ? null : 'Absent';
+
+    try {
+      if (!isGuest) {
+        if (workerId.isEmpty) return;
+
+        final attendanceData = <String, dynamic>{
+          'workerId': workerId,
+          'name': name,
+          'email': email,
+          'role': workerData['role'] ?? workerData['position'] ?? '',
+          'status': status,
+          'attendanceType': workerData['type2'] ?? 'Remote',
+          'workType': workerData['type1'] ?? 'Full Time',
+          'profileImage': workerData['profileImage'],
+        };
+        if (type != null) {
+          attendanceData['type'] = type;
+        } else {
+          attendanceData['type'] = FieldValue.delete();
+        }
+        if (desc != null && desc.isNotEmpty) {
+          attendanceData['desc'] = desc;
+        } else {
+          attendanceData['desc'] = FieldValue.delete();
+        }
+
+        final leaveBalanceSynced = await _syncAttendanceAnnualLeave(
+          worker: workerData,
+          selectedStatus: status,
+          leaveType: type ?? 'Annual Leave',
+          reason: desc ?? '',
+          attendanceData: attendanceData,
+          attendanceId: attendanceId,
+        );
+
+        if (!leaveBalanceSynced) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'requested_leaves_exceed_available'.tr(),
+              isError: true,
+            );
+          }
+          return;
+        }
+      } else {
+        final wIdx = DummyData.workers.indexWhere((worker) {
+          final id = (worker['id'] ?? '').toString().trim();
+          if (workerId.isNotEmpty && id.isNotEmpty) {
+            return workerId == id;
+          }
+          return (worker['email'] ?? '').toString().trim().toLowerCase() ==
+              normalizedEmail;
+        });
+        if (wIdx != -1) {
+          DummyData.workers[wIdx]['status'] = status;
+        }
+        final index = DummyData.attendance.indexWhere(
+          (element) =>
+              (element['email'] ?? '').toString().trim().toLowerCase() ==
+                  normalizedEmail &&
+              _isTodayAttendance(element),
+        );
+        if (index != -1) {
+          DummyData.attendance[index]['status'] = status;
+          if (type != null) {
+            DummyData.attendance[index]['type'] = type;
+          } else {
+            DummyData.attendance[index].remove('type');
+          }
+          if (desc != null && desc.isNotEmpty) {
+            DummyData.attendance[index]['desc'] = desc;
+          } else {
+            DummyData.attendance[index].remove('desc');
+          }
+        } else {
+          DummyData.attendance.add({
+            'workerId': workerId,
+            'name': name,
+            'email': email,
+            'status': status,
+            if (type != null) 'type': type,
+            if (desc != null) 'desc': desc,
+            'date': DateTime.now().toIso8601String(),
+          });
+        }
+        await DummyData.saveToPrefs();
+      }
+
+      if (mounted) {
+        setState(() {});
+        final displayName = name.trim().isNotEmpty
+            ? name.trim()
+            : (email.trim().isNotEmpty ? email.trim() : 'Worker');
+        FlashySnackBar.show(
+          context,
+          message: status == 'Present'
+              ? 'attendance_marked_present'.tr(namedArgs: {'name': displayName})
+              : 'attendance_marked_absent'.tr(namedArgs: {'name': displayName}),
+          isError: false,
+        );
+      }
+    } catch (e, stackTrace) {
+      ErrorReporter.report(e, stackTrace, context: 'DirectMarkAttendance');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+    }
+  }
+
   void _openAttendanceDialog(
     BuildContext context,
     Map<String, dynamic> data, {
@@ -1336,6 +1480,11 @@ class _WorkersAttendanceScreenState
         message: 'worker_on_time_off_attendance_blocked'.tr(),
         isError: true,
       );
+      return;
+    }
+    if (titleKey != 'edit_attendance' &&
+        (defaultStatus == 'Present' || defaultStatus == 'Absent')) {
+      _saveDirectAttendance(context, data, defaultStatus!);
       return;
     }
     _showMarkAttendanceDialog(
@@ -1807,81 +1956,83 @@ class _WorkersAttendanceScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: dialogIsSaving
-                                            ? null
-                                            : () {
-                                                setDialogState(() {
-                                                  if (selectedStatus !=
-                                                      'Present') {
-                                                    reasonController.clear();
-                                                  }
-                                                  selectedStatus = 'Present';
-                                                });
-                                              },
-                                        child: _buildToggleChip(
-                                          'present'.tr(),
-                                          'assets/present icon for mark attendence.png',
-                                          isSelected:
-                                              selectedStatus == 'Present',
+                                if (titleKey == 'edit_attendance' ||
+                                    defaultStatus != 'Leave') ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: dialogIsSaving
+                                              ? null
+                                              : () {
+                                                  setDialogState(() {
+                                                    if (selectedStatus !=
+                                                        'Present') {
+                                                      reasonController.clear();
+                                                    }
+                                                    selectedStatus = 'Present';
+                                                  });
+                                                },
+                                          child: _buildToggleChip(
+                                            'present'.tr(),
+                                            'assets/present icon for mark attendence.png',
+                                            isSelected:
+                                                selectedStatus == 'Present',
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: dialogIsSaving
-                                            ? null
-                                            : () {
-                                                setDialogState(() {
-                                                  if (selectedStatus !=
-                                                      'Absent') {
-                                                    reasonController.clear();
-                                                  }
-                                                  selectedStatus = 'Absent';
-                                                  selectedLeaveType =
-                                                      'Without Notice';
-                                                });
-                                              },
-                                        child: _buildToggleChip(
-                                          'absent'.tr(),
-                                          'assets/absent.svg',
-                                          isSelected:
-                                              selectedStatus == 'Absent',
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: dialogIsSaving
+                                              ? null
+                                              : () {
+                                                  setDialogState(() {
+                                                    if (selectedStatus !=
+                                                        'Absent') {
+                                                      reasonController.clear();
+                                                    }
+                                                    selectedStatus = 'Absent';
+                                                    selectedLeaveType =
+                                                        'Without Notice';
+                                                  });
+                                                },
+                                          child: _buildToggleChip(
+                                            'absent'.tr(),
+                                            'assets/absent.svg',
+                                            isSelected:
+                                                selectedStatus == 'Absent',
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: canSelectLeave && !dialogIsSaving
-                                            ? () {
-                                                setDialogState(() {
-                                                  if (selectedStatus !=
-                                                      'Leave') {
-                                                    reasonController.clear();
-                                                  }
-                                                  selectedStatus = 'Leave';
-                                                  selectedLeaveType =
-                                                      firstAvailableLeaveType();
-                                                });
-                                              }
-                                            : null,
-                                        child: _buildToggleChip(
-                                          'leave'.tr(),
-                                          'assets/leave.svg',
-                                          isSelected: selectedStatus == 'Leave',
-                                          enabled: canSelectLeave,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: canSelectLeave && !dialogIsSaving
+                                              ? () {
+                                                  setDialogState(() {
+                                                    if (selectedStatus !=
+                                                        'Leave') {
+                                                      reasonController.clear();
+                                                    }
+                                                    selectedStatus = 'Leave';
+                                                    selectedLeaveType =
+                                                        firstAvailableLeaveType();
+                                                  });
+                                                }
+                                              : null,
+                                          child: _buildToggleChip(
+                                            'leave'.tr(),
+                                            'assets/leave.svg',
+                                            isSelected: selectedStatus == 'Leave',
+                                            enabled: canSelectLeave,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                if (selectedStatus == 'Absent' ||
-                                    selectedStatus == 'Leave') ...[
+                                    ],
+                                  ),
+                                ],
+                                if (selectedStatus == 'Leave') ...[
                                   const SizedBox(height: 16),
                                   Text(
                                     reasonLabelKey().tr(),
@@ -1942,7 +2093,7 @@ class _WorkersAttendanceScreenState
                                     ),
                                   ),
                                 ],
-                                if (selectedStatus != 'Present') ...[
+                                if (selectedStatus == 'Leave') ...[
                                   const SizedBox(height: 16),
                                   Text(
                                     'reason_required'.tr(),
@@ -2388,9 +2539,7 @@ class _WorkersAttendanceScreenState
         },
       );
     } finally {
-      // Delay disposal to ensure dialog close animation completes,
-      // preventing 'TextEditingController used after dispose' errors.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
         reasonController.dispose();
       });
       if (mounted) {

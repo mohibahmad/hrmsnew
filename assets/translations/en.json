@@ -428,6 +428,8 @@
   "on_leave": "On Leave",
   "auto_marked_on_leave": "Automatically marked On Leave",
   "attendance_marked": "Attendance marked",
+  "attendance_marked_present": "{name} marked as Present",
+  "attendance_marked_absent": "{name} marked as Absent",
   "present_days": "Present Days",
   "absent_days": "Absent Days",
   "leave_days": "Leave Days",

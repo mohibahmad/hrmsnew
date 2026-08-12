@@ -429,6 +429,8 @@
   "on_leave": "В Отпуске",
   "auto_marked_on_leave": "Автоматически отмечено в отпуске",
   "attendance_marked": "Присутствие отмечено",
+  "attendance_marked_present": "{name} отмечен как Присутствует",
+  "attendance_marked_absent": "{name} отмечен как Отсутствует",
   "present_days": "Дни присутствия",
   "absent_days": "Дни отсутствия",
   "leave_days": "Дни отпуска",

@@ -428,6 +428,8 @@
   "on_leave": "En Permiso",
   "auto_marked_on_leave": "Marcado automáticamente en permiso",
   "attendance_marked": "Asistencia marcada",
+  "attendance_marked_present": "{name} marcado como Presente",
+  "attendance_marked_absent": "{name} marcado como Ausente",
   "present_days": "Días Presentes",
   "absent_days": "Días Ausentes",
   "leave_days": "Días de Permiso",

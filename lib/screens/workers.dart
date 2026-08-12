@@ -362,11 +362,12 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       var isPremium = await PreferencesService.isPremium();
       if (!mounted) return;
 
-      if (!PremiumGate.canAddEntry(
-        currentEntryCount: _allWorkers.length,
-        isPremium: isPremium,
-        isGuest: false,
-      )) {
+      if ((bulk && _allWorkers.isEmpty && !isPremium) ||
+          !PremiumGate.canAddEntry(
+            currentEntryCount: _allWorkers.length,
+            isPremium: isPremium,
+            isGuest: false,
+          )) {
         await PremiumGate.shouldShowUpgradeDialog(context);
         if (!mounted) return;
         isPremium = await PreferencesService.isPremium();

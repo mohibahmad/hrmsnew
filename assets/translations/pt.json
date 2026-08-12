@@ -428,6 +428,8 @@
   "on_leave": "Em Licença",
   "auto_marked_on_leave": "Marcado automaticamente em licença",
   "attendance_marked": "Presença marcada",
+  "attendance_marked_present": "{name} marcado como Presente",
+  "attendance_marked_absent": "{name} marcado como Ausente",
   "present_days": "Dias Presentes",
   "absent_days": "Dias Ausentes",
   "leave_days": "Dias de Licença",
