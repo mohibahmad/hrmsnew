@@ -1070,26 +1070,17 @@ class _WorkersAttendanceScreenState
       if (!AttendanceService.isEligibleForAttendance(worker)) {
         return false;
       }
-      // Workers with approved time off for today should not appear in
-      // the Mark Attendance list — they are automatically marked as Leave.
-      if (_isWorkerOnPlannedTimeOff(worker)) {
-        return false;
-      }
       final name = (worker['name'] ?? '').toString().toLowerCase();
-      final role = (worker['position'] ?? worker['role'] ?? '')
+      final role = (worker['role'] ?? worker['position'] ?? '')
           .toString()
           .toLowerCase();
       final email = (worker['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final workerStatus = _getWorkerStatus(worker).toLowerCase();
-      final matchesSearch =
-          name.contains(query) ||
+      return name.contains(query) ||
           role.contains(query) ||
           email.contains(query) ||
           workerStatus.contains(query);
-      if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch &&
-          workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();
   }
 
