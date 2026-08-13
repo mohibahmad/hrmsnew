@@ -268,7 +268,7 @@ class InvoiceService {
               _tableRow(
                 description: _l(
                   'unpaid_absence_deduction',
-                  'Unpaid Absence Deduction',
+                  'Absent Deduction',
                 ),
                 rate: _perDayRate(
                   absentDeduction,
