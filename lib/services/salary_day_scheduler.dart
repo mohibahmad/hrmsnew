@@ -757,14 +757,14 @@ class PayrollRunner {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
-        await _generateAndSaveZip(
+        unawaited(_generateAndSaveZip(
           context,
           paidResults,
           filteredSummary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
           periodStart: effectivePeriodStart,
           periodEnd: effectivePeriodEnd,
-        );
+        ));
       }
     } else {
       if (!context.mounted) return null;
@@ -797,14 +797,14 @@ class PayrollRunner {
 
       if (summary.successCount >= 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
-        await _generateAndSaveZip(
+        unawaited(_generateAndSaveZip(
           context,
           paidResults,
           summary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
           periodStart: effectivePeriodStart,
           periodEnd: effectivePeriodEnd,
-        );
+        ));
       }
     }
 
@@ -1235,7 +1235,7 @@ class PayrollRunner {
 
       final successful = selected.where((result) => result.success).toList();
       final invoiceFiles = <Map<String, Object>>[];
-      const maxParallelPdfs = 4;
+      const maxParallelPdfs = 10;
       for (var start = 0; start < successful.length; start += maxParallelPdfs) {
         final end = (start + maxParallelPdfs)
             .clamp(0, successful.length)

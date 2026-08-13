@@ -941,9 +941,9 @@ class InvoiceService {
         }
       }
       if (bytes == null || bytes.isEmpty) return null;
+      if (_isValidPdfImageBytes(bytes)) return bytes;
       final decoded = img.decodeImage(bytes);
       if (decoded != null) return Uint8List.fromList(img.encodePng(decoded));
-      if (_isValidPdfImageBytes(bytes)) return bytes;
     } catch (_) {}
     return null;
   }
@@ -1014,16 +1014,16 @@ class InvoiceService {
       return null;
     }
 
+    if (_isValidPdfImageBytes(bytes)) {
+      return bytes;
+    }
+
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded != null) {
         return Uint8List.fromList(img.encodePng(decoded));
       }
     } catch (_) {}
-
-    if (_isValidPdfImageBytes(bytes)) {
-      return bytes;
-    }
 
     return null;
   }
