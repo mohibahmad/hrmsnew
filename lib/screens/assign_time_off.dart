@@ -778,10 +778,21 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     }
     final base = _baseAvailableDaysForType(type);
     final normType = TimeOffService.normalizeLeaveType(type);
-    final currentlySelected =
-        (TimeOffService.normalizeLeaveType(_timeOffType) == normType)
-        ? _selectedDates.length
-        : 0;
+
+    int currentlySelected = 0;
+    if (TimeOffService.normalizeLeaveType(_timeOffType) == normType) {
+      currentlySelected = _selectedDates.length;
+    } else {
+      final existingDraft = _pendingDrafts.values.cast<PendingTimeOffDraft?>().firstWhere(
+        (d) => TimeOffService.normalizeLeaveType(d?.leaveType ?? '') == normType,
+        orElse: () => null,
+      );
+      currentlySelected = existingDraft?.selectedDates.length ?? 0;
+      if (currentlySelected == 0 && _selectedDates.isNotEmpty) {
+        currentlySelected = _selectedDates.length;
+      }
+    }
+
     return projectedTimeOffBalance(
       availableDays: base,
       requestedDays: currentlySelected,

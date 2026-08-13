@@ -4923,7 +4923,7 @@ Widget _buildInputField(
               ? [
                   FilteringTextInputFormatter.allow(
                     isAmount
-                        ? RegExp(r'[\d,.]')
+                        ? RegExp(r'[\d.]')
                         : (isNationalId
                               ? RegExp(r'^[A-Za-z0-9\-]*')
                               : isContact
@@ -4931,34 +4931,14 @@ Widget _buildInputField(
                               : RegExp(r'^\d*')),
                   ),
                   if (isAmount) ...[
+                    LengthLimitingTextInputFormatter(14),
                     TextInputFormatter.withFunction((oldValue, newValue) {
                       if (newValue.text.isEmpty) return newValue;
-                      final digits = newValue.text.replaceAll(',', '');
-                      if (!RegExp(r'^\d*\.?\d*$').hasMatch(digits)) {
+                      final text = newValue.text.replaceAll(',', '');
+                      if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) {
                         return oldValue;
                       }
-                      final parts = digits.split('.');
-                      final intPart = parts[0];
-
-                      if (intPart.length > 12) return oldValue;
-
-                      if (parts.length > 1 && parts[1].length > 2) {
-                        return oldValue;
-                      }
-                      final decPart = parts.length > 1 ? '.${parts[1]}' : '';
-                      final buffer = StringBuffer();
-                      for (int i = 0; i < intPart.length; i++) {
-                        if (i > 0 && (intPart.length - i) % 3 == 0) {
-                          buffer.write(',');
-                        }
-                        buffer.write(intPart[i]);
-                      }
-                      return TextEditingValue(
-                        text: '$buffer$decPart',
-                        selection: TextSelection.collapsed(
-                          offset: '$buffer$decPart'.length,
-                        ),
-                      );
+                      return newValue.copyWith(text: text);
                     }),
                   ],
                   if (isContact) LengthLimitingTextInputFormatter(20),
