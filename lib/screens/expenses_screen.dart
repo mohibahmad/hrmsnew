@@ -411,7 +411,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       text: doc['category']?.toString() ?? '',
     );
     final amountController = TextEditingController(
-      text: _expenseAmount(doc).toString(),
+      text: NumberFormat('#,##0.##').format(_expenseAmount(doc)),
     );
     final descriptionController = TextEditingController(
       text: doc['name']?.toString() ?? doc['description']?.toString() ?? '',
@@ -510,7 +510,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                     return;
                                   }
                                   final double? amt = double.tryParse(
-                                    amountText,
+                                    amountText.replaceAll(",", ""),
                                   );
                                   if (amt == null ||
                                       !amt.isFinite ||
@@ -644,7 +644,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   if (!context.mounted) return;
                                   Navigator.of(context).pop();
                                   if (!mounted) return;
-                                  FlashySnackBar.show(
+                                   FlashySnackBar.show(
                                     this.context,
                                     message: 'expense_updated'.tr(),
                                   );
@@ -691,6 +691,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                               decimal: true,
                             ),
                             isAmount: true,
+                            prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
                           ),
                         ),
                       ],
@@ -884,7 +885,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                     return;
                                   }
                                   final double? amt = double.tryParse(
-                                    amountText,
+                                    amountText.replaceAll(",", ""),
                                   );
                                   if (amt == null ||
                                       !amt.isFinite ||
@@ -1058,6 +1059,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                               decimal: true,
                             ),
                             isAmount: true,
+                            prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
                           ),
                         ),
                       ],
@@ -1163,6 +1165,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     String hintText = '',
     int? maxLength,
     bool isAmount = false,
+    String? prefixText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1192,7 +1195,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             inputFormatters: isAmount
                 ? [
                     FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d{0,9}(?:\.\d{0,2})?$'),
+                      RegExp(r'[\d.]'),
                     ),
                     LengthLimitingTextInputFormatter(12),
                   ]
@@ -1206,6 +1209,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               counterText: '',
               isDense: true,
               contentPadding: EdgeInsets.zero,
+              prefixText: prefixText,
+              prefixStyle: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
             style: const TextStyle(
               fontSize: 14,

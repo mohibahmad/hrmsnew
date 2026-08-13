@@ -1422,7 +1422,14 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         : _decodeDataUrl(existingUrl);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: hasFile
+          ? () => _showImagePreviewDialog(
+                context,
+                bytes: bytes,
+                url: existingUrl,
+                isPdf: isPdf,
+              )
+          : onTap,
       child: Container(
         height: _idPreviewHeight,
         width: double.infinity,
@@ -1794,6 +1801,57 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       ),
     );
   }
+  void _showImagePreviewDialog(
+    BuildContext context, {
+    Uint8List? bytes,
+    String? url,
+    required bool isPdf,
+  }) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'close'.tr(),
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim, secAnim) => _FullScreenDocumentViewer(
+        url: url ?? '',
+        label: 'document'.tr(),
+        isImage: !isPdf,
+        isPdf: isPdf,
+        pdfBytes: bytes,
+        imageBytes: isPdf ? null : bytes,
+      ),
+      transitionBuilder: (ctx, anim, secAnim, child) {
+        final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        final scale = Tween<double>(
+          begin: 0.92,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 6 * anim.value,
+                  sigmaY: 6 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: fade,
+                  child: Container(
+                    color: const Color(0xFF000000).withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: fade,
+              child: ScaleTransition(scale: scale, child: child),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _FullScreenPdfPreview extends StatefulWidget {
@@ -2069,6 +2127,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   final bool isPdf;
   final bool isDoc;
   final Uint8List? pdfBytes;
+  final Uint8List? imageBytes;
 
   const _FullScreenDocumentViewer({
     required this.url,
@@ -2077,6 +2136,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
     this.isPdf = false,
     this.isDoc = false,
     this.pdfBytes,
+    this.imageBytes,
   });
 
   @override
@@ -2116,9 +2176,9 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
       fallback: 'document'.tr(),
     );
 
-    final Widget imageContent = widget.url.startsWith('data:')
+    final Widget imageContent = widget.imageBytes != null
         ? Image.memory(
-            _base64ToBytes(widget.url),
+            widget.imageBytes!,
             width: double.infinity,
             height: double.infinity,
             fit: BoxFit.cover,
@@ -2129,6 +2189,19 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
               ),
             ),
           )
+        : widget.url.startsWith('data:')
+            ? Image.memory(
+                _base64ToBytes(widget.url),
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Center(
+                  child: Text(
+                    failedToLoadText,
+                    style: const TextStyle(color: Color(0xFF9E9E9E)),
+                  ),
+                ),
+              )
         : CachedNetworkImage(
             imageUrl: widget.url,
             width: double.infinity,
