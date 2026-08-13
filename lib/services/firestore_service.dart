@@ -1413,10 +1413,48 @@ class FirestoreService {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getMonthlyAttendanceRecords(
+    DateTime month,
+  ) async {
+    final targetMonth = DateTime(month.year, month.month, 1);
+    final coll = _attendance;
+    if (coll == null) return const [];
+
+    final startOfMonth = targetMonth;
+    final startOfNextMonth = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      1,
+    );
+
+    final snapshots = await Future.wait([
+      coll
+          .where('attendanceDate', isGreaterThanOrEqualTo: startOfMonth)
+          .where('attendanceDate', isLessThan: startOfNextMonth)
+          .get(),
+      coll
+          .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('createdAt', isLessThan: startOfNextMonth)
+          .get(),
+    ]);
+
+    final recordsById = <String, Map<String, dynamic>>{};
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        recordsById[doc.id] = {
+          ...doc.data() as Map<String, dynamic>,
+          'id': doc.id,
+        };
+      }
+    }
+    return recordsById.values.toList();
+  }
+
   Future<Map<String, int>> getWorkerMonthlyAttendance(
     String email, {
     String? workerId,
     DateTime? month,
+    List<Map<String, dynamic>>? preFetchedRecords,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
     final normalizedWorkerId = (workerId ?? '').trim();
@@ -1428,37 +1466,13 @@ class FirestoreService {
     final isGuest = AuthService.instance.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       records = List<Map<String, dynamic>>.from(DummyData.attendance);
+    } else if (preFetchedRecords != null) {
+      records = preFetchedRecords;
     } else {
-      final coll = _attendance;
-      if (coll == null) return {'absents': 0, 'leaves': 0};
-
-      final startOfMonth = DateTime(targetMonth.year, targetMonth.month, 1);
-      final startOfNextMonth = DateTime(
-        targetMonth.year,
-        targetMonth.month + 1,
-        1,
-      );
-      final snapshots = await Future.wait([
-        coll
-            .where('attendanceDate', isGreaterThanOrEqualTo: startOfMonth)
-            .where('attendanceDate', isLessThan: startOfNextMonth)
-            .get(),
-        coll
-            .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
-            .where('createdAt', isLessThan: startOfNextMonth)
-            .get(),
-      ]);
-      final recordsById = <String, Map<String, dynamic>>{};
-      for (final snapshot in snapshots) {
-        for (final doc in snapshot.docs) {
-          recordsById[doc.id] = {
-            ...doc.data() as Map<String, dynamic>,
-            'id': doc.id,
-          };
-        }
-      }
-      records = recordsById.values.toList();
+      records = await getMonthlyAttendanceRecords(targetMonth);
     }
+
+
 
     records.sort((a, b) {
       final aDate = AppDateUtils.attendanceRecordDate(a);

@@ -295,6 +295,7 @@ class PayrollRunner {
     // ── Parallel fetch: company profile + payroll snapshot + working days ──
     Map<String, dynamic>? companyProfile;
     List<Map<String, dynamic>> existingPayroll = const [];
+    List<Map<String, dynamic>>? preFetchedAttendance;
     int autoWorkDays = 0;
 
     try {
@@ -320,6 +321,9 @@ class PayrollRunner {
           firestoreService
               .getMonthlyWorkingDays(month: effectivePayrollMonth)
               .then((v) => {'_days': v}),
+          firestoreService
+              .getMonthlyAttendanceRecords(effectivePayrollMonth)
+              .then((v) => {'_attendance': v}),
         ]);
         companyProfile = results[0] as Map<String, dynamic>?;
         final payrollDocs = (results[1] as dynamic).docs as List<dynamic>;
@@ -333,6 +337,10 @@ class PayrollRunner {
             .toList();
         final daysMap = results[2] as Map<String, dynamic>;
         autoWorkDays = (daysMap['_days'] as int?) ?? 0;
+        final attendanceMap = results[3] as Map<String, dynamic>;
+        preFetchedAttendance = (attendanceMap['_attendance'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
       }
     } catch (error, stackTrace) {
       ErrorReporter.report(
@@ -440,6 +448,7 @@ class PayrollRunner {
                   email,
                   workerId: workerId,
                   month: effectivePayrollMonth,
+                  preFetchedRecords: preFetchedAttendance,
                 );
             return <String, dynamic>{...attendance};
           } catch (error, stackTrace) {
