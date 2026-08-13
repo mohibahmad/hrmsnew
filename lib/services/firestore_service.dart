@@ -1853,6 +1853,12 @@ class FirestoreService {
     return coll.snapshots();
   }
 
+  Stream<QuerySnapshot> attendanceStreamForWorker(String workerId) {
+    final coll = _attendance;
+    if (coll == null) return const Stream.empty();
+    return coll.where('workerId', isEqualTo: workerId.trim()).snapshots();
+  }
+
   Stream<QuerySnapshot> attendanceStreamForPeriod({
     required DateTime start,
     required DateTime end,

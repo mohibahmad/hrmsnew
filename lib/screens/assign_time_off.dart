@@ -136,6 +136,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
   StreamSubscription? _timeoffSub;
+  StreamSubscription? _attendanceSub;
   String _watchedTimeoffWorkerId = '';
   List<Map<String, dynamic>> _timeoffRecords = [];
 
@@ -468,7 +469,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final worker = _selectedWorker;
     if (worker == null) {
       await _timeoffSub?.cancel();
+      await _attendanceSub?.cancel();
       _timeoffSub = null;
+      _attendanceSub = null;
       _watchedTimeoffWorkerId = '';
       if (mounted) setState(() => _timeoffRecords = []);
       return;
@@ -478,14 +481,16 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         .trim();
     if (workerId.isEmpty) {
       await _timeoffSub?.cancel();
+      await _attendanceSub?.cancel();
       _timeoffSub = null;
+      _attendanceSub = null;
       _watchedTimeoffWorkerId = '';
       if (mounted) setState(() => _timeoffRecords = []);
       return;
     }
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      final records = DummyData.timeoff
+      final rawTimeoff = DummyData.timeoff
           .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
           .map((r) {
             final id = (r['id'] ?? '').toString().trim();
@@ -498,6 +503,13 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             return r;
           })
           .toList();
+      final rawAttendance = DummyData.attendance
+          .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
+          .toList();
+      final records = TimeOffService.combineTimeOffAndAttendanceRecords(
+        timeOffRecords: rawTimeoff,
+        attendanceRecords: rawAttendance,
+      );
       if (mounted) {
         setState(() {
           _timeoffRecords = records;
@@ -506,34 +518,67 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
       return;
     }
-    if (_watchedTimeoffWorkerId == workerId && _timeoffSub != null) return;
+    if (_watchedTimeoffWorkerId == workerId && _timeoffSub != null && _attendanceSub != null) {
+      return;
+    }
 
     await _timeoffSub?.cancel();
+    await _attendanceSub?.cancel();
     if (!mounted) return;
     _watchedTimeoffWorkerId = workerId;
+
+    List<Map<String, dynamic>> latestTimeoffDocs = [];
+    List<Map<String, dynamic>> latestAttendanceDocs = [];
+
+    void updateCombinedRecords() {
+      if (!mounted || _watchedTimeoffWorkerId != workerId) return;
+      setState(() {
+        _timeoffRecords = TimeOffService.combineTimeOffAndAttendanceRecords(
+          timeOffRecords: latestTimeoffDocs,
+          attendanceRecords: latestAttendanceDocs,
+        );
+        if (widget.viewOnly) {
+          _syncViewOnlyDatesForType();
+        } else if (_isAggregateOverview) {
+          _syncAggregateDatesForType();
+        } else {
+          _syncOpenRecordFromLiveData();
+        }
+      });
+    }
+
     _timeoffSub = _firestore
         .timeoffForWorkerStream(workerId)
         .listen(
           (snapshot) {
-            if (!mounted || _watchedTimeoffWorkerId != workerId) return;
-            setState(() {
-              _timeoffRecords = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              if (widget.viewOnly) {
-                _syncViewOnlyDatesForType();
-              } else if (_isAggregateOverview) {
-                _syncAggregateDatesForType();
-              } else {
-                _syncOpenRecordFromLiveData();
-              }
-            });
+            latestTimeoffDocs = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            updateCombinedRecords();
           },
           onError: (Object error, StackTrace stackTrace) {
             ErrorReporter.report(
               error,
               stackTrace,
-              context: 'AssignTimeOffWorkerRecordsStream:$workerId',
+              context: 'TimeoffStream:$workerId',
+            );
+          },
+        );
+
+    _attendanceSub = _firestore
+        .attendanceStreamForWorker(workerId)
+        .listen(
+          (snapshot) {
+            latestAttendanceDocs = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            updateCombinedRecords();
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'AttendanceStream:$workerId',
             );
           },
         );
@@ -743,14 +788,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     );
   }
 
-  int _remainingDaysForType(String type) {
-    if (_selectedWorker == null) return 0;
-    return TimeOffService.remainingForType(
-      _selectedWorkerForService,
-      _timeoffRecords,
-      type,
-    );
-  }
+
 
   int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
 
@@ -863,6 +901,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _notesController.dispose();
     _workersSub?.cancel();
     _timeoffSub?.cancel();
+    _attendanceSub?.cancel();
     _holidaysSub?.cancel();
     super.dispose();
   }
@@ -1406,7 +1445,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   return _leaveTypeOptions.map((option) {
                     final label = option['labelKey']!.tr();
                     final typeVal = option['value']!;
-                    final avail = _remainingDaysForType(typeVal);
+                    final avail = _availableDaysForType(typeVal);
                     final displayLabel =
                         (_selectedWorker != null && avail < 999)
                         ? '$label ($avail)'
@@ -1430,7 +1469,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 items: _leaveTypeOptions.map((option) {
                   final label = option['labelKey']!.tr();
                   final typeVal = option['value']!;
-                  final avail = _remainingDaysForType(typeVal);
+                  final avail = _availableDaysForType(typeVal);
 
                   final displayLabel = (_selectedWorker != null && avail < 999)
                       ? '$label ($avail)'
@@ -1955,7 +1994,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         _stashCurrentDraft();
         setState(() {
           _applyEditingRecord(existingLeave, preserveCalendarMonth: true);
-          _selectedDates.remove(selectedDate);
           _hasDateSelectionChanged = true;
           _syncSelectionBounds();
         });

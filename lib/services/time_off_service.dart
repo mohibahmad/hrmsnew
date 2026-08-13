@@ -368,6 +368,57 @@ class TimeOffService {
     return null;
   }
 
+  /// Combines explicit Time Off records and Attendance leave records into a single
+  /// unified list of leave records so both Attendance and Time Off modules share
+  /// the exact same source of truth for leave dates.
+  static List<Map<String, dynamic>> combineTimeOffAndAttendanceRecords({
+    required List<Map<String, dynamic>> timeOffRecords,
+    required List<Map<String, dynamic>> attendanceRecords,
+  }) {
+    final combined = List<Map<String, dynamic>>.from(timeOffRecords);
+    final existingDates = <DateTime>{};
+    for (final record in timeOffRecords) {
+      if (!isActiveRecord(record)) continue;
+      existingDates.addAll(selectedDatesForRecord(record));
+    }
+
+    for (final att in attendanceRecords) {
+      final status = (att['status'] ?? '').toString().trim().toLowerCase();
+      if (status != 'leave' &&
+          status != 'onleave' &&
+          status != 'on leave' &&
+          status != 'l') {
+        continue;
+      }
+      final date = AppDateUtils.attendanceRecordDate(att);
+      if (date == null) continue;
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (existingDates.contains(dateOnly)) continue;
+
+      final dateStr = AppDateUtils.formatDate(dateOnly);
+      final workerId = (att['workerId'] ?? '').toString().trim();
+      final workerName = (att['name'] ?? att['workerName'] ?? '').toString().trim();
+      final workerEmail = (att['email'] ?? '').toString().trim();
+      final lType = (att['leaveType'] ?? att['type'] ?? 'Annual Leave').toString();
+
+      combined.add({
+        'id': 'att_leave_${att['id'] ?? workerId}_$dateStr',
+        'workerId': workerId,
+        'name': workerName,
+        'workerName': workerName,
+        'email': workerEmail,
+        'type': lType,
+        'startDate': dateStr,
+        'endDate': dateStr,
+        'selectedDates': [dateStr],
+        'status': 'Approved',
+        'source': 'attendance',
+      });
+      existingDates.add(dateOnly);
+    }
+    return combined;
+  }
+
   static Set<DateTime> allLeaveDatesForWorker(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
