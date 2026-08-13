@@ -675,6 +675,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             reminderWindow.suppressionKey,
           );
         }
+        if (mounted) setState(() => _selectedFilter = 'All');
         break;
       case _PayrollReminderAction.viewPayable:
         if (mounted) {
@@ -775,7 +776,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payPeriodStart = next.start;
       _payPeriodEnd = next.end;
       _payrollMonth = DateTime(next.end.year, next.end.month, 1);
-      _selectedFilter = 'Pay';
+      _selectedFilter = 'All';
       _reminderHandledForActivation = true;
       _combinePayroll();
     });
