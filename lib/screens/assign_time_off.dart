@@ -1994,6 +1994,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         _stashCurrentDraft();
         setState(() {
           _applyEditingRecord(existingLeave, preserveCalendarMonth: true);
+          _selectedDates.remove(selectedDate);
           _hasDateSelectionChanged = true;
           _syncSelectionBounds();
         });
