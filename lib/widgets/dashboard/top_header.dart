@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
 import '../../services/auth_service.dart';
 
+import '../../utils/validators.dart';
+
 class TopHeader extends ConsumerWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onNotificationTap;
@@ -19,11 +21,19 @@ class TopHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.read(authServiceProvider).currentUser;
-    String name = user?.displayName ?? 'User';
+    String name = user?.displayName ?? '';
     if (name.trim().isEmpty || name == 'User') {
-      name = 'user_name'.tr();
-    } else if (name == 'Guest User') {
+      final email = user?.email ?? '';
+      if (email.contains('@')) {
+        name = email.split('@').first;
+      } else {
+        name = 'user_name'.tr();
+      }
+    }
+    if (name == 'Guest User') {
       name = 'guest_user'.tr();
+    } else {
+      name = Validators.titleCase(name);
     }
 
     return Container(

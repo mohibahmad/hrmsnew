@@ -1593,18 +1593,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         });
       }
 
-      if (latestRecord == null ||
-          !TimeOffService.isEditableRecord(latestRecord)) {
-        FlashySnackBar.show(
-          this.context,
-          message: 'past_time_off_edit_blocked'.tr(),
-          isError: true,
-        );
-        return;
-      }
-
       final mergedWorker = <String, dynamic>{...data};
-      mergedWorker.addAll(latestRecord);
+      if (latestRecord != null) {
+        mergedWorker.addAll(latestRecord);
+      }
       mergedWorker['_aggregateTimeOffEdit'] = true;
       mergedWorker['_aggregateDatesByType'] = leaveDatesByType;
 

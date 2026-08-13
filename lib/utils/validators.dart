@@ -62,7 +62,8 @@ class Validators {
   static String titleCase(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return trimmed;
-    return trimmed
+    final cleaned = trimmed.replaceAll(RegExp(r'[\._\-]'), ' ');
+    return cleaned
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .map((word) {
