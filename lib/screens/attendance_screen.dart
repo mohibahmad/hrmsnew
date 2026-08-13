@@ -315,9 +315,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         dragAnchorDate = date;
                         dragStartPosition = event.localPosition;
                         dragMoved = false;
-                        selectionBeforeDrag = Set<DateTime>.from(
-                          selectedDates,
-                        );
+                        selectionBeforeDrag = Set<DateTime>.from(selectedDates);
                         setModalState(() {});
                       },
                       onPointerMove: (event) {
@@ -405,10 +403,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         },
                         dragAnchor: dragAnchorDate,
                         dragCurrent: dragMoved && dragCurrentPosition != null
-                            ? dateAtPosition(
-                                dragCurrentPosition!,
-                                calendarDate,
-                              )
+                            ? dateAtPosition(dragCurrentPosition!, calendarDate)
                             : null,
 
                         isDragRemoving:
@@ -2188,6 +2183,8 @@ class WorkerAttendancePreviewCard extends StatefulWidget {
 
 class _WorkerAttendancePreviewCardState
     extends State<WorkerAttendancePreviewCard> {
+  bool _isExporting = false;
+
   int get _totalRecords => widget.workerRecords.length;
   int get _presents =>
       widget.workerRecords.where((d) => d['status'] == 'Present').length;
@@ -2271,16 +2268,27 @@ class _WorkerAttendancePreviewCardState
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
-                    icon: SvgPicture.asset(
-                      'assets/share1.svg',
-                      width: 20,
-                      height: 20,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFFFFFFFF),
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    onPressed: () => _exportCsv(context),
+                    icon: _isExporting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : SvgPicture.asset(
+                            'assets/share1.svg',
+                            width: 20,
+                            height: 20,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                    onPressed: _isExporting ? null : () => _exportCsv(context),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -2649,6 +2657,16 @@ class _WorkerAttendancePreviewCardState
   }
 
   Future<void> _exportCsv(BuildContext context) async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      await _exportCsvFile(context);
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  Future<void> _exportCsvFile(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
     rows.add(['worker_attendance_preview'.tr()]);

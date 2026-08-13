@@ -136,9 +136,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: primary
-                ? const Color(0xFF004FDE)
-                : const Color(0xFFF1F5F9),
+            color: primary ? const Color(0xFF004FDE) : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -226,10 +224,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: content,
-              ),
+              Padding(padding: const EdgeInsets.all(24), child: content),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
@@ -319,8 +314,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     }
     _isLoading = false;
-    if (_selectedFilter == 'Pay' &&
-        _currentPayablePayrollWorkers.isEmpty) {
+    if (_selectedFilter == 'Pay' && _currentPayablePayrollWorkers.isEmpty) {
       _selectedFilter = 'All';
     }
     _schedulePayrollReminderCheck();
@@ -513,8 +507,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: payableWorkers.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final worker = payableWorkers[index];
                           final name = (worker['name'] ?? 'Worker')
@@ -523,10 +516,11 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                           final position = (worker['position'] ?? '')
                               .toString()
                               .trim();
-                          final imageUrl = (worker['profileImage'] ??
-                                  worker['profilePic'] ??
-                                  worker['imageUrl'])
-                              ?.toString();
+                          final imageUrl =
+                              (worker['profileImage'] ??
+                                      worker['profilePic'] ??
+                                      worker['imageUrl'])
+                                  ?.toString();
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -895,8 +889,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         if (!mounted || profile == null) return;
         final currency = CurrencyUtils.normalize(profile['currency']);
         final salaryPayDay = _payDayFromProfile(profile);
-        if (currency == _companyCurrency &&
-            salaryPayDay == _salaryPayDay) {
+        if (currency == _companyCurrency && salaryPayDay == _salaryPayDay) {
           return;
         }
         final shouldResetReminder =
@@ -942,10 +935,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         if (!mounted) return;
         _liveAttendanceRecords = snapshot.docs
             .map(
-              (doc) => {
-                ...?doc.data() as Map<String, dynamic>?,
-                'id': doc.id,
-              },
+              (doc) => {...?doc.data() as Map<String, dynamic>?, 'id': doc.id},
             )
             .toList();
         _scheduleAttendanceFetch();
@@ -1005,91 +995,88 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             child: ScaleTransition(
               scale: curve,
               child: StatefulBuilder(
-                builder: (dialogContext, setDialogState) =>
-                    _desktopDialogShell(
-                      dialogContext: dialogContext,
-                      title: 'set_salary_day'.tr(),
-                      width: 540,
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'salary_day_help'.tr(),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 13,
-                              height: 1.35,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 7,
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
-                                  childAspectRatio: 1.2,
-                                ),
-                            itemCount: 31,
-                            itemBuilder: (context, index) {
-                              final value = index + 1;
-                              final selected = value == selectedDay;
-                              return MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () => setDialogState(
-                                    () => selectedDay = value,
-                                  ),
-                                  child: Container(
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? const Color(0xFF004FDE)
-                                          : const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: selected
-                                            ? const Color(0xFF004FDE)
-                                            : const Color(0xFFE5E7EB),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '$value',
-                                      style: TextStyle(
-                                        color: selected
-                                            ? const Color(0xFFFFFFFF)
-                                            : const Color(0xFF0F172A),
-                                        fontSize: 14,
-                                        fontWeight: selected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                builder: (dialogContext, setDialogState) => _desktopDialogShell(
+                  dialogContext: dialogContext,
+                  title: 'set_salary_day'.tr(),
+                  width: 540,
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'salary_day_help'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          height: 1.35,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
-                      actions: [
-                        _desktopDialogButton(
-                          label: 'cancel'.tr(),
-                          onTap: () => Navigator.pop(dialogContext),
-                        ),
-                        _desktopDialogButton(
-                          label: 'save'.tr(),
-                          primary: true,
-                          onTap: () =>
-                              Navigator.pop(dialogContext, selectedDay),
-                        ),
-                      ],
+                      const SizedBox(height: 18),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 7,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 1.2,
+                            ),
+                        itemCount: 31,
+                        itemBuilder: (context, index) {
+                          final value = index + 1;
+                          final selected = value == selectedDay;
+                          return MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setDialogState(() => selectedDay = value),
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? const Color(0xFF004FDE)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: selected
+                                        ? const Color(0xFF004FDE)
+                                        : const Color(0xFFE5E7EB),
+                                  ),
+                                ),
+                                child: Text(
+                                  '$value',
+                                  style: TextStyle(
+                                    color: selected
+                                        ? const Color(0xFFFFFFFF)
+                                        : const Color(0xFF0F172A),
+                                    fontSize: 14,
+                                    fontWeight: selected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    _desktopDialogButton(
+                      label: 'cancel'.tr(),
+                      onTap: () => Navigator.pop(dialogContext),
                     ),
+                    _desktopDialogButton(
+                      label: 'save'.tr(),
+                      primary: true,
+                      onTap: () => Navigator.pop(dialogContext, selectedDay),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1149,12 +1136,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       if (mounted) {
         final msg = error is StateError && error.message.isNotEmpty
             ? error.message
-            : (error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
-        FlashySnackBar.show(
-          context,
-          message: msg,
-          isError: true,
-        );
+            : (error.toString().isNotEmpty
+                  ? error.toString()
+                  : 'failed_to_save_record'.tr());
+        FlashySnackBar.show(context, message: msg, isError: true);
       }
     } finally {
       if (mounted) setState(() => _isRunningPayroll = false);
@@ -2344,30 +2329,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                 ),
                               ),
                               const SizedBox(width: 2),
-                              GestureDetector(
-                                onTap: () async {
-                                  await _downloadPayrollInvoice(data);
-                                },
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 4,
-                                      top: 10,
-                                      bottom: 10,
-                                      right: 10,
-                                    ),
-                                    child: SvgPicture.asset(
-                                      'assets/share1.svg',
-                                      height: 22,
-                                      width: 22,
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0xFFFFFFFF),
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              _PayrollInvoiceShareButton(
+                                onShare: () => _downloadPayrollInvoice(data),
                               ),
                             ],
                           ),
@@ -2749,6 +2712,67 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       fit: BoxFit.contain,
       color: const Color(0xFF004FDE),
       colorBlendMode: BlendMode.srcIn,
+    );
+  }
+}
+
+class _PayrollInvoiceShareButton extends StatefulWidget {
+  final Future<void> Function() onShare;
+
+  const _PayrollInvoiceShareButton({required this.onShare});
+
+  @override
+  State<_PayrollInvoiceShareButton> createState() =>
+      _PayrollInvoiceShareButtonState();
+}
+
+class _PayrollInvoiceShareButtonState
+    extends State<_PayrollInvoiceShareButton> {
+  bool _isSharing = false;
+
+  Future<void> _share() async {
+    if (_isSharing) return;
+    setState(() => _isSharing = true);
+    try {
+      await widget.onShare();
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _isSharing ? null : _share,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 4,
+            top: 10,
+            bottom: 10,
+            right: 10,
+          ),
+          child: _isSharing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : SvgPicture.asset(
+                  'assets/share1.svg',
+                  height: 22,
+                  width: 22,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFFFFFFF),
+                    BlendMode.srcIn,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

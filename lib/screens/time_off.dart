@@ -135,6 +135,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
+  bool _isExportingCsv = false;
   bool _workersLoaded = false;
   bool _timeoffLoaded = false;
   bool _workersLoadFailed = false;
@@ -2385,7 +2386,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           ),
         ),
         InkWell(
-          onTap: _handleExportCsv,
+          onTap: _isExportingCsv ? null : _handleExportCsv,
           borderRadius: BorderRadius.circular(6),
           child: Container(
             height: 43,
@@ -2397,11 +2398,21 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.file_download_outlined,
-                  size: 20,
-                  color: Colors.white,
-                ),
+                if (_isExportingCsv)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.file_download_outlined,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                 const SizedBox(width: 6),
                 Text(
                   _l('export_csv', 'Export CSV'),
@@ -2790,6 +2801,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   Future<void> _handleExportCsv() async {
+    if (_isExportingCsv) return;
     final records = _filteredTimeOffRecords;
     if (records.isEmpty) {
       FlashySnackBar.show(
@@ -2799,6 +2811,15 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       );
       return;
     }
+    setState(() => _isExportingCsv = true);
+    try {
+      await _exportTimeOffCsv(records);
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportTimeOffCsv(List<Map<String, dynamic>> records) async {
     final periodLabel =
         _recordsPeriodFilter == 'Custom Range' && _customDateRange != null
         ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
