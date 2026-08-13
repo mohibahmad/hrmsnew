@@ -493,6 +493,8 @@
   "time_off_list": "Lista de Folgas",
   "no_time_off_requests": "Nenhuma Solicitação de Folga",
   "no_time_off_records": "Nenhum Registro de Folga",
+  "no_records_named_filter": "Nenhum registro de folga encontrado para \"{{name}}\".",
+  "no_records_selected_filter": "Nenhum registro de folga encontrado para o filtro selecionado.",
   "export_csv": "Exportar CSV",
   "export_pdf": "Exportar PDF",
   "export_time_off_records": "Exportar Registros de Folga",

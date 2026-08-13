@@ -158,8 +158,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     super.dispose();
   }
 
-  String _l(String key, String fallback) {
-    final translated = key.tr().trim();
+  String _l(String key, String fallback, {Map<String, String>? namedArgs}) {
+    final translated = key.tr(namedArgs: namedArgs).trim();
     return translated.isEmpty || translated == key ? fallback : translated;
   }
 
@@ -2070,6 +2070,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               ? _l(
                   'no_records_named_filter',
                   'No time off records found for "$filterName".',
+                  namedArgs: {'name': filterName},
                 )
               : _l(
                   'no_records_selected_filter',

@@ -10,7 +10,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'LogoutDialog',
-    barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+    barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 400),
     pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -18,18 +18,26 @@ Future<void> showLogoutDialog(BuildContext context) async {
         parent: animation,
         curve: Curves.easeOutBack,
       );
-      return BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 12 * animation.value,
-          sigmaY: 12 * animation.value,
-        ),
-        child: FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: curve,
-            child: const _LogoutDialogContent(),
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: 10 * animation.value,
+              sigmaY: 10 * animation.value,
+            ),
+            child: Container(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+            ),
           ),
-        ),
+          FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: const _LogoutDialogContent(),
+            ),
+          ),
+        ],
       );
     },
   );
@@ -220,7 +228,7 @@ class DeleteDialog {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'DeleteDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -273,16 +281,23 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
 
   @override
   Widget build(BuildContext context) {
-    return BackdropFilter(
-      filter: ImageFilter.blur(
-        sigmaX: 12 * widget.animation.value,
-        sigmaY: 12 * widget.animation.value,
-      ),
-      child: FadeTransition(
-        opacity: widget.animation,
-        child: ScaleTransition(
-          scale: widget.curve,
-          child: Dialog(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 10 * widget.animation.value,
+            sigmaY: 10 * widget.animation.value,
+          ),
+          child: Container(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.35 * widget.animation.value),
+          ),
+        ),
+        FadeTransition(
+          opacity: widget.animation,
+          child: ScaleTransition(
+            scale: widget.curve,
+            child: Dialog(
             backgroundColor: Colors.transparent,
             child: Container(
               width: 380,
@@ -406,6 +421,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
           ),
         ),
       ),
-    );
+    ],
+  );
   }
 }

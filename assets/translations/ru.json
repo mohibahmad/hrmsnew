@@ -494,6 +494,8 @@
   "time_off_list": "Список отпусков",
   "no_time_off_requests": "Нет запросов на отпуск",
   "no_time_off_records": "Нет записей об отпусках",
+  "no_records_named_filter": "Не найдено записей об отпуске для \"{{name}}\".",
+  "no_records_selected_filter": "Не найдено записей об отпуске для выбранного фильтра.",
   "export_csv": "Экспорт CSV",
   "export_pdf": "Экспорт PDF",
   "export_time_off_records": "Экспорт записей об отпусках",

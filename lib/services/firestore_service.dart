@@ -1113,10 +1113,8 @@ class FirestoreService {
     );
     return WorkerIdentity.duplicateField(
       <String, dynamic>{
-        if (email case final email?)
-          'email': email, // ignore: use_null_aware_elements
-        if (nationalId case final nationalId?)
-          'nationalId': nationalId, // ignore: use_null_aware_elements
+        'email': ?email,
+        'nationalId': ?nationalId,
       },
       existingWorkers,
       excludeId: excludeId,

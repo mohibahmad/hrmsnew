@@ -433,7 +433,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'PayrollReminderDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_, _, _) => const SizedBox(),
       transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
@@ -441,16 +441,23 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           parent: animation,
           curve: Curves.easeOutBack,
         );
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: _desktopDialogShell(
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: _desktopDialogShell(
                 dialogContext: dialogContext,
                 title: offset > 0
                     ? 'overdue_payroll'.tr()
@@ -648,9 +655,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
               ),
             ),
           ),
-        );
-      },
-    );
+        ],
+      );
+    },
+  );
     _reminderDialogOpen = false;
 
     switch (action) {
@@ -692,44 +700,62 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'ConfirmPayrollOverdueIgnore',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (dialogContext, _, _) => Stack(
-        fit: StackFit.expand,
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: const ColoredBox(color: Colors.transparent),
-          ),
-          _desktopDialogShell(
-            dialogContext: dialogContext,
-            title: 'overdue_payroll'.tr(),
-            width: 500,
-            content: const Text(
-              'The current workers will remain payable. This overdue reminder '
-              'will not be shown again, and the payroll cycle will move to the '
-              'next pay period. Do you want to continue?',
-              style: TextStyle(
-                color: Color(0xFF334155),
-                fontSize: 14,
-                height: 1.45,
-                fontFamily: 'SF Pro Display',
+      pageBuilder: (dialogContext, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
               ),
             ),
-            actions: [
-              _desktopDialogButton(
-                label: 'cancel'.tr(),
-                onTap: () => Navigator.pop(dialogContext, false),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: _desktopDialogShell(
+                  dialogContext: dialogContext,
+                  title: 'overdue_payroll'.tr(),
+                  width: 500,
+                  content: const Text(
+                    'The current workers will remain payable. This overdue reminder '
+                    'will not be shown again, and the payroll cycle will move to the '
+                    'next pay period. Do you want to continue?',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 14,
+                      height: 1.45,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  actions: [
+                    _desktopDialogButton(
+                      label: 'cancel'.tr(),
+                      onTap: () => Navigator.pop(dialogContext, false),
+                    ),
+                    _desktopDialogButton(
+                      label: 'ignore'.tr(),
+                      primary: true,
+                      onTap: () => Navigator.pop(dialogContext, true),
+                    ),
+                  ],
+                ),
               ),
-              _desktopDialogButton(
-                label: 'ignore'.tr(),
-                primary: true,
-                onTap: () => Navigator.pop(dialogContext, true),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true || !mounted) return false;
 
@@ -1097,7 +1123,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'SetPayDayDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_, _, _) => const SizedBox(),
       transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
@@ -1105,17 +1131,24 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           parent: animation,
           curve: Curves.easeOutBack,
         );
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: StatefulBuilder(
-                builder: (dialogContext, setDialogState) => _desktopDialogShell(
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: StatefulBuilder(
+                  builder: (dialogContext, setDialogState) => _desktopDialogShell(
                   dialogContext: dialogContext,
                   title: 'set_salary_day'.tr(),
                   width: 540,
@@ -1200,9 +1233,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
               ),
             ),
           ),
-        );
-      },
-    );
+        ],
+      );
+    },
+  );
     if (day == null || !mounted) return;
 
     try {
@@ -2343,7 +2377,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'PayrollDataDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -2351,16 +2385,23 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           parent: animation,
           curve: Curves.easeOutBack,
         );
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: Dialog(
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: Dialog(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 insetPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2649,9 +2690,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
               ),
             ),
           ),
-        );
-      },
-    );
+        ],
+      );
+    },
+  );
 
     if (result == 'edit' && mounted) {
       setState(() {

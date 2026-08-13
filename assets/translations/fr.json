@@ -493,6 +493,8 @@
   "time_off_list": "Liste des congés",
   "no_time_off_requests": "Aucune demande de congé",
   "no_time_off_records": "Aucun enregistrement de congé",
+  "no_records_named_filter": "Aucun enregistrement de congé trouvé pour \"{{name}}\".",
+  "no_records_selected_filter": "Aucun enregistrement de congé trouvé pour le filtre sélectionné.",
   "export_csv": "Exporter CSV",
   "export_pdf": "Exporter PDF",
   "export_time_off_records": "Exporter les enregistrements de congé",

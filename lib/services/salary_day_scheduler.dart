@@ -1305,12 +1305,13 @@ class PayrollRunner {
         ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 720.0;
-    final dialogHeight = screenWidth < 600 ? 620.0 : 700.0;
+    final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 580.0;
+    final dialogHeight = screenWidth < 600 ? 540.0 : 560.0;
 
     String searchQuery = '';
     String positionFilter = 'All';
     Set<int> selectedIndices = {};
+    int? activeDetailIndex;
     final Map<int, TextEditingController> overtimeControllers = {};
 
     for (int i = 0; i < summary.results.length; i++) {
@@ -1341,7 +1342,7 @@ class PayrollRunner {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'PayrollReviewDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -1349,259 +1350,272 @@ class PayrollRunner {
           parent: animation,
           curve: Curves.easeOutBack,
         );
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: StatefulBuilder(
-                builder: (context, setDialogState) {
-                  List<AutoPayrollResult> posFiltered;
-                  if (positionFilter == 'All') {
-                    posFiltered = List<AutoPayrollResult>.from(summary.results)
-                      ..sort(
-                        (a, b) => a.workerName.trim().toLowerCase().compareTo(
-                          b.workerName.trim().toLowerCase(),
-                        ),
-                      );
-                  } else {
-                    posFiltered = summary.results
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(
+                  0xFF0F172A,
+                ).withValues(alpha: 0.35 * animation.value),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    List<AutoPayrollResult> posFiltered;
+                    if (positionFilter == 'All') {
+                      posFiltered =
+                          List<AutoPayrollResult>.from(summary.results)..sort(
+                            (a, b) => a.workerName
+                                .trim()
+                                .toLowerCase()
+                                .compareTo(b.workerName.trim().toLowerCase()),
+                          );
+                    } else {
+                      posFiltered = summary.results
+                          .where(
+                            (r) =>
+                                r.position.toLowerCase().trim() ==
+                                positionFilter.toLowerCase().trim(),
+                          )
+                          .toList();
+                    }
+
+                    final filteredResults = searchQuery.isEmpty
+                        ? posFiltered
+                        : posFiltered
+                              .where(
+                                (r) =>
+                                    r.workerName.toLowerCase().contains(
+                                      searchQuery.toLowerCase(),
+                                    ) ||
+                                    r.email.toLowerCase().contains(
+                                      searchQuery.toLowerCase(),
+                                    ),
+                              )
+                              .toList();
+
+                    final filteredSelectedCount = filteredResults
+                        .where(
+                          (r) => selectedIndices.contains(
+                            summary.results.indexOf(r),
+                          ),
+                        )
+                        .length;
+                    final filteredPayCount = filteredResults
                         .where(
                           (r) =>
-                              r.position.toLowerCase().trim() ==
-                              positionFilter.toLowerCase().trim(),
+                              r.success &&
+                              selectedIndices.contains(
+                                summary.results.indexOf(r),
+                              ),
                         )
-                        .toList();
-                  }
+                        .length;
 
-                  final filteredResults = searchQuery.isEmpty
-                      ? posFiltered
-                      : posFiltered
-                            .where(
-                              (r) =>
-                                  r.workerName.toLowerCase().contains(
-                                    searchQuery.toLowerCase(),
-                                  ) ||
-                                  r.email.toLowerCase().contains(
-                                    searchQuery.toLowerCase(),
-                                  ),
-                            )
-                            .toList();
-
-                  final filteredSelectedCount = filteredResults
-                      .where(
-                        (r) => selectedIndices.contains(
-                          summary.results.indexOf(r),
-                        ),
-                      )
-                      .length;
-                  final filteredPayCount = filteredResults
-                      .where(
-                        (r) =>
-                            r.success &&
-                            selectedIndices.contains(
-                              summary.results.indexOf(r),
-                            ),
-                      )
-                      .length;
-
-                  return Dialog(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Center(
-                      child: Container(
-                        width: dialogWidth,
-                        height: dialogHeight,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF0F172A,
-                              ).withValues(alpha: 0.12),
-                              blurRadius: 32,
-                              offset: const Offset(0, 16),
-                            ),
-                            BoxShadow(
-                              color: const Color(
-                                0xFF0F172A,
-                              ).withValues(alpha: 0.06),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 14.0,
+                    return Dialog(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Center(
+                        child: Container(
+                          width: dialogWidth,
+                          height: dialogHeight,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: 0.12),
+                                blurRadius: 32,
+                                offset: const Offset(0, 16),
                               ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Center(
-                                      child: Text(
-                                        'payroll_run_review'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF111827),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  GestureDetector(
-                                    onTap: () => Navigator.of(context).pop(),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      child: const Icon(
-                                        Icons.close,
-                                        size: 18,
-                                        color: Color(0xFF9CA3AF),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: 0.06),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
-
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              child: SizedBox(
-                                height: 38,
-                                child: TextField(
-                                  onChanged: (val) {
-                                    setDialogState(() => searchQuery = val);
-                                  },
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontFamily: 'SF Pro Display',
-                                    color: Color(0xFF111827),
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'search_workers_hint'.tr(),
-                                    hintStyle: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFFBDBDBD),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    prefixIcon: const Icon(
-                                      Icons.search,
-                                      size: 18,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                    filled: true,
-                                    fillColor: const Color(0xFFF9FAFB),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 12,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFF0F70FF),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    isDense: true,
-                                  ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                height: 48,
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
                                 ),
-                              ),
-                            ),
-
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  24,
-                                  8,
-                                  24,
-                                  0,
-                                ),
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ChoiceChip(
-                                        label: Text('all_filter'.tr()),
-                                        selected: positionFilter == 'All',
-                                        onSelected: (_) {
-                                          setDialogState(
-                                            () => positionFilter = 'All',
-                                          );
+                                color: const Color(0xFF004FDE),
+                                child: Row(
+                                  children: [
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          if (activeDetailIndex != null) {
+                                            setDialogState(
+                                              () => activeDetailIndex = null,
+                                            );
+                                          } else {
+                                            Navigator.of(context).pop();
+                                          }
                                         },
-                                        selectedColor: const Color(0xFF0C51C1),
-                                        backgroundColor: Colors.white,
-                                        checkmarkColor: Colors.transparent,
-                                        showCheckmark: false,
-                                        side: positionFilter == 'All'
-                                            ? null
-                                            : const BorderSide(
-                                                color: Color(0xFFE5E7EB),
-                                              ),
-                                        labelStyle: TextStyle(
-                                          color: positionFilter == 'All'
-                                              ? Colors.white
-                                              : const Color(0xFF111827),
-                                          fontSize: 12,
-                                          fontWeight: positionFilter == 'All'
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
+                                        child: SizedBox(
+                                          width: 32,
+                                          height: 32,
+                                          child: Icon(
+                                            activeDetailIndex != null
+                                                ? Icons.arrow_back_rounded
+                                                : Icons.close_rounded,
+                                            color: const Color(0xFFFFFFFF),
+                                            size: 21,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          activeDetailIndex != null
+                                              ? 'payroll_details_title'
+                                                    .tr(
+                                                      namedArgs: {
+                                                        'name': summary
+                                                            .results[activeDetailIndex!]
+                                                            .workerName,
+                                                      },
+                                                    )
+                                                    .trim()
+                                              : 'payroll_run_review'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFFFFFFF),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 32),
+                                  ],
+                                ),
+                              ),
+                              if (activeDetailIndex != null)
+                                Expanded(
+                                  child: _buildInlineWorkerDetailView(
+                                    context: context,
+                                    result: summary.results[activeDetailIndex!],
+                                    originalIndex: activeDetailIndex!,
+                                    overtimeControllers: overtimeControllers,
+                                    onBack: () => setDialogState(
+                                      () => activeDetailIndex = null,
+                                    ),
+                                    isGuest: isGuest,
+                                    setDialogState: setDialogState,
+                                  ),
+                                )
+                              else ...[
+                                const SizedBox(height: 12),
+
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                  ),
+                                  child: SizedBox(
+                                    height: 38,
+                                    child: TextField(
+                                      onChanged: (val) {
+                                        setDialogState(() => searchQuery = val);
+                                      },
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
+                                        color: Color(0xFF111827),
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'search_workers_hint'.tr(),
+                                        hintStyle: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFFBDBDBD),
                                           fontFamily: 'SF Pro Display',
                                         ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
+                                        prefixIcon: const Icon(
+                                          Icons.search,
+                                          size: 18,
+                                          color: Color(0xFF6B7280),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                        ),
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                      ...allPositions.map(
-                                        (pos) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 8,
-                                          ),
-                                          child: ChoiceChip(
-                                            label: Text(
-                                              LocalizationHelper.localizePosition(
-                                                pos,
-                                              ),
+                                        filled: true,
+                                        fillColor: const Color(0xFFF9FAFB),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                              horizontal: 12,
                                             ),
-                                            selected: positionFilter == pos,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5E7EB),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5E7EB),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF0F70FF),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      24,
+                                      8,
+                                      24,
+                                      0,
+                                    ),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ChoiceChip(
+                                            label: Text('all_filter'.tr()),
+                                            selected: positionFilter == 'All',
                                             onSelected: (_) {
                                               setDialogState(
-                                                () => positionFilter = pos,
+                                                () => positionFilter = 'All',
                                               );
                                             },
                                             selectedColor: const Color(
@@ -1610,17 +1624,18 @@ class PayrollRunner {
                                             backgroundColor: Colors.white,
                                             checkmarkColor: Colors.transparent,
                                             showCheckmark: false,
-                                            side: positionFilter == pos
+                                            side: positionFilter == 'All'
                                                 ? null
                                                 : const BorderSide(
                                                     color: Color(0xFFE5E7EB),
                                                   ),
                                             labelStyle: TextStyle(
-                                              color: positionFilter == pos
+                                              color: positionFilter == 'All'
                                                   ? Colors.white
                                                   : const Color(0xFF111827),
                                               fontSize: 12,
-                                              fontWeight: positionFilter == pos
+                                              fontWeight:
+                                                  positionFilter == 'All'
                                                   ? FontWeight.w600
                                                   : FontWeight.w500,
                                               fontFamily: 'SF Pro Display',
@@ -1635,117 +1650,147 @@ class PayrollRunner {
                                             visualDensity:
                                                 VisualDensity.compact,
                                           ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                14,
-                                24,
-                                12,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEEF2FF),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '$filteredSelectedCount ${'selected'.tr()}',
-                                          style: const TextStyle(
-                                            color: Color(0xFF0247C4),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'processing_for_cycle'.tr(
-                                          namedArgs: {
-                                            'period': summary.periodLabel,
-                                          },
-                                        ),
-                                        style: const TextStyle(
-                                          color: Color(0xFF6B7280),
-                                          fontSize: 13,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setDialogState(() {
-                                        final filteredIndices = filteredResults
-                                            .map(
-                                              (r) => summary.results.indexOf(r),
-                                            )
-                                            .toSet();
-                                        final allFilteredSelected =
-                                            filteredIndices.every(
-                                              (i) =>
-                                                  selectedIndices.contains(i),
-                                            );
-                                        if (allFilteredSelected) {
-                                          selectedIndices.removeAll(
-                                            filteredIndices,
-                                          );
-                                        } else {
-                                          selectedIndices.addAll(
-                                            filteredIndices,
-                                          );
-                                        }
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 7,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            filteredResults.every(
-                                              (r) => selectedIndices.contains(
-                                                summary.results.indexOf(r),
+                                          ...allPositions.map(
+                                            (pos) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 8,
                                               ),
-                                            )
-                                            ? const Color(0xFFFEE2E2)
-                                            : const Color(0xFFEEF2FF),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            filteredResults.every(
-                                                  (r) =>
-                                                      selectedIndices.contains(
-                                                        summary.results.indexOf(
-                                                          r,
+                                              child: ChoiceChip(
+                                                label: Text(
+                                                  LocalizationHelper.localizePosition(
+                                                    pos,
+                                                  ),
+                                                ),
+                                                selected: positionFilter == pos,
+                                                onSelected: (_) {
+                                                  setDialogState(
+                                                    () => positionFilter = pos,
+                                                  );
+                                                },
+                                                selectedColor: const Color(
+                                                  0xFF0C51C1,
+                                                ),
+                                                backgroundColor: Colors.white,
+                                                checkmarkColor:
+                                                    Colors.transparent,
+                                                showCheckmark: false,
+                                                side: positionFilter == pos
+                                                    ? null
+                                                    : const BorderSide(
+                                                        color: Color(
+                                                          0xFFE5E7EB,
                                                         ),
                                                       ),
-                                                )
-                                                ? Icons.deselect
-                                                : Icons.select_all,
-                                            size: 15,
+                                                labelStyle: TextStyle(
+                                                  color: positionFilter == pos
+                                                      ? Colors.white
+                                                      : const Color(0xFF111827),
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                      positionFilter == pos
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w500,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                    ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    14,
+                                    24,
+                                    12,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEEF2FF),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              '$filteredSelectedCount ${'selected'.tr()}',
+                                              style: const TextStyle(
+                                                color: Color(0xFF0247C4),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'processing_for_cycle'.tr(
+                                              namedArgs: {
+                                                'period': summary.periodLabel,
+                                              },
+                                            ),
+                                            style: const TextStyle(
+                                              color: Color(0xFF6B7280),
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      GestureDetector(
+                                        onTap: () {
+                                          setDialogState(() {
+                                            final filteredIndices =
+                                                filteredResults
+                                                    .map(
+                                                      (r) => summary.results
+                                                          .indexOf(r),
+                                                    )
+                                                    .toSet();
+                                            final allFilteredSelected =
+                                                filteredIndices.every(
+                                                  (i) => selectedIndices
+                                                      .contains(i),
+                                                );
+                                            if (allFilteredSelected) {
+                                              selectedIndices.removeAll(
+                                                filteredIndices,
+                                              );
+                                            } else {
+                                              selectedIndices.addAll(
+                                                filteredIndices,
+                                              );
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 7,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color:
                                                 filteredResults.every(
                                                   (r) =>
@@ -1755,643 +1800,60 @@ class PayrollRunner {
                                                         ),
                                                       ),
                                                 )
-                                                ? const Color(0xFFEF4444)
-                                                : const Color(0xFF0247C4),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            filteredResults.every(
-                                                  (r) =>
-                                                      selectedIndices.contains(
-                                                        summary.results.indexOf(
-                                                          r,
-                                                        ),
-                                                      ),
-                                                )
-                                                ? 'deselect_all'.tr()
-                                                : 'select_all'.tr(),
-                                            style: TextStyle(
-                                              color:
-                                                  filteredResults.every(
-                                                    (r) => selectedIndices
-                                                        .contains(
-                                                          summary.results
-                                                              .indexOf(r),
-                                                        ),
-                                                  )
-                                                  ? const Color(0xFFEF4444)
-                                                  : const Color(0xFF0247C4),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              height: 1,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-
-                            Expanded(
-                              child: filteredResults.isEmpty
-                                  ? Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.search_off_rounded,
-                                            size: 48,
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'no_results'.tr(),
-                                            style: const TextStyle(
-                                              color: Color(0xFF64748B),
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : ListView.builder(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        24,
-                                        10,
-                                        24,
-                                        10,
-                                      ),
-                                      itemCount: filteredResults.length,
-                                      itemBuilder: (_, i) {
-                                        final r = filteredResults[i];
-                                        final originalIndex = summary.results
-                                            .indexOf(r);
-                                        final isSelected = selectedIndices
-                                            .contains(originalIndex);
-
-                                        final avatarColors = [
-                                          const Color(0xFFE4F0FF),
-                                          const Color(0xFFEFE4FF),
-                                          const Color(0xFFE4FFE8),
-                                          const Color(0xFFFFE4E4),
-                                          const Color(0xFFFFF0E4),
-                                        ];
-                                        final avatarTextColors = [
-                                          const Color(0xFF0F70FF),
-                                          const Color(0xFF6A00FF),
-                                          const Color(0xFF22C55E),
-                                          const Color(0xFFEF4444),
-                                          const Color(0xFFF97316),
-                                        ];
-                                        final colorIdx =
-                                            r.workerName.hashCode.abs() % 5;
-
-                                        final posLower = r.position
-                                            .toLowerCase()
-                                            .trim();
-                                        final stLower = r.salaryType
-                                            .toLowerCase()
-                                            .trim();
-                                        final isContractorWorker =
-                                            posLower.contains('contract') ||
-                                            posLower.contains('freelance') ||
-                                            stLower.contains('contract') ||
-                                            stLower.contains('freelance') ||
-                                            (stLower != 'monthly' &&
-                                                stLower.isNotEmpty);
-                                        final storedEmploymentType = r
-                                            .employmentType
-                                            .trim();
-                                        final typeLabel =
-                                            storedEmploymentType.isNotEmpty
-                                            ? LocalizationHelper.localizeType1(
-                                                storedEmploymentType,
-                                              ).toUpperCase()
-                                            : isContractorWorker
-                                            ? 'type_contractor'.tr()
-                                            : 'type_full_time'.tr();
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 8,
-                                          ),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: isSelected
-                                                    ? const Color(
-                                                        0xFF0F70FF,
-                                                      ).withValues(alpha: 0.3)
-                                                    : const Color(0xFFE5E7EB),
-                                                width: 1.2,
-                                              ),
-                                            ),
-                                            child: InkWell(
-                                              onTap: () async {
-                                                final controllerKeys = [
-                                                  originalIndex * 10,
-                                                  originalIndex * 10 + 1,
-                                                  originalIndex * 10 + 2,
-                                                ];
-                                                for (final key
-                                                    in controllerKeys) {
-                                                  overtimeControllers
-                                                      .remove(key)
-                                                      ?.dispose();
-                                                }
-                                                final updated =
-                                                    await _showWorkerPayrollDetails(
-                                                      context: context,
-                                                      result: r.copy(),
-                                                      originalIndex:
-                                                          originalIndex,
-                                                      overtimeControllers:
-                                                          overtimeControllers,
-                                                      summary: summary,
-                                                      dialogWidth: dialogWidth,
-                                                      dialogHeight:
-                                                          dialogHeight,
-                                                    );
-                                                for (final key
-                                                    in controllerKeys) {
-                                                  overtimeControllers
-                                                      .remove(key)
-                                                      ?.dispose();
-                                                }
-                                                if (updated != null) {
-                                                  summary.results[originalIndex] =
-                                                      updated;
-                                                }
-                                                if (context.mounted) {
-                                                  setDialogState(() {});
-                                                }
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 14,
-                                                      horizontal: 14,
-                                                    ),
-                                                child: Row(
-                                                  children: [
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        setDialogState(() {
-                                                          if (isSelected) {
-                                                            selectedIndices
-                                                                .remove(
-                                                                  originalIndex,
-                                                                );
-                                                          } else {
-                                                            selectedIndices.add(
-                                                              originalIndex,
-                                                            );
-                                                          }
-                                                        });
-                                                      },
-                                                      child: Container(
-                                                        width: 12,
-                                                        height: 12,
-                                                        decoration: BoxDecoration(
-                                                          border: Border.all(
-                                                            color: isSelected
-                                                                ? const Color(
-                                                                    0xFF0F70FF,
-                                                                  )
-                                                                : const Color(
-                                                                    0xFFD1D5DB,
-                                                                  ),
-                                                            width: 1,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                2,
-                                                              ),
-                                                          color: isSelected
-                                                              ? const Color(
-                                                                  0xFF0F70FF,
-                                                                )
-                                                              : Colors
-                                                                    .transparent,
-                                                        ),
-                                                        child: isSelected
-                                                            ? const Icon(
-                                                                Icons.check,
-                                                                size: 8,
-                                                                color: Colors
-                                                                    .white,
-                                                              )
-                                                            : null,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 14),
-
-                                                    _workerAvatar(
-                                                      imageUrl: r.imageUrl,
-                                                      name: r.workerName,
-                                                      size: 44,
-                                                      backgroundColor:
-                                                          avatarColors[colorIdx
-                                                                  .abs() %
-                                                              5],
-                                                      textColor:
-                                                          avatarTextColors[colorIdx
-                                                                  .abs() %
-                                                              5],
-                                                      fontSize: 18,
-                                                      allowExtendedSources:
-                                                          !isGuest,
-                                                    ),
-                                                    const SizedBox(width: 14),
-
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Row(
-                                                            children: [
-                                                              Flexible(
-                                                                child: Text(
-                                                                  r.workerName,
-                                                                  style: const TextStyle(
-                                                                    fontSize:
-                                                                        15,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    fontFamily:
-                                                                        'SF Pro Display',
-                                                                    color: Color(
-                                                                      0xFF111827,
-                                                                    ),
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                width: 8,
-                                                              ),
-                                                              Container(
-                                                                padding:
-                                                                    const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          7,
-                                                                      vertical:
-                                                                          2,
-                                                                    ),
-                                                                decoration: BoxDecoration(
-                                                                  color: const Color(
-                                                                    0xFFF3F4F6,
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        4,
-                                                                      ),
-                                                                ),
-                                                                child: Text(
-                                                                  typeLabel,
-                                                                  style: const TextStyle(
-                                                                    fontSize:
-                                                                        10,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w700,
-                                                                    color: Color(
-                                                                      0xFF4B5563,
-                                                                    ),
-                                                                    letterSpacing:
-                                                                        0.5,
-                                                                    fontFamily:
-                                                                        'SF Pro Display',
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 5,
-                                                          ),
-                                                          Row(
-                                                            children: [
-                                                              Icon(
-                                                                Icons
-                                                                    .mail_outline_rounded,
-                                                                size: 13,
-                                                                color: Colors
-                                                                    .grey
-                                                                    .shade400,
-                                                              ),
-                                                              const SizedBox(
-                                                                width: 4,
-                                                              ),
-                                                              Flexible(
-                                                                child: Text(
-                                                                  r.email.isNotEmpty
-                                                                      ? r.email
-                                                                      : 'no_email'
-                                                                            .tr(),
-                                                                  style: const TextStyle(
-                                                                    fontSize:
-                                                                        13,
-                                                                    color: Color(
-                                                                      0xFF6B7280,
-                                                                    ),
-                                                                    fontFamily:
-                                                                        'SF Pro Display',
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 10),
-
-                                                    Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .end,
-                                                      children: [
-                                                        Text(
-                                                          'net_salary'.tr(),
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color: Color(
-                                                              0xFF6B7280,
-                                                            ),
-                                                            fontFamily:
-                                                                'SF Pro Display',
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 5,
-                                                        ),
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 14,
-                                                                vertical: 6,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: r.success
-                                                                ? const Color(
-                                                                    0xFFF0F6FF,
-                                                                  )
-                                                                : const Color(
-                                                                    0xFFFEE2E2,
-                                                                  ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  20,
-                                                                ),
-                                                          ),
-                                                          child: Text(
-                                                            AmountText.formatCompact(
-                                                              r.netSalary,
-                                                              locale: context
-                                                                  .locale
-                                                                  .toString(),
-                                                            ),
-                                                            style: TextStyle(
-                                                              fontSize: 14,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                              fontFamily:
-                                                                  'SF Pro Display',
-                                                              color: r.success
-                                                                  ? const Color(
-                                                                      0xFF0F70FF,
-                                                                    )
-                                                                  : const Color(
-                                                                      0xFFEF4444,
-                                                                    ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(width: 6),
-
-                                                    const Icon(
-                                                      Icons
-                                                          .chevron_right_rounded,
-                                                      size: 22,
-                                                      color: Color(0xFF9CA3AF),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                            ),
-
-                            Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  top: BorderSide(
-                                    color: Color(0xFFE5E7EB),
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                12,
-                                24,
-                                14,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'total_disbursement'.tr(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF6B7280),
-                                          letterSpacing: 0.5,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        () {
-                                          double total = 0;
-                                          String prefix = '';
-                                          for (final r in filteredResults) {
-                                            final idx = summary.results.indexOf(
-                                              r,
-                                            );
-                                            if (selectedIndices.contains(idx) &&
-                                                r.success &&
-                                                r.rawNetSalaryValue.isFinite) {
-                                              total += r.rawNetSalaryValue;
-                                              if (prefix.isEmpty) {
-                                                prefix =
-                                                    PayrollService.getCurrencyPrefix(
-                                                      r.netSalary,
-                                                    );
-                                              }
-                                            }
-                                          }
-                                          final value =
-                                              PayrollService.formatNumber(
-                                                total,
-                                                locale: context.locale
-                                                    .toString(),
-                                              );
-                                          return prefix.isEmpty
-                                              ? value
-                                              : '$prefix $value';
-                                        }(),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF111827),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () =>
-                                            Navigator.of(context).pop(),
-                                        child: Container(
-                                          height: 48,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 22,
-                                          ),
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF1F5F9),
+                                                ? const Color(0xFFFEE2E2)
+                                                : const Color(0xFFEEF2FF),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
-                                          ),
-                                          child: Text(
-                                            'cancel'.tr(),
-                                            style: const TextStyle(
-                                              color: Color(0xFF000000),
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-
-                                      GestureDetector(
-                                        onTap: filteredPayCount == 0
-                                            ? null
-                                            : () {
-                                                final selected = filteredResults
-                                                    .where(
-                                                      (r) =>
-                                                          r.success &&
-                                                          selectedIndices
-                                                              .contains(
-                                                                summary.results
-                                                                    .indexOf(r),
-                                                              ),
-                                                    )
-                                                    .toList();
-                                                Navigator.of(
-                                                  context,
-                                                ).pop(selected);
-                                              },
-                                        child: Container(
-                                          height: 48,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 22,
-                                          ),
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            color: filteredPayCount == 0
-                                                ? const Color(
-                                                    0xFF0247C4,
-                                                  ).withValues(alpha: 0.4)
-                                                : const Color(0xFF0247C4),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            boxShadow: filteredPayCount > 0
-                                                ? [
-                                                    BoxShadow(
-                                                      color: const Color(
-                                                        0xFF0247C4,
-                                                      ).withValues(alpha: 0.2),
-                                                      blurRadius: 8,
-                                                      offset: const Offset(
-                                                        0,
-                                                        4,
-                                                      ),
-                                                    ),
-                                                  ]
-                                                : null,
                                           ),
                                           child: Row(
-                                            mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(
-                                                Icons.check_circle_outline,
-                                                color: Colors.white,
-                                                size: 18,
+                                              Icon(
+                                                filteredResults.every(
+                                                      (r) => selectedIndices
+                                                          .contains(
+                                                            summary.results
+                                                                .indexOf(r),
+                                                          ),
+                                                    )
+                                                    ? Icons.deselect
+                                                    : Icons.select_all,
+                                                size: 15,
+                                                color:
+                                                    filteredResults.every(
+                                                      (r) => selectedIndices
+                                                          .contains(
+                                                            summary.results
+                                                                .indexOf(r),
+                                                          ),
+                                                    )
+                                                    ? const Color(0xFFEF4444)
+                                                    : const Color(0xFF0247C4),
                                               ),
-                                              const SizedBox(width: 8),
+                                              const SizedBox(width: 6),
                                               Text(
-                                                'pay_all_count'.tr(
-                                                  namedArgs: {
-                                                    'count':
-                                                        '$filteredPayCount',
-                                                  },
-                                                ),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
+                                                filteredResults.every(
+                                                      (r) => selectedIndices
+                                                          .contains(
+                                                            summary.results
+                                                                .indexOf(r),
+                                                          ),
+                                                    )
+                                                    ? 'deselect_all'.tr()
+                                                    : 'select_all'.tr(),
+                                                style: TextStyle(
+                                                  color:
+                                                      filteredResults.every(
+                                                        (r) => selectedIndices
+                                                            .contains(
+                                                              summary.results
+                                                                  .indexOf(r),
+                                                            ),
+                                                      )
+                                                      ? const Color(0xFFEF4444)
+                                                      : const Color(0xFF0247C4),
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
                                                   fontFamily: 'SF Pro Display',
                                                 ),
                                               ),
@@ -2401,434 +1863,945 @@ class PayrollRunner {
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                ),
+
+                                Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                  ),
+                                  height: 1,
+                                  color: const Color(0xFFE5E7EB),
+                                ),
+
+                                Expanded(
+                                  child: filteredResults.isEmpty
+                                      ? Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.search_off_rounded,
+                                                size: 48,
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'no_results'.tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF64748B),
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : ListView.builder(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            24,
+                                            10,
+                                            24,
+                                            10,
+                                          ),
+                                          itemCount: filteredResults.length,
+                                          itemBuilder: (_, i) {
+                                            final r = filteredResults[i];
+                                            final originalIndex = summary
+                                                .results
+                                                .indexOf(r);
+                                            final isSelected = selectedIndices
+                                                .contains(originalIndex);
+
+                                            final avatarColors = [
+                                              const Color(0xFFE4F0FF),
+                                              const Color(0xFFEFE4FF),
+                                              const Color(0xFFE4FFE8),
+                                              const Color(0xFFFFE4E4),
+                                              const Color(0xFFFFF0E4),
+                                            ];
+                                            final avatarTextColors = [
+                                              const Color(0xFF0F70FF),
+                                              const Color(0xFF6A00FF),
+                                              const Color(0xFF22C55E),
+                                              const Color(0xFFEF4444),
+                                              const Color(0xFFF97316),
+                                            ];
+                                            final colorIdx =
+                                                r.workerName.hashCode.abs() % 5;
+
+                                            final posLower = r.position
+                                                .toLowerCase()
+                                                .trim();
+                                            final stLower = r.salaryType
+                                                .toLowerCase()
+                                                .trim();
+                                            final isContractorWorker =
+                                                posLower.contains('contract') ||
+                                                posLower.contains(
+                                                  'freelance',
+                                                ) ||
+                                                stLower.contains('contract') ||
+                                                stLower.contains('freelance') ||
+                                                (stLower != 'monthly' &&
+                                                    stLower.isNotEmpty);
+                                            final storedEmploymentType = r
+                                                .employmentType
+                                                .trim();
+                                            final typeLabel =
+                                                storedEmploymentType.isNotEmpty
+                                                ? LocalizationHelper.localizeType1(
+                                                    storedEmploymentType,
+                                                  ).toUpperCase()
+                                                : isContractorWorker
+                                                ? 'type_contractor'.tr()
+                                                : 'type_full_time'.tr();
+
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 200,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? const Color(
+                                                            0xFF0F70FF,
+                                                          ).withValues(
+                                                            alpha: 0.3,
+                                                          )
+                                                        : const Color(
+                                                            0xFFE5E7EB,
+                                                          ),
+                                                    width: 1.2,
+                                                  ),
+                                                ),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    setDialogState(() {
+                                                      activeDetailIndex =
+                                                          originalIndex;
+                                                    });
+                                                  },
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 14,
+                                                          horizontal: 14,
+                                                        ),
+                                                    child: Row(
+                                                      children: [
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            setDialogState(() {
+                                                              if (isSelected) {
+                                                                selectedIndices
+                                                                    .remove(
+                                                                      originalIndex,
+                                                                    );
+                                                              } else {
+                                                                selectedIndices.add(
+                                                                  originalIndex,
+                                                                );
+                                                              }
+                                                            });
+                                                          },
+                                                          child: Container(
+                                                            width: 12,
+                                                            height: 12,
+                                                            decoration: BoxDecoration(
+                                                              border: Border.all(
+                                                                color:
+                                                                    isSelected
+                                                                    ? const Color(
+                                                                        0xFF0F70FF,
+                                                                      )
+                                                                    : const Color(
+                                                                        0xFFD1D5DB,
+                                                                      ),
+                                                                width: 1,
+                                                              ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    2,
+                                                                  ),
+                                                              color: isSelected
+                                                                  ? const Color(
+                                                                      0xFF0F70FF,
+                                                                    )
+                                                                  : Colors
+                                                                        .transparent,
+                                                            ),
+                                                            child: isSelected
+                                                                ? const Icon(
+                                                                    Icons.check,
+                                                                    size: 8,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  )
+                                                                : null,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 14,
+                                                        ),
+
+                                                        _workerAvatar(
+                                                          imageUrl: r.imageUrl,
+                                                          name: r.workerName,
+                                                          size: 44,
+                                                          backgroundColor:
+                                                              avatarColors[colorIdx
+                                                                      .abs() %
+                                                                  5],
+                                                          textColor:
+                                                              avatarTextColors[colorIdx
+                                                                      .abs() %
+                                                                  5],
+                                                          fontSize: 18,
+                                                          allowExtendedSources:
+                                                              !isGuest,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 14,
+                                                        ),
+
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Row(
+                                                                children: [
+                                                                  Flexible(
+                                                                    child: Text(
+                                                                      r.workerName,
+                                                                      style: const TextStyle(
+                                                                        fontSize:
+                                                                            15,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        fontFamily:
+                                                                            'SF Pro Display',
+                                                                        color: Color(
+                                                                          0xFF111827,
+                                                                        ),
+                                                                      ),
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    width: 8,
+                                                                  ),
+                                                                  Container(
+                                                                    padding: const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          7,
+                                                                      vertical:
+                                                                          2,
+                                                                    ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: const Color(
+                                                                        0xFFF3F4F6,
+                                                                      ),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            4,
+                                                                          ),
+                                                                    ),
+                                                                    child: Text(
+                                                                      typeLabel,
+                                                                      style: const TextStyle(
+                                                                        fontSize:
+                                                                            10,
+                                                                        fontWeight:
+                                                                            FontWeight.w700,
+                                                                        color: Color(
+                                                                          0xFF4B5563,
+                                                                        ),
+                                                                        letterSpacing:
+                                                                            0.5,
+                                                                        fontFamily:
+                                                                            'SF Pro Display',
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 5,
+                                                              ),
+                                                              Row(
+                                                                children: [
+                                                                  Icon(
+                                                                    Icons
+                                                                        .mail_outline_rounded,
+                                                                    size: 13,
+                                                                    color: Colors
+                                                                        .grey
+                                                                        .shade400,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    width: 4,
+                                                                  ),
+                                                                  Flexible(
+                                                                    child: Text(
+                                                                      r.email.isNotEmpty
+                                                                          ? r.email
+                                                                          : 'no_email'.tr(),
+                                                                      style: const TextStyle(
+                                                                        fontSize:
+                                                                            13,
+                                                                        color: Color(
+                                                                          0xFF6B7280,
+                                                                        ),
+                                                                        fontFamily:
+                                                                            'SF Pro Display',
+                                                                      ),
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+
+                                                        Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .end,
+                                                          children: [
+                                                            Text(
+                                                              'net_salary'.tr(),
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: Color(
+                                                                  0xFF6B7280,
+                                                                ),
+                                                                fontFamily:
+                                                                    'SF Pro Display',
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 5,
+                                                            ),
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        14,
+                                                                    vertical: 6,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color: r.success
+                                                                    ? const Color(
+                                                                        0xFFF0F6FF,
+                                                                      )
+                                                                    : const Color(
+                                                                        0xFFFEE2E2,
+                                                                      ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      20,
+                                                                    ),
+                                                              ),
+                                                              child: Text(
+                                                                AmountText.formatCompact(
+                                                                  r.netSalary,
+                                                                  locale: context
+                                                                      .locale
+                                                                      .toString(),
+                                                                ),
+                                                                style: TextStyle(
+                                                                  fontSize: 14,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontFamily:
+                                                                      'SF Pro Display',
+                                                                  color:
+                                                                      r.success
+                                                                      ? const Color(
+                                                                          0xFF0F70FF,
+                                                                        )
+                                                                      : const Color(
+                                                                          0xFFEF4444,
+                                                                        ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+
+                                                        const Icon(
+                                                          Icons
+                                                              .chevron_right_rounded,
+                                                          size: 22,
+                                                          color: Color(
+                                                            0xFF9CA3AF,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                ),
+
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: Color(0xFFE5E7EB),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    12,
+                                    24,
+                                    14,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'total_disbursement'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF6B7280),
+                                              letterSpacing: 0.5,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            () {
+                                              double total = 0;
+                                              String prefix = '';
+                                              for (final r in filteredResults) {
+                                                final idx = summary.results
+                                                    .indexOf(r);
+                                                if (selectedIndices.contains(
+                                                      idx,
+                                                    ) &&
+                                                    r.success &&
+                                                    r
+                                                        .rawNetSalaryValue
+                                                        .isFinite) {
+                                                  total += r.rawNetSalaryValue;
+                                                  if (prefix.isEmpty) {
+                                                    prefix =
+                                                        PayrollService.getCurrencyPrefix(
+                                                          r.netSalary,
+                                                        );
+                                                  }
+                                                }
+                                              }
+                                              final value =
+                                                  PayrollService.formatNumber(
+                                                    total,
+                                                    locale: context.locale
+                                                        .toString(),
+                                                  );
+                                              return prefix.isEmpty
+                                                  ? value
+                                                  : '$prefix $value';
+                                            }(),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF111827),
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () =>
+                                                Navigator.of(context).pop(),
+                                            child: Container(
+                                              height: 48,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 22,
+                                                  ),
+                                              alignment: Alignment.center,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF1F5F9),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'cancel'.tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF000000),
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 14),
+
+                                          GestureDetector(
+                                            onTap: filteredPayCount == 0
+                                                ? null
+                                                : () {
+                                                    final selected = filteredResults
+                                                        .where(
+                                                          (r) =>
+                                                              r.success &&
+                                                              selectedIndices
+                                                                  .contains(
+                                                                    summary
+                                                                        .results
+                                                                        .indexOf(
+                                                                          r,
+                                                                        ),
+                                                                  ),
+                                                        )
+                                                        .toList();
+                                                    Navigator.of(
+                                                      context,
+                                                    ).pop(selected);
+                                                  },
+                                            child: Container(
+                                              height: 48,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 22,
+                                                  ),
+                                              alignment: Alignment.center,
+                                              decoration: BoxDecoration(
+                                                color: filteredPayCount == 0
+                                                    ? const Color(
+                                                        0xFF0247C4,
+                                                      ).withValues(alpha: 0.4)
+                                                    : const Color(0xFF0247C4),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                boxShadow: filteredPayCount > 0
+                                                    ? [
+                                                        BoxShadow(
+                                                          color:
+                                                              const Color(
+                                                                0xFF0247C4,
+                                                              ).withValues(
+                                                                alpha: 0.2,
+                                                              ),
+                                                          blurRadius: 8,
+                                                          offset: const Offset(
+                                                            0,
+                                                            4,
+                                                          ),
+                                                        ),
+                                                      ]
+                                                    : null,
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.check_circle_outline,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'pay_all_count'.tr(
+                                                      namedArgs: {
+                                                        'count':
+                                                            '$filteredPayCount',
+                                                      },
+                                                    ),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontFamily:
+                                                          'SF Pro Display',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
-  Future<AutoPayrollResult?> _showWorkerPayrollDetails({
+  Widget _buildInlineWorkerDetailView({
     required BuildContext context,
     required AutoPayrollResult result,
     required int originalIndex,
     required Map<int, TextEditingController> overtimeControllers,
-    required PayrollRunSummary summary,
-    required double dialogWidth,
-    required double dialogHeight,
+    required VoidCallback onBack,
+    required bool isGuest,
+    required StateSetter setDialogState,
   }) {
-    final isGuest =
-        ProviderScope.containerOf(
-          context,
-        ).read(authServiceProvider).currentUser?.isAnonymous ??
-        false;
-
-    return showDialog<AutoPayrollResult>(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: StatefulBuilder(
-          builder: (detailContext, setDetailState) => Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 30,
-            ),
-            child: Center(
-              child: Container(
-                width: dialogWidth,
-                height: dialogHeight,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.12),
-                      blurRadius: 32,
-                      offset: const Offset(0, 16),
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
+                    Row(
+                      children: [
+                        _workerAvatar(
+                          imageUrl: result.imageUrl,
+                          name: result.workerName,
+                          size: 52,
+                          backgroundColor: const Color(0xFF0F70FF),
+                          textColor: Colors.white,
+                          fontSize: 24,
+                          allowExtendedSources: !isGuest,
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () =>
-                                      Navigator.of(detailContext).pop(),
-                                  child: const Icon(
-                                    Icons.arrow_back_rounded,
-                                    color: Color(0xFF000000),
-                                    size: 22,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      'payroll_details_title'
-                                          .tr(namedArgs: {'name': ''})
-                                          .trim(),
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF111827),
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 22),
-                              ],
-                            ),
-
-                            const SizedBox(height: 28),
-
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    _workerAvatar(
-                                      imageUrl: result.imageUrl,
-                                      name: result.workerName,
-                                      size: 60,
-                                      backgroundColor: const Color(0xFF0F70FF),
-                                      textColor: Colors.white,
-                                      fontSize: 28,
-                                      allowExtendedSources: !isGuest,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          result.workerName,
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF111827),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          result.email.isNotEmpty
-                                              ? result.email
-                                              : 'no_email'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF6B7280),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      'net_pay'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF6B7280),
-                                        letterSpacing: 0.8,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      AmountText.formatCompact(
-                                        result.netSalary,
-                                        locale: detailContext.locale.toString(),
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0247C4),
-                                        letterSpacing: -1.0,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: _metricColumn(
-                                    title: 'attendance'.tr(),
-                                    icon: Icons.calendar_today_outlined,
-                                    iconColor: const Color(0xFF3B82F6),
-                                    rows: [
-                                      _metricRow(
-                                        'absents'.tr(),
-                                        '${result.absents}',
-                                        const Color(0xFFF9FAFB),
-                                        const Color(0xFF6B7280),
-                                        const Color(0xFF111827),
-                                      ),
-                                      _metricRow(
-                                        'leaves_label'.tr(),
-                                        '${result.paidLeaves}',
-                                        const Color(0xFFF9FAFB),
-                                        const Color(0xFF6B7280),
-                                        const Color(0xFF111827),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: _metricColumn(
-                                    title: 'earnings'.tr(),
-                                    icon: Icons.payments_outlined,
-                                    iconColor: const Color(0xFF10B981),
-                                    rows: [
-                                      _metricRow(
-                                        'base_salary'.tr(),
-                                        result.salary.isNotEmpty
-                                            ? AmountText.formatCompact(
-                                                result.salary,
-                                                locale: detailContext.locale
-                                                    .toString(),
-                                              )
-                                            : _zeroAmount(result.salary),
-                                        const Color(0xFFF9FAFB),
-                                        const Color(0xFF6B7280),
-                                        const Color(0xFF111827),
-                                      ),
-                                      _metricRow(
-                                        'overtime_amount'.tr(),
-                                        AmountText.formatCompact(
-                                          '${CurrencyUtils.symbolFor(result.currency)} '
-                                          '${PayrollService.extractSalary(result.overtimeAmount)}',
-                                          locale: detailContext.locale
-                                              .toString(),
-                                        ),
-                                        const Color(0xFFECFDF5),
-                                        const Color(0xFF10B981),
-                                        const Color(0xFF10B981),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: _metricColumn(
-                                    title: 'deductions'.tr(),
-                                    icon: Icons.remove_circle_outline,
-                                    iconColor: const Color(0xFFEF4444),
-                                    rows: [
-                                      _editableDeductionRow(
-                                        label: 'absent_deduction'.tr(),
-                                        value: result.absentDeduction,
-                                        controllerKey: originalIndex * 10 + 1,
-                                        controllers: overtimeControllers,
-                                        currencySymbol: CurrencyUtils.symbolFor(
-                                          result.currency,
-                                        ),
-                                        enabled:
-                                            (result.absents > 0 ||
-                                                result.halfDays > 0) &&
-                                            _maximumAbsentDeduction(result) > 0,
-                                        maximumValue: _maximumAbsentDeduction(
-                                          result,
-                                        ),
-                                        onChanged: (val) {
-                                          result.absentDeduction = val;
-                                          _recalcWithDeductions(
-                                            result,
-                                            result.customDeduction,
-                                            () => setDetailState(() {}),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: const Color(0xFFF3F4F6),
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.01),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                            Text(
+                              result.workerName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                                fontFamily: 'SF Pro Display',
                               ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: const Color(0xFFE5E7EB),
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.more_time,
-                                      color: Color(0xFF0F70FF),
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'adjust_overtime'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF111827),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          'apply_additional_hours'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF6B7280),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  _buildOvertimeInlineField(
-                                    result,
-                                    originalIndex,
-                                    setDetailState,
-                                    overtimeControllers,
-                                  ),
-                                ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              result.email.isNotEmpty
+                                  ? result.email
+                                  : 'no_email'.tr(),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B7280),
+                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'net_pay'.tr(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6B7280),
+                            letterSpacing: 0.8,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          AmountText.formatCompact(
+                            result.netSalary,
+                            locale: context.locale.toString(),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0247C4),
+                            letterSpacing: -1.0,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _metricColumn(
+                        title: 'attendance'.tr(),
+                        icon: Icons.calendar_today_outlined,
+                        iconColor: const Color(0xFF3B82F6),
+                        rows: [
+                          _metricRow(
+                            'absents'.tr(),
+                            '${result.absents}',
+                            const Color(0xFFF9FAFB),
+                            const Color(0xFF6B7280),
+                            const Color(0xFF111827),
+                          ),
+                          _metricRow(
+                            'leaves_label'.tr(),
+                            '${result.paidLeaves}',
+                            const Color(0xFFF9FAFB),
+                            const Color(0xFF6B7280),
+                            const Color(0xFF111827),
+                          ),
+                        ],
                       ),
                     ),
-
-                    Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                        ),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (result.success)
-                            GestureDetector(
-                              onTap: () => Navigator.of(context).pop(result),
-                              child: Container(
-                                height: 48,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 22,
-                                ),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0247C4),
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF0247C4,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_outline,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'confirm_review'.tr(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _metricColumn(
+                        title: 'earnings'.tr(),
+                        icon: Icons.payments_outlined,
+                        iconColor: const Color(0xFF10B981),
+                        rows: [
+                          _metricRow(
+                            'base_salary'.tr(),
+                            result.salary.isNotEmpty
+                                ? AmountText.formatCompact(
+                                    result.salary,
+                                    locale: context.locale.toString(),
+                                  )
+                                : _zeroAmount(result.salary),
+                            const Color(0xFFF9FAFB),
+                            const Color(0xFF6B7280),
+                            const Color(0xFF111827),
+                          ),
+                          _metricRow(
+                            'overtime_amount'.tr(),
+                            AmountText.formatCompact(
+                              '${CurrencyUtils.symbolFor(result.currency)} '
+                              '${PayrollService.extractSalary(result.overtimeAmount)}',
+                              locale: context.locale.toString(),
                             ),
+                            const Color(0xFFECFDF5),
+                            const Color(0xFF10B981),
+                            const Color(0xFF10B981),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _metricColumn(
+                        title: 'deductions'.tr(),
+                        icon: Icons.remove_circle_outline,
+                        iconColor: const Color(0xFFEF4444),
+                        rows: [
+                          _editableDeductionRow(
+                            label: 'absent_deduction'.tr(),
+                            value: result.absentDeduction,
+                            controllerKey: originalIndex * 10 + 1,
+                            controllers: overtimeControllers,
+                            currencySymbol: CurrencyUtils.symbolFor(
+                              result.currency,
+                            ),
+                            enabled:
+                                (result.absents > 0 || result.halfDays > 0) &&
+                                _maximumAbsentDeduction(result) > 0,
+                            maximumValue: _maximumAbsentDeduction(result),
+                            onChanged: (val) {
+                              result.absentDeduction = val;
+                              _recalcWithDeductions(
+                                result,
+                                result.customDeduction,
+                                () => setDialogState(() {}),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 24),
+
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                      color: const Color(0xFFF3F4F6),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.01),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.more_time,
+                          color: Color(0xFF0F70FF),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'adjust_overtime'.tr(),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF111827),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'apply_additional_hours'.tr(),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B7280),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildOvertimeInlineField(
+                        result,
+                        originalIndex,
+                        setDialogState,
+                        overtimeControllers,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ),
+
+        Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              GestureDetector(
+                onTap: onBack,
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0247C4),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0247C4).withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'confirm_review'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

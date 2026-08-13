@@ -493,6 +493,8 @@
   "time_off_list": "Lista de Tiempo Libre",
   "no_time_off_requests": "Sin Solicitudes de Tiempo Libre",
   "no_time_off_records": "Sin Registros de Tiempo Libre",
+  "no_records_named_filter": "No se encontraron registros de tiempo libre para \"{{name}}\".",
+  "no_records_selected_filter": "No se encontraron registros de tiempo libre para el filtro seleccionado.",
   "export_csv": "Exportar CSV",
   "export_pdf": "Exportar PDF",
   "export_time_off_records": "Exportar Registros de Tiempo Libre",

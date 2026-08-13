@@ -8,7 +8,7 @@ class UnsavedChangesDialog {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'UnsavedChangesDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -16,16 +16,23 @@ class UnsavedChangesDialog {
           parent: animation,
           curve: Curves.easeOutBack,
         );
-        return BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: Dialog(
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ui.ImageFilter.blur(
+                sigmaX: 10 * animation.value,
+                sigmaY: 10 * animation.value,
+              ),
+              child: Container(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: Dialog(
                 backgroundColor: Colors.transparent,
                 child: Container(
                   width: 380,
@@ -142,8 +149,9 @@ class UnsavedChangesDialog {
               ),
             ),
           ),
-        );
-      },
+        ],
+      );
+    },
     );
     return result ?? false;
   }

@@ -493,6 +493,8 @@
   "time_off_list": "Time Off",
   "no_time_off_requests": "No Time Off Requests",
   "no_time_off_records": "No time off records found for the selected filters.",
+  "no_records_named_filter": "No time off records found for \"{{name}}\".",
+  "no_records_selected_filter": "No time off records found for the selected filter.",
   "custom_range": "Custom Range",
   "no_time_off": "No Time Off",
   "no_time_off_record_to_delete": "No time off record to delete",
