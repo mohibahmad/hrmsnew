@@ -19,7 +19,6 @@ import '../widgets/notification_bell.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 
-import '../services/preferences_service.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/guest_restriction.dart';
 
@@ -54,6 +53,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _currencyCode = CurrencyUtils.defaultCode;
   bool _initialized = false;
 
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
   @override
   void dispose() {
     _expensesSub?.cancel();
@@ -78,120 +79,114 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest) {
-      _profileSub = _firestore.userProfileStream.listen((profile) {
-        if (!mounted) return;
-        final currency = CurrencyUtils.normalize(profile?['currency']);
-        if (currency == _currencyCode) return;
-        setState(() => _currencyCode = currency);
-      });
-      _payrollSub = _firestore.payrollStream.listen((snapshot) {
-        if (!mounted) return;
-        final amounts = <String, double>{};
-        for (final document in snapshot.docs) {
-          final data = document.data() as Map<String, dynamic>;
-          if (!PayrollService.isPayrollRecordPaid(data)) continue;
-          final payrollKey = (data['payrollKey'] ?? '').toString().trim();
-          if (payrollKey.isEmpty) continue;
-          final numericAmount = data['netSalaryAmount'];
-          final amount = numericAmount is num
-              ? numericAmount.toDouble()
-              : PayrollService.extractSalary(
-                  (data['netSalaryFormatted'] ?? data['netSalary'] ?? '')
-                      .toString(),
-                );
-          if (amount.isFinite && amount > 0) {
-            amounts[payrollKey] = amount;
-          }
-        }
-        setState(() {
-          _payrollAmountsByKey
-            ..clear()
-            ..addAll(amounts);
-        });
-      });
-      _expensesSub = _firestore.expensesStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              final sortedList = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              sortedList.sort((a, b) {
-                final aTime =
-                    AppDateUtils.dateFromValue(a['createdAt']) ??
-                    AppDateUtils.dateFromValue(a['date']);
-                final bTime =
-                    AppDateUtils.dateFromValue(b['createdAt']) ??
-                    AppDateUtils.dateFromValue(b['date']);
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return 1;
-                if (bTime == null) return -1;
-                return bTime.compareTo(aTime);
-              });
-              _expensesDocs = sortedList;
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-      );
+
+    if (!_isGuest) {
+      _setupRealTimeSubscriptions();
     } else {
-      _expensesDocs = DummyData.expenses
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      final activePayrollRecords =
-          PayrollService.paidPayrollRecordsForActiveWorkers(
-            DummyData.workers,
-            DummyData.payroll,
-          );
-      final payrollRecords = activePayrollRecords.map((item) {
-        final savedNet = item['netSalaryAmount'];
-        final formattedNet = (item['netSalary'] ?? '').toString();
-        final amount = item['amount'];
-        final netSalary = savedNet is num
-            ? savedNet.toDouble()
-            : formattedNet.trim().isNotEmpty
-            ? PayrollService.extractSalary(formattedNet)
-            : amount is num
-            ? amount.toDouble()
-            : 0.0;
-        return {...item, 'netSalary': netSalary};
-      }).toList();
-      for (final record in payrollRecords) {
-        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
-        if (payrollKey.isEmpty) continue;
-        final netSalary = (record['netSalary'] is num)
-            ? (record['netSalary'] as num).toDouble()
-            : 0.0;
-        if (netSalary > 0) _payrollAmountsByKey[payrollKey] = netSalary;
-      }
-      _isLoading = false;
-      _adjustDummyDatesForPeriod(_selectedPeriod);
+      _loadDummyData();
     }
   }
 
-  double get _totalExpenseSum {
-    return _expensesDocs.fold(0.0, (sum, doc) {
-      return sum + _expenseAmount(doc);
+  void _setupRealTimeSubscriptions() {
+    _profileSub = _firestore.userProfileStream.listen((profile) {
+      if (!mounted) return;
+      final currency = CurrencyUtils.normalize(profile?['currency']);
+      if (currency == _currencyCode) return;
+      setState(() => _currencyCode = currency);
     });
+
+    _payrollSub = _firestore.payrollStream.listen((snapshot) {
+      if (!mounted) return;
+      final amounts = <String, double>{};
+      for (final document in snapshot.docs) {
+        final data = document.data() as Map<String, dynamic>;
+        if (!PayrollService.isPayrollRecordPaid(data)) continue;
+        final payrollKey = (data['payrollKey'] ?? '').toString().trim();
+        if (payrollKey.isEmpty) continue;
+        final numericAmount = data['netSalaryAmount'];
+        final amount = numericAmount is num
+            ? numericAmount.toDouble()
+            : PayrollService.extractSalary(
+                (data['netSalaryFormatted'] ?? data['netSalary'] ?? '')
+                    .toString(),
+              );
+        if (amount.isFinite && amount > 0) {
+          amounts[payrollKey] = amount;
+        }
+      }
+      setState(() {
+        _payrollAmountsByKey
+          ..clear()
+          ..addAll(amounts);
+      });
+    });
+
+    _expensesSub = _firestore.expensesStream.listen(
+      (snapshot) {
+        if (mounted) {
+          setState(() {
+            _expensesDocs = _sortExpenses(snapshot.docs);
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
   }
 
-  double get _selectedPeriodExpenseSum {
-    return _expensesDocs.fold(0.0, (sum, doc) {
-      if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
-        return sum + _expenseAmount(doc);
-      }
-      return sum;
-    });
+  void _loadDummyData() {
+    _expensesDocs = DummyData.expenses
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+
+    final activePayrollRecords = PayrollService.paidPayrollRecordsForActiveWorkers(
+      DummyData.workers,
+      DummyData.payroll,
+    );
+
+    for (final record in activePayrollRecords) {
+      final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+      if (payrollKey.isEmpty) continue;
+      final netSalary = (record['netSalary'] is num)
+          ? (record['netSalary'] as num).toDouble()
+          : 0.0;
+      if (netSalary > 0) _payrollAmountsByKey[payrollKey] = netSalary;
+    }
+
+    _isLoading = false;
+    _adjustDummyDatesForPeriod(_selectedPeriod);
   }
+
+  List<Map<String, dynamic>> _sortExpenses(List docs) {
+    final sortedList = docs
+        .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+        .toList();
+    sortedList.sort((a, b) {
+      final aTime = AppDateUtils.dateFromValue(a['createdAt']) ??
+          AppDateUtils.dateFromValue(a['date']);
+      final bTime = AppDateUtils.dateFromValue(b['createdAt']) ??
+          AppDateUtils.dateFromValue(b['date']);
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    return sortedList;
+  }
+
+  // ==================== HELPERS ====================
+
+  double get _totalExpenseSum =>
+      _expensesDocs.fold(0.0, (sum, doc) => sum + _expenseAmount(doc));
+
+  double get _selectedPeriodExpenseSum => _expensesDocs.fold(0.0, (sum, doc) {
+        if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
+          return sum + _expenseAmount(doc);
+        }
+        return sum;
+      });
 
   String get _selectedPeriodExpenseTitle {
     switch (_selectedPeriod) {
@@ -208,43 +203,32 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         return 'this_year_expense'.tr();
       case 'All Time':
         return 'all_time_expense'.tr();
-      case 'Month':
-      case 'This Month':
       default:
         return 'this_month_expense'.tr();
     }
   }
 
   double _expenseAmount(Map<String, dynamic> expense) {
-    final isSalary =
-        (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
+    final isSalary = (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
     if (isSalary && payrollKey.isNotEmpty) {
       return _payrollAmountsByKey[payrollKey] ?? 0.0;
     }
-
     final rawAmount = expense['amount'];
     if (rawAmount is num) return rawAmount.toDouble();
     return PayrollService.extractSalary((rawAmount ?? '').toString());
   }
 
   bool _isPayrollExpense(Map<String, dynamic> expense) {
-    final category = (expense['category'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final category = (expense['category'] ?? '').toString().trim().toLowerCase();
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
     return category == 'salary' && payrollKey.isNotEmpty;
   }
 
   String _expenseDisplayName(Map<String, dynamic> expense) {
     final name = (expense['name'] ?? '').toString().trim();
-    final category = (expense['category'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final category = (expense['category'] ?? '').toString().trim().toLowerCase();
     if (category != 'salary') return name;
-
     return name
         .replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '')
         .trim();
@@ -292,12 +276,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
   }
 
-  String _eds(dynamic value) {
-    return AppDateUtils.fromValueLocalized(
-      value,
-      locale: context.locale.toString(),
-    );
-  }
+  String _eds(dynamic value) =>
+      AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
 
   void _adjustDummyDatesForPeriod(String period) {
     final dummyList = DummyData.expenses;
@@ -305,22 +285,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     final now = DateTime.now();
     int maxDays = 365;
-    if (period == 'Today')
-      maxDays = 0;
-    else if (period == 'Week' || period == 'This Week')
-      maxDays = 7;
-    else if (period == 'Month' || period == 'This Month')
-      maxDays = 30;
-    else if (period == '6 Month' || period == 'Last 6 Months')
-      maxDays = 180;
+    if (period == 'Today') maxDays = 0;
+    else if (period == 'Week' || period == 'This Week') maxDays = 7;
+    else if (period == 'Month' || period == 'This Month') maxDays = 30;
+    else if (period == '6 Month' || period == 'Last 6 Months') maxDays = 180;
 
     for (int i = 0; i < dummyList.length; i++) {
       int daysAgo = (i * (maxDays + 1) / dummyList.length).floor();
       final newDate = now.subtract(Duration(days: daysAgo));
-      final dayStr = newDate.day.toString().padLeft(2, '0');
-      final monthStr = newDate.month.toString().padLeft(2, '0');
-      final yearStr = newDate.year.toString();
-      dummyList[i]['date'] = '$dayStr/$monthStr/$yearStr';
+      dummyList[i]['date'] =
+          '${newDate.day.toString().padLeft(2, '0')}/${newDate.month.toString().padLeft(2, '0')}/${newDate.year}';
     }
     _expensesDocs = dummyList.map((e) => Map<String, dynamic>.from(e)).toList();
   }
@@ -329,27 +303,82 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return _expensesDocs.where((doc) {
       if (_isPayrollExpense(doc)) {
         final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
-
         if (!_payrollAmountsByKey.containsKey(payrollKey)) return false;
       }
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-
       final matchesSearch = name.contains(query) || category.contains(query);
-      final matchesPeriod = AppDateUtils.isTimestampWithinPeriod(
-        doc['date'],
-        _selectedPeriod,
-      );
+      final matchesPeriod =
+          AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod);
       return matchesSearch && matchesPeriod;
     }).toList();
   }
 
+  // ==================== GUEST OPERATIONS ====================
+
+  void _addExpenseToGuest(Map<String, dynamic> expenseMap) {
+    final newId = 'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+    setState(() => _expensesDocs.insert(0, {...expenseMap, 'id': newId}));
+    DummyData.expenses.insert(0, {...expenseMap, 'id': newId});
+    DummyData.saveToPrefs();
+  }
+
+  void _updateExpenseInGuest(String docId, Map<String, dynamic> updatedMap,
+      {String? payrollKey, double? amt}) {
+    setState(() {
+      final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
+      if (idx != -1) {
+        _expensesDocs[idx] = {..._expensesDocs[idx], ...updatedMap, 'id': docId};
+      }
+      if (payrollKey != null && amt != null) {
+        _payrollAmountsByKey[payrollKey] = amt;
+      }
+    });
+
+    final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
+    if (dummyIdx != -1) {
+      DummyData.expenses[dummyIdx] = {...DummyData.expenses[dummyIdx], ...updatedMap, 'id': docId};
+    }
+
+    if (payrollKey != null && amt != null) {
+      final payrollIndex = DummyData.payroll.indexWhere(
+        (record) => (record['payrollKey'] ?? '').toString().trim() == payrollKey,
+      );
+      if (payrollIndex != -1) {
+        DummyData.payroll[payrollIndex] = {
+          ...DummyData.payroll[payrollIndex],
+          ...PayrollService.editedNetSalaryFields(amt, currency: _currencyCode),
+        };
+      }
+    }
+    DummyData.saveToPrefs();
+  }
+
+  void _deleteExpenseFromGuest(String docId, {String? payrollKey}) {
+    setState(() {
+      _expensesDocs.removeWhere((e) => e['id'] == docId);
+      if (payrollKey != null) _payrollAmountsByKey.remove(payrollKey);
+    });
+    DummyData.expenses.removeWhere((e) => e['id'] == docId);
+    if (payrollKey != null) {
+      final payrollIndex = DummyData.payroll.indexWhere(
+        (record) => (record['payrollKey'] ?? '').toString().trim() == payrollKey,
+      );
+      if (payrollIndex != -1) {
+        DummyData.payroll[payrollIndex] = {
+          ...DummyData.payroll[payrollIndex],
+          ...PayrollService.reopenedPayrollFields(),
+        };
+      }
+    }
+    DummyData.saveToPrefs();
+  }
+
+  // ==================== CRUD OPERATIONS ====================
+
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
     final docId = (doc['id'] ?? '').toString().trim();
-    final isGuest =
-        _authService.currentUser?.isAnonymous ??
-        false || PreferencesService.cachedIsGuest;
     if (docId.isEmpty) return;
 
     final confirmed = await DeleteDialog.show(
@@ -361,30 +390,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     try {
       final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
-      final isPayrollExpense = _isPayrollExpense(doc);
-      if (isGuest) {
-        setState(() {
-          _expensesDocs.removeWhere((e) => e['id'] == docId);
-          if (isPayrollExpense) {
-            _payrollAmountsByKey.remove(payrollKey);
-          }
-        });
-        DummyData.expenses.removeWhere((e) => e['id'] == docId);
-        if (isPayrollExpense) {
-          final payrollIndex = DummyData.payroll.indexWhere(
-            (record) =>
-                (record['payrollKey'] ?? '').toString().trim() == payrollKey,
-          );
-          if (payrollIndex != -1) {
-            DummyData.payroll[payrollIndex] = {
-              ...DummyData.payroll[payrollIndex],
-              ...PayrollService.reopenedPayrollFields(),
-            };
-          }
-        }
-        await DummyData.saveToPrefs();
+      final isPayroll = _isPayrollExpense(doc);
+
+      if (_isGuest) {
+        _deleteExpenseFromGuest(docId, payrollKey: isPayroll ? payrollKey : null);
       } else {
-        if (isPayrollExpense) {
+        if (isPayroll) {
           await _firestore.deletePayrollLinkedExpense(
             expenseId: docId,
             payrollKey: payrollKey,
@@ -397,32 +408,45 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       if (!mounted) return;
       FlashySnackBar.show(
         context,
-        message: 'failed_to_delete_record'.tr(
-          namedArgs: {'error': e.toString()},
-        ),
+        message: 'failed_to_delete_record'.tr(namedArgs: {'error': e.toString()}),
         isError: true,
       );
     }
   }
 
-  Future<void> _editExpense(Map<String, dynamic> doc) async {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+  // ==================== EXPENSE DIALOG (UNIFIED) ====================
+
+  Future<void> _showExpenseDialog({
+    required String title,
+    required String buttonText,
+    required Map<String, dynamic>? initialData,
+    required Future<void> Function(Map<String, dynamic>) onSave,
+  }) async {
+    final isEdit = initialData != null;
     final categoryController = TextEditingController(
-      text: doc['category']?.toString() ?? '',
+      text: isEdit ? initialData['category']?.toString() ?? '' : '',
     );
     final amountController = TextEditingController(
-      text: NumberFormat('#,##0.##').format(_expenseAmount(doc)),
+      text: isEdit
+          ? NumberFormat('#,##0.##').format(_expenseAmount(initialData))
+          : '',
     );
     final descriptionController = TextEditingController(
-      text: doc['name']?.toString() ?? doc['description']?.toString() ?? '',
+      text: isEdit
+          ? initialData['name']?.toString() ??
+              initialData['description']?.toString() ??
+              ''
+          : '',
     );
-    final docId = (doc['id'] ?? '').toString().trim();
-    final parsedDate =
-        AppDateUtils.dateFromValue(doc['date']) ?? DateTime.now();
+
+    final parsedDate = isEdit
+        ? AppDateUtils.dateFromValue(initialData['date']) ?? DateTime.now()
+        : DateTime.now();
     int selectedDay = parsedDate.day;
     DateTime calendarDate = DateTime(parsedDate.year, parsedDate.month, 1);
 
     var isSaving = false;
+
     await showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -430,10 +454,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              backgroundColor: Color(0xFFFFFFFF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              backgroundColor: Colors.white,
               elevation: 10,
               child: Container(
                 width: 600,
@@ -442,340 +464,47 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        Text(
-                          'edit_expense'.tr(),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () async {
-                                  setModalState(() => isSaving = true);
-                                  final category = categoryController.text
-                                      .trim();
-                                  final amountText = amountController.text
-                                      .trim();
-                                  final description = descriptionController.text
-                                      .trim();
-
-                                  if (category.isEmpty &&
-                                      amountText.isEmpty &&
-                                      description.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_fill_all_fields'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-
-                                  if (category.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_category'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  final double? amt = double.tryParse(
-                                    amountText.replaceAll(",", ""),
-                                  );
-                                  if (amt == null ||
-                                      !amt.isFinite ||
-                                      amt <= 0) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_valid_amount'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  if (amt > 999999999) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'amount_cannot_exceed_max'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  if (description.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_expense_title'
-                                          .tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  final date = DateTime(
-                                    calendarDate.year,
-                                    calendarDate.month,
-                                    selectedDay,
-                                  );
-                                  final bool wasPayrollExpense =
-                                      _isPayrollExpense(doc);
-                                  final String payrollKey = wasPayrollExpense
-                                      ? (doc['payrollKey'] ?? '')
-                                            .toString()
-                                            .trim()
-                                      : '';
-                                  final updatedMap = {
-                                    'date': date,
-                                    'category': categoryController.text.trim(),
-                                    'amount': amt,
-                                    'name': descriptionController.text.trim(),
-                                    'description': descriptionController.text
-                                        .trim(),
-                                  };
-                                  try {
-                                    if (isGuest) {
-                                      final salaryUpdates =
-                                          PayrollService.editedNetSalaryFields(
-                                            amt,
-                                            currency: _currencyCode,
-                                          );
-                                      setState(() {
-                                        final idx = _expensesDocs.indexWhere(
-                                          (e) => e['id'] == docId,
-                                        );
-                                        if (idx != -1) {
-                                          _expensesDocs[idx] = {
-                                            ..._expensesDocs[idx],
-                                            ...updatedMap,
-                                            'id': docId,
-                                          };
-                                        }
-                                        if (wasPayrollExpense) {
-                                          _payrollAmountsByKey[payrollKey] =
-                                              amt;
-                                        }
-                                      });
-                                      final dummyIdx = DummyData.expenses
-                                          .indexWhere((e) => e['id'] == docId);
-                                      if (dummyIdx != -1) {
-                                        DummyData.expenses[dummyIdx] = {
-                                          ...DummyData.expenses[dummyIdx],
-                                          ...updatedMap,
-                                          'id': docId,
-                                        };
-                                      }
-                                      if (wasPayrollExpense) {
-                                        final payrollIndex = DummyData.payroll
-                                            .indexWhere(
-                                              (record) =>
-                                                  (record['payrollKey'] ?? '')
-                                                      .toString()
-                                                      .trim() ==
-                                                  payrollKey,
-                                            );
-                                        if (payrollIndex != -1) {
-                                          DummyData.payroll[payrollIndex] = {
-                                            ...DummyData.payroll[payrollIndex],
-                                            ...salaryUpdates,
-                                          };
-                                        }
-                                      }
-                                      await DummyData.saveToPrefs();
-                                    } else {
-                                      if (wasPayrollExpense &&
-                                          payrollKey.isNotEmpty) {
-                                        await _firestore
-                                            .updatePayrollLinkedExpense(
-                                              expenseId: docId,
-                                              payrollKey: payrollKey,
-                                              expenseData: updatedMap,
-                                              netAmount: amt,
-                                              currency: _currencyCode,
-                                            );
-                                      } else {
-                                        await _firestore.updateExpense(
-                                          docId,
-                                          updatedMap,
-                                        );
-                                      }
-                                    }
-                                  } catch (e) {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'failed_to_update_expense'.tr(
-                                        namedArgs: {'error': e.toString()},
-                                      ),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pop();
-                                  if (!mounted) return;
-                                   FlashySnackBar.show(
-                                    this.context,
-                                    message: 'expense_updated'.tr(),
-                                  );
-                                },
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'save'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                        ),
-                      ],
+                    _buildDialogHeader(
+                      context,
+                      title: title,
+                      buttonText: buttonText,
+                      isSaving: isSaving,
+                      onSave: () async {
+                        setModalState(() => isSaving = true);
+                        final result = await _validateAndPrepareExpense(
+                          categoryController: categoryController,
+                          amountController: amountController,
+                          descriptionController: descriptionController,
+                          calendarDate: calendarDate,
+                          selectedDay: selectedDay,
+                          initialData: initialData,
+                        );
+                        if (result == null) {
+                          setModalState(() => isSaving = false);
+                          return;
+                        }
+                        await onSave(result);
+                        if (mounted) Navigator.of(context).pop();
+                      },
                     ),
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildModalTextField(
-                            'expense_category'.tr(),
-                            categoryController,
-                            hintText: 'please_enter_category'.tr(),
-                            maxLength: 50,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildModalTextField(
-                            'amount_header'.tr(),
-                            amountController,
-                            hintText: 'hint_amount'.tr(),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            isAmount: true,
-                            prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'expense_title'.tr(),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 215,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: TextField(
-                                  controller: descriptionController,
-                                  maxLines: null,
-                                  maxLength: 150,
-                                  decoration: InputDecoration(
-                                    hintText: 'please_enter_expense_title'.tr(),
-                                    counterText: '',
-                                    contentPadding: const EdgeInsets.only(
-                                      top: 1,
-                                    ),
-                                    hintStyle: const TextStyle(
-                                      color: Colors.grey,
-                                    ),
-                                    border: InputBorder.none,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildModalCalendar(
-                            calendarDate,
-                            selectedDay,
-                            (day) {
-                              setModalState(() {
-                                selectedDay = day;
-                              });
-                            },
-                            (newDate) {
-                              setModalState(() {
-                                calendarDate = newDate;
-                                int daysInNewMonth = DateTime(
-                                  newDate.year,
-                                  newDate.month + 1,
-                                  0,
-                                ).day;
-                                if (selectedDay > daysInNewMonth) {
-                                  selectedDay = daysInNewMonth;
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
+                    _buildDialogFields(
+                      categoryController: categoryController,
+                      amountController: amountController,
+                      descriptionController: descriptionController,
+                      calendarDate: calendarDate,
+                      selectedDay: selectedDay,
+                      onDaySelected: (day) => setModalState(() => selectedDay = day),
+                      onMonthChanged: (newDate) {
+                        setModalState(() {
+                          calendarDate = newDate;
+                          final daysInNewMonth =
+                              DateTime(newDate.year, newDate.month + 1, 0).day;
+                          if (selectedDay > daysInNewMonth) {
+                            selectedDay = daysInNewMonth;
+                          }
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -785,378 +514,340 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         );
       },
     );
+
     categoryController.dispose();
     amountController.dispose();
     descriptionController.dispose();
   }
+
+  Widget _buildDialogHeader(
+    BuildContext context, {
+    required String title,
+    required String buttonText,
+    required bool isSaving,
+    required VoidCallback onSave,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.close, color: Colors.black, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0247C4),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            minimumSize: const Size(0, 32),
+          ),
+          onPressed: isSaving ? null : onSave,
+          child: isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Text(
+                  buttonText,
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDialogFields({
+    required TextEditingController categoryController,
+    required TextEditingController amountController,
+    required TextEditingController descriptionController,
+    required DateTime calendarDate,
+    required int selectedDay,
+    required ValueChanged<int> onDaySelected,
+    required ValueChanged<DateTime> onMonthChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildModalTextField(
+                'expense_category'.tr(),
+                categoryController,
+                hintText: 'please_enter_category'.tr(),
+                maxLength: 50,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildModalTextField(
+                'amount_header'.tr(),
+                amountController,
+                hintText: 'hint_amount'.tr(),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                isAmount: true,
+                prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'expense_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 215,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: TextField(
+                      controller: descriptionController,
+                      maxLines: null,
+                      maxLength: 150,
+                      decoration: InputDecoration(
+                        hintText: 'please_enter_expense_title'.tr(),
+                        counterText: '',
+                        contentPadding: const EdgeInsets.only(top: 1),
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        border: InputBorder.none,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildModalCalendar(
+                calendarDate,
+                selectedDay,
+                onDaySelected,
+                onMonthChanged,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<Map<String, dynamic>?> _validateAndPrepareExpense({
+    required TextEditingController categoryController,
+    required TextEditingController amountController,
+    required TextEditingController descriptionController,
+    required DateTime calendarDate,
+    required int selectedDay,
+    Map<String, dynamic>? initialData,
+  }) async {
+    final category = categoryController.text.trim();
+    final amountText = amountController.text.trim();
+    final description = descriptionController.text.trim();
+
+    if (category.isEmpty || amountText.isEmpty || description.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return null;
+    }
+
+    final double? amt = double.tryParse(amountText.replaceAll(",", ""));
+    if (amt == null || !amt.isFinite || amt <= 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_valid_amount'.tr(),
+        isError: true,
+      );
+      return null;
+    }
+
+    if (amt > 999999999) {
+      FlashySnackBar.show(
+        context,
+        message: 'amount_cannot_exceed_max'.tr(),
+        isError: true,
+      );
+      return null;
+    }
+
+    // Policy check for new expenses only
+    if (initialData == null) {
+      try {
+        final policies = await _firestore.getPolicies();
+        final expPolicyList = policies
+            .where((p) => p['typeId'] == 'Expense Policy')
+            .toList();
+        if (expPolicyList.isNotEmpty) {
+          final expPolicy = expPolicyList.first;
+          final double maxLimit = double.tryParse(
+                expPolicy['maxExpenseLimitPerClaim']?.toString() ?? '500.0',
+              ) ??
+              500.0;
+          if (amt > maxLimit) {
+            FlashySnackBar.show(
+              context,
+              message: 'expense_claim_exceeds_limit'.tr(
+                namedArgs: {
+                  'maxLimit': formatMoney(
+                    maxLimit,
+                    CurrencyUtils.symbolFor(_currencyCode),
+                  ),
+                },
+              ),
+              isError: true,
+            );
+            return null;
+          }
+        }
+      } catch (_) {}
+    }
+
+    final date = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+
+    return {
+      'date': date,
+      'category': category,
+      'amount': amt,
+      'name': description,
+      'description': description,
+    };
+  }
+
+  // ==================== ADD EXPENSE ====================
 
   Future<void> _showAddExpenseModal(BuildContext parentContext) async {
-    final categoryController = TextEditingController();
-    final amountController = TextEditingController();
-    final descriptionController = TextEditingController();
-    int selectedDay = DateTime.now().day;
-    DateTime calendarDate = DateTime.now();
+    if (_isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
 
-    var isSaving = false;
-    await showDialog(
-      context: parentContext,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              backgroundColor: Color(0xFFFFFFFF),
-              elevation: 10,
-              child: Container(
-                width: 600,
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        Text(
-                          'add_expense'.tr(),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () async {
-                                  setModalState(() => isSaving = true);
-                                  final category = categoryController.text
-                                      .trim();
-                                  final amountText = amountController.text
-                                      .trim();
-                                  final description = descriptionController.text
-                                      .trim();
-
-                                  if (category.isEmpty &&
-                                      amountText.isEmpty &&
-                                      description.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_fill_all_fields'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-
-                                  if (category.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_category'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  final double? amt = double.tryParse(
-                                    amountText.replaceAll(",", ""),
-                                  );
-                                  if (amt == null ||
-                                      !amt.isFinite ||
-                                      amt <= 0) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_valid_amount'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  if (amt > 999999999) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'amount_cannot_exceed_max'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-
-                                  try {
-                                    final policies = await _firestore
-                                        .getPolicies();
-                                    final expPolicyList = policies
-                                        .where(
-                                          (p) =>
-                                              p['typeId'] == 'Expense Policy',
-                                        )
-                                        .toList();
-                                    if (expPolicyList.isNotEmpty) {
-                                      final expPolicy = expPolicyList.first;
-                                      final double maxLimit =
-                                          double.tryParse(
-                                            expPolicy['maxExpenseLimitPerClaim']
-                                                    ?.toString() ??
-                                                '500.0',
-                                          ) ??
-                                          500.0;
-                                      if (amt > maxLimit) {
-                                        setModalState(() => isSaving = false);
-                                        FlashySnackBar.show(
-                                          context,
-                                          message: 'expense_claim_exceeds_limit'
-                                              .tr(
-                                                namedArgs: {
-                                                  'maxLimit': formatMoney(
-                                                    maxLimit,
-                                                    CurrencyUtils.symbolFor(
-                                                      _currencyCode,
-                                                    ),
-                                                  ),
-                                                },
-                                              ),
-                                          isError: true,
-                                        );
-                                        return;
-                                      }
-                                    }
-                                  } catch (_) {}
-                                  if (description.isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_expense_title'
-                                          .tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  final date = DateTime(
-                                    calendarDate.year,
-                                    calendarDate.month,
-                                    selectedDay,
-                                  );
-                                  final isGuest =
-                                      _authService.currentUser?.isAnonymous ??
-                                      false;
-                                  final expenseMap = {
-                                    'date': date,
-                                    'category': categoryController.text.trim(),
-                                    'amount': amt,
-                                    'name': descriptionController.text.trim(),
-                                    'description': descriptionController.text
-                                        .trim(),
-                                  };
-                                  try {
-                                    if (isGuest) {
-                                      final newId =
-                                          'dummy_e${DateTime.now().millisecondsSinceEpoch}';
-                                      setState(() {
-                                        _expensesDocs.insert(0, {
-                                          ...expenseMap,
-                                          'id': newId,
-                                        });
-                                      });
-                                      DummyData.expenses.insert(0, {
-                                        ...expenseMap,
-                                        'id': newId,
-                                      });
-                                      await DummyData.saveToPrefs();
-                                    } else {
-                                      await _firestore.addExpense(expenseMap);
-                                    }
-                                  } catch (e) {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'failed_to_add_expense'.tr(
-                                        namedArgs: {'error': e.toString()},
-                                      ),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  Navigator.of(context).pop();
-                                  FlashySnackBar.show(
-                                    parentContext,
-                                    message: 'successfully_added_expense'.tr(
-                                      namedArgs: {
-                                        'name': categoryController.text,
-                                      },
-                                    ),
-                                  );
-                                  if (parentContext.mounted) {
-                                    tryShowFirstMilestoneRateUs('expense');
-                                  }
-                                },
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'save'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildModalTextField(
-                            'expense_category'.tr(),
-                            categoryController,
-                            hintText: 'please_enter_category'.tr(),
-                            maxLength: 50,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildModalTextField(
-                            'amount_header'.tr(),
-                            amountController,
-                            hintText: 'hint_amount'.tr(),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            isAmount: true,
-                            prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'expense_title'.tr(),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 215,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: TextField(
-                                  controller: descriptionController,
-                                  maxLines: null,
-                                  maxLength: 150,
-                                  decoration: InputDecoration(
-                                    hintText: 'please_enter_expense_title'.tr(),
-                                    counterText: '',
-                                    contentPadding: const EdgeInsets.only(
-                                      top: 1,
-                                    ),
-                                    hintStyle: const TextStyle(
-                                      color: Colors.grey,
-                                    ),
-                                    border: InputBorder.none,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildModalCalendar(
-                            calendarDate,
-                            selectedDay,
-                            (day) {
-                              setModalState(() {
-                                selectedDay = day;
-                              });
-                            },
-                            (newDate) {
-                              setModalState(() {
-                                calendarDate = newDate;
-                                int daysInNewMonth = DateTime(
-                                  newDate.year,
-                                  newDate.month + 1,
-                                  0,
-                                ).day;
-                                if (selectedDay > daysInNewMonth) {
-                                  selectedDay = daysInNewMonth;
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+    await _showExpenseDialog(
+      title: 'add_expense'.tr(),
+      buttonText: 'save'.tr(),
+      initialData: null,
+      onSave: (expenseMap) async {
+        try {
+          if (_isGuest) {
+            _addExpenseToGuest(expenseMap);
+          } else {
+            await _firestore.addExpense(expenseMap);
+          }
+          if (mounted) {
+            FlashySnackBar.show(
+              parentContext,
+              message: 'successfully_added_expense'.tr(
+                namedArgs: {'name': expenseMap['category']},
               ),
             );
-          },
-        );
+            tryShowFirstMilestoneRateUs('expense');
+          }
+        } catch (e) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'failed_to_add_expense'.tr(namedArgs: {'error': e.toString()}),
+              isError: true,
+            );
+          }
+          rethrow;
+        }
       },
     );
-    categoryController.dispose();
-    amountController.dispose();
-    descriptionController.dispose();
   }
+
+  // ==================== EDIT EXPENSE ====================
+
+  Future<void> _editExpense(Map<String, dynamic> doc) async {
+    if (_isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
+
+    await _showExpenseDialog(
+      title: 'edit_expense'.tr(),
+      buttonText: 'save'.tr(),
+      initialData: doc,
+      onSave: (updatedMap) async {
+        final docId = (doc['id'] ?? '').toString().trim();
+        final wasPayroll = _isPayrollExpense(doc);
+        final payrollKey = wasPayroll ? (doc['payrollKey'] ?? '').toString().trim() : '';
+        final amt = updatedMap['amount'] as double;
+
+        try {
+          if (_isGuest) {
+            _updateExpenseInGuest(docId, updatedMap,
+                payrollKey: wasPayroll ? payrollKey : null, amt: wasPayroll ? amt : null);
+          } else {
+            if (wasPayroll && payrollKey.isNotEmpty) {
+              await _firestore.updatePayrollLinkedExpense(
+                expenseId: docId,
+                payrollKey: payrollKey,
+                expenseData: updatedMap,
+                netAmount: amt,
+                currency: _currencyCode,
+              );
+            } else {
+              await _firestore.updateExpense(docId, updatedMap);
+            }
+          }
+          if (mounted) {
+            FlashySnackBar.show(context, message: 'expense_updated'.tr());
+          }
+        } catch (e) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'failed_to_update_expense'.tr(namedArgs: {'error': e.toString()}),
+              isError: true,
+            );
+          }
+          rethrow;
+        }
+      },
+    );
+  }
+
+  // ==================== WIDGET BUILDERS ====================
 
   Widget _buildModalTextField(
     String label,
@@ -1194,14 +885,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             maxLength: maxLength,
             inputFormatters: isAmount
                 ? [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'[\d.]'),
-                    ),
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                     LengthLimitingTextInputFormatter(12),
                   ]
                 : maxLength != null
-                ? [LengthLimitingTextInputFormatter(maxLength)]
-                : const <TextInputFormatter>[],
+                    ? [LengthLimitingTextInputFormatter(maxLength)]
+                    : const <TextInputFormatter>[],
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: const TextStyle(color: Colors.grey),
@@ -1235,7 +924,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    String monthYearStr =
+    final monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
     return Container(
@@ -1250,16 +939,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () {
-                  onMonthChanged(
-                    DateTime(calendarDate.year, calendarDate.month - 1, 1),
-                  );
-                },
-                child: const Icon(
-                  Icons.chevron_left,
-                  size: 16,
-                  color: Colors.black,
+                onTap: () => onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
                 ),
+                child: const Icon(Icons.chevron_left, size: 16, color: Colors.black),
               ),
               const SizedBox(width: 16),
               Text(
@@ -1272,16 +955,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               const SizedBox(width: 16),
               GestureDetector(
-                onTap: () {
-                  onMonthChanged(
-                    DateTime(calendarDate.year, calendarDate.month + 1, 1),
-                  );
-                },
-                child: const Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: Colors.black,
+                onTap: () => onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
                 ),
+                child: const Icon(Icons.chevron_right, size: 16, color: Colors.black),
               ),
             ],
           ),
@@ -1290,47 +967,17 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             children: [
               Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_mon'.tr(),
-                  const Color(0xFF0247C4),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_tue'.tr(),
-                  const Color(0xFF0247C4),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_wed'.tr(),
-                  const Color(0xFF0247C4),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_thu'.tr(),
-                  const Color(0xFF0247C4),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_fri'.tr(),
-                  const Color(0xFF4CAF50),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
               const SizedBox(width: 6),
-              Expanded(
-                child: _buildWeekday(
-                  'weekday_sat'.tr(),
-                  const Color(0xFF0247C4),
-                ),
-              ),
+              Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
             ],
           ),
           const SizedBox(height: 8),
@@ -1365,47 +1012,34 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     int selectedDay,
     ValueChanged<int> onDaySelected,
   ) {
-    List<Widget> rows = [];
-    int daysInMonth = DateTime(
-      calendarDate.year,
-      calendarDate.month + 1,
-      0,
-    ).day;
-    int firstWeekday = DateTime(
-      calendarDate.year,
-      calendarDate.month,
-      1,
-    ).weekday;
-    int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+    final rows = <Widget>[];
+    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    final startOffset = firstWeekday == 7 ? 0 : firstWeekday;
 
     int currentDay = 1;
 
     for (int i = 0; i < 6; i++) {
-      List<Widget> rowChildren = [];
+      final rowChildren = <Widget>[];
       for (int j = 0; j < 7; j++) {
-        int index = i * 7 + j;
+        final index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(
-            Expanded(child: _buildDayCell('', false, null, null)),
-          );
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
-          final cellDate = DateTime(calendarDate.year, calendarDate.month, day);
           rowChildren.add(
             Expanded(
               child: _buildDayCell(
                 '$day',
                 day == selectedDay,
                 () => onDaySelected(day),
-                cellDate,
+                DateTime(calendarDate.year, calendarDate.month, day),
               ),
             ),
           );
           currentDay++;
         } else {
-          rowChildren.add(
-            Expanded(child: _buildDayCell('', false, null, null)),
-          );
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
@@ -1451,6 +1085,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
+  // ==================== MAIN BUILD ====================
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredExpenses;
@@ -1477,9 +1113,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           padding: EdgeInsets.symmetric(vertical: 80),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (filtered.isEmpty
-                            ? _buildEmptyState()
-                            : _buildDataTable(filtered)),
+                      : filtered.isEmpty
+                          ? _buildEmptyState()
+                          : _buildDataTable(filtered),
                 ],
               ),
             ),
@@ -1505,7 +1141,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             children: [
               Text(
                 'expenses'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -1534,7 +1170,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Color(0xFFFFFFFF),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
@@ -1554,17 +1190,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
-                      });
-                    },
+                    onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
                       hintText: 'search_expenses_hint'.tr(),
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                      ),
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -1575,17 +1204,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   GestureDetector(
                     onTap: () {
                       _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
+                      setState(() => _searchQuery = '');
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.grey[400],
-                      ),
+                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
                     ),
                   ),
               ],
@@ -1596,36 +1219,22 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         SizedBox(
           height: 44,
           child: ElevatedButton.icon(
-            onPressed: () async {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                if (!mounted) return;
-                showGuestRestrictionDialog(context);
-                return;
-              }
-              if (!mounted) return;
-              _showAddExpenseModal(context);
-            },
+            onPressed: () => _showAddExpenseModal(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0247C4),
               minimumSize: const Size(150, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               elevation: 0,
             ),
             icon: SvgPicture.asset(
               'assets/add_expense.svg',
               width: 18,
               height: 18,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFFFFFFF),
-                BlendMode.srcIn,
-              ),
+              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
             ),
             label: Text(
               'add_expenses'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFFFFFFFF),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -1646,11 +1255,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             title: _selectedPeriodExpenseTitle,
             titleColor: const Color(0xFF0247C4),
             amount: _formatCurrency(_selectedPeriodExpenseSum),
-            iconWidget: SvgPicture.asset(
-              'assets/expense_month.svg',
-              width: 44,
-              height: 44,
-            ),
+            iconWidget: SvgPicture.asset('assets/expense_month.svg', width: 44, height: 44),
           ),
         ),
         const SizedBox(width: 24),
@@ -1659,11 +1264,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             title: 'total_expense'.tr(),
             titleColor: Colors.red,
             amount: _formatCurrency(_totalExpenseSum),
-            iconWidget: SvgPicture.asset(
-              'assets/total_expense.svg',
-              width: 44,
-              height: 44,
-            ),
+            iconWidget: SvgPicture.asset('assets/total_expense.svg', width: 44, height: 44),
           ),
         ),
       ],
@@ -1679,7 +1280,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -1733,7 +1334,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       children: [
         Text(
           'expenses_list'.tr(),
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: Color(0xFF000000),
@@ -1759,25 +1360,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       onChanged: (value) {
         setState(() {
           _selectedPeriod = value;
-          final isGuest = _authService.currentUser?.isAnonymous ?? false;
-          if (isGuest) {
-            _adjustDummyDatesForPeriod(value);
-          }
+          if (_isGuest) _adjustDummyDatesForPeriod(value);
         });
       },
     );
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
-    final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
-      495.0,
-      1200.0,
-    );
+    final tableHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
 
     return Container(
       height: tableHeight,
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1786,52 +1381,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader('expense_title'.tr()),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-                    child: _tableHeader('expense_category'.tr()),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader(
-                      'date_header'.tr(),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: _tableHeader(
-                    'amount_header'.tr(),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+                Expanded(flex: 3, child: Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: _tableHeader('expense_title'.tr()),
+                )),
+                Expanded(flex: 3, child: Padding(
+                  padding: const EdgeInsets.only(left: 40.0, right: 16.0),
+                  child: _tableHeader('expense_category'.tr()),
+                )),
+                Expanded(flex: 3, child: Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center),
+                )),
+                Expanded(flex: 2, child: _tableHeader('amount_header'.tr(), textAlign: TextAlign.center)),
                 const SizedBox(width: 48),
               ],
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: expenses.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return _buildDataRow(expenses[index], index);
-              },
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) => _buildDataRow(expenses[index], index),
             ),
           ),
         ],
@@ -1857,21 +1431,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget _buildDataRow(Map<String, dynamic> doc, int index) {
     final name = _expenseDisplayName(doc);
     final date = _eds(doc['date']);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final rawCategory = (doc['category'] ?? '').toString();
-
-    final category = LocalizationHelper.localizeExpenseCategory(rawCategory);
+    final category = LocalizationHelper.localizeExpenseCategory(
+      (doc['category'] ?? '').toString(),
+    );
     final amount = _expenseAmount(doc);
 
     return GestureDetector(
-      onTap: () {
-        if (isGuest) {
-          showGuestRestrictionDialog(context);
-          return;
-        }
-
-        _editExpense(doc);
-      },
+      onTap: () => _editExpense(doc),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -1880,71 +1446,57 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         ),
         child: Row(
           children: [
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-                child: Text(
-                  category,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Text(
-                  date,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
+            Expanded(flex: 3, child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                _isPayrollExpense(doc)
-                    ? _formatFullCurrency(amount)
-                    : _formatCurrency(amount),
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            )),
+            Expanded(flex: 3, child: Padding(
+              padding: const EdgeInsets.only(left: 40.0, right: 16.0),
+              child: Text(
+                category,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            )),
+            Expanded(flex: 3, child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                date,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
-                  color: Color(0xFF0247C4),
-                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
+            )),
+            Expanded(flex: 2, child: Text(
+              _isPayrollExpense(doc) ? _formatFullCurrency(amount) : _formatCurrency(amount),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF0247C4),
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            )),
             _buildActionMenu(doc),
           ],
         ),
@@ -1967,18 +1519,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         elevation: 4,
         onSelected: (value) {
           if (value == 'edit') {
-            final isGuest = _authService.currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              showGuestRestrictionDialog(context);
-              return;
-            }
             _editExpense(doc);
           } else if (value == 'delete') {
-            final isGuest = _authService.currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              showGuestRestrictionDialog(context);
-              return;
-            }
             _deleteExpense(doc);
           }
         },
@@ -1992,15 +1534,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   'assets/edit_icon.svg',
                   width: 16,
                   height: 16,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF0247C4),
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'edit_expense'.tr(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF0247C4),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -2019,15 +1558,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   'assets/delete_icon.svg',
                   width: 16,
                   height: 16,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.red,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'delete'.tr(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.red,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -2043,8 +1579,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _buildEmptyState() {
-    final double containerHeight = (MediaQuery.of(context).size.height - 409)
-        .clamp(495.0, 1200.0);
+    final containerHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
     return Container(
       width: double.infinity,
       height: containerHeight,
@@ -2061,15 +1596,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             'assets/placeholder_workers.svg',
             width: 120,
             height: 100,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFCBCBCB),
-              BlendMode.srcIn,
-            ),
+            colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn),
           ),
           const SizedBox(height: 16),
           Text(
             'add_expenses'.tr(),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Color(0xFF0247C4),
