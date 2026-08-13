@@ -114,7 +114,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   bool _showNotifications = false;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
-  // Working days affect daily rates/deductions, not the period base salary.
+
   static const double _prorationFactor = 1.0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
@@ -284,12 +284,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       widget.workerData['hasPayrollRecord'] == true &&
       widget.workerData['isPaid'] == true;
 
-  // A paid payroll opened via the edit icon is already in edit/correction mode.
   bool get _canEditInputs => !widget.readOnly;
 
-  // The pay period shown/used for this record. For a paid payroll we always
-  // keep the saved payPeriodStart/payPeriodEnd from the payroll document.
-  // New payroll records always use the selected calendar month.
   (DateTime, DateTime) get _currentPayPeriod {
     if (_isPaidRecord) {
       final savedStart = widget.workerData['payPeriodStart'];
@@ -1292,8 +1288,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final showEditButtons = !widget.readOnly;
     final showSaveButton =
         showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
-    final showCancelButton =
-        hasRecord && _isPaidRecord && !_isCancellingPayroll;
+    final showCancelButton = hasRecord && _isPaidRecord;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1807,11 +1802,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       ),
       child: Column(
         children: [
-          _breakdownRow(
-            'gross_pay'.tr(),
-            fmt('formattedGross'),
-            null,
-          ),
+          _breakdownRow('gross_pay'.tr(), fmt('formattedGross'), null),
           _breakdownRow('overtime_pay'.tr(), fmt('formattedOvertime'), null),
           _breakdownRow(
             'absent_deduction'.tr(),

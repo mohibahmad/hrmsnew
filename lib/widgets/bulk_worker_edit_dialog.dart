@@ -39,7 +39,6 @@ String fieldHint(String fieldKey) {
   return key != null ? key.tr() : '';
 }
 
-/// Hint shown *inside* the text field for media (image / file) columns.
 String mediaFieldHint(String fieldKey) {
   const hintKeys = <String, String>{
     'profileImage': 'hint_media_profile_image',
@@ -516,9 +515,9 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
         if (newValue.text.isEmpty) return newValue;
         final parts = newValue.text.split('.');
         final intPart = parts[0];
-        // max 12 digits before decimal
+
         if (intPart.length > 12) return oldValue;
-        // max 2 digits after decimal
+
         if (parts.length > 1 && parts[1].length > 2) return oldValue;
         return newValue;
       }),

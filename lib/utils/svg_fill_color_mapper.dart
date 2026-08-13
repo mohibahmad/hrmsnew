@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-
 class SvgFillColorMapper extends ColorMapper {
-  const SvgFillColorMapper({
-    required this.source,
-    required this.replacement,
-  });
+  const SvgFillColorMapper({required this.source, required this.replacement});
 
   final Color source;
   final Color replacement;

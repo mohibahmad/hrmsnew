@@ -9,8 +9,6 @@ String formatMoney(double amount, String symbol) {
 class CurrencyUtils {
   CurrencyUtils._();
 
-  /// Returns a plain number string without a trailing ".0".
-  /// e.g. 50000.0 -> "50000", "50000.5" -> "50000.5", 50000 -> "50000".
   static String amountText(dynamic value) {
     final text = (value ?? '').toString().trim();
     if (RegExp(r'^-?\d+\.0+$').hasMatch(text)) {
@@ -28,8 +26,6 @@ class CurrencyUtils {
     return '$symbol${amount.toStringAsFixed(0)}';
   }
 
-  
-  
   static const List<String> commonCodes = [
     'USD',
     'EUR',
@@ -58,11 +54,91 @@ class CurrencyUtils {
   ];
 
   static const Map<String, List<String>> localeCurrencies = {
-    'en': ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'PKR', 'CAD', 'AUD', 'SAR', 'AED', 'QAR', 'KWD', 'OMR', 'RUB', 'BRL'],
-    'es': ['EUR', 'USD', 'GBP', 'JPY', 'INR', 'PKR', 'CAD', 'AUD', 'SAR', 'AED', 'QAR', 'KWD', 'OMR', 'RUB', 'BRL'],
-    'fr': ['EUR', 'USD', 'GBP', 'JPY', 'INR', 'PKR', 'CAD', 'AUD', 'SAR', 'AED', 'QAR', 'KWD', 'OMR', 'RUB', 'BRL'],
-    'pt': ['BRL', 'EUR', 'USD', 'GBP', 'JPY', 'INR', 'PKR', 'CAD', 'AUD', 'SAR', 'AED', 'QAR', 'KWD', 'OMR', 'RUB'],
-    'ru': ['RUB', 'EUR', 'USD', 'GBP', 'JPY', 'INR', 'PKR', 'CAD', 'AUD', 'SAR', 'AED', 'QAR', 'KWD', 'OMR', 'BRL'],
+    'en': [
+      'USD',
+      'EUR',
+      'GBP',
+      'JPY',
+      'INR',
+      'PKR',
+      'CAD',
+      'AUD',
+      'SAR',
+      'AED',
+      'QAR',
+      'KWD',
+      'OMR',
+      'RUB',
+      'BRL',
+    ],
+    'es': [
+      'EUR',
+      'USD',
+      'GBP',
+      'JPY',
+      'INR',
+      'PKR',
+      'CAD',
+      'AUD',
+      'SAR',
+      'AED',
+      'QAR',
+      'KWD',
+      'OMR',
+      'RUB',
+      'BRL',
+    ],
+    'fr': [
+      'EUR',
+      'USD',
+      'GBP',
+      'JPY',
+      'INR',
+      'PKR',
+      'CAD',
+      'AUD',
+      'SAR',
+      'AED',
+      'QAR',
+      'KWD',
+      'OMR',
+      'RUB',
+      'BRL',
+    ],
+    'pt': [
+      'BRL',
+      'EUR',
+      'USD',
+      'GBP',
+      'JPY',
+      'INR',
+      'PKR',
+      'CAD',
+      'AUD',
+      'SAR',
+      'AED',
+      'QAR',
+      'KWD',
+      'OMR',
+      'RUB',
+    ],
+    'ru': [
+      'RUB',
+      'EUR',
+      'USD',
+      'GBP',
+      'JPY',
+      'INR',
+      'PKR',
+      'CAD',
+      'AUD',
+      'SAR',
+      'AED',
+      'QAR',
+      'KWD',
+      'OMR',
+      'BRL',
+    ],
   };
 
   static const Map<String, String> _symbols = {
@@ -96,10 +172,6 @@ class CurrencyUtils {
   static String symbolFor(dynamic value) =>
       _symbols[normalize(value)] ?? _symbols[companyCurrency]!;
 
-  /// Locale-aware compact amount that keeps 1 decimal of precision and uses
-  /// the locale's suffix + decimal separator. Examples for 150745 ($):
-  ///   en_US -> "$150.7K", ru -> "$150,7 тыс.", fr -> "$150,7 k",
-  ///   es/pt -> "$150,7 mil". Whole numbers drop the decimal (50000 -> "$50K").
   static String formatCompactLocale(
     double value,
     String locale, {
@@ -158,11 +230,10 @@ class CurrencyUtils {
     } catch (_) {
       numberPart = scaled.toStringAsFixed(1);
     }
-    // Drop the trailing ".0"/",0" for whole numbers (50.0 -> 50, 2,0 -> 2).
+
     numberPart = numberPart.replaceFirst(RegExp(r'[,.]0$'), '');
     if (suffix.isEmpty) return '$symbol$numberPart';
-    // English attaches compact suffixes without a space ($57.3K), while other
-    // locales use word-like suffixes that need a space ($57,3 тыс., $150,7 mil).
+
     return lang == 'en'
         ? '$symbol$numberPart$suffix'
         : '$symbol$numberPart $suffix';

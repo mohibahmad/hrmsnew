@@ -10,10 +10,10 @@ import '../utils/delete_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
-import '../services/preferences_service.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
-import '../utils/premium_gate.dart';
+
 import '../utils/date_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
@@ -430,8 +430,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   }
 
                                   final selectedWorkerData =
-                                      _workersMap[selectedOption] ?? {
-                                        'id': 'manual_${DateTime.now().millisecondsSinceEpoch}',
+                                      _workersMap[selectedOption] ??
+                                      {
+                                        'id':
+                                            'manual_${DateTime.now().millisecondsSinceEpoch}',
                                         'name': selectedOption,
                                         'position': position,
                                         'email': '',
@@ -650,63 +652,77 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             if (textEditingValue.text.isEmpty) {
                               return _workerNames;
                             }
-                            return _workerNames.where((name) =>
-                              name.toLowerCase().contains(
+                            return _workerNames.where(
+                              (name) => name.toLowerCase().contains(
                                 textEditingValue.text.toLowerCase(),
                               ),
                             );
                           },
-                          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-                            // sync external controller with autocomplete controller
-                            if (workerNameController.text != controller.text) {
-                              // keep reference
-                            }
-                            return Container(
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: controller,
-                                      focusNode: focusNode,
-                                      decoration: InputDecoration.collapsed(
-                                        hintText: 'worker_name_hint'.tr(),
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey.shade400,
-                                          fontSize: 14,
-                                          fontFamily: 'SF Pro Display',
+                          fieldViewBuilder:
+                              (context, controller, focusNode, onSubmitted) {
+                                if (workerNameController.text !=
+                                    controller.text) {}
+                                return Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: controller,
+                                          focusNode: focusNode,
+                                          decoration: InputDecoration.collapsed(
+                                            hintText: 'worker_name_hint'.tr(),
+                                            hintStyle: TextStyle(
+                                              color: Colors.grey.shade400,
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          onChanged: (val) {
+                                            setModalState(() {
+                                              selectedWorkerName =
+                                                  val.trim().isEmpty
+                                                  ? null
+                                                  : val.trim();
+                                              if (_workersMap.containsKey(
+                                                val.trim(),
+                                              )) {
+                                                positionController.text =
+                                                    _formatPositionTitleCase(
+                                                      _workersMap[val
+                                                          .trim()]!['position'],
+                                                    );
+                                              }
+                                            });
+                                          },
                                         ),
                                       ),
-                                      style: const TextStyle(
-                                        fontSize: 14,
+                                      const Icon(
+                                        Icons.arrow_drop_down,
                                         color: Colors.black,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
+                                        size: 24,
                                       ),
-                                      onChanged: (val) {
-                                        setModalState(() {
-                                          selectedWorkerName = val.trim().isEmpty ? null : val.trim();
-                                          if (_workersMap.containsKey(val.trim())) {
-                                            positionController.text = _formatPositionTitleCase(
-                                              _workersMap[val.trim()]!['position'],
-                                            );
-                                          }
-                                        });
-                                      },
-                                    ),
+                                    ],
                                   ),
-                                  const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
-                                ],
-                              ),
-                            );
-                          },
+                                );
+                              },
                           optionsViewBuilder: (context, onSelected, options) {
                             return Align(
                               alignment: Alignment.topLeft,
@@ -716,7 +732,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 borderRadius: BorderRadius.zero,
                                 shadowColor: Colors.black.withOpacity(0.12),
                                 child: Container(
-                                  constraints: const BoxConstraints(maxHeight: 220, maxWidth: 420),
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 220,
+                                    maxWidth: 420,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     border: Border.all(
@@ -727,22 +746,29 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.zero,
                                     child: ListView.separated(
-                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
                                       shrinkWrap: true,
                                       itemCount: options.length,
-                                      separatorBuilder: (_, __) => const Divider(
-                                        height: 1,
-                                        thickness: 0.6,
-                                        color: Color(0xFFF3F4F6),
-                                        indent: 14,
-                                        endIndent: 14,
-                                      ),
+                                      separatorBuilder: (_, __) =>
+                                          const Divider(
+                                            height: 1,
+                                            thickness: 0.6,
+                                            color: Color(0xFFF3F4F6),
+                                            indent: 14,
+                                            endIndent: 14,
+                                          ),
                                       itemBuilder: (context, index) {
                                         final option = options.elementAt(index);
                                         return InkWell(
                                           onTap: () => onSelected(option),
-                                          splashColor: const Color(0xFF0247C4).withOpacity(0.06),
-                                          highlightColor: const Color(0xFF0247C4).withOpacity(0.04),
+                                          splashColor: const Color(
+                                            0xFF0247C4,
+                                          ).withOpacity(0.06),
+                                          highlightColor: const Color(
+                                            0xFF0247C4,
+                                          ).withOpacity(0.04),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 14,
@@ -769,9 +795,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             setModalState(() {
                               selectedWorkerName = val;
                               if (_workersMap.containsKey(val)) {
-                                positionController.text = _formatPositionTitleCase(
-                                  _workersMap[val]!['position'],
-                                );
+                                positionController.text =
+                                    _formatPositionTitleCase(
+                                      _workersMap[val]!['position'],
+                                    );
                               }
                             });
                           },

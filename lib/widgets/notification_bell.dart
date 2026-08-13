@@ -54,8 +54,7 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
   @override
   Widget build(BuildContext context) {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    
-    
+
     final int unreadCount = isGuest
         ? DummyData.notifications.where((n) => n['isRead'] != true).length
         : _unreadCount;

@@ -1,9 +1,6 @@
-
-
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -58,8 +55,10 @@ class DefaultFirebaseOptions {
     projectId: 'businesscard-6f5c4',
     databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
     storageBucket: 'businesscard-6f5c4.firebasestorage.app',
-    androidClientId: '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
-    iosClientId: '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
+    androidClientId:
+        '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
+    iosClientId:
+        '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
     iosBundleId: 'com.example.hrms',
   );
 
@@ -70,8 +69,10 @@ class DefaultFirebaseOptions {
     projectId: 'businesscard-6f5c4',
     databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
     storageBucket: 'businesscard-6f5c4.firebasestorage.app',
-    androidClientId: '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
-    iosClientId: '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
+    androidClientId:
+        '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
+    iosClientId:
+        '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
     iosBundleId: 'com.example.hrms',
   );
 
@@ -85,5 +86,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'businesscard-6f5c4.firebasestorage.app',
     measurementId: 'G-GZH9PPB9VZ',
   );
-
 }

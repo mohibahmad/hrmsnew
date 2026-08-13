@@ -25,7 +25,8 @@ class TimeOffExportService {
   }
 
   static String _extractDays(Map<String, dynamic> record) {
-    final rawDays = record['days'] ?? record['numberOfDays'] ?? record['totalDays'];
+    final rawDays =
+        record['days'] ?? record['numberOfDays'] ?? record['totalDays'];
     if (rawDays != null && rawDays.toString().trim().isNotEmpty) {
       return rawDays.toString().trim();
     }
@@ -43,15 +44,30 @@ class TimeOffExportService {
     );
 
     for (final record in records) {
-      final name = (record['workerName'] ?? record['name'] ?? record['email'] ?? '').toString().replaceAll(',', ' ');
-      final type = (record['leaveType'] ?? record['type'] ?? 'Leave').toString().replaceAll(',', ' ');
+      final name =
+          (record['workerName'] ?? record['name'] ?? record['email'] ?? '')
+              .toString()
+              .replaceAll(',', ' ');
+      final type = (record['leaveType'] ?? record['type'] ?? 'Leave')
+          .toString()
+          .replaceAll(',', ' ');
       final from = _formatDate(record['startDate'] ?? record['date']);
-      final to = _formatDate(record['endDate'] ?? record['startDate'] ?? record['date']);
+      final to = _formatDate(
+        record['endDate'] ?? record['startDate'] ?? record['date'],
+      );
       final days = _extractDays(record);
-      final status = (record['status'] ?? 'Approved').toString().replaceAll(',', ' ');
-      final reason = (record['reason'] ?? record['description'] ?? '').toString().replaceAll(',', ' ').replaceAll('\n', ' ');
+      final status = (record['status'] ?? 'Approved').toString().replaceAll(
+        ',',
+        ' ',
+      );
+      final reason = (record['reason'] ?? record['description'] ?? '')
+          .toString()
+          .replaceAll(',', ' ')
+          .replaceAll('\n', ' ');
 
-      buffer.writeln('"$name","$type","$from","$to","$days","$status","$reason"');
+      buffer.writeln(
+        '"$name","$type","$from","$to","$days","$status","$reason"',
+      );
     }
 
     return buffer.toString();
@@ -126,7 +142,11 @@ class TimeOffExportService {
               children: [
                 pw.Text(
                   companyName.isEmpty ? 'HRMS' : companyName,
-                  style: pw.TextStyle(fontSize: 20, color: navy, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    color: navy,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
                 pw.Text(
                   _l('time_off_report_title', 'TIME OFF RECORDS REPORT'),
@@ -155,7 +175,10 @@ class TimeOffExportService {
             pw.SizedBox(height: 16),
             pw.TableHelper.fromTextArray(
               context: context,
-              border: pw.TableBorder.all(color: PdfColor.fromHex('#E2E8F0'), width: 0.5),
+              border: pw.TableBorder.all(
+                color: PdfColor.fromHex('#E2E8F0'),
+                width: 0.5,
+              ),
               headerStyle: pw.TextStyle(
                 color: PdfColors.white,
                 fontWeight: pw.FontWeight.bold,
@@ -174,10 +197,14 @@ class TimeOffExportService {
                 _l('status', 'Status'),
               ],
               data: records.map((r) {
-                final name = (r['workerName'] ?? r['name'] ?? r['email'] ?? '').toString();
-                final type = (r['leaveType'] ?? r['type'] ?? 'Leave').toString();
+                final name = (r['workerName'] ?? r['name'] ?? r['email'] ?? '')
+                    .toString();
+                final type = (r['leaveType'] ?? r['type'] ?? 'Leave')
+                    .toString();
                 final from = _formatDate(r['startDate'] ?? r['date']);
-                final to = _formatDate(r['endDate'] ?? r['startDate'] ?? r['date']);
+                final to = _formatDate(
+                  r['endDate'] ?? r['startDate'] ?? r['date'],
+                );
                 final days = _extractDays(r);
                 final status = (r['status'] ?? 'Approved').toString();
                 return [name, type, from, to, days, status];
@@ -190,7 +217,11 @@ class TimeOffExportService {
               children: [
                 pw.Text(
                   '${_l('total_records', 'Total Records')}: ${records.length}',
-                  style: pw.TextStyle(fontSize: 10, color: navy, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: navy,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
                 buildCompanyAuthorization(
                   companyName: companyName,
@@ -198,7 +229,10 @@ class TimeOffExportService {
                   stampImage: stampImage,
                   accentColor: navy,
                   mutedColor: mutedText,
-                  authorizedSignatoryText: _l('authorized_signatory', 'Authorized Signatory'),
+                  authorizedSignatoryText: _l(
+                    'authorized_signatory',
+                    'Authorized Signatory',
+                  ),
                 ),
               ],
             ),

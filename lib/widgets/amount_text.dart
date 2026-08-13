@@ -9,11 +9,6 @@ class AmountText extends StatelessWidget {
 
   const AmountText(this.amount, {super.key, this.style, this.textAlign});
 
-  
-  
-  
-  
-  
   static String _numericPart(String input) {
     final trimmed = input.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
@@ -21,15 +16,20 @@ class AmountText extends StatelessWidget {
     final sign = trimmed.startsWith('-') ? '-' : '';
     return sign + trimmed.substring(firstDigit.start);
   }
+
   static String _extractSymbol(String input) {
     final trimmed = input.trim();
     if (trimmed.startsWith('-')) {
       final stripped = trimmed.substring(1).trimLeft();
       final firstDigit = RegExp(r'\d').firstMatch(stripped);
-      return firstDigit == null ? '' : stripped.substring(0, firstDigit.start).trim();
+      return firstDigit == null
+          ? ''
+          : stripped.substring(0, firstDigit.start).trim();
     }
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
-    return firstDigit == null ? '' : trimmed.substring(0, firstDigit.start).trim();
+    return firstDigit == null
+        ? ''
+        : trimmed.substring(0, firstDigit.start).trim();
   }
 
   static String formatCompact(String input, {String locale = 'en_US'}) {
@@ -46,13 +46,13 @@ class AmountText extends StatelessWidget {
       final abs = val.abs();
 
       if (abs >= 1e3) {
-        // Locale-aware compact amount: "$57.3K" (en) / "$57,3 тыс." (ru).
         final compact = CurrencyUtils.formatCompactLocale(
           val,
           locale,
           symbol: '',
         );
-        final space = (symbol.isNotEmpty &&
+        final space =
+            (symbol.isNotEmpty &&
                 !symbol.endsWith(' ') &&
                 !RegExp(r'[$\u00A3\u20AC\u00A5\u20B9]').hasMatch(symbol))
             ? ' '
@@ -66,12 +66,15 @@ class AmountText extends StatelessWidget {
         symbol: '',
         decimalDigits: hasDecimals ? 2 : 0,
       ).format(val);
-      final space = (symbol.isNotEmpty &&
+      final space =
+          (symbol.isNotEmpty &&
               !symbol.endsWith(' ') &&
               !RegExp(r'[$\u00A3\u20AC\u00A5\u20B9]').hasMatch(symbol))
           ? ' '
           : '';
-      return symbol.isEmpty ? formatted.trim() : '$symbol$space${formatted.trim()}';
+      return symbol.isEmpty
+          ? formatted.trim()
+          : '$symbol$space${formatted.trim()}';
     } catch (_) {
       return input;
     }
@@ -92,7 +95,9 @@ class AmountText extends StatelessWidget {
         decimalDigits: hasDecimals ? 2 : 0,
       ).format(val.abs());
       final prefix = symbol.isEmpty ? '' : '$symbol ';
-      return val < 0 ? '-$prefix${formatted.trim()}' : '$prefix${formatted.trim()}';
+      return val < 0
+          ? '-$prefix${formatted.trim()}'
+          : '$prefix${formatted.trim()}';
     } catch (_) {
       return input;
     }

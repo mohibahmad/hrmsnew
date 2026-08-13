@@ -21,7 +21,8 @@ class NotificationSidebar extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NotificationSidebar> createState() => _NotificationSidebarState();
+  ConsumerState<NotificationSidebar> createState() =>
+      _NotificationSidebarState();
 }
 
 class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
@@ -245,8 +246,10 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
         return 'time_ago_hours'.tr(namedArgs: {'count': '${diff.inHours}'});
       if (diff.inDays < 7)
         return 'time_ago_days'.tr(namedArgs: {'count': '${diff.inDays}'});
-      return DateFormat('time_ago_date'.tr(), context.locale.toString())
-          .format(created);
+      return DateFormat(
+        'time_ago_date'.tr(),
+        context.locale.toString(),
+      ).format(created);
     } catch (_) {
       return '';
     }

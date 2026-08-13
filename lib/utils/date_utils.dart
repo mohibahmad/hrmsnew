@@ -78,8 +78,6 @@ class AppDateUtils {
           } else if (val2 > 12) {
             return _validatedDate(year, val1, val2);
           } else {
-            // Worker-facing slash dates are always DD/MM/YYYY. For ambiguous
-            // values such as 05/08/2026, keep 5 as the day and 8 as the month.
             return _validatedDate(year, val2, val1);
           }
         }
@@ -111,11 +109,6 @@ class AppDateUtils {
     }
   }
 
-  /// Parses a worker-entered date in the canonical DD/MM/YYYY format.
-  ///
-  /// This intentionally does not fall back to [DateTime.tryParse], because
-  /// that parser expects ISO dates and can silently reinterpret ambiguous
-  /// day/month values.
   static DateTime? parseDdMmYyyy(String value) {
     final text = value.trim();
     if (!RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(text)) return null;
@@ -128,10 +121,6 @@ class AppDateUtils {
     }
   }
 
-  /// Preserves a calendar date while representing it at UTC midnight.
-  ///
-  /// Do not use `value.toUtc()` for business dates: converting local midnight
-  /// in a positive-offset timezone can move the value to the previous day.
   static DateTime asUtcDateOnly(DateTime value) {
     return DateTime.utc(value.year, value.month, value.day);
   }
@@ -142,9 +131,6 @@ class AppDateUtils {
     return '$dayStr/$monthStr/${date.year}';
   }
 
-  /// Formats [date] using the given [locale] (e.g. en_US -> M/d/yyyy,
-  /// en_GB/es -> dd/MM/yyyy, de -> dd.MM.yyyy, ar -> Arabic-Indic digits).
-  /// Falls back to the canonical dd/MM/yyyy format on any failure.
   static String formatLocaleDate(DateTime date, {String? locale}) {
     try {
       final loc = locale ?? Intl.getCurrentLocale();
@@ -157,9 +143,6 @@ class AppDateUtils {
     }
   }
 
-  /// Parses [value] (DateTime / Timestamp / date string) and formats it using
-  /// the given [locale]. Null values produce '' and unparseable values are
-  /// returned as-is so display can localize without breaking stored data.
   static String fromValueLocalized(dynamic value, {String? locale}) {
     if (value == null) return '';
     final date = dateFromValue(value);
@@ -267,17 +250,10 @@ class AppDateUtils {
     return null;
   }
 
-  /// Canonical attendance date used by Dashboard timeframe filters/charts.
-  /// `createdAt` is metadata and must never decide which attendance day a
-  /// record belongs to.
   static DateTime? canonicalAttendanceDate(Map<String, dynamic> record) {
     return dateFromValue(record['attendanceDate']);
   }
 
-  /// Returns the canonical date for a holiday record.
-  ///
-  /// New records use a single `date` Timestamp. Legacy records that stored
-  /// separate day/month/year fields remain readable during migration.
   static DateTime? holidayRecordDate(
     Map<String, dynamic> record, {
     int? fallbackYear,

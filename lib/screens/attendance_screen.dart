@@ -1053,9 +1053,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _isLoading = false;
     }
 
-    // Today is a worker snapshot, so count the same latest per-worker records
-    // rendered by the table. Raw documents can contain multiple edits for one
-    // worker and would otherwise inflate or contradict the summary cards.
     final countableRecords = _selectedTimeframe == 'Today'
         ? _attendanceDocs
         : periodAttendance;
@@ -2109,8 +2106,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildStatusText(Map<String, dynamic> worker) {
-    // When a period other than Today is selected in the timeframe dropdown,
-    // hide the daily status and show a placeholder instead.
     if (_selectedTimeframe != 'Today') {
       return const Text(
         '******',

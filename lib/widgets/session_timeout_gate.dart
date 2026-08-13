@@ -14,6 +14,7 @@ typedef BiometricNameLoader = Future<String> Function();
 typedef BiometricUnlock = Future<BiometricAuthResult> Function();
 
 DateTime _systemNow() => DateTime.now();
+
 class SessionTimeoutGate extends StatefulWidget {
   const SessionTimeoutGate({
     super.key,
@@ -121,7 +122,6 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     }
 
     if (!widget.isSessionActive()) {
-      
       _lastActivityAt = widget.clock();
       _scheduleTimer();
       return;
@@ -161,9 +161,6 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     });
 
     if (available) {
-      
-      
-      
       await WidgetsBinding.instance.endOfFrame;
       if (mounted && _locked) {
         await _unlockWithBiometrics();
@@ -190,12 +187,11 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
 
     if (!mounted) return;
 
-    // User cancelled – dismiss the lock screen silently, no error.
     if (result == BiometricAuthResult.cancelled) {
       setState(() {
         _authenticating = false;
       });
-      // Re-show the lock screen so the user can try again or sign out.
+
       setState(() {
         _authenticationFailed = false;
       });
@@ -225,8 +221,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     setState(() => _signingOut = true);
     try {
       await PreferencesService.setSessionLocked(false);
-      // Defer navigation to after the current frame to avoid
-      // "navigator is locked" assertion during build.
+
       final completer = Completer<void>();
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {

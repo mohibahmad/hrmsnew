@@ -1489,5 +1489,7 @@
   "worker_already_on_leave_date": "O trabalhador já está de licença nesta data.",
   "tax_deduction": "Dedução de Impostos",
   "biometric_locked_out": "Muitas tentativas falharam. Por favor, tente novamente mais tarde.",
-  "biometric_permanently_locked_out": "A autenticação biométrica está bloqueada permanentemente. Por favor, use sua senha para fazer login."
+  "biometric_permanently_locked_out": "A autenticação biométrica está bloqueada permanentemente. Por favor, use sua senha para fazer login.",
+  "file_downloaded_successfully": "Arquivo baixado com sucesso.",
+  "could_not_download_file": "Não foi possível baixar o arquivo. Por favor, tente novamente."
 }

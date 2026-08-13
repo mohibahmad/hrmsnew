@@ -334,27 +334,19 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     notesChanged: _hasNotesChanged,
   );
 
-  void _stashCurrentDraft() {
-    final draft = _currentDraft();
-    if (draft.hasChanges) {
-      _pendingDrafts[_timeOffType] = draft;
-    } else {
-      _pendingDrafts.remove(_timeOffType);
-    }
+  String _draftKeyFor(String? editingId, String leaveType) {
+    final id = (editingId ?? '').trim();
+    return id.isNotEmpty ? id : leaveType;
   }
 
-  void _applyPendingDraft(PendingTimeOffDraft draft) {
-    _timeOffType = draft.leaveType;
-    _editingId = draft.editingId;
-    _editingRecord = draft.editingRecord == null
-        ? null
-        : Map<String, dynamic>.from(draft.editingRecord!);
-    _selectedDates = Set<DateTime>.from(draft.selectedDates);
-    _notesController.text = draft.notes;
-    _hasTypeChanged = draft.typeChanged;
-    _hasDateSelectionChanged = draft.datesChanged;
-    _hasNotesChanged = draft.notesChanged;
-    if (_selectedDates.isNotEmpty) _syncSelectionBounds();
+  void _stashCurrentDraft() {
+    final draft = _currentDraft();
+    final key = _draftKeyFor(_editingId, _timeOffType);
+    if (draft.hasChanges) {
+      _pendingDrafts[key] = draft;
+    } else {
+      _pendingDrafts.remove(key);
+    }
   }
 
   List<DateTime> get _sortedSelectedDates {
@@ -497,6 +489,16 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     if (isGuest) {
       final records = DummyData.timeoff
           .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
+          .map((r) {
+            final id = (r['id'] ?? '').toString().trim();
+            if (id.isEmpty) {
+              final syntheticId =
+                  'timeoff_${r['workerId']}_${r['type']}_${r['startDate']}';
+              r['id'] = syntheticId;
+              return {...r, 'id': syntheticId};
+            }
+            return r;
+          })
           .toList();
       if (mounted) {
         setState(() {
@@ -580,7 +582,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _editingRecord = Map<String, dynamic>.from(record);
     _editingId = record['id']?.toString();
     _timeOffType = TimeOffService.leaveType(record);
-    _selectedDates = TimeOffService.selectedDatesForRecord(record).toSet();
+    _selectedDates = TimeOffService.selectedDatesForRecord(
+      record,
+    ).map(_dateOnly).toSet();
     _notesController.text = (record['notes'] ?? '').toString();
     if (_selectedDates.isEmpty) {
       _startDate = DateTime.now();
@@ -613,33 +617,26 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     _stashCurrentDraft();
 
-    final pendingDraft = _pendingDrafts[normalizedType];
-    if (pendingDraft != null) {
-      setState(() => _applyPendingDraft(pendingDraft));
-      return;
-    }
-
-    final record = TimeOffService.recordForWorkerLeaveType(
-      _selectedWorkerForService,
-      _timeoffRecords,
-      normalizedType,
-    );
     setState(() {
-      if (record != null) {
-        _applyEditingRecord(record, preserveCalendarMonth: true);
-        return;
-      }
-
-      // No assigned record exists for this type. Start a separate new request
-      // instead of relabelling the record that was previously open.
+      _timeOffType = normalizedType;
+      _hasTypeChanged = true;
       _editingRecord = null;
       _editingId = null;
-      _timeOffType = normalizedType;
-      _selectedDates.clear();
-      _notesController.clear();
-      _startDate = DateTime.now();
-      _endDate = DateTime.now();
-      _markFormClean();
+
+      final newDraftKey = _draftKeyFor(null, normalizedType);
+      final draft = _pendingDrafts[newDraftKey];
+      if (draft != null) {
+        _selectedDates = Set<DateTime>.from(draft.selectedDates);
+        _notesController.text = draft.notes;
+        _hasDateSelectionChanged = true;
+        _syncSelectionBounds();
+      } else {
+        _selectedDates.clear();
+        _notesController.clear();
+        _startDate = DateTime.now();
+        _endDate = DateTime.now();
+        _hasDateSelectionChanged = false;
+      }
     });
   }
 
@@ -803,8 +800,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return (_displayedLeaveBalance - _summaryRequestedDays).clamp(0, 9999);
   }
 
-  /// Every selected date across ALL leave types (the active dropdown type plus
-  /// any stashed pending drafts), paired with its leave type. Sorted by date.
   List<(DateTime, String)> _allSelectedEntries() {
     final entries = <(DateTime, String)>[];
     final seen = <DateTime>{};
@@ -821,11 +816,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return entries;
   }
 
-  /// Total unique selected days across ALL leave types.
   int get _allTypesSelectedDaysCount => _allSelectedEntries().length;
 
-  /// Human readable summary of every selected date across all leave types,
-  /// tagged with the leave-type label for each date.
   String get _allTypesSelectedDatesSummary {
     final entries = _allSelectedEntries();
     if (entries.isEmpty) return 'select_date'.tr();
@@ -1413,11 +1405,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   final label = option['labelKey']!.tr();
                   final typeVal = option['value']!;
                   final avail = _availableDaysForType(typeVal);
-                  // Every type stays selectable so HR can inspect the
-                  // worker's existing dates for a type even when its balance
-                  // is zero (the calendar only shows dates for the selected
-                  // type). Zero-balance types are styled grey as a hint;
-                  // adding new dates and saving are blocked separately.
+
                   final displayLabel = (_selectedWorker != null && avail < 999)
                       ? '$label ($avail)'
                       : label;
@@ -1693,7 +1681,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             if (startPos != null && !_dragMoved) {
               final dx = (pos.dx - startPos.dx).abs();
               final dy = (pos.dy - startPos.dy).abs();
-              if (dx > 5 || dy > 5) _dragMoved = true;
+              if (dx > 18 || dy > 18) _dragMoved = true;
             }
             if (!_dragMoved) return;
 
@@ -1722,8 +1710,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             )) {
               if (_isNonWorkingDate(date)) continue;
               if (isDragRemoving) {
-                // Past dates from existing records are locked and cannot be
-                // removed via drag. Only future dates can be deselected.
                 final isPastDate = date.isBefore(todayDate);
                 if (isPastDate) continue;
                 candidate.remove(date);
@@ -1831,9 +1817,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
     const cellExtent = 54.0;
-    const headerHeight = 77.0;
-    const calendarPadding = 16.0;
-    final adjustedDy = position.dy - headerHeight - calendarPadding;
+    const headerHeight = 93.0;
+    const calendarPadding = 17.0;
+    final adjustedDy = position.dy - headerHeight;
     final adjustedDx = position.dx - calendarPadding;
     if (adjustedDy < 0 || adjustedDx < 0) return null;
     final column = (adjustedDx / cellExtent).floor();
@@ -1867,6 +1853,19 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Future<void> _toggleDate(DateTime date) async {
     final selectedDate = _dateOnly(date);
     final isRemoving = _selectedDates.contains(selectedDate);
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final isPastDate = selectedDate.isBefore(todayStart);
+
+    // Block any modification to past dates — neither add nor remove allowed
+    if (isPastDate) {
+      FlashySnackBar.show(
+        context,
+        message: 'past_time_off_edit_blocked'.tr(),
+        isError: true,
+      );
+      return;
+    }
 
     if (_isAggregateOverview) {
       if (!isRemoving || _selectedWorker == null) return;
@@ -1879,7 +1878,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           !TimeOffService.recordHasLeaveType(owningRecord, _timeOffType)) {
         return;
       }
-      if (!TimeOffService.isEditableRecord(owningRecord)) {
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      if (selectedDate.isBefore(todayStart)) {
         FlashySnackBar.show(
           context,
           message: 'past_time_off_edit_blocked'.tr(),
@@ -1907,63 +1908,32 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
-    if (_selectedWorker != null) {
-      final savedLeave = TimeOffService.activeLeaveForWorker(
+    
+    if (!isRemoving && _selectedWorker != null) {
+      final existingLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
         _timeoffRecords,
         onDate: selectedDate,
         excludingRecordId: _editingId,
       );
-      if (savedLeave != null) {
-        if (TimeOffService.recordHasLeaveType(savedLeave, _timeOffType)) {
-          // Past dates from existing records are locked and cannot be removed.
-          // Only future dates can be deselected.
-          final today = DateTime.now();
-          final isPastDate = selectedDate.isBefore(DateTime(today.year, today.month, today.day));
-          if (isRemoving && isPastDate) {
-            FlashySnackBar.show(
-              context,
-              message: 'past_time_off_edit_blocked'.tr(),
-              isError: true,
-            );
-            return;
-          }
-          // For adding new dates on a saved record, allow only if the record
-          // has future dates or the date being added is in the future.
-          if (!isRemoving && !TimeOffService.isEditableRecord(savedLeave)) {
-            // The record has past dates, but we still allow adding future dates.
-            if (selectedDate.isBefore(DateTime(today.year, today.month, today.day))) {
-              FlashySnackBar.show(
-                context,
-                message: 'past_time_off_edit_blocked'.tr(),
-                isError: true,
-              );
-              return;
-            }
-          }
-          if (_hasUnsavedChanges && !await _confirmDiscardChanges()) return;
-          if (!mounted) return;
-          setState(() {
-            // The calendar combines dates from every record of a leave type.
-            // Load the owning record before removing its date so any same-type
-            // assigned day can be edited directly.
-            _applyEditingRecord(savedLeave, preserveCalendarMonth: true);
-            if (isRemoving) {
-              _selectedDates.remove(selectedDate);
-            } else {
-              _selectedDates.add(selectedDate);
-            }
-            _hasDateSelectionChanged = true;
-            _syncSelectionBounds();
-          });
+      if (existingLeave != null) {
+        if (isPastDate) {
+          FlashySnackBar.show(
+            context,
+            message: 'past_time_off_edit_blocked'.tr(),
+            isError: true,
+          );
           return;
         }
-        // Date already has an assigned leave — keep it locked.
-        FlashySnackBar.show(
-          context,
-          message: 'date_already_has_leave'.tr(),
-          isError: true,
-        );
+
+        if (!mounted) return;
+        _stashCurrentDraft();
+        setState(() {
+          _applyEditingRecord(existingLeave, preserveCalendarMonth: true);
+          _selectedDates.remove(selectedDate);
+          _hasDateSelectionChanged = true;
+          _syncSelectionBounds();
+        });
         return;
       }
     }
@@ -1999,39 +1969,60 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     Map<String, dynamic>? savedLeave;
     if (!isSelected && date != null && _selectedWorker != null) {
-      savedLeave = TimeOffService.activeLeaveForWorker(
+      final candidateLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
         _timeoffRecords,
         onDate: date,
         excludingRecordId: _editingId,
       );
+      if (candidateLeave != null) {
+        final recId = (candidateLeave['id'] ?? '').toString().trim();
+        final draft = recId.isNotEmpty ? _pendingDrafts[recId] : null;
+        if (draft != null) {
+          if (draft.selectedDates.contains(date)) {
+            savedLeave = candidateLeave;
+          }
+        } else {
+          savedLeave = candidateLeave;
+        }
+      }
+    }
+    if (!isSelected && savedLeave == null && date != null) {
+      for (final draft in _pendingDrafts.values) {
+        final draftId = (draft.editingId ?? '').trim();
+        if ((draftId.isEmpty || draftId != (_editingId ?? '').trim()) &&
+            draft.selectedDates.contains(date)) {
+          savedLeave = {
+            'action': draft.leaveType,
+            'type': draft.leaveType,
+            'id': draft.editingId,
+          };
+          break;
+        }
+      }
     }
     final savedType = savedLeave != null
         ? (savedLeave['action'] ?? savedLeave['type']).toString()
         : null;
-    final savedColor = savedType != null
-        ? LeaveColors.getColor(savedType)
+    final isCellHighlighted = isSelected || savedLeave != null;
+    final effectiveType = isSelected ? _timeOffType : savedType;
+    final effectiveColor = effectiveType != null
+        ? LeaveColors.getColor(effectiveType)
         : null;
 
-    final selectedColor = LeaveColors.getColor(_timeOffType);
-    final bgColor = isSelected
-        ? selectedColor
-        : (savedColor ??
-              (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent));
+    final bgColor = isCellHighlighted
+        ? effectiveColor!
+        : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent);
 
-    final borderColor = isSelected
-        ? selectedColor
-        : (savedColor ?? Colors.grey.shade300);
+    final borderColor = isCellHighlighted
+        ? effectiveColor!
+        : Colors.grey.shade300;
 
-    final textColor = isDisabled && savedColor == null
+    final textColor = isDisabled && !isCellHighlighted
         ? const Color(0xFFB0B7C3)
-        : (isSelected || savedColor != null
-              ? const Color(0xFFFFFFFF)
-              : Colors.black);
+        : (isCellHighlighted ? const Color(0xFFFFFFFF) : Colors.black);
 
-    // Every date cell previews the currently selected dropdown type. Dates
-    // already saved in Firebase keep their persisted leave type instead.
-    final tooltipType = savedType ?? _timeOffType;
+    final tooltipType = effectiveType ?? _timeOffType;
     final tooltipOption = _leaveTypeOptions
         .cast<Map<String, String>?>()
         .firstWhere(
@@ -2039,9 +2030,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           orElse: () => null,
         );
     final tooltipTypeLabel = tooltipOption?['labelKey']?.tr() ?? tooltipType;
-    // Match the Selected Dates summary (_formatDate -> dd/MM/yyyy). The generic
-    // localized yMd pattern resolves to US M/d/yyyy for the default 'en' locale,
-    // which would render 11 Aug as 8/11/2026 and mismatch the rest of the screen.
+
     final tooltipDate = date == null ? '' : _formatDate(date);
     final tooltipMessage = '$tooltipTypeLabel\n$tooltipDate';
     final tooltipColor = LeaveColors.getColor(tooltipType);
@@ -2071,23 +2060,33 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           height: 1.35,
         ),
         textAlign: TextAlign.center,
-        child: SizedBox(
-          width: 50,
-          height: 50,
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: bgColor,
-              border: Border.all(color: borderColor, width: 1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              day,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: date == null
+              ? null
+              : () {
+                  if (!_dragMoved) {
+                    unawaited(_toggleDate(date));
+                  }
+                },
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: bgColor,
+                border: Border.all(color: borderColor, width: 1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                day,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
           ),
@@ -2250,15 +2249,34 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       await _savePendingDrafts();
       return;
     }
+    // Block if editing existing record and past dates were removed
+    if (_editingRecord != null) {
+      final oldDates = TimeOffService.selectedDatesForRecord(_editingRecord!);
+      if (TimeOffService.hasPastDateModification(
+        oldDates: oldDates,
+        newDates: _selectedDates,
+      )) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+        return;
+      }
+    }
 
-    if (_editingRecord != null &&
-        !TimeOffService.isEditableRecord(_editingRecord!)) {
-      FlashySnackBar.show(
-        context,
-        message: 'past_time_off_edit_blocked'.tr(),
-        isError: true,
-      );
-      return;
+    // Block fresh assignment if any selected date is in the past
+    if (_editingRecord == null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (_selectedDates.any((d) => d.isBefore(today))) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
+        return;
+      }
     }
 
     if (_selectedWorker == null && _selectedDates.isEmpty) {
@@ -2303,9 +2321,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             throw StateError('Time off record does not exist');
           }
           final oldRecord = DummyData.timeoff[recordIndex];
-          if (!TimeOffService.isEditableRecord(oldRecord)) {
-            throw const PastTimeOffEditException();
-          }
           final workerIndex = DummyData.workers.indexWhere(
             (worker) =>
                 (worker['workerId'] ?? worker['id'] ?? '').toString().trim() ==
@@ -2437,9 +2452,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         throw StateError('Missing worker id');
       }
 
-      // A dropdown switch navigates between independent leave-type records.
-      // Never allow a stale UI state to relabel an existing Annual record as
-      // Sick (or any other type); Firestore enforces the same invariant.
       if (_editingRecord != null &&
           !TimeOffService.recordHasLeaveType(_editingRecord!, _timeOffType)) {
         throw StateError(
@@ -2587,6 +2599,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
       if (mounted) {
         setState(() {
+          _editingRecord = null;
+          _editingId = null;
           _selectedDates.clear();
           _startDate = DateTime.now();
           _endDate = DateTime.now();
@@ -2677,15 +2691,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         .toList();
     final pendingDates = <DateTime>{};
     for (final draft in drafts) {
-      if (draft.editingRecord != null &&
-          !TimeOffService.isEditableRecord(draft.editingRecord!)) {
-        FlashySnackBar.show(
-          context,
-          message: 'past_time_off_edit_blocked'.tr(),
-          isError: true,
-        );
-        return;
-      }
       if (draft.selectedDates.any(_isNonWorkingDate)) {
         FlashySnackBar.show(
           context,
@@ -2740,43 +2745,45 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     setState(() => _isLoading = true);
     try {
-      for (final draft in drafts) {
-        if (draft.selectedDates.isEmpty && draft.editingId != null) {
-          await _firestore.cancelTimeOffWithWorkerBalance(
-            timeOffId: draft.editingId!,
-            workerId: workerId,
-          );
-          continue;
-        }
-        if (draft.selectedDates.isEmpty) continue;
+      await Future.wait(
+        drafts.map((draft) async {
+          if (draft.selectedDates.isEmpty && draft.editingId != null) {
+            await _firestore.cancelTimeOffWithWorkerBalance(
+              timeOffId: draft.editingId!,
+              workerId: workerId,
+            );
+            return;
+          }
+          if (draft.selectedDates.isEmpty) return;
 
-        final sortedDates = draft.selectedDates.toList()..sort();
-        final record = <String, dynamic>{
-          'workerId': workerId,
-          'name': worker['name'] ?? 'Worker',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? 'Worker',
-          'contact': _getWorkerPhone(worker),
-          'action': draft.leaveType,
-          'type': draft.leaveType,
-          'startDate': _dateOnlyString(sortedDates.first),
-          'endDate': _dateOnlyString(sortedDates.last),
-          'selectedDates': sortedDates.map(_dateOnlyString).toList(),
-          'notes': draft.notes,
-          'requestedDays': sortedDates.length,
-          'status': 'Approved',
-          'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
-          'workerName': worker['name'] ?? 'Worker',
-          'workerAvatar': worker['profileImage'] ?? '',
-        };
-        await _firestore.saveTimeOffWithWorkerBalance(
-          timeOffId: draft.editingId,
-          record: record,
-          workerId: workerId,
-          leaveType: draft.leaveType,
-          requestedDays: sortedDates.length,
-        );
-      }
+          final sortedDates = draft.selectedDates.toList()..sort();
+          final record = <String, dynamic>{
+            'workerId': workerId,
+            'name': worker['name'] ?? 'Worker',
+            'email': worker['email'] ?? '',
+            'position': worker['position'] ?? 'Worker',
+            'contact': _getWorkerPhone(worker),
+            'action': draft.leaveType,
+            'type': draft.leaveType,
+            'startDate': _dateOnlyString(sortedDates.first),
+            'endDate': _dateOnlyString(sortedDates.last),
+            'selectedDates': sortedDates.map(_dateOnlyString).toList(),
+            'notes': draft.notes,
+            'requestedDays': sortedDates.length,
+            'status': 'Approved',
+            'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
+            'workerName': worker['name'] ?? 'Worker',
+            'workerAvatar': worker['profileImage'] ?? '',
+          };
+          await _firestore.saveTimeOffWithWorkerBalance(
+            timeOffId: draft.editingId,
+            record: record,
+            workerId: workerId,
+            leaveType: draft.leaveType,
+            requestedDays: sortedDates.length,
+          );
+        }),
+      );
 
       if (!mounted) return;
       _pendingDrafts.clear();
@@ -2818,7 +2825,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   void _showSelectedDatesListDialog(BuildContext context) {
-    final String dayDisplayType = _localizedSelectedLeaveType;
+    final entries = _allSelectedEntries();
     final localeName = context.locale.toString();
     showDialog(
       context: context,
@@ -2832,182 +2839,262 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.of(ctx).pop(),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.45),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.45)),
             ),
           ),
           Center(
             child: Dialog(
               backgroundColor: Colors.transparent,
               elevation: 0,
-                child: Container(
-                width: 460,
-                height: MediaQuery.sizeOf(ctx).height * 0.68,
+              child: Container(
+                width: 380,
+                height: MediaQuery.sizeOf(ctx).height * 0.75,
                 constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.86,
-            maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
-          ),
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: const BoxDecoration(color: Color(0xFF004FDE)),
-                child: Row(
+                  maxWidth: MediaQuery.sizeOf(ctx).width * 0.85,
+                  minHeight: 380,
+                  maxHeight: MediaQuery.sizeOf(ctx).height * 0.85,
+                ),
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.calendar_month_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'selected_dates_count_title'.tr(
-                          namedArgs: {
-                            'count': '${_sortedSelectedDates.length}',
-                          },
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                    Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'selected_dates_count_title'.tr(
+                                namedArgs: {'count': '${entries.length}'},
+                              ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                      color: const Color(0xFFF8FAFC),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children:
+                            [
+                              'Annual Leave',
+                              'Sick Leave',
+                              'Casual Leave',
+                              'Medical Leave',
+                            ].map((type) {
+                              final color = LeaveColors.getColor(type);
+                              final count = entries
+                                  .where((e) => e.$2 == type)
+                                  .length;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: LeaveColors.getBgColor(type),
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(
+                                    color: color.withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${LocalizationHelper.localizeLeaveType(type)}: $count ${count == 1 ? 'day'.tr() : 'days'.tr()}',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                       ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: entries.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 40,
+                                    horizontal: 24,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 64,
+                                        height: 64,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFF1F5F9),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.event_busy_rounded,
+                                          size: 32,
+                                          color: Color(0xFF94A3B8),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Text(
+                                        'no_dates_selected'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF64748B),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                itemCount: entries.length,
+                                separatorBuilder: (_, _) => const Divider(
+                                  height: 1,
+                                  color: Color(0xFFEEEEEE),
+                                ),
+                                itemBuilder: (context, index) {
+                                  final (date, type) = entries[index];
+                                  final dayDisplayType =
+                                      LocalizationHelper.localizeLeaveType(
+                                        type,
+                                      );
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE5EEFC),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF004FDE),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            DateFormat.yMMMd(
+                                              localeName,
+                                            ).format(date),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          DateFormat.EEEE(
+                                            localeName,
+                                          ).format(date),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Color(0xFF666666),
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                        if (dayDisplayType.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: LeaveColors.getBgColor(
+                                                type,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              dayDisplayType,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: LeaveColors.getColor(
+                                                  type,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: _sortedSelectedDates.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'no_dates_selected'.tr(),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: _sortedSelectedDates.length,
-                          separatorBuilder: (_, _) => const Divider(
-                            height: 1,
-                            color: Color(0xFFEEEEEE),
-                          ),
-                          itemBuilder: (context, index) {
-                            final date = _sortedSelectedDates[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE5EEFC),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '${index + 1}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF004FDE),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      DateFormat.yMMMd(localeName).format(date),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat.EEEE(localeName).format(date),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF666666),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  if (dayDisplayType.isNotEmpty) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: LeaveColors.getBgColor(
-                                          _timeOffType,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        dayDisplayType,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: LeaveColors.getColor(
-                                            _timeOffType,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
             ),
           ),
         ],

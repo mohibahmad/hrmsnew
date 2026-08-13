@@ -1384,8 +1384,8 @@ class _WorkerProfilePreviewDialogState
                                           strokeWidth: 2,
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                            Colors.white,
-                                          ),
+                                                Colors.white,
+                                              ),
                                         ),
                                       )
                                     : SvgPicture.asset(

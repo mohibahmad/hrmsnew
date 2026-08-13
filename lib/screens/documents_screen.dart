@@ -1417,27 +1417,6 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         cleanName.endsWith('.pdf') ||
         cleanUrl.endsWith('.pdf') ||
         cleanUrl.startsWith('data:application/pdf');
-    final bool isDoc =
-        cleanName.endsWith('.doc') ||
-        cleanName.endsWith('.docx') ||
-        cleanUrl.endsWith('.doc') ||
-        cleanUrl.endsWith('.docx');
-    final bool isImage =
-        bytes != null ||
-        cleanName.endsWith('.png') ||
-        cleanName.endsWith('.jpg') ||
-        cleanName.endsWith('.jpeg') ||
-        cleanName.endsWith('.gif') ||
-        cleanName.endsWith('.webp') ||
-        cleanName.endsWith('.bmp') ||
-        cleanUrl.endsWith('.png') ||
-        cleanUrl.endsWith('.jpg') ||
-        cleanUrl.endsWith('.jpeg') ||
-        cleanUrl.endsWith('.gif') ||
-        cleanUrl.endsWith('.webp') ||
-        cleanUrl.endsWith('.bmp') ||
-        cleanUrl.startsWith('data:image') ||
-        (cleanUrl.startsWith('http') && !isPdf);
     final decodedDataImage = existingUrl == null
         ? null
         : _decodeDataUrl(existingUrl);
@@ -1861,8 +1840,6 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
 
       Uint8List bytes = widget.bytes ?? Uint8List(0);
       if (bytes.isNotEmpty) {
-        // Use the bytes that produced the inline preview. Re-downloading the
-        // same PDF can fail after a Firebase URL/token refresh.
       } else if (source.startsWith('http://') ||
           source.startsWith('https://')) {
         try {

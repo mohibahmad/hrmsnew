@@ -612,10 +612,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
             _newProfileImageBytes != null || _newProfileImagePath != null;
         final hasNewStamp = _newCompanyStampBytes != null;
 
-        // 1) Compress any new images locally first so the uploads send the
-        //    smallest possible payloads (company stamps were previously sent
-        //    uncompressed and could be up to 5 MB - the main cause of slow
-        //    saves).
         Uint8List? profileUploadBytes;
         String? profileCacheName;
         Uint8List? stampUploadBytes;
@@ -672,9 +668,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
               'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$detectedFormat';
         }
 
-        // 2) Upload profile picture and company stamp in PARALLEL instead of
-        //    one after the other - both uploads and their download-URL
-        //    round-trips overlap, cutting total save time.
         final uploadTasks = <Future<void>>[];
 
         if (profileUploadBytes != null) {
@@ -1583,9 +1576,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                               RegExp(r'[0-9+\-\s()]'),
                             ),
                           if (isCompanyId) ...[
-                            // Live-transform typed characters to uppercase so
-                            // "pk-ab123" becomes "PK-AB123" as you type, then
-                            // keep only valid characters (A-Z, 0-9, -).
                             TextInputFormatter.withFunction(
                               (oldValue, newValue) => newValue.copyWith(
                                 text: newValue.text.toUpperCase(),

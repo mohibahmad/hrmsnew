@@ -18,7 +18,7 @@ import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
-import '../utils/premium_gate.dart';
+
 import '../services/preferences_service.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/guest_restriction.dart';
@@ -292,8 +292,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
   }
 
-  /// Localized display date for an expense row. The stored value stays
-  /// canonical (e.g. dd/MM/yyyy) so parsing/filtering is unaffected.
   String _eds(dynamic value) {
     return AppDateUtils.fromValueLocalized(
       value,
@@ -331,8 +329,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return _expensesDocs.where((doc) {
       if (_isPayrollExpense(doc)) {
         final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
-        // A generated salary expense only exists while its matching payroll
-        // is paid. This also hides legacy orphan rows left by an older key.
+
         if (!_payrollAmountsByKey.containsKey(payrollKey)) return false;
       }
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -1852,8 +1849,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final date = _eds(doc['date']);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final rawCategory = (doc['category'] ?? '').toString();
-    // Localize the displayed category (e.g. "Salary" -> translated label).
-    // Falls back to the raw value for any unknown/typed categories.
+
     final category = LocalizationHelper.localizeExpenseCategory(rawCategory);
     final amount = _expenseAmount(doc);
 

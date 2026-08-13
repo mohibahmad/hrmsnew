@@ -719,10 +719,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
     );
-    // The Total Salary card mirrors the salary expenses shown in the
-    // Expenses screen: only expenses whose category is 'salary' count, and
-    // payroll-linked ones are valued from the paid payroll (kept in sync when
-    // the salary expense is edited). No salary expense means no salary data.
+
     final salaryExpenseRecords = activeExpenseRecords.where((record) {
       final category = (record['category'] ?? '')
           .toString()
@@ -832,8 +829,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       dateOf: DashboardChartService.expenseRecordDate,
       placeUndatedInCurrentPeriod: true,
     );
-    // Same rule as the real user path: the Total Salary card reflects the
-    // salary expenses (payroll-linked values come from the paid payroll).
+
     final salaryExpenseRecords = filteredExpenses.where((record) {
       final category = (record['category'] ?? '')
           .toString()
@@ -898,23 +894,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Present and absent attendance records for the selected timeframe that
-  /// belong to current workers. Dashboard filtering uses only the canonical
-  /// `attendanceDate`; `createdAt` and document IDs are metadata.
   List<Map<String, dynamic>> _getFilteredAttendanceDocs() {
-    // A signed-in account must always use the live Firestore attendance
-    // stream. A stale cached guest preference must never replace real records
-    // with demo data after login.
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final rawDocs = isGuest ? DummyData.attendance : _allAttendanceDocs;
     final periodDocs = attendanceRecordsForPeriod(rawDocs, _selectedPeriod);
     if (isGuest || !_workersLoaded || _workersDocs.isEmpty) return periodDocs;
 
-    // Match the Mark Attendance screen: only records that belong to a current
-    // worker are counted, and each worker contributes at most one (latest)
-    // record per day. Without this, attendance documents for deleted/archived
-    // workers or documents with inconsistent identity fields would inflate the
-    // Present/Absent bars and disagree with the Mark Attendance screen.
     return latestAttendanceRecordPerWorker(
       periodDocs,
       period: _selectedPeriod,
@@ -922,11 +907,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Canonical id of the current worker that [attendance] belongs to, or null
-  /// when the record doesn't belong to any current worker. Mirrors the Mark
-  /// Attendance screen's identity matching (workerId, then email, then name) so
-  /// duplicate documents created with different identity fields still resolve
-  /// to the same worker.
   String? _dashboardAttendanceWorkerId(Map<String, dynamic> attendance) {
     final rawWorkerId = (attendance['workerId'] ?? '').toString().trim();
     if (rawWorkerId.isNotEmpty && _existingWorkerIds.contains(rawWorkerId)) {
@@ -939,8 +919,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         .trim()
         .toLowerCase();
     for (final worker in _workersDocs) {
-      final workerId =
-          (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+      final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+          .toString()
+          .trim();
       if (email.isNotEmpty &&
           (worker['email'] ?? '').toString().trim().toLowerCase() == email) {
         return workerId;
@@ -1126,12 +1107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             .confirmDiscardChanges();
                         if (!shouldDiscard) return;
                       }
-                      // When leaving the Workers screen, close the "Add Bulk
-                      // Workers" flow automatically if no CSV has been uploaded
-                      // yet. This ensures coming back to Workers shows the worker
-                      // list instead of a stale, empty bulk-add screen. If a CSV
-                      // has been uploaded, hasUnsavedChanges above already asked
-                      // the user whether to discard their work.
+
                       if (_selectedIndex == 1) {
                         _workersKey.currentState?.closeIdleBulkAddFlow();
                       }

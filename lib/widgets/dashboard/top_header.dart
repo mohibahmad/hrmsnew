@@ -75,45 +75,45 @@ class TopHeader extends ConsumerWidget {
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                onTap: onNotificationTap,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/notification_icon.svg',
-                      width: 22,
-                      height: 26,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF000000),
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEF4444),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$unreadCount',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  onTap: onNotificationTap,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/notification_icon.svg',
+                        width: 22,
+                        height: 26,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF000000),
+                          BlendMode.srcIn,
                         ),
                       ),
-                  ],
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$unreadCount',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               ),
               const SizedBox(width: 20),
               GestureDetector(onTap: onProfileTap, child: const UserAvatar()),

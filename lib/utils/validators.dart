@@ -19,7 +19,6 @@ class ValidationException implements Exception {
 class Validators {
   Validators._();
 
-  /// Minimum allowed salary amount for a real worker.
   static const double minSalaryAmount = 0;
 
   static final RegExp _email = RegExp(
@@ -28,15 +27,13 @@ class Validators {
     r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$",
   );
 
-
-  /// Validates that a phone number is not all zeros (e.g., '000000').
   static bool isValidPhone(String? value) {
     if (value == null) return false;
     final trimmed = value.trim();
     if (trimmed.isEmpty) return false;
     final digits = trimmed.replaceAll(RegExp(r'[^\d]'), '');
     if (digits.isEmpty) return false;
-    // Reject if all digits are the same (e.g., '000000', '111111')
+
     if (digits.split('').every((d) => d == digits[0])) return false;
     return true;
   }
@@ -62,8 +59,6 @@ class Validators {
     return value.contains(RegExp(r'\s'));
   }
 
-  /// Capitalizes the first letter of each word, lowercasing the rest.
-  /// e.g. "Flutter developer" -> "Flutter Developer", "islam" -> "Islam".
   static String titleCase(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return trimmed;
@@ -71,8 +66,6 @@ class Validators {
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .map((word) {
-          // Preserve fully-uppercase words (acronyms such as QA, UI/UX, HR,
-          // PHP) instead of collapsing them to "Qa".
           if (word.length > 1 && word == word.toUpperCase()) {
             return word;
           }
@@ -81,8 +74,6 @@ class Validators {
         .join(' ');
   }
 
-  /// Capitalizes only the first letter of the whole string.
-  /// e.g. "islam" -> "Islam", "christianity" -> "Christianity".
   static String capitalizeFirst(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return trimmed;
@@ -115,7 +106,7 @@ class Validators {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return required ? 'email_is_required'.tr() : null;
     if (!isValidEmail(trimmed)) return 'enter_valid_email'.tr();
-    // Reject placeholder / example domains (e.g. x@example.com) too.
+
     if (isPlaceholderEmailDomain(trimmed)) return 'enter_valid_email'.tr();
     return null;
   }
@@ -143,9 +134,6 @@ class Validators {
     final dobValue = w['dob'];
     final dobText = (dobValue?.toString() ?? '').trim();
     if (dobText.isNotEmpty) {
-      // Add Worker converts a selected DOB to a Firestore Timestamp before
-      // this service-level validation runs. Parse the original value by type
-      // instead of converting Timestamp/DateTime values back into strings.
       final dob = AppDateUtils.dateFromValue(dobValue);
       if (dob == null) {
         throw ValidationException(

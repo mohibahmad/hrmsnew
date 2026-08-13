@@ -157,8 +157,6 @@ class AttendanceReportService {
       final status = (record['status'] ?? '').toString().trim().toLowerCase();
       final key = _dateKey(date);
 
-      // If an attendance document has status Leave (e.g. auto-marked), but that date
-      // is not in the worker's approved leave dates, ignore the spurious auto-leave record.
       if (status == 'leave' && !leaveDateKeys.contains(key)) continue;
 
       final existing = recordsByDay[key];

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-const int _maxCacheBytes = 50 * 1024 * 1024; 
+const int _maxCacheBytes = 50 * 1024 * 1024;
 int _currentCacheBytes = 0;
 final _base64Cache = <String, Uint8List>{};
 final _cacheKeys = <String>[];
@@ -214,8 +214,9 @@ class _WorkerAvatarState extends State<WorkerAvatar> {
       decoration: BoxDecoration(
         color: backgroundColors[colorIndex],
         shape: widget.shape,
-        borderRadius:
-            widget.shape == BoxShape.rectangle ? widget.borderRadius : null,
+        borderRadius: widget.shape == BoxShape.rectangle
+            ? widget.borderRadius
+            : null,
         border: widget.border,
         image: _image == null
             ? null

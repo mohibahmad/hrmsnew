@@ -137,16 +137,10 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                   : Colors.grey.shade300,
               width: 2,
             ),
-            color: isSelected
-                ? const Color(0xFF0247C4)
-                : Colors.transparent,
+            color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
           ),
           child: isSelected
-              ? const Icon(
-                  Icons.check,
-                  size: 12,
-                  color: Color(0xFFFFFFFF),
-                )
+              ? const Icon(Icons.check, size: 12, color: Color(0xFFFFFFFF))
               : null,
         ),
         const SizedBox(width: 12),

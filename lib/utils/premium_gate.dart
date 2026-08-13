@@ -18,10 +18,11 @@ class PremiumGate {
   }
 
   static Future<bool> shouldShowUpgradeDialog(BuildContext context) async {
-    final isGuest = ProviderScope.containerOf(context)
-        .read(authServiceProvider)
-        .currentUser
-        ?.isAnonymous ?? false;
+    final isGuest =
+        ProviderScope.containerOf(
+          context,
+        ).read(authServiceProvider).currentUser?.isAnonymous ??
+        false;
     if (isGuest) return false;
     final isPremium = await PreferencesService.isPremium();
     if (isPremium) return false;

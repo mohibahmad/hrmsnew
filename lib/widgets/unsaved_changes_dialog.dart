@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-
 class UnsavedChangesDialog {
   static Future<bool> show(BuildContext context) async {
     final result = await showGeneralDialog<bool>(
@@ -93,7 +92,9 @@ class UnsavedChangesDialog {
                                 backgroundColor: const Color(0xFFF1F5F9),
                                 foregroundColor: const Color(0xFF0F172A),
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -116,7 +117,9 @@ class UnsavedChangesDialog {
                                 backgroundColor: const Color(0xFFEF4444),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),

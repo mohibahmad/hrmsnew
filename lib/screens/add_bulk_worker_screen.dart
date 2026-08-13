@@ -29,8 +29,6 @@ import '../providers.dart';
 import '../widgets/bulk_worker_edit_dialog.dart';
 import '../widgets/notification_bell.dart';
 
-/// Formats a numeric salary value with thousands separators
-/// (e.g. 50000 -> "50,000"). Returns '' for empty/invalid input.
 String _formatSalaryWithCommas(dynamic value, {String locale = 'en_US'}) {
   final text = (value ?? '').toString().trim();
   if (text.isEmpty) return '';
@@ -1091,8 +1089,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         bool isValidatingMedia = false;
         bool hasExistingUpload = false;
         if (isMediaField && currentValue.isNotEmpty) {
-          // Treat any existing value (http(s) link or data: URL) as an
-          // existing upload so the field is locked and shows "uploaded".
           hasExistingUpload = true;
           final storedName = worker['${fieldKey}_name'];
           if (currentValue.startsWith('data:')) {
@@ -1891,8 +1887,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         _validWorkers[workerIndex].addAll(
           TimeOffService.canonicalWorkerLeaveFields(_validWorkers[workerIndex]),
         );
-        // Recompute missing columns so that a column the user has now filled
-        // for every worker no longer appears in the missing-columns banner.
+
         _missingColumns = _missingColumns
             .where(
               (field) => _validWorkers.any(
@@ -2892,9 +2887,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             );
           }
         }
-      } catch (_) {
-        // Fall through to the fallback icon.
-      }
+      } catch (_) {}
       return imageFallback;
     }
 

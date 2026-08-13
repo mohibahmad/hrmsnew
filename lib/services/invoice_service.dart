@@ -349,11 +349,7 @@ class InvoiceService {
                         _money(dailyRate, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
-                      _smallInfoLine(
-                        _l('payable_days', 'Payable Days'),
-                        daysWorked,
-                        textColor,
-                      ),
+
                       _smallInfoLine(
                         _l('absents', 'Absents'),
                         absents,
@@ -413,7 +409,10 @@ class InvoiceService {
                             ),
                             pw.Text(
                               isNegativeNet
-                                  ? _money('0', defaultCurrency: detectedCurrency)
+                                  ? _money(
+                                      '0',
+                                      defaultCurrency: detectedCurrency,
+                                    )
                                   : _money(
                                       netSalary,
                                       defaultCurrency: detectedCurrency,
@@ -915,8 +914,6 @@ class InvoiceService {
   }
 
   static Future<Uint8List?> _loadCompanyLogoBytes(String? source) async {
-    // The caller supplies branding scoped to the current account. Never read
-    // an unscoped local cache here because it may belong to another user.
     final value = source?.trim() ?? '';
     if (value.isEmpty) return null;
     try {

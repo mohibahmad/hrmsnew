@@ -175,8 +175,16 @@ class UploadService {
     if (total == 0) return [];
 
     var completed = 0;
-    final placeholder = UploadFile(folder: '', fileName: '', bytes: Uint8List(0), mimeType: 'application/octet-stream');
-    final results = List<UploadResult>.filled(total, UploadResult.cancelled(file: placeholder));
+    final placeholder = UploadFile(
+      folder: '',
+      fileName: '',
+      bytes: Uint8List(0),
+      mimeType: 'application/octet-stream',
+    );
+    final results = List<UploadResult>.filled(
+      total,
+      UploadResult.cancelled(file: placeholder),
+    );
 
     Future<void> uploadSingle(int index) async {
       final file = files[index];
@@ -551,13 +559,9 @@ class UploadService {
     return false;
   }
 
-  
-  
-  
   static Future<void> deleteByUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null ||
-        !uri.host.contains('firebasestorage.googleapis.com')) {
+    if (uri == null || !uri.host.contains('firebasestorage.googleapis.com')) {
       return;
     }
     final segments = uri.pathSegments;
@@ -569,9 +573,7 @@ class UploadService {
       await FirebaseStorage.instance.ref(path).delete();
     } catch (error, stackTrace) {
       final message = error.toString().toLowerCase();
-      
-      
-      
+
       if (message.contains('already running') ||
           message.contains('object-not-found') ||
           message.contains('not found') ||
@@ -585,5 +587,4 @@ class UploadService {
       );
     }
   }
-
 }

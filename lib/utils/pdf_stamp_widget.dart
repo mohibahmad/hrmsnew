@@ -119,51 +119,58 @@ pw.Widget buildCompanyAuthorization({
   required PdfColor mutedColor,
   String authorizedSignatoryText = 'Authorized Signatory',
   String companyIdLabel = '',
+  String? generatedOnText,
   double width = 150,
 }) {
-  final cleanName = companyName.trim().isEmpty
-      ? 'HRMS'
-      : companyName.trim();
+  final cleanName = companyName.trim().isEmpty ? 'HRMS' : companyName.trim();
 
-  return pw.Column(
-    crossAxisAlignment: pw.CrossAxisAlignment.center,
-    mainAxisSize: pw.MainAxisSize.min,
-    children: [
-      // Stamp
-      pw.SizedBox(
-        width: 60,
-        height: 60,
-        child: stampImage != null
-            ? pw.Image(stampImage, fit: pw.BoxFit.contain)
-            : _buildDefaultHrStamp(),
-      ),
-      pw.SizedBox(height: 6),
-      // Company name
-      pw.Text(
-        cleanName,
-        style: pw.TextStyle(
-          color: accentColor,
-          fontSize: 8,
-          fontWeight: pw.FontWeight.bold,
+  return pw.Container(
+    margin: const pw.EdgeInsets.only(right: 32),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: [
+        pw.SizedBox(
+          width: 60,
+          height: 60,
+          child: stampImage != null
+              ? pw.Image(stampImage, fit: pw.BoxFit.contain)
+              : _buildDefaultHrStamp(),
         ),
-      ),
-      pw.SizedBox(height: 2),
-      // Underline — short, centered
-      pw.Container(
-        width: 60,
-        height: 0.6,
-        color: accentColor,
-      ),
-      pw.SizedBox(height: 3),
-      pw.Text(
-        authorizedSignatoryText,
-        style: pw.TextStyle(color: mutedColor, fontSize: 6.5),
-      ),
-      if (companyId.trim().isNotEmpty)
+        pw.SizedBox(height: 6),
+
         pw.Text(
-          '${companyIdLabel.isNotEmpty ? '$companyIdLabel ' : ''}${companyId.trim()}',
-          style: pw.TextStyle(color: mutedColor, fontSize: 6),
+          cleanName,
+          style: pw.TextStyle(
+            color: accentColor,
+            fontSize: 8,
+            fontWeight: pw.FontWeight.bold,
+          ),
         ),
-    ],
+        pw.SizedBox(height: 2),
+
+        pw.Container(width: 60, height: 0.6, color: accentColor),
+        pw.SizedBox(height: 3),
+        pw.Text(
+          authorizedSignatoryText,
+          style: pw.TextStyle(color: mutedColor, fontSize: 6.5),
+        ),
+        if (companyId.trim().isNotEmpty)
+          pw.Text(
+            '${companyIdLabel.isNotEmpty ? '$companyIdLabel ' : ''}${companyId.trim()}',
+            style: pw.TextStyle(color: mutedColor, fontSize: 6),
+          ),
+        if (generatedOnText != null && generatedOnText.isNotEmpty) ...[
+          pw.SizedBox(height: 3),
+          pw.Text(
+            generatedOnText,
+            style: pw.TextStyle(
+              fontSize: 6.5,
+              color: PdfColor.fromHex('#9CA3AF'),
+            ),
+          ),
+        ],
+      ],
+    ),
   );
 }

@@ -60,9 +60,6 @@ String readableSaveError(Object error) {
   return message;
 }
 
-/// Validates a remote worker-media URL when the user saves an individual
-/// bulk-edit cell. This keeps broken/unreachable links from surviving until
-/// the final "Save All" operation.
 Future<String?> validateRemoteWorkerMediaLink({
   required String field,
   required String url,
@@ -110,9 +107,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   final prepared = workers
       .map((worker) => Map<String, dynamic>.from(worker))
       .toList();
-  // Records map each stored worker-map key to its logical media field.
-  // Worker.toMap() stores the front/back ID images under idFront / idBack,
-  // while profileImage and cv keep their own key names.
+
   const mediaFields = <({String key, String field})>[
     (key: 'profileImage', field: 'profileImage'),
     (key: 'frontId', field: 'frontId'),
@@ -169,7 +164,10 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         continue;
       }
 
-      final storedName = (worker['${key}_name'] ?? worker['${field}_name'] ?? '').toString().trim();
+      final storedName =
+          (worker['${key}_name'] ?? worker['${field}_name'] ?? '')
+              .toString()
+              .trim();
       final folder = field == 'profileImage'
           ? 'profile_images'
           : field == 'cv'
@@ -208,7 +206,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         );
         embeddedTargets.add((workerIndex: workerIndex, key: key));
       } else {
-        // Keep remote HTTP/HTTPS URLs directly without slow re-downloading & re-uploading
         prepared[workerIndex][key] = value;
       }
     }

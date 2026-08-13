@@ -272,9 +272,6 @@ class LeaveTypesPieChart extends StatelessWidget {
   }
 }
 
-/// Rounds leave shares to whole percentages while keeping their total at 100.
-///
-/// The largest fractional remainders receive the leftover percentage points.
 Map<String, int> calculateRoundedLeavePercentages(
   List<MapEntry<String, int>> entries,
   int total,

@@ -5,9 +5,9 @@ import '../providers.dart';
 import '../screens/login_screen.dart';
 
 void showGuestRestrictionDialog(BuildContext context) {
-  final authService = ProviderScope.containerOf(context).read(
-    authServiceProvider,
-  );
+  final authService = ProviderScope.containerOf(
+    context,
+  ).read(authServiceProvider);
 
   showDialog(
     context: context,
@@ -95,9 +95,7 @@ void showGuestRestrictionDialog(BuildContext context) {
                     await authService.signOut();
                     if (context.mounted) {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                         (route) => false,
                       );
                     }

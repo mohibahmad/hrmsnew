@@ -167,7 +167,6 @@ Map<String, String> validateWorkerData(
     }
   }
 
-  // Auto-format name fields: title case and trim extra spaces.
   for (final field in ['name', 'fatherName']) {
     final raw = workerData[field]?.toString() ?? '';
     if (raw.isNotEmpty) {

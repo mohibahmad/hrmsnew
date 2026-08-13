@@ -720,12 +720,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
               isHeader: true,
             ),
             _tableRow(
-              [
-                addressLabel,
-                args.address,
-                '',
-                '',
-              ],
+              [addressLabel, args.address, '', ''],
               navy,
               isHeader: true,
             ),
@@ -758,27 +753,16 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
 
         pw.Align(
           alignment: pw.Alignment.centerRight,
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              buildCompanyAuthorization(
-                companyName: args.companyName,
-                companyId: args.companyId,
-                stampImage: stampImage,
-                accentColor: navy,
-                mutedColor: PdfColor.fromHex('#6B7280'),
-                authorizedSignatoryText: s['authorized_signatory']!,
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
+          child: buildCompanyAuthorization(
+            companyName: args.companyName,
+            companyId: args.companyId,
+            stampImage: stampImage,
+            accentColor: navy,
+            mutedColor: PdfColor.fromHex('#6B7280'),
+            authorizedSignatoryText: s['authorized_signatory']!,
+            generatedOnText:
                 args.generatedOnText ??
-                    '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
-                style: pw.TextStyle(
-                  fontSize: 7,
-                  color: PdfColor.fromHex('#9CA3AF'),
-                ),
-              ),
-            ],
+                '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
           ),
         ),
       ],

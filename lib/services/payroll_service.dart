@@ -6,7 +6,6 @@ class PayrollReminderWindow {
   final DateTime payrollMonth;
   final DateTime dueDate;
 
-  /// Negative before the due date, zero on it, positive after it.
   final int dayOffset;
 
   const PayrollReminderWindow({
@@ -28,8 +27,6 @@ class PayrollService {
     return DateTime(reference.year, reference.month, 1);
   }
 
-  /// Payroll is always calculated for a calendar month. Legacy salary-day
-  /// fields are intentionally ignored.
   static DateTime payPeriodStart(DateTime month) =>
       DateTime(month.year, month.month, 1);
 
@@ -74,7 +71,6 @@ class PayrollService {
     return '$startLabel, ${start.year} – $endLabel, ${end.year}';
   }
 
-  /// Renders a date as `yyyy-MM-dd` for use inside period-based payroll keys.
   static String _pad2(int n) => n.toString().padLeft(2, '0');
   static String periodDateKey(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${_pad2(d.month)}-${_pad2(d.day)}';
@@ -176,8 +172,7 @@ class PayrollService {
     );
     if (joiningDate == null) return true;
     final periodEnd = payPeriodEnd(month);
-    // A worker who joins on the final day of the month still belongs to that
-    // month's payroll. Only workers joining after the period should be hidden.
+
     return !joiningDate.isAfter(periodEnd);
   }
 
@@ -212,7 +207,6 @@ class PayrollService {
     return combined.any((worker) => worker['isPaid'] != true);
   }
 
-  /// Canonical unpaid-worker query for the selected calendar month.
   static List<Map<String, dynamic>> unpaidWorkersForPeriod(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
@@ -487,9 +481,6 @@ class PayrollService {
       return const <Map<String, dynamic>>[];
     }
 
-    // A cancelled payroll is an unpaid calculation snapshot, not a deleted
-    // payroll. Keep it in the selected period so corrections survive payment
-    // reversal and can seed the next manual/Pay All run.
     final monthlyPayrollDocs = rawPayrollDocs
         .where(
           (record) => isRecordInMonth(
@@ -731,7 +722,7 @@ class PayrollService {
       if (parsed != null) return parsed;
     }
     final payrollKey = (record['payrollKey'] ?? '').toString();
-    // New period-range format: identity_YYYY-MM-DD_YYYY-MM-DD (end date wins).
+
     final dateRangeMatch = RegExp(
       r'(\d{4})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})$',
     ).firstMatch(payrollKey);
@@ -747,7 +738,7 @@ class PayrollService {
         return DateTime(year, month, day);
       }
     }
-    // Legacy month format: identity_YYYY-MM.
+
     final periodMatch = RegExp(r'(\d{4})-(\d{2})$').firstMatch(payrollKey);
     if (periodMatch != null) {
       final year = int.tryParse(periodMatch.group(1)!);
@@ -1100,8 +1091,12 @@ class PayrollService {
       'overtimeDays': 0,
       'grossSalary': grossSalary,
       'overtimePay': overtimePay,
-      'absentDeductionPerDayApplied': absentDays > 0 ? absentDeduction / absentDays : 0.0,
-      'leaveDeductionPerDayApplied': leaveDays > 0 ? leaveDeduction / leaveDays : 0.0,
+      'absentDeductionPerDayApplied': absentDays > 0
+          ? absentDeduction / absentDays
+          : 0.0,
+      'leaveDeductionPerDayApplied': leaveDays > 0
+          ? leaveDeduction / leaveDays
+          : 0.0,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
       'taxRatePercent': taxRatePercent,

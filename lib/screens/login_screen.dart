@@ -409,16 +409,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
 
-      // User cancelled (tapped Cancel / swiped away) – don't show a scary
-      // "authentication failed" toast. Let them know they can use their
-      // password to sign in instead.
       if (result == BiometricAuthResult.cancelled) {
         if (mounted) _showBiometricPasswordHint();
         return;
       }
 
       if (result != BiometricAuthResult.success) {
-        // Determine the right message based on the result type.
         switch (result) {
           case BiometricAuthResult.lockedOut:
             if (mounted) {
@@ -436,8 +432,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             }
             break;
           default:
-            // generic failure / any cancel-mapped case → just suggest the
-            // password flow instead of the harsh "Authentication failed".
             if (mounted) _showBiometricPasswordHint();
         }
         return;

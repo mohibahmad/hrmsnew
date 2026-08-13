@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 PageRoute<T> noTransitionRoute<T>({
   required WidgetBuilder builder,
   RouteSettings? settings,
@@ -14,8 +13,6 @@ PageRoute<T> noTransitionRoute<T>({
     reverseTransitionDuration: Duration.zero,
   );
 }
-
-
 
 PageRoute<T> authTransitionRoute<T>({
   required WidgetBuilder builder,

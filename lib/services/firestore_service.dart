@@ -55,8 +55,7 @@ class FirestoreService {
     if (normalized.containsKey('currency')) {
       normalized['currency'] = CurrencyUtils.normalize(normalized['currency']);
     }
-    // Firestore rejects non-finite doubles (NaN / Infinity) with an
-    // invalid-argument error, so drop any such fields before writing.
+
     normalized.removeWhere((key, value) => value is num && !value.isFinite);
     return normalized;
   }
@@ -232,9 +231,6 @@ class FirestoreService {
       }
     }
 
-    // The deterministic ID is occupied by a record whose attendanceDate was
-    // corrected in Firestore. Keep that historical record untouched and use
-    // an auto-ID for the requested day instead of resetting it to today.
     return (reference: attendanceCollection.doc(), alreadyExistsForDate: false);
   }
 
@@ -495,7 +491,8 @@ class FirestoreService {
         String? dupField;
         if (email.isNotEmpty && existingEmails.contains(email)) {
           dupField = 'Email';
-        } else if (nationalId.isNotEmpty && existingNationalIds.contains(nationalId)) {
+        } else if (nationalId.isNotEmpty &&
+            existingNationalIds.contains(nationalId)) {
           dupField = 'Government ID';
         }
 
@@ -699,9 +696,6 @@ class FirestoreService {
     });
   }
 
-  /// Repairs legacy worker leave documents only when their values or Firestore
-  /// types differ from the canonical numeric schema. This is safe to call from
-  /// a workers stream because the second snapshot becomes a no-op.
   Future<void> normalizeWorkerLeaveSchemaIfNeeded(
     String id,
     Map<String, dynamic> worker,
@@ -1034,9 +1028,6 @@ class FirestoreService {
     return await coll.get();
   }
 
-  /// Finds which identity field (email or national ID) already exists on
-  /// another worker, using the same normalization rules enforced on save.
-  /// Returns null when no duplicate is found.
   Future<DuplicateWorkerField?> findDuplicateWorkerField({
     required String? email,
     required String? nationalId,
@@ -1353,10 +1344,7 @@ class FirestoreService {
 
     batch.set(attendanceRef, {
       ...attendanceRecord,
-      // On new records the deterministic document id encodes the date, so
-      // attendanceDate must always be written. On updates, only write it when
-      // the caller explicitly provided a date - otherwise a manually edited
-      // attendanceDate in Firestore would silently reset to today.
+
       if (createsAttendanceDocument || attendanceDate != null)
         'attendanceDate': Timestamp.fromDate(
           DateTime(now.year, now.month, now.day),
@@ -1689,10 +1677,7 @@ class FirestoreService {
   Stream<QuerySnapshot> get attendanceStream {
     final coll = _attendance;
     if (coll == null) return const Stream.empty();
-    // Do not order this live source by createdAt. Firestore orderBy excludes
-    // documents where that field is missing, which can hide valid legacy or
-    // updated attendance records (commonly an Absent record) from dashboard
-    // totals. Consumers normalize and sort records after receiving them.
+
     return coll.snapshots();
   }
 
@@ -2145,9 +2130,6 @@ class FirestoreService {
       final timeOffData =
           (timeOffSnapshot.data() as Map<String, dynamic>?) ?? {};
       if (!TimeOffService.isActiveRecord(timeOffData)) return;
-      if (!TimeOffService.isEditableRecord(timeOffData)) {
-        throw const PastTimeOffEditException();
-      }
       final String leaveType =
           (timeOffData['action'] ?? timeOffData['type'] ?? '').toString();
       var requestedDays =
@@ -2172,12 +2154,17 @@ class FirestoreService {
 
       final attendanceSnapshots = <String, DocumentSnapshot>{};
       final attendanceColl = _attendance;
-      if (attendanceColl != null) {
-        for (final date in oldDates) {
-          final ref = attendanceColl.doc(_attendanceDocumentId(workerId, date));
-          attendanceSnapshots[_timeOffDateKey(date)] = await transaction.get(
-            ref,
-          );
+      if (attendanceColl != null && oldDates.isNotEmpty) {
+        final datesList = oldDates.toList();
+        final snapshots = await Future.wait(
+          datesList.map(
+            (d) => transaction.get(
+              attendanceColl.doc(_attendanceDocumentId(workerId, d)),
+            ),
+          ),
+        );
+        for (int i = 0; i < datesList.length; i++) {
+          attendanceSnapshots[_timeOffDateKey(datesList[i])] = snapshots[i];
         }
       }
 
@@ -2273,12 +2260,6 @@ class FirestoreService {
       throw ArgumentError('requestedDays must match the selected leave dates');
     }
 
-    // Overlap safety: the client already validates against the worker's live
-    // time-off records before calling this method, and the transaction below
-    // enforces the same invariants atomically through the worker-level date
-    // locks. Skipping a forced server query here avoids an extra network round
-    // trip on every Assign/Save.
-
     await _db.runTransaction((transaction) async {
       final workerSnapshot = await transaction.get(workerRef);
       if (!workerSnapshot.exists) {
@@ -2297,9 +2278,14 @@ class FirestoreService {
         }
         final oldRecordData =
             (existingRecordSnapshot.data() as Map<String, dynamic>?) ?? {};
-        if (!TimeOffService.isEditableRecord(oldRecordData)) {
+        oldDates = TimeOffService.selectedDatesForRecord(oldRecordData);
+        if (TimeOffService.hasPastDateModification(
+          oldDates: oldDates,
+          newDates: newDates,
+        )) {
           throw const PastTimeOffEditException();
         }
+
         final oldWorkerId = (oldRecordData['workerId'] ?? '').toString().trim();
         if (oldWorkerId.isNotEmpty && oldWorkerId != workerId) {
           throw StateError('The worker on an existing time off cannot change');
@@ -2320,7 +2306,6 @@ class FirestoreService {
           'Medical Leave' => 'medicalLeave',
           _ => null,
         };
-        oldDates = TimeOffService.selectedDatesForRecord(oldRecordData);
         oldDays = oldDates.length;
         if (oldDays == 0) {
           oldDays =
@@ -2332,11 +2317,18 @@ class FirestoreService {
       final attendanceSnapshots = <String, DocumentSnapshot>{};
       final attendanceColl = _attendance;
       if (attendanceColl != null) {
-        for (final date in {...oldDates, ...newDates}) {
-          final ref = attendanceColl.doc(_attendanceDocumentId(workerId, date));
-          attendanceSnapshots[_timeOffDateKey(date)] = await transaction.get(
-            ref,
+        final datesList = {...oldDates, ...newDates}.toList();
+        if (datesList.isNotEmpty) {
+          final snapshots = await Future.wait(
+            datesList.map(
+              (d) => transaction.get(
+                attendanceColl.doc(_attendanceDocumentId(workerId, d)),
+              ),
+            ),
           );
+          for (int i = 0; i < datesList.length; i++) {
+            attendanceSnapshots[_timeOffDateKey(datesList[i])] = snapshots[i];
+          }
         }
       }
 
@@ -2422,9 +2414,6 @@ class FirestoreService {
       final type = (record['type'] ?? record['leaveType'] ?? 'Leave')
           .toString();
       if (name.isNotEmpty) {
-        // Fire-and-forget: keep the notification out of the save critical
-        // path so the Assign/Save spinner is not blocked by an extra
-        // transaction round trip.
         unawaited(
           addNotification({
             'type': 'time_off_added',
@@ -2810,8 +2799,6 @@ class FirestoreService {
     });
   }
 
-  /// Creates a keyed notification or refreshes its live content without
-  /// changing its original timestamp/read state.
   Future<bool> upsertNotificationByKey(
     String notificationKey,
     Map<String, dynamic> notification,

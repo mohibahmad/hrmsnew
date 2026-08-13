@@ -1,6 +1,4 @@
 class LeaveBalanceHelper {
-  
-  
   static const Map<String, String> availKeyForType = {
     'Sick Leave': 'availableSickLeaves',
     'Casual Leave': 'availableCasualLeaves',
@@ -8,7 +6,6 @@ class LeaveBalanceHelper {
     'Medical Leave': 'availableMedicalLeaves',
   };
 
-  
   static const Map<String, String> configKeyForType = {
     'Sick Leave': 'sickLeaves',
     'Casual Leave': 'casualLeaves',
@@ -18,10 +15,6 @@ class LeaveBalanceHelper {
 
   static int _toInt(dynamic v) => int.tryParse(v?.toString() ?? '0') ?? 0;
 
-  
-  
-  
-  
   static String leaveDaysText(dynamic value) {
     final text = (value ?? '').toString().trim();
     if (text.isEmpty) return '';
@@ -47,5 +40,4 @@ class LeaveBalanceHelper {
   static bool allLeavesExhausted(Map<String, dynamic> worker) {
     return remainingForType(worker, 'Annual Leave') <= 0;
   }
-
 }

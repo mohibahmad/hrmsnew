@@ -98,7 +98,7 @@ class _WorkersAttendanceScreenState
   double? _statusFilterButtonWidth;
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
-  String _selectedTimeframe = 'Today';
+  final String _selectedTimeframe = 'Today';
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   List<Map<String, dynamic>> _periodAttendanceRecords = [];
@@ -644,10 +644,13 @@ class _WorkersAttendanceScreenState
 
     final today = DateTime.now();
     final normalizedToday = DateTime(today.year, today.month, today.day);
-    final existing = _attendanceManagedTimeOffForWorker(
-      worker,
-      normalizedToday,
-    );
+    final existing =
+        _attendanceManagedTimeOffForWorker(worker, normalizedToday) ??
+        TimeOffService.activeLeaveForWorker(
+          worker,
+          _plannedTimeOffRecords,
+          onDate: normalizedToday,
+        );
     final shouldHaveLeave = selectedStatus == 'Leave';
     final existingId = (existing?['id'] ?? '').toString().trim();
     final hasTimeOffChange = shouldHaveLeave || existingId.isNotEmpty;
@@ -832,10 +835,10 @@ class _WorkersAttendanceScreenState
         if (attendance == null) return false;
         final belongs = _isGuest
             ? (WorkerIdentity.normalizeEmail(attendance['email']) ==
-                    WorkerIdentity.normalizeEmail(worker['email']) ||
-                ((worker['id'] ?? '').toString().trim().isNotEmpty &&
-                    (attendance['workerId'] ?? '').toString().trim() ==
-                        (worker['id'] ?? '').toString().trim()))
+                      WorkerIdentity.normalizeEmail(worker['email']) ||
+                  ((worker['id'] ?? '').toString().trim().isNotEmpty &&
+                      (attendance['workerId'] ?? '').toString().trim() ==
+                          (worker['id'] ?? '').toString().trim()))
             : _authenticatedRecordBelongsToWorker(attendance, worker);
         if (!belongs) return false;
         return AttendanceService.isRecordForDate(attendance, DateTime.now());
@@ -1135,15 +1138,42 @@ class _WorkersAttendanceScreenState
           );
         })
         .where((record) {
-          if (_selectedStatusFilter == 'All') return true;
-          final status = (record['status'] ?? '').toString().toLowerCase();
-          return status == _selectedStatusFilter.toLowerCase();
+          if (_selectedStatusFilter != 'All') {
+            final status = (record['status'] ?? '').toString().toLowerCase();
+            if (status != _selectedStatusFilter.toLowerCase()) return false;
+          }
+          final q = _searchQuery.trim().toLowerCase();
+          if (q.isNotEmpty) {
+            final name = (record['name'] ?? record['workerName'] ?? '')
+                .toString()
+                .toLowerCase();
+            final role = (record['role'] ?? record['position'] ?? '')
+                .toString()
+                .toLowerCase();
+            final email = (record['email'] ?? '').toString().toLowerCase();
+            final statusText = (record['status'] ?? '')
+                .toString()
+                .toLowerCase();
+            if (!(name.contains(q) ||
+                role.contains(q) ||
+                email.contains(q) ||
+                statusText.contains(q))) {
+              return false;
+            }
+          }
+          return true;
         })
         .toList();
 
     list.sort((a, b) {
-      final nameA = (a['name'] ?? a['workerName'] ?? '').toString().trim().toLowerCase();
-      final nameB = (b['name'] ?? b['workerName'] ?? '').toString().trim().toLowerCase();
+      final nameA = (a['name'] ?? a['workerName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final nameB = (b['name'] ?? b['workerName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       return nameA.compareTo(nameB);
     });
 
@@ -1365,7 +1395,9 @@ class _WorkersAttendanceScreenState
     String status,
   ) async {
     final workerData = _resolveWorkerData(data);
-    final workerId = (workerData['id'] ?? workerData['workerId'] ?? '').toString().trim();
+    final workerId = (workerData['id'] ?? workerData['workerId'] ?? '')
+        .toString()
+        .trim();
     final name = (workerData['name'] ?? '').toString();
     final email = (workerData['email'] ?? '').toString();
     final normalizedEmail = WorkerIdentity.normalizeEmail(email);
@@ -1886,7 +1918,8 @@ class _WorkersAttendanceScreenState
           }
 
           String selectedLeaveType = selectedStatus == 'Leave'
-              ? (leaveTypes.contains(initialType) && canSelectLeaveType(initialType)
+              ? (leaveTypes.contains(initialType) &&
+                        canSelectLeaveType(initialType)
                     ? initialType
                     : (firstAvailableLeaveType() ?? 'Annual Leave'))
               : (absentTypes.contains(initialType)
@@ -1896,8 +1929,16 @@ class _WorkersAttendanceScreenState
           List<Map<String, dynamic>> reasonOptions() {
             if (selectedStatus == 'Absent') {
               return const [
-                {'value': 'Without Notice', 'key': 'absent_without_notice', 'disabled': 'false'},
-                {'value': 'Family Emergency', 'key': 'absent_emergency', 'disabled': 'false'},
+                {
+                  'value': 'Without Notice',
+                  'key': 'absent_without_notice',
+                  'disabled': 'false',
+                },
+                {
+                  'value': 'Family Emergency',
+                  'key': 'absent_emergency',
+                  'disabled': 'false',
+                },
                 {'value': 'Other', 'key': 'absent_other', 'disabled': 'false'},
               ];
             }
@@ -1905,26 +1946,44 @@ class _WorkersAttendanceScreenState
               {
                 'value': 'Annual Leave',
                 'key': 'annual_leave',
-                'disabled': canSelectLeaveType('Annual Leave') ? 'false' : 'true',
-                'balance': TimeOffService.getLeaveBalance(workerData, 'Annual Leave'),
+                'disabled': canSelectLeaveType('Annual Leave')
+                    ? 'false'
+                    : 'true',
+                'balance': TimeOffService.getLeaveBalance(
+                  workerData,
+                  'Annual Leave',
+                ),
               },
               {
                 'value': 'Sick Leave',
                 'key': 'sick_leave_type',
                 'disabled': canSelectLeaveType('Sick Leave') ? 'false' : 'true',
-                'balance': TimeOffService.getLeaveBalance(workerData, 'Sick Leave'),
+                'balance': TimeOffService.getLeaveBalance(
+                  workerData,
+                  'Sick Leave',
+                ),
               },
               {
                 'value': 'Casual Leave',
                 'key': 'casual_leave_type',
-                'disabled': canSelectLeaveType('Casual Leave') ? 'false' : 'true',
-                'balance': TimeOffService.getLeaveBalance(workerData, 'Casual Leave'),
+                'disabled': canSelectLeaveType('Casual Leave')
+                    ? 'false'
+                    : 'true',
+                'balance': TimeOffService.getLeaveBalance(
+                  workerData,
+                  'Casual Leave',
+                ),
               },
               {
                 'value': 'Medical Leave',
                 'key': 'medical_leave_type',
-                'disabled': canSelectLeaveType('Medical Leave') ? 'false' : 'true',
-                'balance': TimeOffService.getLeaveBalance(workerData, 'Medical Leave'),
+                'disabled': canSelectLeaveType('Medical Leave')
+                    ? 'false'
+                    : 'true',
+                'balance': TimeOffService.getLeaveBalance(
+                  workerData,
+                  'Medical Leave',
+                ),
               },
             ];
           }
@@ -1933,6 +1992,8 @@ class _WorkersAttendanceScreenState
               selectedStatus == 'Absent' ? 'absent_reason' : 'leave_type';
           return StatefulBuilder(
             builder: (context, setDialogState) {
+              final showStatusChips =
+                  titleKey == 'edit_attendance' || defaultStatus != 'Leave';
               return PopScope(
                 canPop: !dialogIsSaving,
                 child: Dialog(
@@ -2009,7 +2070,7 @@ class _WorkersAttendanceScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (defaultStatus != 'Leave') ...[
+                                if (showStatusChips) ...[
                                   Row(
                                     children: [
                                       Expanded(
@@ -2060,7 +2121,8 @@ class _WorkersAttendanceScreenState
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: canSelectLeave && !dialogIsSaving
+                                          onTap:
+                                              canSelectLeave && !dialogIsSaving
                                               ? () {
                                                   final availType =
                                                       firstAvailableLeaveType();
@@ -2088,7 +2150,8 @@ class _WorkersAttendanceScreenState
                                           child: _buildToggleChip(
                                             'leave'.tr(),
                                             'assets/leave.svg',
-                                            isSelected: selectedStatus == 'Leave',
+                                            isSelected:
+                                                selectedStatus == 'Leave',
                                             enabled: canSelectLeave,
                                           ),
                                         ),
@@ -2097,7 +2160,7 @@ class _WorkersAttendanceScreenState
                                   ),
                                 ],
                                 if (selectedStatus == 'Leave') ...[
-                                  if (defaultStatus != 'Leave')
+                                  if (showStatusChips)
                                     const SizedBox(height: 16),
                                   Text(
                                     reasonLabelKey().tr(),
@@ -2132,7 +2195,9 @@ class _WorkersAttendanceScreenState
                                                     o['disabled'] != 'true',
                                                 child: Text(
                                                   selectedStatus == 'Absent'
-                                                      ? (o['key'] as String? ?? '').tr()
+                                                      ? (o['key'] as String? ??
+                                                                '')
+                                                            .tr()
                                                       : '${(o['key'] as String? ?? '').tr()} (${o['balance'] ?? 0})',
                                                   style: TextStyle(
                                                     fontSize: 13,
@@ -2333,10 +2398,6 @@ class _WorkersAttendanceScreenState
                                                     attendanceData['type'] =
                                                         type;
                                                   } else {
-                                                    // Present has no reason/type -
-                                                    // remove stale values from a
-                                                    // previous Absent/Leave mark
-                                                    // (merge:true keeps them otherwise).
                                                     attendanceData['type'] =
                                                         FieldValue.delete();
                                                   }

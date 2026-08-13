@@ -22,16 +22,13 @@ double? _safeDouble(dynamic value) {
   } else {
     final text = value.toString().trim();
     if (text.isEmpty) return null;
-    // NOTE: double.tryParse('NaN'/'Infinity') returns NaN/Infinity, not null.
+
     result = double.tryParse(text);
   }
-  // Firestore rejects non-finite doubles (NaN/Infinity) with invalid-argument.
+
   if (result != null && !result.isFinite) return null;
   return result;
 }
-
-
-
 
 int? _safeInt(dynamic value) {
   if (value == null) return null;
@@ -41,8 +38,6 @@ int? _safeInt(dynamic value) {
   if (text.isEmpty) return null;
   return num.tryParse(text)?.toInt();
 }
-
-
 
 DateTime? _safeTimestamp(dynamic value) {
   if (value == null) return null;
@@ -68,13 +63,8 @@ DateTime? _safeBusinessDate(dynamic value) {
 
   if (parsed == null) return null;
 
-  
-  
-  
   return DateTime.utc(parsed.year, parsed.month, parsed.day);
 }
-
-
 
 String _addDateOnly(DateTime value) {
   final y = value.year.toString().padLeft(4, '0');
@@ -92,10 +82,6 @@ bool? _safeNullableBool(dynamic value) {
   if (text == 'false' || text == '0' || text == 'no') return false;
   return null;
 }
-
-
-
-
 
 String _normalizeWorkerStatus(dynamic value) {
   final raw = value?.toString().trim() ?? '';
@@ -244,10 +230,7 @@ class Worker {
             data['id_front'],
       ),
       backId: _safeNullableString(
-        data['idBack'] ??
-            data['backId'] ??
-            data['back_id'] ??
-            data['id_back'],
+        data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back'],
       ),
       cv: _safeNullableString(data['cv']),
       createdAt: _safeTimestamp(data['createdAt']),
@@ -375,9 +358,6 @@ class Worker {
     }
   }
 
-  
-  
-  
   static void _addDateTimestampField(
     Map<String, dynamic> map,
     String key,
@@ -459,8 +439,7 @@ class Worker {
       medicalLeaves: medicalLeaves ?? this.medicalLeaves,
       availableAnnualLeaves:
           availableAnnualLeaves ?? this.availableAnnualLeaves,
-      availableSickLeaves:
-          availableSickLeaves ?? this.availableSickLeaves,
+      availableSickLeaves: availableSickLeaves ?? this.availableSickLeaves,
       availableCasualLeaves:
           availableCasualLeaves ?? this.availableCasualLeaves,
       availableMedicalLeaves:

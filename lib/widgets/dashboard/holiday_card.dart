@@ -35,8 +35,6 @@ class HolidayCard extends StatelessWidget {
     'December',
   ];
 
-  /// Localized short month name (e.g. "Jan" / "янв." / "ene.") using the
-  /// app locale instead of a hardcoded English abbreviation.
   static String _localizeMonth(String month, String locale) {
     final index = _monthNames.indexOf(month) + 1;
     if (index < 1) return month;

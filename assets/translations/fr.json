@@ -1489,5 +1489,7 @@
   "worker_already_on_leave_date": "Ce travailleur est déjà en congé à cette date.",
   "tax_deduction": "Déduction fiscale",
   "biometric_locked_out": "Trop de tentatives échouées. Veuillez réessayer plus tard.",
-  "biometric_permanently_locked_out": "L'authentification biométrique est définitivement verrouillée. Veuillez utiliser votre mot de passe pour vous connecter."
+  "biometric_permanently_locked_out": "L'authentification biométrique est définitivement verrouillée. Veuillez utiliser votre mot de passe pour vous connecter.",
+  "file_downloaded_successfully": "Fichier téléchargé avec succès.",
+  "could_not_download_file": "Impossible de télécharger le fichier. Veuillez réessayer."
 }

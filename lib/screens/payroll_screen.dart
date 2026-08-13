@@ -1236,8 +1236,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   Widget _buildEmployeeRow(Map<String, dynamic> doc, int index) {
     final isPaid = doc['isPaid'] == true;
     final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
-    // 'phone' can be an empty string on merged payroll docs; fall back to
-    // 'contact' so the Contact No column is never blank when data exists.
+
     final contactNo = (doc['phone'] ?? '').toString().trim().isEmpty
         ? (doc['contact'] ?? '').toString()
         : (doc['phone'] ?? '').toString();
@@ -1800,96 +1799,109 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                           imageUrl: data['profileImage']?.toString(),
                         ),
                         Container(
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFFFFF),
-                              border: Border(
-                                left: BorderSide(
-                                  color: Color(0xFFE8E8E8),
-                                  width: 1.5,
-                                ),
-                                right: BorderSide(
-                                  color: Color(0xFFE8E8E8),
-                                  width: 1.5,
-                                ),
-                                bottom: BorderSide(
-                                  color: Color(0xFFE8E8E8),
-                                  width: 1.5,
-                                ),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFFFFFF),
+                            border: Border(
+                              left: BorderSide(
+                                color: Color(0xFFE8E8E8),
+                                width: 1.5,
                               ),
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(6),
-                                bottomRight: Radius.circular(6),
+                              right: BorderSide(
+                                color: Color(0xFFE8E8E8),
+                                width: 1.5,
+                              ),
+                              bottom: BorderSide(
+                                color: Color(0xFFE8E8E8),
+                                width: 1.5,
                               ),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                20,
-                                16,
-                                20,
-                                16,
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildAbsentsIcon(),
-                                          title: 'absents_label'.tr(),
-                                          value: absents,
-                                        ),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(6),
+                              bottomRight: Radius.circular(6),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildMetricCard(
+                                        icon: _buildAbsentsIcon(),
+                                        title: 'absents_label'.tr(),
+                                        value: absents,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildLeavesIcon(),
-                                          title: 'leaves_label'.tr(),
-                                          value: paidLeaves,
-                                        ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildMetricCard(
+                                        icon: _buildLeavesIcon(),
+                                        title: 'leaves_label'.tr(),
+                                        value: paidLeaves,
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: _buildAbsentsIcon(),
-                                          title: 'absent_deduction'.tr(),
-                                          value: absentDeduction.isEmpty
-                                              ? '0'
-                                              : absentDeduction,
-                                        ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildMetricCard(
+                                        icon: _buildAbsentsIcon(),
+                                        title: 'absent_deduction'.tr(),
+                                        value: absentDeduction.isEmpty
+                                            ? '0'
+                                            : absentDeduction,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.event_available_rounded,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
-                                          title: 'paid_on'.tr(),
-                                          value: paidDateText,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildMetricCard(
+                                        icon: const Icon(
+                                          Icons.event_available_rounded,
+                                          color: Color(0xFF004FDE),
+                                          size: 20,
                                         ),
+                                        title: 'paid_on'.tr(),
+                                        value: paidDateText,
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Builder(builder: (context) {
-                                    final hasDeduction = (double.tryParse(absentDeduction.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0) > 0;
-                                    final hasOvertime = (double.tryParse(overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0) > 0;
-                                    final showNetCard = hasDeduction || hasOvertime;
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Builder(
+                                  builder: (context) {
+                                    final hasDeduction =
+                                        (double.tryParse(
+                                              absentDeduction.replaceAll(
+                                                RegExp(r'[^0-9.]'),
+                                                '',
+                                              ),
+                                            ) ??
+                                            0.0) >
+                                        0;
+                                    final hasOvertime =
+                                        (double.tryParse(
+                                              overtimeAmount.replaceAll(
+                                                RegExp(r'[^0-9.]'),
+                                                '',
+                                              ),
+                                            ) ??
+                                            0.0) >
+                                        0;
+                                    final showNetCard =
+                                        hasDeduction || hasOvertime;
 
                                     if (showNetCard) {
-                                      // Show overtime + salary_after_deduction in row, salary alone below
                                       return Column(
                                         children: [
                                           Row(
                                             children: [
                                               Expanded(
                                                 child: _buildMetricCard(
-                                                  icon: _buildOvertimeDaysIcon(),
+                                                  icon:
+                                                      _buildOvertimeDaysIcon(),
                                                   title: 'overtime_amount'.tr(),
                                                   value: overtimeAmount,
                                                 ),
@@ -1898,11 +1910,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                               Expanded(
                                                 child: _buildMetricCard(
                                                   icon: const Icon(
-                                                    Icons.account_balance_wallet,
+                                                    Icons
+                                                        .account_balance_wallet,
                                                     color: Color(0xFF004FDE),
                                                     size: 20,
                                                   ),
-                                                  title: 'salary_after_deduction'.tr(),
+                                                  title:
+                                                      'salary_after_deduction'
+                                                          .tr(),
                                                   value: salaryAfterDeduction,
                                                 ),
                                               ),
@@ -1925,7 +1940,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                         ],
                                       );
                                     } else {
-                                      // No deduction, no overtime — show overtime + salary side by side
                                       return Row(
                                         children: [
                                           Expanded(
@@ -1946,13 +1960,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                         ],
                                       );
                                     }
-                                  }),
-                                ],
-                              ),
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

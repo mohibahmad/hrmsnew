@@ -94,8 +94,6 @@ Uint8List _compressImageBytesSync(
   return Uint8List.fromList(img.encodeJpg(image, quality: quality));
 }
 
-/// Compresses all the given images inside a single isolate so saving a worker
-/// does not pay the isolate spawn/teardown cost once per image.
 List<Uint8List> _compressImagesTask(List<Uint8List> images) {
   return [for (final bytes in images) _compressImageBytesSync(bytes)];
 }
@@ -604,6 +602,90 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
   void _clampMedicalLeaves() => _clampLeaveDays(_medicalLeavesController);
 
+  int _getUsedLeavesCount(Map<String, dynamic> worker, String leaveType) {
+    final usedKeyMap = {
+      'Medical Leave': 'medicalLeavesUsed',
+      'Sick Leave': 'sickLeavesUsed',
+      'Casual Leave': 'casualLeavesUsed',
+      'Annual Leave': 'annualLeavesUsed',
+    };
+    final explicitKey = usedKeyMap[leaveType];
+    if (explicitKey != null && worker.containsKey(explicitKey)) {
+      final val = int.tryParse(worker[explicitKey]?.toString() ?? '');
+      if (val != null && val > 0) return val;
+    }
+
+    final totalKeyMap = {
+      'Medical Leave': 'medicalLeaves',
+      'Sick Leave': 'sickLeaves',
+      'Casual Leave': 'casualLeaves',
+      'Annual Leave': 'annualLeaves',
+    };
+    final availKeyMap = {
+      'Medical Leave': 'availableMedicalLeaves',
+      'Sick Leave': 'availableSickLeaves',
+      'Casual Leave': 'availableCasualLeaves',
+      'Annual Leave': 'availableAnnualLeaves',
+    };
+    final balanceKeyMap = {
+      'Medical Leave': 'medicalLeave',
+      'Sick Leave': 'sickLeave',
+      'Casual Leave': 'casualLeave',
+      'Annual Leave': 'annualLeave',
+    };
+
+    final totalKey = totalKeyMap[leaveType];
+    final availKey = availKeyMap[leaveType];
+    final balanceKey = balanceKeyMap[leaveType];
+
+    int total = 0;
+    if (totalKey != null) {
+      total = int.tryParse(worker[totalKey]?.toString() ?? '') ?? 0;
+    }
+
+    int? available;
+    if (availKey != null && worker.containsKey(availKey)) {
+      available = int.tryParse(worker[availKey]?.toString() ?? '');
+    }
+    if (available == null &&
+        balanceKey != null &&
+        worker['leaveBalances'] is Map) {
+      final map = worker['leaveBalances'] as Map;
+      if (map.containsKey(balanceKey)) {
+        available = int.tryParse(map[balanceKey]?.toString() ?? '');
+      }
+    }
+
+    int calcUsed = 0;
+    if (total > 0 && available != null) {
+      calcUsed = total - available;
+      if (calcUsed < 0) calcUsed = 0;
+    }
+
+    final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final workerId = (worker['id'] ?? worker['docId'] ?? '').toString().trim();
+    int countFromAtt = 0;
+    if (email.isNotEmpty || workerId.isNotEmpty) {
+      for (final att in DummyData.attendance) {
+        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+        final attWorkerId = (att['workerId'] ?? '').toString().trim();
+        final matches =
+            (workerId.isNotEmpty && attWorkerId == workerId) ||
+            (email.isNotEmpty && attEmail == email);
+        if (matches && att['status'] == 'Leave') {
+          final attType = (att['type'] ?? att['leaveType'] ?? '')
+              .toString()
+              .trim();
+          if (attType.toLowerCase() == leaveType.toLowerCase()) {
+            countFromAtt++;
+          }
+        }
+      }
+    }
+
+    return calcUsed > countFromAtt ? calcUsed : countFromAtt;
+  }
+
   void _clampLeaveDays(TextEditingController controller) {
     final text = controller.text;
     if (text.startsWith('-') || text.startsWith('+')) {
@@ -699,18 +781,17 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     return '$baseName.jpg';
   }
 
-  /// Prepares all picked files for upload, compressing every image in a
-  /// single isolate pass (instead of one `compute` call per image) so worker
-  /// saves complete faster while keeping the exact same output files.
   Future<List<UploadFile>> _prepareUploadFilesBatched({
     required List<
-        ({
-          String folder,
-          String? fileName,
-          String fallbackFileName,
-          Uint8List bytes,
-          bool compressImages,
-        })> specs,
+      ({
+        String folder,
+        String? fileName,
+        String fallbackFileName,
+        Uint8List bytes,
+        bool compressImages,
+      })
+    >
+    specs,
   }) async {
     if (specs.isEmpty) return const [];
 
@@ -1637,7 +1718,50 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       final newAnnual = int.tryParse(_annualLeavesController.text.trim()) ?? 0;
       final newSick = int.tryParse(_sickLeavesController.text.trim()) ?? 0;
       final newCasual = int.tryParse(_casualLeavesController.text.trim()) ?? 0;
-      final newMedical = int.tryParse(_medicalLeavesController.text.trim()) ?? 0;
+      final newMedical =
+          int.tryParse(_medicalLeavesController.text.trim()) ?? 0;
+
+      int availAnnual = newAnnual;
+      int availSick = newSick;
+      int availCasual = newCasual;
+      int availMedical = newMedical;
+
+      if (widget.workerToEdit != null) {
+        final worker = widget.workerToEdit!;
+        final usedAnnual = _getUsedLeavesCount(worker, 'Annual Leave');
+        final usedSick = _getUsedLeavesCount(worker, 'Sick Leave');
+        final usedCasual = _getUsedLeavesCount(worker, 'Casual Leave');
+        final usedMedical = _getUsedLeavesCount(worker, 'Medical Leave');
+
+        final leaveValidations = [
+          (type: 'Annual Leave', newValue: newAnnual, used: usedAnnual),
+          (type: 'Sick Leave', newValue: newSick, used: usedSick),
+          (type: 'Casual Leave', newValue: newCasual, used: usedCasual),
+          (type: 'Medical Leave', newValue: newMedical, used: usedMedical),
+        ];
+
+        for (final item in leaveValidations) {
+          if (item.used > 0 && item.newValue < item.used) {
+            if (mounted) {
+              setState(() {
+                _isSaving = false;
+              });
+              FlashySnackBar.show(
+                context,
+                message:
+                    'This worker has already used ${item.used} ${item.type}. You cannot set ${item.type} below used leaves.',
+                isError: true,
+              );
+            }
+            return;
+          }
+        }
+
+        availAnnual = (newAnnual - usedAnnual).clamp(0, newAnnual);
+        availSick = (newSick - usedSick).clamp(0, newSick);
+        availCasual = (newCasual - usedCasual).clamp(0, newCasual);
+        availMedical = (newMedical - usedMedical).clamp(0, newMedical);
+      }
 
       final data = <String, dynamic>{
         'name': name,
@@ -1663,18 +1787,18 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         'education': _educationController.text.trim(),
         'salaryAmount': validatedSalaryAmount,
         'annualLeaves': newAnnual,
-        'availableAnnualLeaves': newAnnual,
+        'availableAnnualLeaves': availAnnual,
         'sickLeaves': newSick,
-        'availableSickLeaves': newSick,
+        'availableSickLeaves': availSick,
         'casualLeaves': newCasual,
-        'availableCasualLeaves': newCasual,
+        'availableCasualLeaves': availCasual,
         'medicalLeaves': newMedical,
-        'availableMedicalLeaves': newMedical,
+        'availableMedicalLeaves': availMedical,
         'leaveBalances': {
-          'annualLeave': newAnnual,
-          'sickLeave': newSick,
-          'casualLeave': newCasual,
-          'medicalLeave': newMedical,
+          'annualLeave': availAnnual,
+          'sickLeave': availSick,
+          'casualLeave': availCasual,
+          'medicalLeave': availMedical,
         },
         'joiningDate': isGuest
             ? (_joiningDate ?? '')
@@ -2176,8 +2300,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                 _nameController.text.trim().isNotEmpty &&
                                 _phoneController.text.trim().isNotEmpty);
                       final bool canSave = isSaveReady && !_isSaving;
-                      // In edit mode, hide the save button entirely when no
-                      // field has been changed yet.
+
                       if (isEditMode && !hasChanges) {
                         return const SizedBox.shrink();
                       }
@@ -3428,7 +3551,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   bool _salaryFocused = false;
 
   bool get _showSalaryCurrency {
-    return _salaryFocused || widget.salaryAmountController.text.trim().isNotEmpty;
+    return _salaryFocused ||
+        widget.salaryAmountController.text.trim().isNotEmpty;
   }
 
   @override
@@ -4915,9 +5039,9 @@ Widget _buildInputField(
                       }
                       final parts = digits.split('.');
                       final intPart = parts[0];
-                      // max 12 digits before decimal
+
                       if (intPart.length > 12) return oldValue;
-                      // max 2 digits after decimal
+
                       if (parts.length > 1 && parts[1].length > 2)
                         return oldValue;
                       final decPart = parts.length > 1 ? '.${parts[1]}' : '';

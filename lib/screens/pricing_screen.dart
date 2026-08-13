@@ -11,10 +11,7 @@ import '../providers.dart';
 class SubscriptionDialog extends ConsumerStatefulWidget {
   final bool isPremium;
 
-  const SubscriptionDialog({
-    super.key,
-    this.isPremium = false,
-  });
+  const SubscriptionDialog({super.key, this.isPremium = false});
 
   @override
   ConsumerState<SubscriptionDialog> createState() => _SubscriptionDialogState();
@@ -63,15 +60,12 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                   ),
                   child: Row(
                     children: [
-                      // LEFT PANEL
                       Expanded(
                         flex: 11,
                         child: Container(
                           decoration: const BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage(
-                                'assets/splashscreenbg.png',
-                              ),
+                              image: AssetImage('assets/splashscreenbg.png'),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -110,10 +104,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                 ),
                               ),
 
-
-                              // IMPORTANT:
-                              // Expanded + spaceEvenly prevents localized
-                              // text from pushing final bullet outside panel.
                               Expanded(
                                 child: Column(
                                   mainAxisAlignment:
@@ -145,30 +135,21 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                         ),
                       ),
 
-                      // RIGHT PANEL
                       Expanded(
                         flex: 11,
                         child: Container(
                           color: const Color(0xFFFFFFFF),
                           width: double.infinity,
                           height: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(
-                            33,
-                            20,
-                            33,
-                            20,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(33, 20, 33, 20),
                           child: SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
                             child: Column(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: 10,
-                                  ),
+                                  padding: const EdgeInsets.only(bottom: 10),
                                   child: Text(
                                     'choose_your_plan'.tr(),
                                     textAlign: TextAlign.center,
@@ -231,8 +212,9 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                             });
 
                                             try {
-                                              await PreferencesService
-                                                  .setPremium(true);
+                                              await PreferencesService.setPremium(
+                                                true,
+                                              );
 
                                               final isGuest =
                                                   _authService
@@ -244,8 +226,8 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                                 try {
                                                   await _firestore
                                                       .updateUserProfile({
-                                                    'isPremium': true,
-                                                  });
+                                                        'isPremium': true,
+                                                      });
                                                 } catch (_) {}
                                               }
                                             } finally {
@@ -257,24 +239,21 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                             }
 
                                             if (context.mounted) {
-                                              Navigator.of(context)
-                                                  .pop(true);
+                                              Navigator.of(context).pop(true);
                                             }
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: primaryBlue,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(50),
+                                        borderRadius: BorderRadius.circular(50),
                                       ),
                                     ),
                                     child: _isSaving
                                         ? const SizedBox(
                                             width: 26,
                                             height: 20,
-                                            child:
-                                                CircularProgressIndicator(
+                                            child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                               color: Colors.white,
                                             ),
@@ -282,13 +261,10 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                         : Text(
                                             'continue'.tr(),
                                             style: const TextStyle(
-                                              color:
-                                                  Color(0xFFFFFFFF),
+                                              color: Color(0xFFFFFFFF),
                                               fontSize: 19,
-                                              fontWeight:
-                                                  FontWeight.w600,
-                                              fontFamily:
-                                                  'SF Pro Display',
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                   ),
@@ -434,20 +410,13 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
         decoration: BoxDecoration(
           color: cardLightBlue,
           borderRadius: BorderRadius.circular(6),
-          border: isSelected
-              ? Border.all(
-                  color: primaryBlue,
-                  width: 2,
-                )
-              : null,
+          border: isSelected ? Border.all(color: primaryBlue, width: 2) : null,
         ),
         child: Stack(
           children: [
             Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Container(
@@ -455,10 +424,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                       height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: primaryBlue,
-                          width: 2,
-                        ),
+                        border: Border.all(color: primaryBlue, width: 2),
                       ),
                       child: isSelected
                           ? Center(
@@ -544,10 +510,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
     );
   }
 
-  Widget _buildFooterLink(
-    String text, {
-    VoidCallback? onTap,
-  }) {
+  Widget _buildFooterLink(String text, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Text(
@@ -565,14 +528,8 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
 
   Widget _buildFooterDivider() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-      ),
-      child: Container(
-        width: 1,
-        height: 13,
-        color: primaryBlue,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Container(width: 1, height: 13, color: primaryBlue),
     );
   }
 }

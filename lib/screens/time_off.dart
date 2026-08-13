@@ -71,30 +71,37 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     return _rawTimeoffDocs.where((record) {
       if (query.isNotEmpty) {
-        final workerName = (record['workerName'] ??
-                record['name'] ??
-                record['email'] ??
-                record['workerEmail'] ??
-                '')
-            .toString()
-            .toLowerCase();
+        final workerName =
+            (record['workerName'] ??
+                    record['name'] ??
+                    record['email'] ??
+                    record['workerEmail'] ??
+                    '')
+                .toString()
+                .toLowerCase();
         if (!workerName.contains(query)) return false;
       }
 
       if (_recordsLeaveTypeFilter != 'All') {
-        final rawType = (record['leaveType'] ?? record['type'] ?? '').toString();
+        final rawType = (record['leaveType'] ?? record['type'] ?? '')
+            .toString();
         final normType = TimeOffService.normalizeLeaveType(rawType);
-        final normSelected =
-            TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
+        final normSelected = TimeOffService.normalizeLeaveType(
+          _recordsLeaveTypeFilter,
+        );
         if (normType != normSelected) return false;
       }
 
-      final recordDate =
-          AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
+      final recordDate = AppDateUtils.dateFromValue(
+        record['startDate'] ?? record['date'],
+      );
       if (recordDate == null) return true;
 
-      final recordDay =
-          DateTime(recordDate.year, recordDate.month, recordDate.day);
+      final recordDay = DateTime(
+        recordDate.year,
+        recordDate.month,
+        recordDate.day,
+      );
 
       if (_recordsPeriodFilter == 'Custom Range') {
         if (_customDateRange != null) {
@@ -114,8 +121,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           if (recordDay.isBefore(start) || recordDay.isAfter(end)) return false;
         }
       } else if (_recordsPeriodFilter != 'All Time') {
-        final range =
-            AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
+        final range = AttendanceReportService.rangeForPeriod(
+          _recordsPeriodFilter,
+        );
         if (!range.contains(recordDay)) return false;
       }
 
@@ -165,62 +173,6 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       'Medical Leave' => 'medical_leave_type'.tr(),
       _ => type,
     };
-  }
-
-  int _getTimeOffCountForWorker(Map<String, dynamic> worker) {
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-
-    int totalDays = 0;
-
-    for (final record in _rawTimeoffDocs) {
-      final recId = (record['workerId'] ?? record['id'] ?? '').toString();
-      final recEmail = (record['workerEmail'] ?? record['email'] ?? '').toString().trim().toLowerCase();
-
-      final matchesWorker = (workerId.isNotEmpty && recId == workerId) ||
-          (workerEmail.isNotEmpty && recEmail == workerEmail);
-
-      if (!matchesWorker) continue;
-
-      if (_recordsLeaveTypeFilter != 'All') {
-        final rawType = (record['leaveType'] ?? record['type'] ?? '').toString();
-        final normType = TimeOffService.normalizeLeaveType(rawType);
-        final normSelected = TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
-        if (normType != normSelected) continue;
-      }
-
-      final recordDate = AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
-      if (recordDate == null) continue;
-
-      final recordDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
-
-      if (_recordsPeriodFilter == 'Custom Range') {
-        if (_customDateRange != null) {
-          final start = DateTime(
-            _customDateRange!.start.year,
-            _customDateRange!.start.month,
-            _customDateRange!.start.day,
-          );
-          final end = DateTime(
-            _customDateRange!.end.year,
-            _customDateRange!.end.month,
-            _customDateRange!.end.day,
-            23,
-            59,
-            59,
-          );
-          if (recordDay.isBefore(start) || recordDay.isAfter(end)) continue;
-        }
-      } else if (_recordsPeriodFilter != 'All Time') {
-        final range = AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
-        if (!range.contains(recordDay)) continue;
-      }
-
-      final days = int.tryParse((record['days'] ?? record['duration'] ?? '1').toString()) ?? 1;
-      totalDays += days;
-    }
-
-    return totalDays;
   }
 
   bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
@@ -676,47 +628,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     return position.toLowerCase().contains(filter.toLowerCase());
   }
 
-  bool _recordMatchesDateFilter(Map<String, dynamic> record) {
-    final recordDate = AppDateUtils.dateFromValue(record['startDate'] ?? record['date']);
-    if (recordDate == null) return false;
-
-    final recordDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
-
-    if (_recordsPeriodFilter == 'Custom Range') {
-      if (_customDateRange == null) return true;
-      final start = DateTime(
-        _customDateRange!.start.year,
-        _customDateRange!.start.month,
-        _customDateRange!.start.day,
-      );
-      final end = DateTime(
-        _customDateRange!.end.year,
-        _customDateRange!.end.month,
-        _customDateRange!.end.day,
-        23,
-        59,
-        59,
-      );
-      return !recordDay.isBefore(start) && !recordDay.isAfter(end);
-    } else if (_recordsPeriodFilter != 'All Time') {
-      final range = AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
-      return range.contains(recordDay);
-    }
-    return true;
-  }
-
-  bool _recordMatchesLeaveTypeFilter(Map<String, dynamic> record) {
-    if (_recordsLeaveTypeFilter == 'All') return true;
-    final rawType = (record['leaveType'] ?? record['type'] ?? record['action'] ?? '').toString();
-    final normType = TimeOffService.normalizeLeaveType(rawType);
-    final normSelected = TimeOffService.normalizeLeaveType(_recordsLeaveTypeFilter);
-    return normType == normSelected;
-  }
-
-
-
   bool get _isDropdownFilterActive {
-    return _recordsPeriodFilter != 'All Time' || _recordsLeaveTypeFilter != 'All';
+    return _recordsPeriodFilter != 'All Time' ||
+        _recordsLeaveTypeFilter != 'All';
   }
 
   List<Map<String, dynamic>> get _matchingWorkersForDropdownFilters {
@@ -724,15 +638,23 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     if (!_isDropdownFilterActive) return base;
 
     return base.where((worker) {
-      final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
-      final workerEmail =
-          (worker['email'] ?? worker['workerEmail'] ?? '').toString().trim().toLowerCase();
+      final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+          .toString()
+          .trim();
+      final workerEmail = (worker['email'] ?? worker['workerEmail'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       return _filteredTimeOffRecords.any((rec) {
         final recId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
-        final recEmail =
-            (rec['workerEmail'] ?? rec['email'] ?? '').toString().trim().toLowerCase();
+        final recEmail = (rec['workerEmail'] ?? rec['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         return (workerId.isNotEmpty && recId.isNotEmpty && recId == workerId) ||
-            (workerEmail.isNotEmpty && recEmail.isNotEmpty && recEmail == workerEmail);
+            (workerEmail.isNotEmpty &&
+                recEmail.isNotEmpty &&
+                recEmail == workerEmail);
       });
     }).toList();
   }
@@ -751,22 +673,35 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
         final start = _customDateRange!.start;
         final end = _customDateRange!.end;
-        if (start.year == end.year && start.month == end.month && start.day == end.day) {
+        if (start.year == end.year &&
+            start.month == end.month &&
+            start.day == end.day) {
           parts.add(DateFormat('dd MMM').format(start));
         } else {
-          parts.add('${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}');
+          parts.add(
+            '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}',
+          );
         }
       } else {
         final periodOptions = [
           {'value': 'All Time', 'label': _l('all_time', 'All Time')},
           {'value': 'This Month', 'label': _l('this_month', 'This Month')},
-          {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
+          {
+            'value': 'Last 6 Months',
+            'label': _l('last_6_months', 'Last 6 Months'),
+          },
           {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-          {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
+          {
+            'value': 'Custom Range',
+            'label': _l('custom_range', 'Custom Range'),
+          },
         ];
         final match = periodOptions.firstWhere(
           (e) => e['value'] == _recordsPeriodFilter,
-          orElse: () => {'value': _recordsPeriodFilter, 'label': _recordsPeriodFilter},
+          orElse: () => {
+            'value': _recordsPeriodFilter,
+            'label': _recordsPeriodFilter,
+          },
         );
         parts.add(match['label']!);
       }
@@ -861,8 +796,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         )
                       : (filtered.isEmpty
-                          ? _buildEmptyState()
-                          : _buildDataTable(filtered)),
+                            ? _buildEmptyState()
+                            : _buildDataTable(filtered)),
                 ],
               ),
             ),
@@ -1170,35 +1105,6 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     ? const Color(0xFFDC2626)
                     : const Color(0xFF0D4CC6);
 
-                final workerId = (doc['id'] ?? doc['workerId'] ?? '').toString().trim();
-                final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
-                final matchingWorkerLeaves = _filteredTimeOffRecords.where((rec) {
-                  final recId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
-                  final recEmail =
-                      (rec['workerEmail'] ?? rec['email'] ?? '').toString().trim().toLowerCase();
-                  return (workerId.isNotEmpty && recId.isNotEmpty && recId == workerId) ||
-                      (workerEmail.isNotEmpty && recEmail.isNotEmpty && recEmail == workerEmail);
-                }).toList();
-
-                String leaveDatesSubtitle = '';
-                if (matchingWorkerLeaves.isNotEmpty) {
-                  final firstRec = matchingWorkerLeaves.first;
-                  final type = TimeOffService.leaveType(firstRec);
-                  final start = AppDateUtils.dateFromValue(firstRec['startDate'] ?? firstRec['date']);
-                  final end = AppDateUtils.dateFromValue(firstRec['endDate'] ?? firstRec['date']);
-                  final rawDays = firstRec['days'] ?? firstRec['duration'] ?? firstRec['requestedDays'] ?? '1';
-
-                  if (start != null && end != null) {
-                    if (start.year == end.year && start.month == end.month && start.day == end.day) {
-                      leaveDatesSubtitle = '$type • ${DateFormat('dd MMM yyyy').format(start)} ($rawDays ${rawDays.toString() == '1' ? 'day' : 'days'})';
-                    } else {
-                      leaveDatesSubtitle = '$type • ${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM yyyy').format(end)} ($rawDays days)';
-                    }
-                  } else if (start != null) {
-                    leaveDatesSubtitle = '$type • ${DateFormat('dd MMM yyyy').format(start)} ($rawDays days)';
-                  }
-                }
-
                 return GestureDetector(
                   onTap: () {
                     final isGuest =
@@ -1279,7 +1185,6 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         maxLines: 1,
                                       ),
-
                                     ],
                                   ),
                                 ),
@@ -1903,10 +1808,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 520,
+          width: 380,
+          height: MediaQuery.sizeOf(ctx).height * 0.75,
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.92,
-            maxHeight: MediaQuery.sizeOf(ctx).height * 0.68,
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.85,
+            minHeight: 380,
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.85,
           ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -1924,7 +1831,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                height: 42,
+                height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: const BoxDecoration(color: Color(0xFF004FDE)),
                 child: Row(
@@ -1932,7 +1839,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     const Icon(
                       Icons.calendar_month_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 20,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1942,7 +1849,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         ),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'SF Pro Display',
                         ),
@@ -1952,7 +1859,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       icon: const Icon(
                         Icons.close,
                         color: Colors.white,
-                        size: 18,
+                        size: 20,
                       ),
                       onPressed: () => Navigator.of(ctx).pop(),
                       padding: EdgeInsets.zero,
@@ -1963,7 +1870,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               ),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                 color: const Color(0xFFF8FAFC),
                 child: Wrap(
                   spacing: 6,
@@ -1972,7 +1879,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     final color = LeaveColors.getColor(type);
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
+                        horizontal: 8,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
@@ -1987,7 +1894,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         '${assignedDatesByType[type]!.length} ${assignedDatesByType[type]!.length == 1 ? 'day'.tr() : 'days'.tr()}',
                         style: TextStyle(
                           color: color,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'SF Pro Display',
                         ),
@@ -2000,13 +1907,40 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: datesWithTypes.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'no_dates_selected'.tr(),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 40,
+                              horizontal: 24,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFF1F5F9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.event_busy_rounded,
+                                    size: 32,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'no_dates_selected'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF64748B),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         )
@@ -2132,8 +2066,14 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     final String filterName = _activeFilterName;
     final String emptyMessage = hasActiveFilters
         ? (filterName.isNotEmpty
-            ? _l('no_records_named_filter', 'No time off records found for "$filterName".')
-            : _l('no_records_selected_filter', 'No time off records found for the selected filter.'))
+              ? _l(
+                  'no_records_named_filter',
+                  'No time off records found for "$filterName".',
+                )
+              : _l(
+                  'no_records_selected_filter',
+                  'No time off records found for the selected filter.',
+                ))
         : 'no_time_off_records'.tr();
 
     return Container(
@@ -2177,8 +2117,6 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
-
-
   Widget _buildRecordsFiltersAndExportRow() {
     final periodOptions = [
       {'value': 'All Time', 'label': _l('all_time', 'All Time')},
@@ -2198,18 +2136,25 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final match = periodOptions.firstWhere(
       (e) => e['value'] == _recordsPeriodFilter,
-      orElse: () => {'value': _recordsPeriodFilter, 'label': _recordsPeriodFilter},
+      orElse: () => {
+        'value': _recordsPeriodFilter,
+        'label': _recordsPeriodFilter,
+      },
     );
     String periodLabel = match['label']!;
     if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
       final start = _customDateRange!.start;
       final end = _customDateRange!.end;
-      if (start.year == end.year && start.month == end.month && start.day == end.day) {
+      if (start.year == end.year &&
+          start.month == end.month &&
+          start.day == end.day) {
         periodLabel = DateFormat('dd MMM').format(start);
       } else if (start.year == end.year) {
-        periodLabel = '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}';
+        periodLabel =
+            '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}';
       } else {
-        periodLabel = '${DateFormat('dd MMM yy').format(start)} - ${DateFormat('dd MMM yy').format(end)}';
+        periodLabel =
+            '${DateFormat('dd MMM yy').format(start)} - ${DateFormat('dd MMM yy').format(end)}';
       }
     }
 
@@ -2281,8 +2226,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         label,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                          color: selected ? const Color(0xFF0247C4) : const Color(0xFF000000),
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : const Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
                         maxLines: 1,
@@ -2382,8 +2331,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         f['label']!,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                          color: selected ? const Color(0xFF0247C4) : const Color(0xFF000000),
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : const Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
                         maxLines: 1,
@@ -2444,7 +2397,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.file_download_outlined, size: 20, color: Colors.white),
+                const Icon(
+                  Icons.file_download_outlined,
+                  size: 20,
+                  color: Colors.white,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   _l('export_csv', 'Export CSV'),
@@ -2482,10 +2439,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     return DateTime(monthDate.year, monthDate.month, day);
   }
 
-  Widget _buildCalendarGrid(DateTime calendarDate, Set<DateTime> selectedDates) {
+  Widget _buildCalendarGrid(
+    DateTime calendarDate,
+    Set<DateTime> selectedDates,
+  ) {
     final weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     final firstDayOfMonth = DateTime(calendarDate.year, calendarDate.month, 1);
-    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      calendarDate.year,
+      calendarDate.month + 1,
+      0,
+    ).day;
     final startOffset = firstDayOfMonth.weekday % 7;
     final totalCells = ((startOffset + daysInMonth) / 7).ceil() * 7;
 
@@ -2498,7 +2462,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               width: 44,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(4),
@@ -2533,18 +2500,29 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             if (dayNumber < 1 || dayNumber > daysInMonth) {
               return const SizedBox();
             }
-            final cellDate = DateTime(calendarDate.year, calendarDate.month, dayNumber);
+            final cellDate = DateTime(
+              calendarDate.year,
+              calendarDate.month,
+              dayNumber,
+            );
             final isSelected = selectedDates.any(
-              (d) => d.year == cellDate.year && d.month == cellDate.month && d.day == cellDate.day,
+              (d) =>
+                  d.year == cellDate.year &&
+                  d.month == cellDate.month &&
+                  d.day == cellDate.day,
             );
 
             return Container(
               margin: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFFAFAFA),
+                color: isSelected
+                    ? const Color(0xFF0247C4)
+                    : const Color(0xFFFAFAFA),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFE2E8F0),
+                  color: isSelected
+                      ? const Color(0xFF0247C4)
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               child: Center(
@@ -2569,9 +2547,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     DateTime calendarDate = DateTime.now();
     Set<DateTime> selectedDates = {};
     if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
-      for (var d = _customDateRange!.start;
-          !d.isAfter(_customDateRange!.end);
-          d = d.add(const Duration(days: 1))) {
+      for (
+        var d = _customDateRange!.start;
+        !d.isAfter(_customDateRange!.end);
+        d = d.add(const Duration(days: 1))
+      ) {
         selectedDates.add(DateTime(d.year, d.month, d.day));
       }
       calendarDate = _customDateRange!.start;
@@ -2608,7 +2588,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           Positioned(
                             left: 0,
                             child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.black,
+                                size: 20,
+                              ),
                               onPressed: () => Navigator.of(context).pop(),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -2636,12 +2620,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           icon: const Icon(Icons.chevron_left, size: 22),
                           onPressed: () {
                             setModalState(() {
-                              calendarDate = DateTime(calendarDate.year, calendarDate.month - 1);
+                              calendarDate = DateTime(
+                                calendarDate.year,
+                                calendarDate.month - 1,
+                              );
                             });
                           },
                         ),
                         Text(
-                          DateFormat('MMMM yyyy').format(calendarDate).toUpperCase(),
+                          DateFormat(
+                            'MMMM yyyy',
+                          ).format(calendarDate).toUpperCase(),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -2652,7 +2641,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           icon: const Icon(Icons.chevron_right, size: 22),
                           onPressed: () {
                             setModalState(() {
-                              calendarDate = DateTime(calendarDate.year, calendarDate.month + 1);
+                              calendarDate = DateTime(
+                                calendarDate.year,
+                                calendarDate.month + 1,
+                              );
                             });
                           },
                         ),
@@ -2661,7 +2653,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     const SizedBox(height: 8),
                     Listener(
                       onPointerDown: (event) {
-                        final date = _dateAtPosition(event.localPosition, calendarDate);
+                        final date = _dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
                         dragAnchorDate = date;
                         dragStartPosition = event.localPosition;
                         dragMoved = false;
@@ -2671,8 +2666,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       onPointerMove: (event) {
                         final startPos = dragStartPosition;
                         if (startPos != null && !dragMoved) {
-                          final dx = (event.localPosition.dx - startPos.dx).abs();
-                          final dy = (event.localPosition.dy - startPos.dy).abs();
+                          final dx = (event.localPosition.dx - startPos.dx)
+                              .abs();
+                          final dy = (event.localPosition.dy - startPos.dy)
+                              .abs();
                           if (dx > 5 || dy > 5) {
                             dragMoved = true;
                           }
@@ -2680,15 +2677,28 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         if (!dragMoved) return;
                         final anchor = dragAnchorDate;
                         if (anchor == null) return;
-                        final current = _dateAtPosition(event.localPosition, calendarDate);
+                        final current = _dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
                         if (current == null) return;
                         setModalState(() {
                           selectedDates.clear();
                           selectedDates.addAll(selectionBeforeDrag);
-                          final isDragRemoving = selectionBeforeDrag.contains(anchor);
-                          final start = anchor.isBefore(current) ? anchor : current;
-                          final end = anchor.isAfter(current) ? anchor : current;
-                          for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+                          final isDragRemoving = selectionBeforeDrag.contains(
+                            anchor,
+                          );
+                          final start = anchor.isBefore(current)
+                              ? anchor
+                              : current;
+                          final end = anchor.isAfter(current)
+                              ? anchor
+                              : current;
+                          for (
+                            var d = start;
+                            !d.isAfter(end);
+                            d = d.add(const Duration(days: 1))
+                          ) {
                             if (isDragRemoving) {
                               selectedDates.remove(d);
                             } else {
@@ -2702,11 +2712,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           final date = dragAnchorDate!;
                           setModalState(() {
                             final isAlreadySelected = selectedDates.any(
-                              (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+                              (d) =>
+                                  d.year == date.year &&
+                                  d.month == date.month &&
+                                  d.day == date.day,
                             );
                             if (isAlreadySelected) {
                               selectedDates.removeWhere(
-                                (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+                                (d) =>
+                                    d.year == date.year &&
+                                    d.month == date.month &&
+                                    d.day == date.day,
                               );
                             } else {
                               selectedDates.add(date);
@@ -2733,13 +2749,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 8,
+                          ),
                           elevation: 0,
                         ),
                         onPressed: selectedDates.isEmpty
                             ? null
                             : () {
-                                final sortedDates = selectedDates.toList()..sort();
+                                final sortedDates = selectedDates.toList()
+                                  ..sort();
                                 Navigator.of(context).pop(sortedDates);
                               },
                         child: Text(
@@ -2779,8 +2799,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       );
       return;
     }
-    final periodLabel = _recordsPeriodFilter == 'Custom Range' &&
-            _customDateRange != null
+    final periodLabel =
+        _recordsPeriodFilter == 'Custom Range' && _customDateRange != null
         ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
         : _recordsPeriodFilter;
 
@@ -2796,353 +2816,5 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
       );
     }
-  }
-
-  Future<void> _handleExportPdf() async {
-    final records = _filteredTimeOffRecords;
-    if (records.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'no_time_off_records'.tr(),
-        isError: true,
-      );
-      return;
-    }
-    final periodLabel = _recordsPeriodFilter == 'Custom Range' &&
-            _customDateRange != null
-        ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
-        : _recordsPeriodFilter;
-
-    Map<String, dynamic> companyProfile = const {};
-    try {
-      companyProfile = await _firestore.getUserProfile() ?? const {};
-    } catch (_) {}
-
-    final companyName = (companyProfile['businessName'] ??
-            companyProfile['companyName'] ??
-            'HRMS')
-        .toString();
-    final fileName =
-        'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.pdf';
-
-    final success = await TimeOffExportService.exportPdf(
-      records: records,
-      periodLabel: periodLabel,
-      leaveTypeFilter: _recordsLeaveTypeFilter,
-      companyName: companyName,
-      fileName: fileName,
-    );
-    if (success && mounted) {
-      FlashySnackBar.show(
-        context,
-        message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
-      );
-    }
-  }
-
-  Widget _buildEmptyRecordsState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 80),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.event_busy_rounded, size: 48, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
-          Text(
-            'no_time_off_records'.tr(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeOffRecordsTable(List<Map<String, dynamic>> records) {
-    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
-      440.0,
-      1200.0,
-    );
-
-    return Container(
-      height: tableHeight,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'worker_name_header'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'time_off_type'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'from'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'to'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'days'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'status'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              itemCount: records.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              itemBuilder: (context, index) {
-                final r = records[index];
-                final name =
-                    (r['workerName'] ?? r['name'] ?? r['email'] ?? '').toString();
-                final rawType =
-                    (r['leaveType'] ?? r['type'] ?? 'Leave').toString();
-                final typeLabel = _localizedLeaveType(rawType);
-                final fromDate =
-                    AppDateUtils.dateFromValue(r['startDate'] ?? r['date']);
-                final toDate = AppDateUtils.dateFromValue(
-                    r['endDate'] ?? r['startDate'] ?? r['date']);
-                final fromStr = fromDate != null
-                    ? DateFormat('dd MMM yyyy').format(fromDate)
-                    : '-';
-                final toStr = toDate != null
-                    ? DateFormat('dd MMM yyyy').format(toDate)
-                    : '-';
-
-                final rawDays = r['days'] ?? r['numberOfDays'] ?? r['totalDays'];
-                final daysStr =
-                    (rawDays != null && rawDays.toString().isNotEmpty)
-                        ? rawDays.toString()
-                        : (r['selectedDates'] is List &&
-                                (r['selectedDates'] as List).isNotEmpty
-                            ? (r['selectedDates'] as List).length.toString()
-                            : '1');
-
-                final status = (r['status'] ?? 'Approved').toString();
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF0F172A),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _leaveTypeBgColor(rawType),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              typeLabel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: _leaveTypeTextColor(rawType),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          fromStr,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF475569),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          toStr,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF475569),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          daysStr,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF0F172A),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _statusBgColor(status),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: _statusTextColor(status),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _leaveTypeBgColor(String rawType) {
-    final norm = TimeOffService.normalizeLeaveType(rawType);
-    return switch (norm) {
-      'Sick Leave' => const Color(0xFFFEE2E2),
-      'Casual Leave' => const Color(0xFFFFEDD5),
-      'Medical Leave' => const Color(0xFFF3E8FF),
-      'Annual Leave' => const Color(0xFFE0F2FE),
-      _ => const Color(0xFFF1F5F9),
-    };
-  }
-
-  Color _leaveTypeTextColor(String rawType) {
-    final norm = TimeOffService.normalizeLeaveType(rawType);
-    return switch (norm) {
-      'Sick Leave' => const Color(0xFFB91C1C),
-      'Casual Leave' => const Color(0xFFC2410C),
-      'Medical Leave' => const Color(0xFF6B21A8),
-      'Annual Leave' => const Color(0xFF0369A1),
-      _ => const Color(0xFF475569),
-    };
-  }
-
-  Color _statusBgColor(String status) {
-    final norm = status.toLowerCase();
-    if (norm.contains('approved')) return const Color(0xFFDCFCE7);
-    if (norm.contains('pending')) return const Color(0xFFFEF9C3);
-    if (norm.contains('cancel') || norm.contains('reject')) {
-      return const Color(0xFFFEE2E2);
-    }
-    if (norm.contains('auto')) return const Color(0xFFFFF3E0);
-    return const Color(0xFFF1F5F9);
-  }
-
-  Color _statusTextColor(String status) {
-    final norm = status.toLowerCase();
-    if (norm.contains('approved')) return const Color(0xFF15803D);
-    if (norm.contains('pending')) return const Color(0xFFA16207);
-    if (norm.contains('cancel') || norm.contains('reject')) {
-      return const Color(0xFFB91C1C);
-    }
-    if (norm.contains('auto')) return const Color(0xFFB45309);
-    return const Color(0xFF475569);
   }
 }

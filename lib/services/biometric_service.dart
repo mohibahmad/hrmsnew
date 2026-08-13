@@ -1,15 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
-/// Represents the result of a biometric authentication attempt.
 enum BiometricAuthResult {
-  /// Authentication succeeded (biometric or device fallback).
   success,
 
-  /// User cancelled the biometric prompt (tapped Cancel / swiped away).
-  /// If the user tapped "Use Password" and then succeeded, [success] is
-  /// returned instead. If they cancelled the password prompt, [cancelled]
-  /// is returned.
   cancelled,
 
   failed,
@@ -53,12 +47,6 @@ class BiometricService {
     }
   }
 
-  /// Authenticates using biometrics and returns a detailed result.
-  ///
-  /// In local_auth 3.x:
-  /// - Returns `true`  → user authenticated successfully (biometric or fallback).
-  /// - Returns `false` → user cancelled (tapped Cancel / swiped away) — no exception thrown.
-  /// - Throws `LocalAuthException` → real error (locked out, not available, etc.).
   static Future<BiometricAuthResult> authenticate({
     required String localizedReason,
     bool biometricOnly = true,
@@ -71,8 +59,6 @@ class BiometricService {
         persistAcrossBackgrounding: persistAcrossBackgrounding,
       );
 
-      // `true`  = success.
-      // `false` = user cancelled the prompt (no exception is thrown).
       if (authenticated) return BiometricAuthResult.success;
       return BiometricAuthResult.cancelled;
     } on LocalAuthException catch (e) {
@@ -82,7 +68,6 @@ class BiometricService {
 
       final code = e.code.name.toLowerCase();
 
-      // --- Lockout ---
       if (code == 'lockedout' ||
           code == 'auth_locked_out' ||
           code == 'too_many_attempts') {
@@ -93,7 +78,6 @@ class BiometricService {
         return BiometricAuthResult.permanentlyLockedOut;
       }
 
-      // --- Not available / not enrolled ---
       if (code == 'notavailable' ||
           code == 'biometrynotavailable' ||
           code == 'biometry_not_available' ||
@@ -105,7 +89,6 @@ class BiometricService {
         return BiometricAuthResult.notAvailable;
       }
 
-      // --- Actual failure (wrong fingerprint, etc.) ---
       return BiometricAuthResult.failed;
     } catch (e) {
       debugPrint('Biometric authentication error: $e');

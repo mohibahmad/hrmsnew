@@ -45,9 +45,6 @@ class TimeOffService {
     return parsed < 0 ? 0 : parsed;
   }
 
-  /// Produces the single canonical Firestore representation for worker leave
-  /// balances. All values are numeric and every used value is derived from
-  /// `total - available`, so legacy counters cannot disagree with balances.
   static Map<String, dynamic> canonicalWorkerLeaveFields(
     Map<String, dynamic> worker, {
     Map<String, dynamic>? remainingBalances,
@@ -80,9 +77,6 @@ class TimeOffService {
           ? _leaveInt(rawAvailable)
           : (storedTotal - storedUsed).clamp(0, storedTotal).toInt();
 
-      // Preserve the actual allowance when a legacy document contains a
-      // partial/missing total but its remaining + used values prove a larger
-      // value. Used is still recalculated below from the canonical balance.
       final inferredTotal = available + storedUsed;
       final total = storedTotal > 0 ? storedTotal : inferredTotal;
       available = available.clamp(0, total).toInt();
@@ -206,9 +200,6 @@ class TimeOffService {
   static bool isActiveRecord(Map<String, dynamic> record) =>
       !isCancelledRecord(record);
 
-  /// Time off that has already started is treated as used history. Today and
-  /// future dates remain editable so a same-day correction can still keep an
-  /// automatically created attendance record in sync.
   static bool isEditableRecord(
     Map<String, dynamic> record, {
     DateTime? referenceDate,
@@ -219,6 +210,34 @@ class TimeOffService {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return !dates.any((date) => date.isBefore(today));
+  }
+
+  static bool hasPastDateModification({
+    required Iterable<DateTime> oldDates,
+    required Iterable<DateTime> newDates,
+    DateTime? referenceDate,
+  }) {
+    final now = referenceDate ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final newSet = newDates
+        .map((d) => DateTime(d.year, d.month, d.day))
+        .toSet();
+    return oldDates.any(
+      (d) =>
+          d.isBefore(today) &&
+          !newSet.contains(DateTime(d.year, d.month, d.day)),
+    );
+  }
+
+  static bool hasFutureUnusedLeaves(
+    Map<String, dynamic> record, {
+    DateTime? referenceDate,
+  }) {
+    if (!isActiveRecord(record)) return false;
+    final dates = selectedDatesForRecord(record);
+    final now = referenceDate ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return dates.any((date) => !date.isBefore(today));
   }
 
   static Set<String> activeLeaveAssignmentKeysForDate(
@@ -327,10 +346,11 @@ class TimeOffService {
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
 
+    final excludeId = (excludingRecordId ?? '').trim();
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
-      if (excludingRecordId != null &&
-          leave['id']?.toString() == excludingRecordId) {
+      final leaveId = (leave['id'] ?? '').toString().trim();
+      if (excludeId.isNotEmpty && leaveId.isNotEmpty && leaveId == excludeId) {
         continue;
       }
       if (!_belongsToWorker(
@@ -550,9 +570,6 @@ class TimeOffService {
     };
   }
 
-  /// Finds the worker's record for a dropdown leave type without converting
-  /// the currently open record into that type. Editable records are preferred,
-  /// then the most recent assigned dates are used.
   static Map<String, dynamic>? recordForWorkerLeaveType(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
@@ -647,9 +664,6 @@ class TimeOffService {
     return balances[fieldName] ?? 0;
   }
 
-  /// Returns the balance that can be used while editing an existing record.
-  /// The record's already allocated days are temporarily available because an
-  /// atomic save restores the old allocation before applying the new one.
   static int availableBalanceForEditingRecord(
     Map<String, dynamic> worker,
     String type,
@@ -667,10 +681,6 @@ class TimeOffService {
     );
   }
 
-  /// Projects the worker's total assigned days for one leave type while a
-  /// single record is being edited. Firestore's stored used count already
-  /// includes every record; replace only the open record's old allocation with
-  /// its current draft selection.
   static int projectedAssignedDaysForEditingRecord(
     Map<String, dynamic> worker,
     String type,

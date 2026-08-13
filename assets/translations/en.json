@@ -1493,5 +1493,7 @@
   "later": "Later",
   "tax_deduction": "Tax Deduction",
   "biometric_locked_out": "Too many failed attempts. Please try again later.",
-  "biometric_permanently_locked_out": "Biometric authentication is permanently locked. Please use your password to log in."
+  "biometric_permanently_locked_out": "Biometric authentication is permanently locked. Please use your password to log in.",
+  "file_downloaded_successfully": "File downloaded successfully.",
+  "could_not_download_file": "Could not download file. Please try again."
 }

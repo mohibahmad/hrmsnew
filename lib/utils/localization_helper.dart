@@ -4,8 +4,6 @@ import 'currency_utils.dart';
 class LocalizationHelper {
   LocalizationHelper._();
 
-  /// Canonical Firebase values used as filter keys. Only the visible label is
-  /// localized so filtering keeps working after the app language changes.
   static const List<String> defaultJobPositions = [
     'Designer',
     'Developer',
@@ -92,8 +90,6 @@ class LocalizationHelper {
     }
   }
 
-  /// Full-phrase job roles (mostly the guest demo dataset). Only these exact
-  /// canonical phrases are translated; HR-created roles always stay as-is.
   static const Map<String, String> _compoundRoleKeys = {
     'backend developer': 'backend_developer',
     'backend engineer': 'backend_engineer',
@@ -131,7 +127,10 @@ class LocalizationHelper {
   };
 
   static String localizePosition(String value) {
-    final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+    final normalized = value
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .toLowerCase();
     switch (normalized) {
       case 'designer':
         return 'designer'.tr();
@@ -383,9 +382,6 @@ class LocalizationHelper {
     }
   }
 
-  /// Localizes expense category labels (e.g. 'Salary', 'Rent', 'Food &
-  /// Beverage'). Unknown/typed categories fall back to the raw value so
-  /// display follows the app language without breaking stored data.
   static String localizeExpenseCategory(String value) {
     switch (value.trim().toLowerCase()) {
       case 'salary':
@@ -417,14 +413,11 @@ class LocalizationHelper {
     }
   }
 
-  /// Localizes leave type labels (e.g. 'Sick Leave', 'Casual', 'Annual
-  /// Leave') used in the dashboard leave chart. Unknown values fall back to
-  /// the raw type so the color/label mapping keeps working in any language.
   static String localizeLeaveType(String value) {
-    final normalized = value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s+'), '_');
+    final normalized = value.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      '_',
+    );
     switch (normalized) {
       case 'casual_leave':
       case 'casual':
@@ -461,9 +454,6 @@ class LocalizationHelper {
     }
   }
 
-  /// Localizes the raw biometric label reported by the device (e.g.
-  /// "Fingerprint", "Face ID") so auth-prompt reason strings are fully
-  /// localized instead of mixing English labels into translated sentences.
   static String localizeBiometricName(String value) {
     switch (value.trim().toLowerCase()) {
       case 'face id':
@@ -479,8 +469,6 @@ class LocalizationHelper {
     }
   }
 
-  /// Localizes the seeded holiday names shown on the Home upcoming-holidays
-  /// cards. Unknown/custom holiday names fall back to the raw value.
   static String localizeHolidayName(String value) {
     final normalized = value
         .trim()

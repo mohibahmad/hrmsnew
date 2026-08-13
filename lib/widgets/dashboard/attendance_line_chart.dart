@@ -75,13 +75,6 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
 
   @override
   Widget build(BuildContext context) {
-    // Collapse attendance documents to a single, latest record per worker per
-    // day so the chart reflects the number of distinct people who are
-    // present/absent rather than how many attendance documents exist. A worker
-    // with duplicate documents on the same day (e.g. multiple Present docs, or
-    // a later correction) is therefore counted only once, preventing inflated
-    // bars on the Today view. Workers can still appear on different days for
-    // the Week/Month/Year views.
     final dedupedDocs = latestAttendanceRecordPerWorker(
       widget.attendanceDocs,
       period: widget.period,
@@ -165,9 +158,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
         ? 1.0
         : allValues.reduce((a, b) => a > b ? a : b);
     final range = getNiceRange(rawMaxY);
-    // Leave headroom above the tallest bar so the hover tooltip (which is drawn
-    // above the bar) is not clipped at the top of the chart. When a bar already
-    // fills the axis, its tooltip would overflow the plot area and get cut.
+
     final chartMaxY = rawMaxY > 0 && (rawMaxY / range.maxY) > 0.8
         ? ((rawMaxY / 0.8) / range.interval).ceil() * range.interval
         : range.maxY;

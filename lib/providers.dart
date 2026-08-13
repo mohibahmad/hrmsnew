@@ -8,9 +8,7 @@ final firestoreServiceProvider = Provider<FirestoreService>(
   (ref) => FirestoreService(),
 );
 
-final authServiceProvider = Provider<AuthService>(
-  (ref) => AuthService(),
-);
+final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
 final profilePicNotifierProvider = Provider<ValueNotifier<String?>>(
   (ref) => AuthService.profilePicNotifier,

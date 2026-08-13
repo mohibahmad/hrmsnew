@@ -183,10 +183,9 @@ class PayrollRunner {
     String? positionFilter,
   }) async {
     final isGuest =
-        ProviderScope.containerOf(context)
-            .read(authServiceProvider)
-            .currentUser
-            ?.isAnonymous ??
+        ProviderScope.containerOf(
+          context,
+        ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     if (isGuest) {
       return _runPayrollInternal(
@@ -293,34 +292,83 @@ class PayrollRunner {
       effectivePayrollMonth,
     );
 
+    // ── Parallel fetch: company profile + payroll snapshot + working days ──
     Map<String, dynamic>? companyProfile;
+    List<Map<String, dynamic>> existingPayroll = const [];
+    int autoWorkDays = 0;
+
     try {
-      companyProfile = isGuest
-          ? await PreferencesService.getGuestProfileData()
-          : await firestoreService.getUserProfile();
+      if (isGuest) {
+        companyProfile = await PreferencesService.getGuestProfileData();
+        existingPayroll = List<Map<String, dynamic>>.from(DummyData.payroll);
+        autoWorkDays = await firestoreService.getMonthlyWorkingDays(
+          month: effectivePayrollMonth,
+        );
+      } else {
+        final results = await Future.wait([
+          firestoreService.getUserProfile().catchError((e, st) {
+            ErrorReporter.report(
+              e,
+              st,
+              context: 'PayrollRunnerCompanyCurrency',
+            );
+            return <String, dynamic>{};
+          }),
+          firestoreService.payrollStream.first.timeout(
+            const Duration(seconds: 20),
+          ),
+          firestoreService
+              .getMonthlyWorkingDays(month: effectivePayrollMonth)
+              .then((v) => {'_days': v}),
+        ]);
+        companyProfile = results[0] as Map<String, dynamic>?;
+        final payrollDocs = (results[1] as dynamic).docs as List<dynamic>;
+        existingPayroll = payrollDocs
+            .map(
+              (doc) => {
+                ...doc.data() as Map<String, dynamic>,
+                'id': doc.id as String,
+              },
+            )
+            .toList();
+        final daysMap = results[2] as Map<String, dynamic>;
+        autoWorkDays = (daysMap['_days'] as int?) ?? 0;
+      }
     } catch (error, stackTrace) {
       ErrorReporter.report(
         error,
         stackTrace,
-        context: 'PayrollRunnerCompanyCurrency',
+        context: 'PayrollRunnerParallelFetch',
       );
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'error_occurred'.tr(namedArgs: {'error': error.toString()}),
+          isError: true,
+        );
+      }
+      return null;
     }
+
+    if (autoWorkDays <= 0) {
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'invalid_working_days'.tr(
+            namedArgs: {'days': '$autoWorkDays'},
+          ),
+          isError: true,
+        );
+      }
+      return null;
+    }
+
     final companyCurrency = CurrencyUtils.normalize(
       companyProfile?['currency'],
     );
 
-    List<Map<String, dynamic>> existingPayroll = const [];
+    List<Map<String, dynamic>> workers2;
     try {
-      if (isGuest) {
-        existingPayroll = List<Map<String, dynamic>>.from(DummyData.payroll);
-      } else {
-        final payrollSnapshot = await firestoreService.payrollStream.first
-            .timeout(const Duration(seconds: 20));
-        existingPayroll = payrollSnapshot.docs
-            .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
-            .toList();
-      }
-
       final payableWorkers = PayrollService.payableWorkersForPeriod(
         workers,
         existingPayroll,
@@ -328,10 +376,7 @@ class PayrollRunner {
         allowUndatedRecords: isGuest,
         companyCurrency: companyCurrency,
       );
-      // Use the combined payable rows themselves. They carry the latest saved
-      // payroll calculation (including deductions) after a payment is
-      // cancelled; filtering the original worker list discarded that snapshot.
-      workers = payableWorkers;
+      workers2 = payableWorkers;
     } catch (error, stackTrace) {
       ErrorReporter.report(
         error,
@@ -347,9 +392,10 @@ class PayrollRunner {
       }
       return null;
     }
+    workers = workers2;
 
-    final _prevPayrollByWorkerId = <String, Map<String, dynamic>>{};
-    final _prevPayrollByEmail = <String, Map<String, dynamic>>{};
+    final prevPayrollByWorkerId = <String, Map<String, dynamic>>{};
+    final prevPayrollByEmail = <String, Map<String, dynamic>>{};
     for (final record in existingPayroll) {
       if (!PayrollService.isRecordInMonth(record, effectivePayrollMonth)) {
         continue;
@@ -359,37 +405,28 @@ class PayrollRunner {
           .toString()
           .trim()
           .toLowerCase();
-      if (rWorkerId.isNotEmpty) {
-        _prevPayrollByWorkerId[rWorkerId] = record;
-      }
-      if (rEmail.isNotEmpty) {
-        _prevPayrollByEmail[rEmail] = record;
-      }
+      if (rWorkerId.isNotEmpty) prevPayrollByWorkerId[rWorkerId] = record;
+      if (rEmail.isNotEmpty) prevPayrollByEmail[rEmail] = record;
     }
 
-    if (workers.isEmpty) {
-      return null;
-    }
+    if (workers.isEmpty) return null;
 
+    // ── Attendance fetch — all workers concurrently (max 15 at a time) ──
     late final List<Map<String, dynamic>> attendanceResults;
 
     if (isGuest) {
-      final attendanceFutures = <Future<Map<String, dynamic>>>[];
-      for (final worker in workers) {
+      attendanceResults = workers.map((worker) {
         final att = PayrollService.attendanceCounts(worker);
-        attendanceFutures.add(
-          Future.value(<String, dynamic>{
-            'absents': att['absents'] ?? 0,
-            'paidLeaves': att['paidLeaves'] ?? 0,
-            'unpaidLeaves': att['unpaidLeaves'] ?? 0,
-            'leaves': att['leaves'] ?? 0,
-          }),
-        );
-      }
-      attendanceResults = await Future.wait(attendanceFutures);
+        return <String, dynamic>{
+          'absents': att['absents'] ?? 0,
+          'paidLeaves': att['paidLeaves'] ?? 0,
+          'unpaidLeaves': att['unpaidLeaves'] ?? 0,
+          'leaves': att['leaves'] ?? 0,
+        };
+      }).toList();
     } else {
       attendanceResults = <Map<String, dynamic>>[];
-      const maxConcurrent = 8;
+      const maxConcurrent = 15;
       for (var i = 0; i < workers.length; i += maxConcurrent) {
         final batch = workers.skip(i).take(maxConcurrent);
         final batchFutures = batch.map((worker) async {
@@ -417,40 +454,6 @@ class PayrollRunner {
         final batchResults = await Future.wait(batchFutures);
         attendanceResults.addAll(batchResults);
       }
-    }
-
-    int autoWorkDays;
-    try {
-      autoWorkDays = await firestoreService.getMonthlyWorkingDays(
-        month: effectivePayrollMonth,
-      );
-    } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'PayrollRunnerWorkingDays',
-      );
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'failed_to_load_working_days'.tr(),
-          isError: true,
-        );
-      }
-      return null;
-    }
-
-    if (autoWorkDays <= 0) {
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'invalid_working_days'.tr(
-            namedArgs: {'days': '$autoWorkDays'},
-          ),
-          isError: true,
-        );
-      }
-      return null;
     }
 
     final results = <AutoPayrollResult>[];
@@ -494,8 +497,6 @@ class PayrollRunner {
         continue;
       }
 
-      // Working-day count determines daily rates and deductions only. Monthly
-      // salary is not automatically prorated from the employee joining date.
       const prorationFactor = 1.0;
 
       if (!isGuest && attendanceError.isNotEmpty) {
@@ -530,17 +531,19 @@ class PayrollRunner {
 
       Map<String, dynamic>? prevRecord;
       if (workerId.isNotEmpty) {
-        prevRecord = _prevPayrollByWorkerId[workerId];
+        prevRecord = prevPayrollByWorkerId[workerId];
       }
       if (prevRecord == null && email.isNotEmpty) {
-        prevRecord = _prevPayrollByEmail[email.toLowerCase()];
+        prevRecord = prevPayrollByEmail[email.toLowerCase()];
       }
 
       final workerOvertime = (worker['overtimeAmount'] ?? '').toString().trim();
-      final prevOvertime =
-          (prevRecord?['overtimeAmount'] ?? '').toString().trim();
-      final overtimeAmount =
-          workerOvertime.isNotEmpty ? workerOvertime : prevOvertime;
+      final prevOvertime = (prevRecord?['overtimeAmount'] ?? '')
+          .toString()
+          .trim();
+      final overtimeAmount = workerOvertime.isNotEmpty
+          ? workerOvertime
+          : prevOvertime;
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
 
       late double absentDeductionTotal;
@@ -1217,10 +1220,9 @@ class PayrollRunner {
     PayrollRunSummary summary,
   ) async {
     final isGuest =
-        ProviderScope.containerOf(context)
-            .read(authServiceProvider)
-            .currentUser
-            ?.isAnonymous ??
+        ProviderScope.containerOf(
+          context,
+        ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 720.0;
@@ -2341,10 +2343,9 @@ class PayrollRunner {
     required double dialogHeight,
   }) {
     final isGuest =
-        ProviderScope.containerOf(context)
-            .read(authServiceProvider)
-            .currentUser
-            ?.isAnonymous ??
+        ProviderScope.containerOf(
+          context,
+        ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
 
     return showDialog<AutoPayrollResult>(

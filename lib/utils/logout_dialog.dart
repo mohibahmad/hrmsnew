@@ -36,9 +36,9 @@ Future<void> showLogoutDialog(BuildContext context) async {
 
   if (confirmed == true) {
     try {
-      await ProviderScope.containerOf(context)
-          .read(authServiceProvider)
-          .signOut(preserveBiometricLogin: true);
+      await ProviderScope.containerOf(
+        context,
+      ).read(authServiceProvider).signOut(preserveBiometricLogin: true);
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),

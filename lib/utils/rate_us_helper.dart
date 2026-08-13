@@ -30,8 +30,7 @@ Future<bool> tryShowFirstMilestoneRateUs(String milestone) async {
       markTriggered = PreferencesService.markFirstHolidayTriggered;
       break;
     case 'bulk_worker':
-      alreadyTriggered =
-          await PreferencesService.wasFirstBulkWorkerTriggered();
+      alreadyTriggered = await PreferencesService.wasFirstBulkWorkerTriggered();
       markTriggered = PreferencesService.markFirstBulkWorkerTriggered;
       break;
     case 'asset':

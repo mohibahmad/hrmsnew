@@ -307,8 +307,6 @@ class AuthService {
       await _auth.signOut();
     }
     await PreferencesService.clear(
-      
-      
       preserveBiometricCredentials: preserveBiometricLogin || isGuest,
     );
     profilePicNotifier.value = null;
@@ -354,9 +352,6 @@ class AuthService {
     return user.providerData.any((info) => info.providerId == 'password');
   }
 
-  /// Firebase requires a recent credential before destructive account work.
-  /// Reauthenticate with the provider that owns the current account instead
-  /// of letting `User.delete` fail with `requires-recent-login`.
   Future<void> reauthenticateForAccountDeletion({String? password}) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -416,8 +411,6 @@ class AuthService {
       return;
     }
 
-    // Accounts using another Firebase provider can still be deleted when the
-    // session is recent. If it is not, User.delete returns a precise error.
     await user.reload();
   }
 }

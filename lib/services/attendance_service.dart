@@ -45,16 +45,9 @@ class AttendanceService {
     required Map<String, dynamic> worker,
     required Map<String, dynamic> attendanceRecord,
   }) {
-    // If an explicit attendance record exists for this worker, do not discard it.
     return true;
   }
 
-  /// Whether [record] belongs to the requested calendar day.
-  ///
-  /// Attendance document IDs normally contain their creation date, but an
-  /// administrator can legitimately correct `attendanceDate` in Firestore.
-  /// The field is therefore authoritative; the document ID must not be used
-  /// to overwrite a corrected historical record with today's attendance.
   static bool isRecordForDate(
     Map<String, dynamic> record,
     DateTime requestedDate,

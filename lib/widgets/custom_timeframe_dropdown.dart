@@ -56,9 +56,6 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       widget.options ??
       const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year'];
 
-  /// Maps legacy/aliased raw period values to the canonical option label so
-  /// selection matching (bullet/check indicator) works even when the caller
-  /// uses e.g. 'Month' while the menu option is 'This Month'.
   static String _canonicalPeriod(String period) {
     switch (period.trim()) {
       case 'Today':
