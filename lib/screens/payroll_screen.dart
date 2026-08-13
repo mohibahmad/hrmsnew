@@ -821,6 +821,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final futures = <Future<void>>[];
     for (final doc in _payrollDocs) {
+      final status = (doc['status'] ?? '').toString().trim().toLowerCase();
+      final isPaid = doc['isPaid'] == true ||
+          doc['hasPaidPayrollRecord'] == true ||
+          status == 'paid';
+      if (isPaid) continue;
+
       final email = (doc['email'] ?? '').toString();
       final workerId = (doc['workerId'] ?? doc['id'] ?? '').toString();
       if (email.isEmpty && workerId.isEmpty) continue;
@@ -855,6 +861,11 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     int workingDays,
     bool isGuest,
   ) async {
+    final status = (doc['status'] ?? '').toString().trim().toLowerCase();
+    final isPaid = doc['isPaid'] == true ||
+        doc['hasPaidPayrollRecord'] == true ||
+        status == 'paid';
+    if (isPaid) return;
     try {
       Map<String, int> attendance;
       if (isGuest) {
