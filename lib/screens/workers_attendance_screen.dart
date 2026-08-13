@@ -1902,10 +1902,26 @@ class _WorkersAttendanceScreenState
             'Casual Leave',
             'Medical Leave',
           };
+          int availableLeaveAllowanceForType(String type) {
+            final normType = TimeOffService.normalizeLeaveType(type);
+            int base = TimeOffService.remainingForType(
+              workerData,
+              _timeOffRecords,
+              normType,
+            );
+            final wasInitialLeave =
+                todayRecord['status'] == 'Leave' &&
+                TimeOffService.normalizeLeaveType(initialType) == normType;
+            if (wasInitialLeave) {
+              base += 1;
+            }
+            return base < 0 ? 0 : base;
+          }
+
+          late String selectedLeaveType;
+
           bool canSelectLeaveType(String type) {
-            final isCurrentAttendanceLeave =
-                todayRecord['status'] == 'Leave' && initialType == type;
-            return isCurrentAttendanceLeave || remainingLeaveForType(type) > 0;
+            return availableLeaveAllowanceForType(type) > 0;
           }
 
           String? firstAvailableLeaveType() {
@@ -1915,7 +1931,7 @@ class _WorkersAttendanceScreenState
             return null;
           }
 
-          String selectedLeaveType = selectedStatus == 'Leave'
+          selectedLeaveType = selectedStatus == 'Leave'
               ? (leaveTypes.contains(initialType) &&
                         canSelectLeaveType(initialType)
                     ? initialType
@@ -1923,6 +1939,18 @@ class _WorkersAttendanceScreenState
               : (absentTypes.contains(initialType)
                     ? initialType
                     : 'Without Notice');
+
+          int dialogRemainingLeaveForType(String type) {
+            final normType = TimeOffService.normalizeLeaveType(type);
+            int avail = availableLeaveAllowanceForType(normType);
+            final isSelectedInDialog =
+                selectedStatus == 'Leave' &&
+                TimeOffService.normalizeLeaveType(selectedLeaveType) == normType;
+            if (isSelectedInDialog) {
+              avail -= 1;
+            }
+            return avail < 0 ? 0 : avail;
+          }
 
           List<Map<String, dynamic>> reasonOptions() {
             if (selectedStatus == 'Absent') {
@@ -1947,13 +1975,13 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Annual Leave')
                     ? 'false'
                     : 'true',
-                'balance': remainingLeaveForType('Annual Leave'),
+                'balance': dialogRemainingLeaveForType('Annual Leave'),
               },
               {
                 'value': 'Sick Leave',
                 'key': 'sick_leave_type',
                 'disabled': canSelectLeaveType('Sick Leave') ? 'false' : 'true',
-                'balance': remainingLeaveForType('Sick Leave'),
+                'balance': dialogRemainingLeaveForType('Sick Leave'),
               },
               {
                 'value': 'Casual Leave',
@@ -1961,7 +1989,7 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Casual Leave')
                     ? 'false'
                     : 'true',
-                'balance': remainingLeaveForType('Casual Leave'),
+                'balance': dialogRemainingLeaveForType('Casual Leave'),
               },
               {
                 'value': 'Medical Leave',
@@ -1969,7 +1997,7 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Medical Leave')
                     ? 'false'
                     : 'true',
-                'balance': remainingLeaveForType('Medical Leave'),
+                'balance': dialogRemainingLeaveForType('Medical Leave'),
               },
             ];
           }
