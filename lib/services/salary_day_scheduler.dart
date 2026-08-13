@@ -323,9 +323,25 @@ class PayrollRunner {
           firestoreService
               .getMonthlyWorkingDays(month: effectivePayrollMonth)
               .then((v) => {'_days': v}),
-          firestoreService
-              .getMonthlyAttendanceRecords(effectivePayrollMonth)
-              .then((v) => {'_attendance': v}),
+          // Use the same live collection snapshot as Add Payroll. Filtering
+          // the Firestore query by month can miss legacy records whose saved
+          // attendance date is not a Timestamp, even though the attendance
+          // screen and Add Payroll can already see those records.
+          firestoreService.attendanceStream
+              .first
+              .timeout(const Duration(seconds: 20))
+              .then(
+                (snapshot) => {
+                  '_attendance': snapshot.docs
+                      .map(
+                        (doc) => {
+                          ...doc.data() as Map<String, dynamic>,
+                          'id': doc.id,
+                        },
+                      )
+                      .toList(),
+                },
+              ),
         ]);
         companyProfile = results[0] as Map<String, dynamic>?;
         final payrollDocs = (results[1] as dynamic).docs as List<dynamic>;
@@ -442,7 +458,7 @@ class PayrollRunner {
         final batch = workers.skip(i).take(maxConcurrent);
         final batchFutures = batch.map((worker) async {
           final email = (worker['email'] ?? '').toString();
-          final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+          final workerId = (worker['workerId'] ?? worker['id'] ?? '')
               .toString()
               .trim();
           try {
@@ -2576,14 +2592,14 @@ class PayrollRunner {
                                     rows: [
                                       _metricRow(
                                         'absents'.tr(),
-                                        '${result.absents} ${result.absents == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
+                                        '${result.absents}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
                                       ),
                                       _metricRow(
                                         'leaves_label'.tr(),
-                                        '${result.paidLeaves} ${result.paidLeaves == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
+                                        '${result.paidLeaves}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
@@ -3019,8 +3035,9 @@ class PayrollRunner {
   ) {
     final controllerKey = index * 10;
     if (!controllers.containsKey(controllerKey)) {
+      final overtimeValue = PayrollService.extractSalary(r.overtimeAmount);
       controllers[controllerKey] = TextEditingController(
-        text: r.overtimeAmount.isNotEmpty && r.overtimeAmount != '0'
+        text: overtimeValue > 0
             ? r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '')
             : '',
       );
@@ -3047,7 +3064,7 @@ class PayrollRunner {
               color: Color(0xFF111827),
             ),
             decoration: InputDecoration(
-              hintText: '0',
+              hintText: 'amount_hint'.tr(),
               hintStyle: TextStyle(
                 color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                 fontSize: 14,

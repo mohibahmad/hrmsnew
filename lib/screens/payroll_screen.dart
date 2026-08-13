@@ -353,26 +353,47 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
 
     final now = DateTime.now();
-    final window = PayrollService.reminderWindowForDate(
-      now,
-      payDay: _salaryPayDay,
-    );
-    if (window == null) {
-      _reminderHandledForActivation = true;
-      _forceReminderForActivation = false;
-      return;
-    }
-    final payableWorkers = _payableWorkersForPeriod(window.payrollMonth);
-    if (payableWorkers.isEmpty) {
-      _reminderHandledForActivation = true;
-      _forceReminderForActivation = false;
-      return;
-    }
     final forceReminder = _forceReminderForActivation;
     _forceReminderForActivation = false;
+
+    PayrollReminderWindow? window;
+    if (forceReminder) {
+      // A direct Payroll sidebar click always checks the current payroll
+      // period. This must not fall back to the previous month's reminder
+      // window when the selected pay day is still more than three days away.
+      final today = DateTime(now.year, now.month, now.day);
+      final payrollMonth = PayrollService.currentPayrollMonth(
+        referenceDate: today,
+      );
+      final dueDate = _salaryPayDay == null
+          ? PayrollService.payPeriodEnd(payrollMonth)
+          : PayrollService.payrollDueDate(payrollMonth, _salaryPayDay!);
+      window = PayrollReminderWindow(
+        payrollMonth: payrollMonth,
+        dueDate: dueDate,
+        dayOffset: today.difference(dueDate).inDays,
+      );
+    } else {
+      window = PayrollService.reminderWindowForDate(
+        now,
+        payDay: _salaryPayDay,
+      );
+    }
+    if (window == null) {
+      _reminderHandledForActivation = true;
+      return;
+    }
+    final reminderWindow = window;
+    final payableWorkers = _payableWorkersForPeriod(
+      reminderWindow.payrollMonth,
+    );
+    if (payableWorkers.isEmpty) {
+      _reminderHandledForActivation = true;
+      return;
+    }
     if (!forceReminder &&
         await PreferencesService.isPayrollReminderSuppressed(
-          window.suppressionKey,
+          reminderWindow.suppressionKey,
           now: now,
         )) {
       _reminderHandledForActivation = true;
@@ -382,7 +403,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     _reminderHandledForActivation = true;
     _reminderDialogOpen = true;
-    final offset = window.dayOffset;
+    final offset = reminderWindow.dayOffset;
     final status = offset < -1
         ? 'payroll_due_in_days'.tr(namedArgs: {'days': '${offset.abs()}'})
         : offset == -1
@@ -393,7 +414,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         ? 'payroll_overdue_one_day'.tr()
         : 'payroll_overdue_days'.tr(namedArgs: {'days': '$offset'});
     final dueDate = AppDateUtils.fromValueLocalized(
-      window.dueDate,
+      reminderWindow.dueDate,
       locale: context.locale.toString(),
     );
     final action = await showGeneralDialog<_PayrollReminderAction>(
@@ -622,21 +643,21 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     switch (action) {
       case _PayrollReminderAction.remindLater:
         await PreferencesService.snoozePayrollReminder(
-          window.suppressionKey,
+          reminderWindow.suppressionKey,
           now: now,
         );
         if (mounted) setState(() => _selectedFilter = 'Paid');
         break;
       case _PayrollReminderAction.ignore:
         await PreferencesService.ignorePayrollReminder(
-          window.suppressionKey,
+          reminderWindow.suppressionKey,
         );
         if (mounted) setState(() => _selectedFilter = 'Paid');
         break;
       case _PayrollReminderAction.viewPayable:
         if (mounted) {
           setState(() {
-            _payrollMonth = window.payrollMonth;
+            _payrollMonth = reminderWindow.payrollMonth;
             _selectedFilter = 'Pay';
             _combinePayroll();
           });

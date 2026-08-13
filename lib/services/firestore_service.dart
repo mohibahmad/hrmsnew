@@ -1494,19 +1494,27 @@ class FirestoreService {
     for (final att in records) {
       final attendanceWorkerId = (att['workerId'] ?? '').toString().trim();
       final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final identityMatches =
-          normalizedWorkerId.isNotEmpty && attendanceWorkerId.isNotEmpty
-          ? normalizedWorkerId == attendanceWorkerId
-          : normalizedEmail.isNotEmpty && attEmail == normalizedEmail;
+      final workerIdMatches =
+          normalizedWorkerId.isNotEmpty &&
+          attendanceWorkerId.isNotEmpty &&
+          normalizedWorkerId == attendanceWorkerId;
+      final emailMatches =
+          normalizedEmail.isNotEmpty &&
+          attEmail.isNotEmpty &&
+          normalizedEmail == attEmail;
+      // Exact email is a safe fallback for older attendance documents whose
+      // worker ID was saved in a different format. Worker emails are unique,
+      // and this keeps Add Payroll and Payroll Review on the same identity.
+      final identityMatches = workerIdMatches || emailMatches;
       if (!identityMatches) continue;
       final date = AppDateUtils.attendanceRecordDate(att);
       if (date == null) continue;
       if (date.year != targetMonth.year || date.month != targetMonth.month) {
         continue;
       }
-      final identityKey = attendanceWorkerId.isNotEmpty
-          ? attendanceWorkerId
-          : attEmail;
+      final identityKey = normalizedWorkerId.isNotEmpty
+          ? normalizedWorkerId
+          : normalizedEmail;
       final dayKey = '$identityKey-${date.year}-${date.month}-${date.day}';
       if (seenDays.contains(dayKey)) continue;
       seenDays.add(dayKey);
