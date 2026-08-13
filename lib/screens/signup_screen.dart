@@ -515,8 +515,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
               decoration: _buildCustomInputDecoration('email_hint'.tr()),
               validator: (value) {
-                if (value == null || value.trim().isEmpty)
+                if (value == null || value.trim().isEmpty) {
                   return 'email_required'.tr();
+                }
                 if (!RegExp(
                   r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                 ).hasMatch(value.trim())) {
@@ -548,8 +549,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'password_enter'.tr();
+                }
                 if (value.length < 6) return 'password_too_short'.tr();
                 return null;
               },
@@ -584,10 +586,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'confirm_password_required'.tr();
-                if (value != _passwordController.text)
+                }
+                if (value != _passwordController.text) {
                   return 'passwords_do_not_match'.tr();
+                }
                 return null;
               },
             ),
@@ -604,7 +608,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
             foregroundColor: const Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+            disabledBackgroundColor: const Color(0xFF0044C9).withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -687,7 +691,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withOpacity(0.4),
+          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
           width: 1.2,
         ),
       ),
@@ -819,7 +823,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                         spreadRadius: 3,
                                       ),
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
+                                        color: Colors.black.withValues(alpha: 0.3),
                                         blurRadius: 30,
                                         offset: const Offset(10, 9),
                                       ),
@@ -881,7 +885,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

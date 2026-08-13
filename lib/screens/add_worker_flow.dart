@@ -389,16 +389,14 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       _experienceLevelController.text =
           (widget.workerToEdit!['experienceLevel'] ?? 'Mid-Level').toString();
-      if (_experienceLevelController.text.isEmpty)
-        _experienceLevelController.text = 'Mid-Level';
+      if (_experienceLevelController.text.isEmpty) { _experienceLevelController.text = 'Mid-Level'; }
 
       _educationController.text =
           (widget.workerToEdit!['education'] ?? 'Bachelor').toString();
       if (_educationController.text.trim() == 'Bachelors') {
         _educationController.text = 'Bachelor';
       }
-      if (_educationController.text.isEmpty)
-        _educationController.text = 'Bachelor';
+      if (_educationController.text.isEmpty) { _educationController.text = 'Bachelor'; }
 
       _salaryAmountController.text = CurrencyUtils.amountText(
         widget.workerToEdit!['salaryAmount'],
@@ -406,8 +404,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       _leavePolicyController.text =
           (widget.workerToEdit!['leavePolicy'] ?? 'Standard').toString();
-      if (_leavePolicyController.text.isEmpty)
-        _leavePolicyController.text = 'Standard';
+      if (_leavePolicyController.text.isEmpty) { _leavePolicyController.text = 'Standard'; }
 
       _annualLeavesController.text = LeaveBalanceHelper.leaveDaysText(
         widget.workerToEdit!['annualLeaves'],
@@ -429,7 +426,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       _existingProfileImageUrl = widget.workerToEdit!['profileImage']
           ?.toString();
 
-      String? _firstNonEmpty(List<String?> values) {
+      String? firstNonEmpty(List<String?> values) {
         for (final v in values) {
           final s = v?.toString();
           if (s != null && s.isNotEmpty && s != 'null') return s;
@@ -437,7 +434,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         return null;
       }
 
-      _existingFrontIdUrl = _firstNonEmpty([
+      _existingFrontIdUrl = firstNonEmpty([
         widget.workerToEdit!['frontId']?.toString(),
         widget.workerToEdit!['front_id']?.toString(),
         widget.workerToEdit!['idFront']?.toString(),
@@ -448,7 +445,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         _frontIdName = _cleanFileName(_existingFrontIdUrl!);
       }
 
-      _existingBackIdUrl = _firstNonEmpty([
+      _existingBackIdUrl = firstNonEmpty([
         widget.workerToEdit!['backId']?.toString(),
         widget.workerToEdit!['back_id']?.toString(),
         widget.workerToEdit!['idBack']?.toString(),
@@ -463,7 +460,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       if (_existingCvUrl != null && _existingCvUrl!.isNotEmpty) {
         _isCvUploaded = true;
         _cvName =
-            _firstNonEmpty([
+            firstNonEmpty([
               widget.workerToEdit!['cvFileName']?.toString(),
               widget.workerToEdit!['cv_file_name']?.toString(),
               widget.workerToEdit!['cvName']?.toString(),
@@ -706,29 +703,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     required int maxBytes,
     required String sizeLabel,
   }) async {
-    final memoryBytes = file.bytes;
-    if (memoryBytes != null) {
-      if (memoryBytes.length > maxBytes) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'file_too_large'.tr(namedArgs: {'size': sizeLabel}),
-            isError: true,
-          );
-        }
-        return null;
-      }
-      return memoryBytes;
-    }
-
-    final path = file.path;
-    if (path == null || path.trim().isEmpty) {
-      throw StateError('failed_to_pick_file'.tr());
-    }
-
-    final diskFile = io.File(path);
-    final fileSize = await diskFile.length();
-    if (fileSize > maxBytes) {
+    final memoryBytes = await file.readAsBytes();
+    if (memoryBytes.length > maxBytes) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -738,8 +714,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       }
       return null;
     }
-
-    return diskFile.readAsBytes();
+    return memoryBytes;
   }
 
   String _mimeTypeForFileName(String fileName) {
@@ -1026,8 +1001,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.image,
-        allowMultiple: false,
-        withData: true,
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
@@ -1070,8 +1043,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           'bmp',
           'webp',
         ],
-        allowMultiple: false,
-        withData: true,
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
@@ -1113,8 +1084,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           'bmp',
           'webp',
         ],
-        allowMultiple: false,
-        withData: true,
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
@@ -1156,8 +1125,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           'bmp',
           'webp',
         ],
-        allowMultiple: false,
-        withData: true,
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
@@ -1855,16 +1822,16 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       if (widget.workerToEdit != null) {
         final currentUrls = <String>{
-          if (profileImageUrl != null) profileImageUrl,
-          if (frontIdUrl != null) frontIdUrl,
-          if (backIdUrl != null) backIdUrl,
-          if (cvUrl != null) cvUrl,
+          ?profileImageUrl,
+          ?frontIdUrl,
+          ?backIdUrl,
+          ?cvUrl,
         };
         final oldUrls = <String>{
-          if (oldProfileImageUrl != null) oldProfileImageUrl,
-          if (oldFrontIdUrl != null) oldFrontIdUrl,
-          if (oldBackIdUrl != null) oldBackIdUrl,
-          if (oldCvUrl != null) oldCvUrl,
+          ?oldProfileImageUrl,
+          ?oldFrontIdUrl,
+          ?oldBackIdUrl,
+          ?oldCvUrl,
         };
         for (final oldUrl in oldUrls) {
           if (oldUrl.isNotEmpty && !currentUrls.contains(oldUrl)) {
@@ -5042,8 +5009,7 @@ Widget _buildInputField(
 
                       if (intPart.length > 12) return oldValue;
 
-                      if (parts.length > 1 && parts[1].length > 2)
-                        return oldValue;
+                      if (parts.length > 1 && parts[1].length > 2) { return oldValue; }
                       final decPart = parts.length > 1 ? '.${parts[1]}' : '';
                       final buffer = StringBuffer();
                       for (int i = 0; i < intPart.length; i++) {
@@ -5076,10 +5042,8 @@ Widget _buildInputField(
                 ]
               : () {
                   final list = <TextInputFormatter>[];
-                  if (isEmailField)
-                    list.add(LengthLimitingTextInputFormatter(100));
-                  if (isReligion)
-                    list.add(LengthLimitingTextInputFormatter(30));
+                  if (isEmailField) { list.add(LengthLimitingTextInputFormatter(100)); }
+                  if (isReligion) { list.add(LengthLimitingTextInputFormatter(30)); }
                   return list.isEmpty ? null : list;
                 }(),
           style: const TextStyle(

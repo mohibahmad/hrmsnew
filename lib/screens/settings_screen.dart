@@ -291,8 +291,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ),
                                 validator: (value) {
                                   final email = value?.trim() ?? '';
-                                  if (email.isEmpty)
+                                  if (email.isEmpty) {
                                     return 'email_required'.tr();
+                                  }
                                   if (!RegExp(
                                     r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                                   ).hasMatch(email)) {

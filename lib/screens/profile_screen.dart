@@ -357,18 +357,15 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.image,
-        allowMultiple: false,
       );
 
       if (result == null || !mounted) return;
 
       final file = result.files.single;
-      var fileSize = file.bytes?.length;
+      final fileBytes = await file.readAsBytes();
+      final fileSize = fileBytes.length;
       final filePath = file.path?.trim();
-      if (fileSize == null && filePath != null && filePath.isNotEmpty) {
-        fileSize = await File(filePath).length();
-      }
-      if (fileSize != null && fileSize > _maxProfileImageBytes) {
+      if (fileSize > _maxProfileImageBytes) {
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -377,7 +374,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         );
         return;
       }
-      if (file.bytes == null && (filePath == null || filePath.isEmpty)) {
+      if (fileBytes.isEmpty && (filePath == null || filePath.isEmpty)) {
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -391,7 +388,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 
       if (!mounted) return;
       setState(() {
-        _newProfileImageBytes = file.bytes;
+        _newProfileImageBytes = fileBytes;
         _newProfileImagePath = filePath;
       });
     } catch (error, stackTrace) {
@@ -751,7 +748,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           'contact1': contact1,
           'contact2': contact2,
           'address': address,
-          if (downloadUrl != null) 'profilePic': downloadUrl,
+          'profilePic': ?downloadUrl,
           if (stampDownloadUrl != null)
             'companyStampUrl': stampDownloadUrl
           else if (_clearCompanyStamp)
@@ -1130,7 +1127,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     final hasNewPath = _newProfileImagePath != null;
     final hasCustomPic = _profilePicUrl != null && _profilePicUrl!.isNotEmpty;
 
-    Widget _buildLoadingIndicator() {
+    Widget buildLoadingIndicator() {
       return const Center(
         child: SizedBox(
           width: 24,
@@ -1140,7 +1137,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       );
     }
 
-    Widget _buildFallbackIcon() {
+    Widget buildFallbackIcon() {
       return const Icon(
         Icons.business_rounded,
         size: 40,
@@ -1155,7 +1152,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+        errorBuilder: (_, _, _) => buildFallbackIcon(),
       );
     } else if (hasNewPath) {
       childWidget = Image.file(
@@ -1163,7 +1160,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+        errorBuilder: (_, _, _) => buildFallbackIcon(),
       );
     } else if (hasCustomPic) {
       if (_profilePicUrl!.startsWith('http')) {
@@ -1172,19 +1169,19 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          placeholder: (_, __) => _buildLoadingIndicator(),
-          errorWidget: (_, __, ___) => _buildFallbackIcon(),
+          placeholder: (_, _) => buildLoadingIndicator(),
+          errorWidget: (_, _, _) => buildFallbackIcon(),
         );
       } else if (_profilePicUrl!.startsWith('data:image')) {
         final decodedBytes = _decodeProfileDataImage(_profilePicUrl!);
         childWidget = decodedBytes == null
-            ? _buildFallbackIcon()
+            ? buildFallbackIcon()
             : Image.memory(
                 decodedBytes,
                 width: 90,
                 height: 90,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+                errorBuilder: (_, _, _) => buildFallbackIcon(),
               );
       } else {
         childWidget = Image.file(
@@ -1192,7 +1189,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+          errorBuilder: (_, _, _) => buildFallbackIcon(),
         );
       }
     } else {
@@ -1201,7 +1198,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+        errorBuilder: (_, _, _) => buildFallbackIcon(),
       );
     }
 
@@ -1410,7 +1407,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         height: 96,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => const Icon(
+        errorBuilder: (_, _, _) => const Icon(
           Icons.approval_outlined,
           size: 48,
           color: Color(0xFF0B2A6F),
@@ -1422,7 +1419,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return Image.memory(
         _newCompanyStampBytes!,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     }
     if (_clearCompanyStamp ||
@@ -1435,14 +1432,14 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return CachedNetworkImage(
         imageUrl: value,
         fit: BoxFit.contain,
-        placeholder: (_, __) => const Center(
+        placeholder: (_, _) => const Center(
           child: SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        errorWidget: (_, __, ___) => fallback(),
+        errorWidget: (_, _, _) => fallback(),
       );
     }
     if (value.startsWith('data:image')) {
@@ -1452,13 +1449,13 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           : Image.memory(
               bytes,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => fallback(),
+              errorBuilder: (_, _, _) => fallback(),
             );
     }
     return Image.file(
       File(value),
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => fallback(),
+      errorBuilder: (_, _, _) => fallback(),
     );
   }
 

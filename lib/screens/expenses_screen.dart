@@ -285,10 +285,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     final now = DateTime.now();
     int maxDays = 365;
-    if (period == 'Today') maxDays = 0;
-    else if (period == 'Week' || period == 'This Week') maxDays = 7;
-    else if (period == 'Month' || period == 'This Month') maxDays = 30;
-    else if (period == '6 Month' || period == 'Last 6 Months') maxDays = 180;
+    if (period == 'Today') {
+      maxDays = 0;
+    } else if (period == 'Week' || period == 'This Week') {
+      maxDays = 7;
+    } else if (period == 'Month' || period == 'This Month') {
+      maxDays = 30;
+    } else if (period == '6 Month' || period == 'Last 6 Months') {
+      maxDays = 180;
+    }
 
     for (int i = 0; i < dummyList.length; i++) {
       int daysAgo = (i * (maxDays + 1) / dummyList.length).floor();
@@ -484,7 +489,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           return;
                         }
                         await onSave(result);
-                        if (mounted) Navigator.of(context).pop();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
                       },
                     ),
                     const SizedBox(height: 24),
@@ -723,6 +729,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 expPolicy['maxExpenseLimitPerClaim']?.toString() ?? '500.0',
               ) ??
               500.0;
+          if (!mounted) return null;
           if (amt > maxLimit) {
             FlashySnackBar.show(
               context,
@@ -772,15 +779,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           } else {
             await _firestore.addExpense(expenseMap);
           }
-          if (mounted) {
-            FlashySnackBar.show(
-              parentContext,
-              message: 'successfully_added_expense'.tr(
-                namedArgs: {'name': expenseMap['category']},
-              ),
-            );
-            tryShowFirstMilestoneRateUs('expense');
-          }
+          if (!context.mounted) return;
+          FlashySnackBar.show(
+            parentContext,
+            message: 'successfully_added_expense'.tr(
+              namedArgs: {'name': expenseMap['category']},
+            ),
+          );
+          tryShowFirstMilestoneRateUs('expense');
         } catch (e) {
           if (mounted) {
             FlashySnackBar.show(
@@ -1404,7 +1410,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: expenses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) => _buildDataRow(expenses[index], index),
             ),
           ),

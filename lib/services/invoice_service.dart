@@ -118,17 +118,6 @@ class InvoiceService {
       workerId: workerId,
     );
 
-    final hasOvertime = _parseValue(overtimePay) > 0;
-    final hasAbsentDeduction = _parseValue(absentDeduction) > 0;
-    final hasLeaveDeduction = _parseValue(leaveDeduction) > 0;
-    final hasTaxDeduction = _parseValue(taxDeduction) > 0;
-    final hasDeductions = _parseValue(totalDeductions) > 0;
-    final grossVal = _parseValue(grossPay);
-    final overtimeVal = _parseValue(overtimePay);
-    final totalDeductionsVal = _parseValue(totalDeductions);
-    final totalEarningsVal = grossVal + overtimeVal;
-    final rawNetVal = totalEarningsVal - totalDeductionsVal;
-    final isNegativeNet = rawNetVal < 0;
     final invoiceLeaves = resolveInvoiceLeaveDays(
       leaves: leaves,
       paidLeaves: paidLeaves,
@@ -137,6 +126,15 @@ class InvoiceService {
     final deductibleLeaveDays = unpaidLeaves.trim().isNotEmpty
         ? unpaidLeaves.trim()
         : leaves;
+
+    final hasOvertime = _parseValue(overtimePay) > 0;
+    final hasAbsentDeduction =
+        _parseValue(absentDeduction) > 0 && _parseValue(absents) > 0;
+    final hasLeaveDeduction =
+        _parseValue(leaveDeduction) > 0 && _parseValue(deductibleLeaveDays) > 0;
+    final hasTaxDeduction = _parseValue(taxDeduction) > 0;
+    final hasDeductions = _parseValue(totalDeductions) > 0;
+    final isNegativeNet = _parseValue(netSalary) < 0;
 
     pdf.addPage(
       pw.MultiPage(

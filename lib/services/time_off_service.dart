@@ -764,7 +764,7 @@ class TimeOffService {
   static int totalAvailableLeaves(Map<String, dynamic> worker) {
     final balances =
         canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
-    return balances.values.fold(0, (sum, value) => sum + value);
+    return balances.values.fold(0, (total, value) => total + value);
   }
 
   static bool isWorkerLimitReached(

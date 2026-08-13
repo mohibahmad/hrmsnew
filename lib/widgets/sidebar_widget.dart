@@ -359,7 +359,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/workforce_icon_sldiebar.svg',
               height: 22,
               width: 22,
-              color: Color(0xFFFFFFFF),
+              colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -418,7 +418,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     iconSource.toString(),
                     height: 20,
                     width: 20,
-                    color: const Color(0xFFFFFFFF),
+                    colorFilter: ColorFilter.mode(const Color(0xFFFFFFFF), BlendMode.srcIn),
                   ),
             const SizedBox(width: 12),
             Expanded(
@@ -451,7 +451,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/tick_icon.svg',
               width: 14,
               height: 10,
-              color: Color(0xFFFFFFFF),
+              colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
             ),
             const SizedBox(width: 8),
             Text(
@@ -506,7 +506,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         iconAsset,
                         height: 22,
                         width: 22,
-                        color: Color(0xFFFFFFFF),
+                        colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
                       ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -1135,20 +1134,18 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
               ),
               child: StatefulBuilder(
                 builder: (_, setDialogState) {
-                  Future<void> _pickMediaFile() async {
+                  Future<void> pickMediaFile() async {
                     try {
                       final result = await FilePicker.pickFiles(
                         type: FileType.custom,
-                        allowMultiple: false,
-                        withData: true,
                         allowedExtensions: fieldKey == 'cv'
                             ? ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
                             : ['jpg', 'jpeg', 'png'],
                       );
                       if (result != null && result.files.isNotEmpty) {
                         final file = result.files.first;
-                        Uint8List? bytes = file.bytes;
-                        if (bytes != null && bytes.length > 10 * 1024 * 1024) {
+                        final bytes = await file.readAsBytes();
+                        if (bytes.length > 10 * 1024 * 1024) {
                           setDialogState(() {
                             dialogError = 'file_too_large'.tr(
                               namedArgs: {'size': '10MB'},
@@ -1156,19 +1153,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                           });
                           return;
                         }
-                        if (bytes == null && file.path != null) {
-                          final selectedFile = io.File(file.path!);
-                          if (await selectedFile.length() > 10 * 1024 * 1024) {
-                            setDialogState(() {
-                              dialogError = 'file_too_large'.tr(
-                                namedArgs: {'size': '10MB'},
-                              );
-                            });
-                            return;
-                          }
-                          bytes = await selectedFile.readAsBytes();
-                        }
-                        if (bytes != null && bytes.isNotEmpty) {
+                        if (bytes.isNotEmpty) {
                           final ext = file.name.split('.').last.toLowerCase();
                           const mimeMap = {
                             'pdf': 'application/pdf',
@@ -1296,7 +1281,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                                 fieldKey == 'backId' ||
                                                 fieldKey == 'cv')
                                             ? GestureDetector(
-                                                onTap: () => _pickMediaFile(),
+                                                onTap: () => pickMediaFile(),
                                                 child: Container(
                                                   margin:
                                                       const EdgeInsets.symmetric(

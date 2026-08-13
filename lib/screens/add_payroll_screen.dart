@@ -129,8 +129,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   String get _position => (widget.workerData['position'] ?? '').toString();
 
-  String get _status => (widget.workerData['status'] ?? 'Active').toString();
-
   String get _phone =>
       (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '')
           .toString();
@@ -229,6 +227,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       totalDays,
     );
 
+    _normalizeAbsentDeduction(absentDays: absentDays);
+
     final result = PayrollService.calculatePayroll(
       salary: _salaryStr,
       totalWorkDays: _workDaysCtrl.text,
@@ -302,6 +302,50 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       widget.workerData['isPaid'] == true;
 
   bool get _canEditInputs => !widget.readOnly;
+
+  bool get _hasAbsences => (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
+
+  void _normalizeAbsentDeduction({required int absentDays}) {
+    if (absentDays <= 0) {
+      if (_absentDeductionCtrl.text.isNotEmpty) {
+        _absentDeductionCtrl.clear();
+      }
+      return;
+    }
+
+    final requested = PayrollService.extractSalary(_absentDeductionCtrl.text);
+    if (requested <= 0) return;
+
+    final leaveOnlyCalculation = PayrollService.calculatePayroll(
+      salary: _salaryStr,
+      totalWorkDays: _workDaysCtrl.text,
+      absents: '0',
+      leaves: _unpaidLeaves.toString(),
+      overtimeAmount: _overtimeAmountCtrl.text,
+      leaveDeductionPerDay: _leaveDeductionCtrl.text,
+      salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
+      prorationFactor: _prorationFactor,
+    );
+    final capped = PayrollService.cappedAbsentDeduction(
+      hasAbsences: true,
+      requestedDeduction: requested,
+      salary: _salaryStr,
+      overtimeAmount: _overtimeAmountCtrl.text,
+      leaveDeduction: (leaveOnlyCalculation['leaveDeduction'] as num? ?? 0)
+          .toString(),
+      salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
+      prorationFactor: _prorationFactor,
+    );
+    if (capped == requested) return;
+
+    final text = capped % 1 == 0
+        ? capped.toStringAsFixed(0)
+        : capped.toStringAsFixed(2);
+    _absentDeductionCtrl.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
 
   (DateTime, DateTime) get _currentPayPeriod {
     if (_isPaidRecord) {
@@ -1633,7 +1677,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   '0',
                   _absentDeductionCtrl,
                   isCurrency: true,
-                  readOnly: !_canEditInputs,
+                  readOnly: !_canEditInputs || !_hasAbsences,
                 ),
               ),
               const SizedBox(width: 8),

@@ -95,9 +95,11 @@ Future<void> downloadTemplate(BuildContext context) async {
 
     await io.File(outputFile).writeAsString(templateStr);
 
+    if (!context.mounted) return;
     FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
     await FileOpener.open(outputFile);
   } catch (_) {
+    if (!context.mounted) return;
     FlashySnackBar.show(
       context,
       message: 'could_not_download_template'.tr(),
@@ -110,7 +112,6 @@ Future<Uint8List?> pickCsvFile() async {
   final result = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: ['csv'],
-    withData: true,
   );
 
   if (result == null || result.files.isEmpty) return null;
@@ -118,18 +119,9 @@ Future<Uint8List?> pickCsvFile() async {
   final file = result.files.first;
   const int maxBytes = 5 * 1024 * 1024;
 
-  if (file.bytes != null && file.bytes!.length > maxBytes) {
+  final bytes = await file.readAsBytes();
+  if (bytes.length > maxBytes) {
     return null;
-  }
-
-  Uint8List? bytes = file.bytes;
-
-  if (bytes == null && file.path != null) {
-    final diskFile = io.File(file.path!);
-    if (await diskFile.length() > maxBytes) {
-      return null;
-    }
-    bytes = await diskFile.readAsBytes();
   }
 
   return bytes;

@@ -150,7 +150,7 @@ void showCupertinoDatePickerDialog({
     barrierLabel: 'Date Picker',
     barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
     transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    pageBuilder: (_, _, _) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, secondaryAnim, child) {
       return ScaleTransition(
         scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),

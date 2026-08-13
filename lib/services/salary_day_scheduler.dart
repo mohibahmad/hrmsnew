@@ -112,9 +112,12 @@ class AutoPayrollResult {
     required DateTime periodEnd,
     required DateTime runDate,
   }) {
+    final effectiveName = workerName.trim().isNotEmpty
+        ? workerName.trim()
+        : (email.trim().isNotEmpty ? email.trim() : 'Worker');
     return {
       'workerId': workerId,
-      'name': workerName,
+      'name': effectiveName,
       'email': email,
       'position': position,
       if (employmentType.trim().isNotEmpty) 'type1': employmentType.trim(),
@@ -338,7 +341,8 @@ class PayrollRunner {
         final daysMap = results[2] as Map<String, dynamic>;
         autoWorkDays = (daysMap['_days'] as int?) ?? 0;
         final attendanceMap = results[3] as Map<String, dynamic>;
-        preFetchedAttendance = (attendanceMap['_attendance'] as List<dynamic>?)
+        preFetchedAttendance =
+            (attendanceMap['_attendance'] as List<dynamic>?)
                 ?.cast<Map<String, dynamic>>() ??
             [];
       }
@@ -554,6 +558,9 @@ class PayrollRunner {
           ? workerOvertime
           : prevOvertime;
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
+      final prevCustomDeduction = PayrollService.extractSalary(
+        (prevRecord?['customDeduction'] ?? '0').toString(),
+      );
 
       late double absentDeductionTotal;
       late double leaveDeductionTotal;
@@ -593,10 +600,30 @@ class PayrollRunner {
             salaryType: salaryType,
             prorationFactor: prorationFactor,
           );
-          netSalary = calc['formattedNet'] as String? ?? '0';
-          rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
           leaveDeductionTotal =
               (calc['leaveDeduction'] as num?)?.toDouble() ?? 0;
+          absentDeductionTotal = PayrollService.cappedAbsentDeduction(
+            hasAbsences: absents > 0 || halfDays > 0,
+            requestedDeduction: absentDeductionTotal,
+            salary: salaryStr,
+            overtimeAmount: overtimeAmount,
+            leaveDeduction: leaveDeductionTotal.toString(),
+            customDeduction: prevCustomDeduction.toString(),
+            salaryType: salaryType,
+            prorationFactor: prorationFactor,
+          );
+          rawNetVal = PayrollService.calculateNetFromTotals(
+            salary: salaryStr,
+            overtimeAmount: overtimeAmount,
+            absentDeduction: absentDeductionTotal.toString(),
+            leaveDeduction: leaveDeductionTotal.toString(),
+            customDeduction: prevCustomDeduction.toString(),
+            salaryType: salaryType,
+            prorationFactor: prorationFactor,
+          );
+          final currency = PayrollService.getCurrencyPrefix(salaryStr);
+          final prefix = currency.isNotEmpty ? '$currency ' : '';
+          netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
         } else {
           final workerAbsentDeduction = (worker['absentDeduction'] ?? '')
               .toString()
@@ -618,12 +645,22 @@ class PayrollRunner {
           absentDeductionTotal = perDayVal > 0
               ? perDayVal * (absents + (halfDays * 0.5))
               : dailyRate * (absents + (halfDays * 0.5));
+          absentDeductionTotal = PayrollService.cappedAbsentDeduction(
+            hasAbsences: absents > 0 || halfDays > 0,
+            requestedDeduction: absentDeductionTotal,
+            salary: salaryStr,
+            overtimeAmount: overtimeAmount,
+            leaveDeduction: leaveDeductionTotal.toString(),
+            customDeduction: prevCustomDeduction.toString(),
+            salaryType: salaryType,
+            prorationFactor: prorationFactor,
+          );
           rawNetVal = PayrollService.calculateNetFromTotals(
             salary: salaryStr,
             overtimeAmount: overtimeAmount,
             absentDeduction: absentDeductionTotal.toString(),
             leaveDeduction: leaveDeductionTotal.toString(),
-            customDeduction: '0',
+            customDeduction: prevCustomDeduction.toString(),
             salaryType: salaryType,
             prorationFactor: prorationFactor,
           );
@@ -666,10 +703,6 @@ class PayrollRunner {
         );
         continue;
       }
-
-      final prevCustomDeduction = PayrollService.extractSalary(
-        (prevRecord?['customDeduction'] ?? '0').toString(),
-      );
 
       results.add(
         AutoPayrollResult(
@@ -743,11 +776,12 @@ class PayrollRunner {
           );
         }
         if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'failed_to_save_record'.tr(),
-            isError: true,
-          );
+          final msg = error is StateError && error.message.isNotEmpty
+              ? error.message
+              : (error.toString().isNotEmpty
+                    ? error.toString()
+                    : 'failed_to_save_record'.tr());
+          FlashySnackBar.show(context, message: msg, isError: true);
         }
         return null;
       }
@@ -775,11 +809,12 @@ class PayrollRunner {
           );
         }
         if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'failed_to_save_record'.tr(),
-            isError: true,
-          );
+          final msg = error is StateError && error.message.isNotEmpty
+              ? error.message
+              : (error.toString().isNotEmpty
+                    ? error.toString()
+                    : 'failed_to_save_record'.tr());
+          FlashySnackBar.show(context, message: msg, isError: true);
         }
         return null;
       }
@@ -950,24 +985,30 @@ class PayrollRunner {
     final latestPayrollRecords = latestPayrollSnapshot.docs
         .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
         .toList();
-    final paidSelectionExists = successfulResults.any(
-      (result) => latestPayrollRecords.any(
+    final unpaidResults = successfulResults.where((result) {
+      final isAlreadyPaid = latestPayrollRecords.any(
         (record) => _isPaidPayrollForWorker(
           record: record,
           worker: {'id': result.workerId, 'email': result.email},
           month: payPeriodDate,
         ),
-      ),
-    );
-    if (paidSelectionExists) {
-      throw StateError('A selected payroll record is already paid');
+      );
+      return !isAlreadyPaid;
+    }).toList();
+
+    if (unpaidResults.isEmpty) {
+      throw StateError(
+        'selected_workers_already_paid'.tr().isNotEmpty
+            ? 'selected_workers_already_paid'.tr()
+            : 'Selected workers are already paid for this period',
+      );
     }
 
     final payrollRecords = <Map<String, dynamic>>[];
     final expenseRecords = <Map<String, dynamic>>[];
     final notifications = <Map<String, dynamic>>[];
 
-    for (final r in successfulResults) {
+    for (final r in unpaidResults) {
       final payrollIdentity = r.workerId.isNotEmpty
           ? r.workerId
           : r.email.trim().toLowerCase();
@@ -985,12 +1026,16 @@ class PayrollRunner {
       );
       payrollRecords.add(record);
 
+      final effectiveWorkerName = r.workerName.trim().isNotEmpty
+          ? r.workerName.trim()
+          : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
+
       final netAmount = r.rawNetSalaryValue;
       if (netAmount > 0) {
         expenseRecords.add({
           'workerId': r.workerId,
           'workerEmail': r.email.trim().toLowerCase(),
-          'name': r.workerName,
+          'name': effectiveWorkerName,
           'date': summary.runDate,
           'paidAt': summary.runDate,
           'payPeriod': periodEnd,
@@ -999,25 +1044,25 @@ class PayrollRunner {
           'category': 'Salary',
           'amount': netAmount,
           'description':
-              'Salary payment for ${r.workerName} (${summary.periodLabel})',
+              'Salary payment for $effectiveWorkerName (${summary.periodLabel})',
           'payrollKey': payrollKey,
         });
       }
 
       final amount = r.netSalary;
-      if (r.workerName.isNotEmpty) {
-        notifications.add({
-          'notificationKey': 'payroll_$payrollKey',
-          'type': 'payroll_added',
-          'title': 'notif_title_payroll'.tr(namedArgs: {'name': r.workerName}),
-          'message': amount.isNotEmpty
-              ? 'notif_msg_payroll_amount'.tr(
-                  namedArgs: {'amount': amount, 'name': r.workerName},
-                )
-              : 'notif_msg_payroll'.tr(namedArgs: {'name': r.workerName}),
-          'data': {'name': r.workerName, 'amount': amount},
-        });
-      }
+      notifications.add({
+        'notificationKey': 'payroll_$payrollKey',
+        'type': 'payroll_added',
+        'title': 'notif_title_payroll'.tr(
+          namedArgs: {'name': effectiveWorkerName},
+        ),
+        'message': amount.isNotEmpty
+            ? 'notif_msg_payroll_amount'.tr(
+                namedArgs: {'amount': amount, 'name': effectiveWorkerName},
+              )
+            : 'notif_msg_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
+        'data': {'name': effectiveWorkerName, 'amount': amount},
+      });
     }
 
     if (payrollRecords.isEmpty) return 0;
@@ -2491,7 +2536,7 @@ class PayrollRunner {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      'total_net_payment'.tr(),
+                                      'net_pay'.tr(),
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -2538,8 +2583,8 @@ class PayrollRunner {
                                         const Color(0xFF111827),
                                       ),
                                       _metricRow(
-                                        'leaves'.tr(),
-                                        '${result.leaves} ${result.leaves == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
+                                        'leaves_label'.tr(),
+                                        '${result.paidLeaves} ${result.paidLeaves == 1 ? 'day_suffix'.tr() : 'days_suffix'.tr()}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
@@ -2568,7 +2613,7 @@ class PayrollRunner {
                                         const Color(0xFF111827),
                                       ),
                                       _metricRow(
-                                        'overtime_bonus'.tr(),
+                                        'overtime_amount'.tr(),
                                         result.overtimeAmount.isNotEmpty
                                             ? AmountText.formatCompact(
                                                 result.overtimeAmount,
@@ -2595,6 +2640,13 @@ class PayrollRunner {
                                         value: result.absentDeduction,
                                         controllerKey: originalIndex * 10 + 1,
                                         controllers: overtimeControllers,
+                                        enabled:
+                                            (result.absents > 0 ||
+                                                result.halfDays > 0) &&
+                                            _maximumAbsentDeduction(result) > 0,
+                                        maximumValue: _maximumAbsentDeduction(
+                                          result,
+                                        ),
                                         onChanged: (val) {
                                           result.absentDeduction = val;
                                           _recalcWithDeductions(
@@ -2838,31 +2890,48 @@ class PayrollRunner {
     required String value,
     required int controllerKey,
     required Map<int, TextEditingController> controllers,
+    required bool enabled,
+    required double maximumValue,
     required void Function(String) onChanged,
   }) {
     if (!controllers.containsKey(controllerKey)) {
       controllers[controllerKey] = TextEditingController(
-        text: value.replaceAll(RegExp(r'[^0-9.]'), ''),
+        text: enabled ? value.replaceAll(RegExp(r'[^0-9.]'), '') : '0',
       );
     }
     final controller = controllers[controllerKey]!;
+    final currentValue = PayrollService.extractSalary(controller.text);
+    if (!enabled || currentValue > maximumValue) {
+      final normalizedValue = enabled ? maximumValue : 0.0;
+      final normalizedText = _editableAmount(normalizedValue);
+      controller.value = TextEditingValue(
+        text: normalizedText,
+        selection: TextSelection.collapsed(offset: normalizedText.length),
+      );
+    }
+    final accentColor = enabled
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF9CA3AF);
+    final borderColor = enabled
+        ? const Color(0xFFFECACA)
+        : const Color(0xFFE5E7EB);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: enabled ? const Color(0xFFFEF2F2) : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFECACA), width: 1),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Row(
         children: [
           Flexible(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFEF4444),
+                color: accentColor,
                 fontFamily: 'SF Pro Display',
               ),
               maxLines: 1,
@@ -2874,6 +2943,7 @@ class PayrollRunner {
             width: 90,
             child: TextField(
               controller: controller,
+              enabled: enabled,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -2881,17 +2951,17 @@ class PayrollRunner {
                 CommaCurrencyFormatter(),
                 LengthLimitingTextInputFormatter(14),
               ],
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'SF Pro Display',
-                color: Color(0xFFEF4444),
+                color: accentColor,
               ),
               textAlign: TextAlign.end,
               decoration: InputDecoration(
                 hintText: '0',
                 hintStyle: TextStyle(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                  color: accentColor.withValues(alpha: 0.4),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'SF Pro Display',
@@ -2903,17 +2973,15 @@ class PayrollRunner {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFFECACA),
-                    width: 1,
-                  ),
+                  borderSide: BorderSide(color: borderColor, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFFECACA),
-                    width: 1,
-                  ),
+                  borderSide: BorderSide(color: borderColor, width: 1),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: borderColor, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -2923,7 +2991,20 @@ class PayrollRunner {
                   ),
                 ),
               ),
-              onChanged: onChanged,
+              onChanged: (rawValue) {
+                final requested = PayrollService.extractSalary(rawValue);
+                final capped = requested.clamp(0.0, maximumValue).toDouble();
+                if (capped != requested) {
+                  final cappedText = _editableAmount(capped);
+                  controller.value = TextEditingValue(
+                    text: cappedText,
+                    selection: TextSelection.collapsed(
+                      offset: cappedText.length,
+                    ),
+                  );
+                }
+                onChanged(_editableAmount(capped));
+              },
             ),
           ),
         ],
@@ -3039,6 +3120,17 @@ class PayrollRunner {
   ) {
     r.customDeduction = deductionVal;
     try {
+      final absentDeduction = PayrollService.cappedAbsentDeduction(
+        hasAbsences: r.absents > 0 || r.halfDays > 0,
+        requestedDeduction: PayrollService.extractSalary(r.absentDeduction),
+        salary: r.salary,
+        overtimeAmount: r.overtimeAmount,
+        leaveDeduction: r.leaveDeduction,
+        customDeduction: deductionVal,
+        salaryType: r.salaryType,
+        prorationFactor: r.prorationFactor,
+      );
+      r.absentDeduction = _editableAmount(absentDeduction);
       final netPayment = PayrollService.calculateNetFromTotals(
         salary: r.salary,
         overtimeAmount: r.overtimeAmount,
@@ -3057,6 +3149,18 @@ class PayrollRunner {
       debugPrint('_recalcWithDeductions error: $e');
     }
     onUpdated();
+  }
+
+  double _maximumAbsentDeduction(AutoPayrollResult r) {
+    if (r.absents <= 0 && r.halfDays <= 0) return 0.0;
+    return PayrollService.maximumAbsentDeduction(
+      salary: r.salary,
+      overtimeAmount: r.overtimeAmount,
+      leaveDeduction: r.leaveDeduction,
+      customDeduction: r.customDeduction,
+      salaryType: r.salaryType,
+      prorationFactor: r.prorationFactor,
+    );
   }
 
   void _recalcOvertime(
@@ -3131,7 +3235,7 @@ class PayrollRunner {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
         loadingBuilder: (_, child, progress) =>
             progress == null ? child : fallback(),
       );
@@ -3148,7 +3252,7 @@ class PayrollRunner {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback(),
+          errorBuilder: (_, _, _) => fallback(),
         );
       } catch (_) {
         return ClipOval(child: fallback());
@@ -3159,7 +3263,7 @@ class PayrollRunner {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     } else {
       try {
@@ -3172,7 +3276,7 @@ class PayrollRunner {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback(),
+          errorBuilder: (_, _, _) => fallback(),
         );
       } catch (_) {
         return ClipOval(child: fallback());

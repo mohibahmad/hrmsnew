@@ -455,6 +455,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     try {
                                       final policies = await _firestore
                                           .getPolicies();
+                                      if (!mounted) return;
                                       final assetPolicyList = policies
                                           .where(
                                             (p) =>
@@ -486,6 +487,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
                                         if (assignedAssets >= maxAssets) {
                                           setModalState(() => isSaving = false);
+                                          if (!context.mounted) return;
                                           FlashySnackBar.show(
                                             context,
                                             message:
@@ -730,7 +732,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 elevation: 6,
                                 color: Colors.white,
                                 borderRadius: BorderRadius.zero,
-                                shadowColor: Colors.black.withOpacity(0.12),
+                                shadowColor: Colors.black.withValues(alpha: 0.12),
                                 child: Container(
                                   constraints: const BoxConstraints(
                                     maxHeight: 220,
@@ -751,7 +753,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                       ),
                                       shrinkWrap: true,
                                       itemCount: options.length,
-                                      separatorBuilder: (_, __) =>
+                                      separatorBuilder: (_, _) =>
                                           const Divider(
                                             height: 1,
                                             thickness: 0.6,
@@ -765,10 +767,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                           onTap: () => onSelected(option),
                                           splashColor: const Color(
                                             0xFF0247C4,
-                                          ).withOpacity(0.06),
+                                          ).withValues(alpha: 0.06),
                                           highlightColor: const Color(
                                             0xFF0247C4,
-                                          ).withOpacity(0.04),
+                                          ).withValues(alpha: 0.04),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 14,

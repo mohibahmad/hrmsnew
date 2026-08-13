@@ -15,6 +15,8 @@ class PayrollReminderWindow {
   });
 
   String get periodKey => PayrollService.payrollPeriodLabel(payrollMonth);
+  String get suppressionKey =>
+      '${periodKey}_${PayrollService.periodDateKey(dueDate)}';
 }
 
 class PayrollService {
@@ -113,27 +115,53 @@ class PayrollService {
     return date.day > lastDay - reminderDays;
   }
 
+  static DateTime payrollDueDate(DateTime month, int payDay) {
+    final normalizedDay = payDay.clamp(1, 31).toInt();
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    return DateTime(
+      month.year,
+      month.month,
+      normalizedDay.clamp(1, lastDay).toInt(),
+    );
+  }
+
   static PayrollReminderWindow? reminderWindowForDate(
     DateTime date, {
+    int? payDay,
     int leadDays = 3,
     int overdueDays = 3,
   }) {
     final today = DateTime(date.year, date.month, date.day);
-    final currentDueDate = payPeriodEnd(today);
+    final currentMonth = DateTime(today.year, today.month, 1);
+    final currentDueDate = payDay == null
+        ? payPeriodEnd(today)
+        : payrollDueDate(currentMonth, payDay);
     final daysUntilCurrentDue = currentDueDate.difference(today).inDays;
     if (daysUntilCurrentDue >= 0 && daysUntilCurrentDue <= leadDays) {
       return PayrollReminderWindow(
-        payrollMonth: DateTime(today.year, today.month, 1),
+        payrollMonth: currentMonth,
         dueDate: currentDueDate,
         dayOffset: -daysUntilCurrentDue,
       );
     }
 
-    final previousDueDate = DateTime(today.year, today.month, 0);
+    final daysAfterCurrentDue = today.difference(currentDueDate).inDays;
+    if (daysAfterCurrentDue > 0 && daysAfterCurrentDue <= overdueDays) {
+      return PayrollReminderWindow(
+        payrollMonth: currentMonth,
+        dueDate: currentDueDate,
+        dayOffset: daysAfterCurrentDue,
+      );
+    }
+
+    final previousMonth = DateTime(today.year, today.month - 1, 1);
+    final previousDueDate = payDay == null
+        ? payPeriodEnd(previousMonth)
+        : payrollDueDate(previousMonth, payDay);
     final daysAfterPreviousDue = today.difference(previousDueDate).inDays;
     if (daysAfterPreviousDue > 0 && daysAfterPreviousDue <= overdueDays) {
       return PayrollReminderWindow(
-        payrollMonth: DateTime(previousDueDate.year, previousDueDate.month, 1),
+        payrollMonth: previousMonth,
         dueDate: previousDueDate,
         dayOffset: daysAfterPreviousDue,
       );
@@ -983,6 +1011,48 @@ class PayrollService {
     return netSalary.clamp(0.0, double.infinity).toDouble();
   }
 
+  static double maximumAbsentDeduction({
+    required String salary,
+    String overtimeAmount = '',
+    String leaveDeduction = '',
+    String customDeduction = '',
+    String salaryType = 'Monthly',
+    double prorationFactor = 1.0,
+  }) {
+    final enteredSalary = extractSalary(salary);
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+        ? enteredSalary / 12
+        : enteredSalary;
+    final availableEarnings =
+        (periodSalary * prorationFactor) +
+        extractSalary(overtimeAmount) -
+        extractSalary(leaveDeduction) -
+        extractSalary(customDeduction);
+    return availableEarnings.clamp(0.0, double.infinity).toDouble();
+  }
+
+  static double cappedAbsentDeduction({
+    required bool hasAbsences,
+    required num requestedDeduction,
+    required String salary,
+    String overtimeAmount = '',
+    String leaveDeduction = '',
+    String customDeduction = '',
+    String salaryType = 'Monthly',
+    double prorationFactor = 1.0,
+  }) {
+    if (!hasAbsences || !requestedDeduction.isFinite) return 0.0;
+    final maximum = maximumAbsentDeduction(
+      salary: salary,
+      overtimeAmount: overtimeAmount,
+      leaveDeduction: leaveDeduction,
+      customDeduction: customDeduction,
+      salaryType: salaryType,
+      prorationFactor: prorationFactor,
+    );
+    return requestedDeduction.clamp(0.0, maximum).toDouble();
+  }
+
   static double prorationFactor({
     DateTime? joiningDate,
     required DateTime periodStart,
@@ -1057,12 +1127,25 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
-    final absentDeduction = customAbsentDeduction > 0
-        ? customAbsentDeduction
-        : absentDays * dailyRate;
-    final leaveDeduction = customLeaveDeduction > 0
-        ? customLeaveDeduction
-        : leaveDays * dailyRate;
+    final leaveDeduction = leaveDays > 0
+        ? (customLeaveDeduction > 0
+              ? customLeaveDeduction
+              : leaveDays * dailyRate)
+        : 0.0;
+    final requestedAbsentDeduction = absentDays > 0
+        ? (customAbsentDeduction > 0
+              ? customAbsentDeduction
+              : absentDays * dailyRate)
+        : 0.0;
+    final absentDeduction = cappedAbsentDeduction(
+      hasAbsences: absentDays > 0,
+      requestedDeduction: requestedAbsentDeduction,
+      salary: salary,
+      overtimeAmount: overtimeAmount,
+      leaveDeduction: leaveDeduction.toString(),
+      salaryType: salaryType,
+      prorationFactor: prorationFactor,
+    );
 
     final subtotalBeforeTax =
         (grossSalary + overtimePay - absentDeduction - leaveDeduction).clamp(

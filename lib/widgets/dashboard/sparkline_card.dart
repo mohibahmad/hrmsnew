@@ -188,8 +188,9 @@ class SparklineCard extends StatelessWidget {
                                 ),
                                 tooltipMargin: 10,
                                 getTooltipItems: (tSpots) {
-                                  if (tSpots.isEmpty)
+                                  if (tSpots.isEmpty) {
                                     return <LineTooltipItem>[];
+                                  }
                                   final seenX = <double>{};
                                   return tSpots.map((tSpot) {
                                     if (seenX.add(tSpot.x)) {

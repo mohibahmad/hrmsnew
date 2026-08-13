@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_utils.dart';
@@ -456,8 +457,9 @@ class FirestoreService {
     List<Map<String, dynamic>> workersList,
   ) async {
     final coll = _workers;
-    if (coll == null)
+    if (coll == null) {
       return BulkWorkerResult(imported: 0, skipped: workersList.length);
+    }
 
     final existingSnapshot = await coll.get();
     final existingEmails = <String>{};
@@ -1042,8 +1044,8 @@ class FirestoreService {
     );
     return WorkerIdentity.duplicateField(
       <String, dynamic>{
-        if (email != null) 'email': email,
-        if (nationalId != null) 'nationalId': nationalId,
+        if (email case final email?) 'email': email, // ignore: use_null_aware_elements
+        if (nationalId case final nationalId?) 'nationalId': nationalId, // ignore: use_null_aware_elements
       },
       existingWorkers,
       excludeId: excludeId,
@@ -1793,7 +1795,9 @@ class FirestoreService {
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
             return true;
-          } catch (_) {
+          } catch (e, st) {
+            debugPrint('addBulkPayrollRecords error: $e\n$st');
+            ErrorReporter.report(e, st, context: 'addBulkPayrollRecords');
             return false;
           }
         }),

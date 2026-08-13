@@ -1457,13 +1457,12 @@ class _WorkersAttendanceScreenState
         );
 
         if (!leaveBalanceSynced) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'requested_leaves_exceed_available'.tr(),
-              isError: true,
-            );
-          }
+          if (!context.mounted) return;
+          FlashySnackBar.show(
+            context,
+            message: 'requested_leaves_exceed_available'.tr(),
+            isError: true,
+          );
           return;
         }
       } else {
@@ -1502,36 +1501,34 @@ class _WorkersAttendanceScreenState
             'name': name,
             'email': email,
             'status': status,
-            if (type != null) 'type': type,
-            if (desc != null) 'desc': desc,
+            if (type != null) 'type': type, // ignore: use_null_aware_elements
+            if (desc != null) 'desc': desc, // ignore: use_null_aware_elements
             'date': DateTime.now().toIso8601String(),
           });
         }
         await DummyData.saveToPrefs();
       }
 
-      if (mounted) {
-        setState(() {});
-        final displayName = name.trim().isNotEmpty
-            ? name.trim()
-            : (email.trim().isNotEmpty ? email.trim() : 'Worker');
-        FlashySnackBar.show(
-          context,
-          message: status == 'Present'
-              ? 'attendance_marked_present'.tr(namedArgs: {'name': displayName})
-              : 'attendance_marked_absent'.tr(namedArgs: {'name': displayName}),
-          isError: false,
-        );
-      }
+      if (!context.mounted) return;
+      setState(() {});
+      final displayName = name.trim().isNotEmpty
+          ? name.trim()
+          : (email.trim().isNotEmpty ? email.trim() : 'Worker');
+      FlashySnackBar.show(
+        context,
+        message: status == 'Present'
+            ? 'attendance_marked_present'.tr(namedArgs: {'name': displayName})
+            : 'attendance_marked_absent'.tr(namedArgs: {'name': displayName}),
+        isError: false,
+      );
     } catch (e, stackTrace) {
       ErrorReporter.report(e, stackTrace, context: 'DirectMarkAttendance');
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'unexpected_error'.tr(),
-          isError: true,
-        );
-      }
+      if (!context.mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'unexpected_error'.tr(),
+        isError: true,
+      );
     }
   }
 
@@ -1696,7 +1693,7 @@ class _WorkersAttendanceScreenState
               width: 22,
               height: 22,
               color: const Color(0xFFFFFFFF),
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.filter_alt_outlined,
                 color: Color(0xFFFFFFFF),
                 size: 22,
@@ -2530,11 +2527,13 @@ class _WorkersAttendanceScreenState
                                                       'createdAt':
                                                           DateTime.now(),
                                                     };
-                                                    if (type != null)
+                                                    if (type != null) {
                                                       newRecord['type'] = type;
+                                                    }
                                                     if (desc != null &&
-                                                        desc.isNotEmpty)
+                                                        desc.isNotEmpty) {
                                                       newRecord['desc'] = desc;
+                                                    }
                                                     DummyData.attendance.add(
                                                       newRecord,
                                                     );

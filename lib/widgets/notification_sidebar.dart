@@ -240,12 +240,15 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       final now = DateTime.now();
       final diff = now.difference(created);
       if (diff.inMinutes < 1) return 'just_now'.tr();
-      if (diff.inMinutes < 60)
+      if (diff.inMinutes < 60) {
         return 'time_ago_minutes'.tr(namedArgs: {'count': '${diff.inMinutes}'});
-      if (diff.inHours < 24)
+      }
+      if (diff.inHours < 24) {
         return 'time_ago_hours'.tr(namedArgs: {'count': '${diff.inHours}'});
-      if (diff.inDays < 7)
+      }
+      if (diff.inDays < 7) {
         return 'time_ago_days'.tr(namedArgs: {'count': '${diff.inDays}'});
+      }
       return DateFormat(
         'time_ago_date'.tr(),
         context.locale.toString(),

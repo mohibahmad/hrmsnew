@@ -1112,11 +1112,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _workersKey.currentState?.closeIdleBulkAddFlow();
                       }
                       if (_showAssignTimeOff) {
+                        if (!context.mounted) return;
                         final shouldDiscard = await UnsavedChangesDialog.show(
                           context,
                         );
                         if (!shouldDiscard) return;
                       }
+                      if (!context.mounted) return;
                       setState(() {
                         _selectedIndex = index;
                         if (subIndex != null) {

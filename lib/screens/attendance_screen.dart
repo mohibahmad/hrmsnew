@@ -174,15 +174,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Future<void> _showCustomDateRangePicker() async {
     DateTime calendarDate = DateTime.now();
     final selectedDates = <DateTime>{};
-    DateTime? _dragAnchorDate;
-    bool _dragMoved = false;
-    Offset? _dragStartPosition;
-    Offset? _dragCurrentPosition;
-    Set<DateTime> _selectionBeforeDrag = {};
-    final GlobalKey _calendarHeaderKey = GlobalKey();
+    DateTime? dragAnchorDate;
+    bool dragMoved = false;
+    Offset? dragStartPosition;
+    Offset? dragCurrentPosition;
+    Set<DateTime> selectionBeforeDrag = {};
+    final GlobalKey calendarHeaderKey = GlobalKey();
 
-    double _measuredHeaderHeight() {
-      final context = _calendarHeaderKey.currentContext;
+    double measuredHeaderHeight() {
+      final context = calendarHeaderKey.currentContext;
       if (context == null) return 0;
       final box = context.findRenderObject();
       if (box is! RenderBox || !box.hasSize || !box.attached) return 0;
@@ -199,7 +199,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
       final colPitch = cellWidth + gap;
       final rowPitch = cellHeight + gap;
-      final measuredHeader = _measuredHeaderHeight();
+      final measuredHeader = measuredHeaderHeight();
 
       final headerHeight = measuredHeader > 0
           ? measuredHeader
@@ -312,38 +312,38 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           event.localPosition,
                           calendarDate,
                         );
-                        _dragAnchorDate = date;
-                        _dragStartPosition = event.localPosition;
-                        _dragMoved = false;
-                        _selectionBeforeDrag = Set<DateTime>.from(
+                        dragAnchorDate = date;
+                        dragStartPosition = event.localPosition;
+                        dragMoved = false;
+                        selectionBeforeDrag = Set<DateTime>.from(
                           selectedDates,
                         );
                         setModalState(() {});
                       },
                       onPointerMove: (event) {
-                        final startPos = _dragStartPosition;
-                        if (startPos != null && !_dragMoved) {
+                        final startPos = dragStartPosition;
+                        if (startPos != null && !dragMoved) {
                           final dx = (event.localPosition.dx - startPos.dx)
                               .abs();
                           final dy = (event.localPosition.dy - startPos.dy)
                               .abs();
                           if (dx > 5 || dy > 5) {
-                            _dragMoved = true;
+                            dragMoved = true;
                           }
                         }
-                        if (!_dragMoved) return;
-                        final anchor = _dragAnchorDate;
+                        if (!dragMoved) return;
+                        final anchor = dragAnchorDate;
                         if (anchor == null) return;
                         final current = dateAtPosition(
                           event.localPosition,
                           calendarDate,
                         );
                         if (current == null) return;
-                        _dragCurrentPosition = event.localPosition;
+                        dragCurrentPosition = event.localPosition;
                         setModalState(() {
                           selectedDates.clear();
-                          selectedDates.addAll(_selectionBeforeDrag);
-                          final isDragRemoving = _selectionBeforeDrag.contains(
+                          selectedDates.addAll(selectionBeforeDrag);
+                          final isDragRemoving = selectionBeforeDrag.contains(
                             anchor,
                           );
                           final start = anchor.isBefore(current)
@@ -366,8 +366,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         });
                       },
                       onPointerUp: (event) {
-                        if (!_dragMoved && _dragAnchorDate != null) {
-                          final date = _dragAnchorDate!;
+                        if (!dragMoved && dragAnchorDate != null) {
+                          final date = dragAnchorDate!;
                           setModalState(() {
                             final isAlreadySelected = selectedDates.any(
                               (d) =>
@@ -387,11 +387,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                             }
                           });
                         }
-                        _dragAnchorDate = null;
-                        _dragStartPosition = null;
-                        _dragCurrentPosition = null;
-                        _dragMoved = false;
-                        _selectionBeforeDrag = {};
+                        dragAnchorDate = null;
+                        dragStartPosition = null;
+                        dragCurrentPosition = null;
+                        dragMoved = false;
+                        selectionBeforeDrag = {};
                         setModalState(() {});
                       },
                       child: _buildCalendarWithWeekdays(
@@ -403,19 +403,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                             calendarDate = newDate;
                           });
                         },
-                        dragAnchor: _dragAnchorDate,
-                        dragCurrent: _dragMoved && _dragCurrentPosition != null
+                        dragAnchor: dragAnchorDate,
+                        dragCurrent: dragMoved && dragCurrentPosition != null
                             ? dateAtPosition(
-                                _dragCurrentPosition!,
+                                dragCurrentPosition!,
                                 calendarDate,
                               )
                             : null,
 
                         isDragRemoving:
-                            _dragMoved &&
-                            _dragAnchorDate != null &&
-                            _selectionBeforeDrag.contains(_dragAnchorDate),
-                        headerKey: _calendarHeaderKey,
+                            dragMoved &&
+                            dragAnchorDate != null &&
+                            selectionBeforeDrag.contains(dragAnchorDate),
+                        headerKey: calendarHeaderKey,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1515,11 +1515,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               } else {
                 Navigator.of(context).push(
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
+                    pageBuilder: (_, _, _) => WorkersAttendanceScreen(
                       onNotificationTap: widget.onNotificationTap,
                       onProfileTap: widget.onProfileTap,
                     ),
-                    transitionsBuilder: (_, __, ___, child) => child,
+                    transitionsBuilder: (_, _, _, child) => child,
                     transitionDuration: Duration.zero,
                   ),
                 );

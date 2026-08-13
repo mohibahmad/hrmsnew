@@ -248,7 +248,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                         spreadRadius: 3,
                                       ),
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
+                                        color: Colors.black.withValues(alpha: 0.3),
                                         blurRadius: 30,
                                         offset: const Offset(10, 9),
                                       ),
@@ -348,7 +348,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -421,7 +421,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0044C9),
               foregroundColor: const Color(0xFFFFFFFF),
-              disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+              disabledBackgroundColor: const Color(0xFF0044C9).withValues(alpha: 0.6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),

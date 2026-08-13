@@ -1181,6 +1181,7 @@ class _WorkerProfilePreviewDialogState
         }
         return;
       }
+      if (!mounted) return;
       final companyCurr =
           companyProfile['currency']?.toString().trim() ??
           PreferencesService.cachedCompanyCurrency;
