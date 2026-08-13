@@ -2762,7 +2762,19 @@ class PayrollRunner {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               GestureDetector(
-                onTap: onBack,
+                onTap: () {
+                  final controllerKey = originalIndex * 10;
+                  final controller = overtimeControllers[controllerKey];
+                  if (controller != null) {
+                    final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
+                    _recalcOvertime(
+                      result,
+                      clean.isEmpty ? '0' : clean,
+                      () {},
+                    );
+                  }
+                  onBack();
+                },
                 child: Container(
                   height: 42,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -3031,11 +3043,9 @@ class PayrollRunner {
   ) {
     final controllerKey = index * 10;
     if (!controllers.containsKey(controllerKey)) {
-      final overtimeValue = PayrollService.extractSalary(r.overtimeAmount);
+      final cleanText = r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '');
       controllers[controllerKey] = TextEditingController(
-        text: overtimeValue > 0
-            ? r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '')
-            : '',
+        text: cleanText.isEmpty ? '0' : cleanText,
       );
     }
     final controller = controllers[controllerKey]!;
@@ -3053,6 +3063,22 @@ class PayrollRunner {
               CommaCurrencyFormatter(),
               LengthLimitingTextInputFormatter(14),
             ],
+            onChanged: (val) {
+              final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
+              _recalcOvertime(
+                r,
+                clean.isEmpty ? '0' : clean,
+                () => setDialogState(() {}),
+              );
+            },
+            onSubmitted: (val) {
+              final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
+              _recalcOvertime(
+                r,
+                clean.isEmpty ? '0' : clean,
+                () => setDialogState(() {}),
+              );
+            },
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -3107,7 +3133,11 @@ class PayrollRunner {
           child: ElevatedButton(
             onPressed: () {
               final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
-              _recalcOvertime(r, clean, () => setDialogState(() {}));
+              _recalcOvertime(
+                r,
+                clean.isEmpty ? '0' : clean,
+                () => setDialogState(() {}),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0247C4),
@@ -3187,7 +3217,7 @@ class PayrollRunner {
     String overtimeVal,
     VoidCallback onUpdated,
   ) {
-    r.overtimeAmount = overtimeVal;
+    r.overtimeAmount = overtimeVal.trim().isEmpty ? '0' : overtimeVal.trim();
 
     _recalcWithDeductions(r, r.customDeduction, onUpdated);
   }
