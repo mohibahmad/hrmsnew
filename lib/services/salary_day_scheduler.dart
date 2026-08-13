@@ -594,12 +594,7 @@ class PayrollRunner {
       }
 
       final workerOvertime = (worker['overtimeAmount'] ?? '').toString().trim();
-      final prevOvertime = (prevRecord?['overtimeAmount'] ?? '')
-          .toString()
-          .trim();
-      final overtimeAmount = workerOvertime.isNotEmpty
-          ? workerOvertime
-          : prevOvertime;
+      final overtimeAmount = workerOvertime;
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
       final prevCustomDeduction = PayrollService.extractSalary(
         (prevRecord?['customDeduction'] ?? '0').toString(),
