@@ -164,12 +164,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                     return Dialog(
                       backgroundColor: Colors.transparent,
+                      elevation: 0,
                       child: Container(
-                        width: 430,
-                        padding: const EdgeInsets.all(28),
+                        width: 440,
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
                               color: const Color(
@@ -186,185 +187,218 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF0247C4,
-                                      ).withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
+                              Container(
+                                height: 52,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF004FDE),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
                                       Icons.lock_reset_rounded,
-                                      color: Color(0xFF0247C4),
-                                      size: 28,
+                                      color: Colors.white,
+                                      size: 22,
                                     ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Text(
-                                      'reset_password'.tr(),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'reset_password'.tr(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: isSending
+                                          ? null
+                                          : () =>
+                                                Navigator.of(
+                                                  dialogContext,
+                                                ).pop(),
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'reset_password_email_desc'.tr(),
                                       style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF000000),
+                                        fontSize: 14,
+                                        height: 1.4,
+                                        color: Color(0xFF64748B),
                                         fontFamily: 'SF Pro Display',
                                       ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    onPressed: isSending
-                                        ? null
-                                        : () =>
-                                              Navigator.of(dialogContext).pop(),
-                                    icon: const Icon(Icons.close_rounded),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'reset_password_email_desc'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 1.4,
-                                  color: Color(0xFF64748B),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                'email_label'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF111827),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: emailController,
-                                enabled: !isSending,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.done,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                onFieldSubmitted: (_) => sendResetLink(),
-                                decoration: InputDecoration(
-                                  hintText: 'email_hint'.tr(),
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(14),
-                                    child: SvgPicture.asset(
-                                      'assets/email.svg',
-                                      width: 20,
-                                      height: 20,
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0xFF0247C4),
-                                        BlendMode.srcIn,
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'email_label'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF111827),
+                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFE2E8F0),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFE2E8F0),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFF0247C4),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  final email = value?.trim() ?? '';
-                                  if (email.isEmpty) {
-                                    return 'email_required'.tr();
-                                  }
-                                  if (!RegExp(
-                                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                  ).hasMatch(email)) {
-                                    return 'email_invalid'.tr();
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 24),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: isSending
-                                          ? null
-                                          : () => Navigator.of(
-                                              dialogContext,
-                                            ).pop(),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: const Color(
-                                          0xFF475569,
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: emailController,
+                                      enabled: !isSending,
+                                      keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.done,
+                                      autocorrect: false,
+                                      enableSuggestions: false,
+                                      onFieldSubmitted: (_) => sendResetLink(),
+                                      decoration: InputDecoration(
+                                        hintText: 'email_hint'.tr(),
+                                        prefixIcon: Padding(
+                                          padding: const EdgeInsets.all(14),
+                                          child: SvgPicture.asset(
+                                            'assets/email.svg',
+                                            width: 20,
+                                            height: 20,
+                                            colorFilter: const ColorFilter.mode(
+                                              Color(0xFF004FDE),
+                                              BlendMode.srcIn,
+                                            ),
+                                          ),
                                         ),
-                                        side: const BorderSide(
-                                          color: Color(0xFFCBD5E1),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 15,
-                                        ),
-                                        shape: RoundedRectangleBorder(
+                                        filled: true,
+                                        fillColor: const Color(0xFFF8FAFC),
+                                        border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE2E8F0),
+                                          ),
                                         ),
-                                      ),
-                                      child: Text('cancel'.tr()),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: isSending
-                                          ? null
-                                          : sendResetLink,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF0247C4,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 15,
-                                        ),
-                                        shape: RoundedRectangleBorder(
+                                        enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE2E8F0),
+                                          ),
                                         ),
-                                        elevation: 0,
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF004FDE),
+                                            width: 1.5,
+                                          ),
+                                        ),
                                       ),
-                                      child: isSending
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
+                                      validator: (value) {
+                                        final email = value?.trim() ?? '';
+                                        if (email.isEmpty) {
+                                          return 'email_required'.tr();
+                                        }
+                                        if (!RegExp(
+                                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                        ).hasMatch(email)) {
+                                          return 'email_invalid'.tr();
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: isSending
+                                                ? null
+                                                : () =>
+                                                      Navigator.of(
+                                                        dialogContext,
+                                                      ).pop(),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(
+                                                0xFF475569,
                                               ),
-                                            )
-                                          : Text('send_reset_link'.tr()),
+                                              side: const BorderSide(
+                                                color: Color(0xFFCBD5E1),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 14,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'cancel'.tr(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: isSending
+                                                ? null
+                                                : sendResetLink,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFF004FDE,
+                                              ),
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 14,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              elevation: 0,
+                                            ),
+                                            child: isSending
+                                                ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                                  )
+                                                : Text(
+                                                    'send_reset_link'.tr(),
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontFamily:
+                                                          'SF Pro Display',
+                                                    ),
+                                                  ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
