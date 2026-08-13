@@ -242,6 +242,23 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       prorationFactor: _prorationFactor,
     );
 
+    if (_absentDeductionCtrl.text.trim().isEmpty) {
+      final autoCalc = result['absentDeduction'] as double? ?? 0;
+      if (autoCalc > 0) {
+        result['absentDeduction'] = 0.0;
+        result['formattedAbsentDeduct'] = '0';
+        result['netSalary'] = (result['netSalary'] as double? ?? 0) + autoCalc;
+        result['totalDeductions'] =
+            (result['totalDeductions'] as double? ?? 0) - autoCalc;
+        final cur = PayrollService.getCurrencyPrefix(_salaryStr);
+        final pfx = cur.isNotEmpty ? '$cur ' : '';
+        final netVal = result['netSalary'] as double? ?? 0;
+        result['formattedNet'] =
+            '$pfx${PayrollService.formatFullNumber(netVal)}';
+        result['formattedNetSalary'] = result['formattedNet'];
+      }
+    }
+
     setState(() {
       _calcResult = result;
       _calculatedNet = result['formattedNet'] as String? ?? '';
@@ -1470,28 +1487,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                 name: _name,
                 size: 80,
                 shape: BoxShape.circle,
-              ),
-              Positioned(
-                bottom: -8,
-                right: -12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00A63F),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _status.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),

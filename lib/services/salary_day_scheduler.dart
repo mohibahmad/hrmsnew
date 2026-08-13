@@ -572,8 +572,15 @@ class PayrollRunner {
               ? workerAbsentDeduction
               : prevAbsentDeduction;
 
-          absentDeductionTotal =
-              PayrollService.extractSalary(absentDeductionPerDay) * absents;
+          final perDayVal = PayrollService.extractSalary(absentDeductionPerDay);
+          final enteredSalary = PayrollService.extractSalary(salaryStr);
+          final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+              ? enteredSalary / 12
+              : enteredSalary;
+          final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
+          absentDeductionTotal = perDayVal > 0
+              ? perDayVal * absents
+              : dailyRate * absents;
           final effectiveDays = workDays - absents - unpaidLeaves;
           final calc = PayrollService.calculatePayroll(
             salary: salaryStr,
@@ -607,9 +614,10 @@ class PayrollRunner {
               : enteredSalary;
           final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
           leaveDeductionTotal = dailyRate * unpaidLeaves;
-          absentDeductionTotal =
-              PayrollService.extractSalary(absentDeductionPerDay) *
-              (absents + (halfDays * 0.5));
+          final perDayVal = PayrollService.extractSalary(absentDeductionPerDay);
+          absentDeductionTotal = perDayVal > 0
+              ? perDayVal * (absents + (halfDays * 0.5))
+              : dailyRate * (absents + (halfDays * 0.5));
           rawNetVal = PayrollService.calculateNetFromTotals(
             salary: salaryStr,
             overtimeAmount: overtimeAmount,

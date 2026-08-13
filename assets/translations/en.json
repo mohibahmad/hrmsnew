@@ -1340,7 +1340,7 @@
   "add_leave_policy_first": "Please add a leave policy first.",
   "leave_policy_share_text": "Our Company Leave Policy:\n\n{policy}\n\nShared via HRMS App",
   "session_locked_title": "Session locked",
-  "session_locked_message": "You were inactive for 1 minute. Verify your identity to continue.",
+  "session_locked_message": "You were inactive for 3 minute. Verify your identity to continue.",
   "session_checking_biometrics": "Checking biometric availability…",
   "session_biometric_unavailable": "Biometric authentication is not available on this device. Sign in again to continue.",
   "session_biometric_failed": "We couldn't verify your identity. Try again or sign in again.",
