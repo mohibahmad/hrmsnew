@@ -7,8 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import '../utils/currency_utils.dart';
-import '../utils/file_opener.dart';
-import '../utils/pdf_stamp_widget.dart';
+import '../utils/file_utils.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -342,12 +341,6 @@ class InvoiceService {
                         _money(salary, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
-                      _smallInfoLine(
-                        _l('daily_rate', 'Daily Rate'),
-                        _money(dailyRate, defaultCurrency: detectedCurrency),
-                        textColor,
-                      ),
-
                       _smallInfoLine(
                         _l('absents', 'Absents'),
                         absents,

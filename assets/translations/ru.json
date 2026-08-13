@@ -437,6 +437,7 @@
   "remote": "Удаленно",
   "on_site": "На месте",
   "pay_roll_list": "Список зарплат",
+  "current_pay_period_label": "Текущий платёжный период: {period}",
   "payroll_data": "Данные расчетов",
   "net_calculation": "Чистый расчет",
   "outstanding_deduction": "Оставшееся удержание",

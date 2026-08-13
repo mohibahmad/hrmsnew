@@ -436,6 +436,7 @@
   "remote": "Remoto",
   "on_site": "Presencial",
   "pay_roll_list": "Lista de Folha de Pagamento",
+  "current_pay_period_label": "Período de pagamento atual: {period}",
   "payroll_data": "Dados da Folha de Pagamento",
   "net_calculation": "Cálculo Líquido",
   "outstanding_deduction": "Dedução Pendente",

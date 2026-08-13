@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import '../utils/file_opener.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/file_utils.dart';
+import '../utils/ui_utils.dart';
 
 List<List<String>> parseCsvInBackground(Uint8List bytes) {
   var csvString = utf8.decode(bytes, allowMalformed: true);

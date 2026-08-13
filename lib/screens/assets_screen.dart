@@ -5,8 +5,8 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/snackbar_utils.dart';
-import '../utils/delete_dialog.dart';
+import '../utils/ui_utils.dart';
+import '../utils/dialog_utils.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -14,10 +14,10 @@ import '../services/dummy_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 
-import '../utils/date_utils.dart';
+import '../utils/date_time_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
-import '../utils/image_utils.dart';
+import '../utils/file_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/guest_restriction.dart';
 

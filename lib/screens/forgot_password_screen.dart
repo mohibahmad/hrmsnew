@@ -7,7 +7,7 @@ import '../providers.dart';
 
 import '../services/auth_service.dart';
 import '../shared/auth_widgets.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/ui_utils.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});

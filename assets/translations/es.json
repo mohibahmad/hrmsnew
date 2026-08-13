@@ -436,6 +436,7 @@
   "remote": "Remoto",
   "on_site": "Presencial",
   "pay_roll_list": "Lista de Nómina",
+  "current_pay_period_label": "Período de nómina actual: {period}",
   "payroll_data": "Datos de Nómina",
   "net_calculation": "Cálculo Neto",
   "outstanding_deduction": "Deducción Pendiente",

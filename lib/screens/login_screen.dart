@@ -16,8 +16,7 @@ import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/biometric_enrollment.dart';
 import '../utils/localization_helper.dart';
-import '../utils/navigation_utils.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/ui_utils.dart';
 
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';

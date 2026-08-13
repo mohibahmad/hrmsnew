@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../utils/svg_fill_color_mapper.dart';
+import '../../utils/ui_utils.dart';
 import '../../utils/localization_helper.dart';
 import '../custom_timeframe_dropdown.dart';
 

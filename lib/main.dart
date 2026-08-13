@@ -20,7 +20,7 @@ import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/preferences_service.dart';
 import 'utils/localization_helper.dart';
-import 'utils/navigation_utils.dart';
+import 'utils/ui_utils.dart';
 import 'widgets/session_timeout_gate.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();

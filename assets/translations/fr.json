@@ -436,6 +436,7 @@
   "remote": "Distant",
   "on_site": "Sur place",
   "pay_roll_list": "Liste de paie",
+  "current_pay_period_label": "Période de paie actuelle : {period}",
   "payroll_data": "Données de Paie",
   "net_calculation": "Calcul Net",
   "outstanding_deduction": "Déduction Restante",

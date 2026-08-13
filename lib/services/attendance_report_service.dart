@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'attendance_service.dart';
 import 'time_off_service.dart';
-import '../utils/date_utils.dart';
+import '../utils/date_time_utils.dart';
 
 class AttendanceDateRange {
   final DateTime start;

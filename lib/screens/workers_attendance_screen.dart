@@ -14,10 +14,10 @@ import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
-import '../utils/snackbar_utils.dart';
-import '../utils/image_utils.dart';
+import '../utils/ui_utils.dart';
+import '../utils/file_utils.dart';
 import '../utils/worker_identity.dart';
-import '../utils/date_utils.dart' as app_date_utils;
+import '../utils/date_time_utils.dart' as app_date_utils;
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
@@ -557,10 +557,12 @@ class _WorkersAttendanceScreenState
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
-    final recordWorkerId =
-        (record['workerId'] ?? record['userId'] ?? record['id'] ?? '')
-            .toString()
-            .trim();
+    // `record['id']` is the attendance document ID, not the worker ID.
+    // Treating it as a worker ID prevents legacy records (which rely on email)
+    // from resolving to their worker profile and drops fields such as leaves.
+    final recordWorkerId = (record['workerId'] ?? record['userId'] ?? '')
+        .toString()
+        .trim();
     if (recordWorkerId.isNotEmpty) {
       return workerId.isNotEmpty && recordWorkerId == workerId;
     }
@@ -1036,28 +1038,7 @@ class _WorkersAttendanceScreenState
   Map<String, dynamic> _resolveWorkerData(
     Map<String, dynamic> attendanceOrWorker,
   ) {
-    final candidateWorkerId = _isGuest
-        ? AttendanceService.workerIdFor(attendanceOrWorker)
-        : (attendanceOrWorker['workerId'] ?? '').toString().trim();
-    final candidateEmail = WorkerIdentity.normalizeEmail(
-      attendanceOrWorker['email'],
-    );
-    final worker = _workers.cast<Map<String, dynamic>?>().firstWhere((item) {
-      if (item == null) return false;
-      if (_isGuest) {
-        final knownWorkerId = (item['id'] ?? '').toString().trim();
-        if (candidateWorkerId.isNotEmpty &&
-            knownWorkerId.isNotEmpty &&
-            candidateWorkerId == knownWorkerId) {
-          return true;
-        }
-        final knownEmail = WorkerIdentity.normalizeEmail(item['email']);
-        return candidateEmail.isNotEmpty &&
-            knownEmail.isNotEmpty &&
-            candidateEmail == knownEmail;
-      }
-      return _authenticatedRecordBelongsToWorker(attendanceOrWorker, item);
-    }, orElse: () => null);
+    final worker = _findWorkerForAttendanceRecord(attendanceOrWorker);
 
     if (worker == null) {
       return Map<String, dynamic>.from(attendanceOrWorker);

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/biometric_service.dart';
 import '../services/preferences_service.dart';
 import 'localization_helper.dart';
-import 'snackbar_utils.dart';
+import 'ui_utils.dart';
 
 Future<bool> offerBiometricLogin({
   required BuildContext context,

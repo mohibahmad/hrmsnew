@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../utils/date_utils.dart';
+import '../utils/date_time_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/validators.dart';
 import '../utils/worker_identity.dart';
@@ -1346,11 +1346,12 @@ class FirestoreService {
 
     batch.set(attendanceRef, {
       ...attendanceRecord,
-
-      if (createsAttendanceDocument || attendanceDate != null)
-        'attendanceDate': Timestamp.fromDate(
-          DateTime(now.year, now.month, now.day),
-        ),
+      // Always normalize the record date. Legacy attendance documents may
+      // have no `attendanceDate` (or a string value), which makes monthly
+      // payroll queries miss them after an edit.
+      'attendanceDate': Timestamp.fromDate(
+        DateTime(now.year, now.month, now.day),
+      ),
       if (createsAttendanceDocument) 'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));

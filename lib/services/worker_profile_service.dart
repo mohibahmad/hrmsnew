@@ -7,8 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import '../utils/file_opener.dart';
-import '../utils/pdf_stamp_widget.dart';
+import '../utils/file_utils.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -741,10 +740,6 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             _tableRow([attendanceTypeLabel, args.attendanceType], navy),
             _tableRow([experienceLevelLabel, args.experienceLevel], navy),
             _tableRow([joiningDateLabel, args.joiningDate], navy),
-            _tableRow([
-              salaryLabel,
-              args.salary.isNotEmpty ? args.salary : '-',
-            ], navy),
           ],
         ),
         pw.SizedBox(height: 6),

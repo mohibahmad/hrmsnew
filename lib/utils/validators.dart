@@ -2,7 +2,7 @@ library;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'currency_utils.dart';
-import 'date_utils.dart';
+import 'date_time_utils.dart';
 
 class ValidationException implements Exception {
   final String message;

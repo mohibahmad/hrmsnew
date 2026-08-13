@@ -20,7 +20,7 @@ import 'documents_screen.dart';
 import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
-import '../utils/logout_dialog.dart';
+import '../utils/dialog_utils.dart';
 import '../widgets/unsaved_changes_dialog.dart';
 import '../widgets/notification_sidebar.dart';
 import 'login_screen.dart';
@@ -28,7 +28,7 @@ import '../services/payroll_service.dart';
 import '../services/dashboard_chart_service.dart';
 import '../services/dummy_data.dart';
 import '../services/error_reporter.dart';
-import '../utils/date_utils.dart';
+import '../utils/date_time_utils.dart';
 import '../utils/chart_utils.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
@@ -57,6 +57,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late int _selectedIndex;
   late int _selectedSubIndex;
+  int _payrollActivationToken = 0;
   String _selectedPeriod = 'This Year';
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
@@ -100,6 +101,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               !_showProfile &&
               !_showWorkersAttendance &&
               !_showNotifications,
+          activationToken: _payrollActivationToken,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onAssignTimeOff: () {
@@ -1120,6 +1122,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }
                       if (!context.mounted) return;
                       setState(() {
+                        final targetSubIndex = subIndex ?? _selectedSubIndex;
+                        if (index == 2 && targetSubIndex == 1) {
+                          _payrollActivationToken++;
+                        }
                         _selectedIndex = index;
                         if (subIndex != null) {
                           _selectedSubIndex = subIndex;

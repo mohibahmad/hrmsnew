@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/bulk_worker_validator.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/ui_utils.dart';
 
 String fieldHint(String fieldKey) {
   const hintKeys = <String, String>{

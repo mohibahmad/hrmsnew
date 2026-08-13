@@ -1,4 +1,4 @@
-import 'dart:async' show TimeoutException;
+import 'dart:async' show StreamSubscription, TimeoutException, Timer;
 import 'dart:ui';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
@@ -11,14 +11,13 @@ import '../services/preferences_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
-import '../utils/image_utils.dart';
-import '../utils/snackbar_utils.dart';
-import '../utils/delete_dialog.dart';
+import '../utils/file_utils.dart';
+import '../utils/ui_utils.dart';
+import '../utils/dialog_utils.dart';
 import '../utils/guest_restriction.dart';
-import '../utils/currency_formatter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/company_profile_helper.dart';
-import '../utils/date_utils.dart';
+import '../utils/date_time_utils.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
@@ -112,6 +111,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   bool _attendanceVerified = false;
   Object? _attendanceLoadError;
   bool _showNotifications = false;
+  StreamSubscription? _attendanceSub;
+  Timer? _attendanceRefreshDebounce;
+  List<Map<String, dynamic>>? _liveAttendanceRecords;
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
 
@@ -159,6 +161,23 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
 
+    if (!(_authService.currentUser?.isAnonymous ?? false)) {
+      _attendanceSub = _firestore.attendanceStream.listen(
+        (snapshot) {
+          _liveAttendanceRecords = snapshot.docs
+              .map(
+                (doc) => {
+                  ...?doc.data() as Map<String, dynamic>?,
+                  'id': doc.id,
+                },
+              )
+              .toList();
+          _scheduleAttendanceRefresh();
+        },
+        onError: (_, _) {},
+      );
+    }
+
     _salaryCtrl.text = AmountText.formatFull(
       _salaryStr,
       locale: context.locale.toString(),
@@ -197,6 +216,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   @override
   void dispose() {
+    _attendanceRefreshDebounce?.cancel();
+    _attendanceSub?.cancel();
     _workDaysCtrl.dispose();
     _absentsCtrl.dispose();
     _paidLeavesCtrl.dispose();
@@ -208,6 +229,14 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _leaveDeductionCtrl.dispose();
     _netCtrl.dispose();
     super.dispose();
+  }
+
+  void _scheduleAttendanceRefresh() {
+    if (_isPaidRecord) return;
+    _attendanceRefreshDebounce?.cancel();
+    _attendanceRefreshDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _fetchMonthlyAttendance();
+    });
   }
 
   void _recalc() {
@@ -393,6 +422,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               _email,
               workerId: _workerId,
               month: _payrollMonth,
+              preFetchedRecords: _liveAttendanceRecords,
             )
             .timeout(
               const Duration(seconds: 10),

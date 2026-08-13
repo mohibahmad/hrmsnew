@@ -12,14 +12,13 @@ import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
-import '../utils/image_utils.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/file_utils.dart';
+import '../utils/ui_utils.dart';
 import '../utils/guest_restriction.dart';
-import '../utils/delete_dialog.dart';
-import '../utils/date_utils.dart';
+import '../utils/dialog_utils.dart';
+import '../utils/date_time_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
-import '../utils/svg_fill_color_mapper.dart';
 import '../services/invoice_service.dart';
 import '../widgets/amount_text.dart';
 import 'add_payroll_screen.dart';
@@ -31,6 +30,7 @@ enum _PayrollReminderAction { remindLater, ignore, viewPayable }
 class PayrollScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final bool isActive;
+  final int activationToken;
   final VoidCallback onProfileTap;
   final VoidCallback? onAssignTimeOff;
   final VoidCallback? onNotificationTap;
@@ -38,6 +38,7 @@ class PayrollScreen extends ConsumerStatefulWidget {
   const PayrollScreen({
     super.key,
     this.isActive = true,
+    this.activationToken = 0,
     required this.onLogout,
     required this.onProfileTap,
     this.onAssignTimeOff,
@@ -57,6 +58,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   List<Map<String, dynamic>> _payrollDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
+  List<Map<String, dynamic>>? _liveAttendanceRecords;
   bool _isLoading = true;
   String _companyCurrency = CurrencyUtils.defaultCode;
   DateTime _payrollMonth = PayrollService.currentPayrollMonth();
@@ -77,6 +79,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool _attendanceFetchPending = false;
   bool _reminderCheckScheduled = false;
   bool _reminderHandledForActivation = false;
+  bool _forceReminderForActivation = false;
   bool _reminderDialogOpen = false;
   bool _workersLoaded = false;
   bool _payrollLoaded = false;
@@ -330,9 +333,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       return;
     }
     _reminderCheckScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _reminderCheckScheduled = false;
-      if (mounted) _maybeShowPayrollReminder();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        if (mounted) await _maybeShowPayrollReminder();
+      } finally {
+        _reminderCheckScheduled = false;
+      }
     });
   }
 
@@ -353,17 +359,22 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
     if (window == null) {
       _reminderHandledForActivation = true;
+      _forceReminderForActivation = false;
       return;
     }
     final payableWorkers = _payableWorkersForPeriod(window.payrollMonth);
     if (payableWorkers.isEmpty) {
       _reminderHandledForActivation = true;
+      _forceReminderForActivation = false;
       return;
     }
-    if (await PreferencesService.isPayrollReminderSuppressed(
-      window.suppressionKey,
-      now: now,
-    )) {
+    final forceReminder = _forceReminderForActivation;
+    _forceReminderForActivation = false;
+    if (!forceReminder &&
+        await PreferencesService.isPayrollReminderSuppressed(
+          window.suppressionKey,
+          now: now,
+        )) {
       _reminderHandledForActivation = true;
       return;
     }
@@ -385,11 +396,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       window.dueDate,
       locale: context.locale.toString(),
     );
-    final visibleNames = payableWorkers
-        .take(4)
-        .map((worker) => (worker['name'] ?? 'Worker').toString())
-        .join(', ');
-    final extraCount = payableWorkers.length - 4;
     final action = await showGeneralDialog<_PayrollReminderAction>(
       context: context,
       barrierDismissible: true,
@@ -480,27 +486,103 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Text(
-                        extraCount > 0
-                            ? '$visibleNames +$extraCount'
-                            : visibleNames,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 240),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: payableWorkers.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final worker = payableWorkers[index];
+                          final name = (worker['name'] ?? 'Worker')
+                              .toString()
+                              .trim();
+                          final position = (worker['position'] ?? '')
+                              .toString()
+                              .trim();
+                          final imageUrl = (worker['profileImage'] ??
+                                  worker['profilePic'] ??
+                                  worker['imageUrl'])
+                              ?.toString();
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 11,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                WorkerAvatar(
+                                  imageUrl: imageUrl,
+                                  name: name.isEmpty ? 'Worker' : name,
+                                  size: 36,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name.isEmpty ? 'Worker' : name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF0F172A),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      if (position.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          LocalizationHelper.localizePosition(
+                                            position,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontSize: 12,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'payable'.tr(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF004FDE),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -672,6 +754,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           email,
           workerId: workerId,
           month: month,
+          preFetchedRecords: _liveAttendanceRecords,
         );
       }
 
@@ -754,7 +837,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     super.didUpdateWidget(oldWidget);
     if (!widget.isActive) {
       _reminderHandledForActivation = false;
-    } else if (!oldWidget.isActive) {
+      _forceReminderForActivation = false;
+    } else if (!oldWidget.isActive ||
+        widget.activationToken != oldWidget.activationToken) {
+      _reminderHandledForActivation = false;
+      _forceReminderForActivation =
+          widget.activationToken != oldWidget.activationToken;
       _schedulePayrollReminderCheck();
     }
 
@@ -790,10 +878,16 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             salaryPayDay == _salaryPayDay) {
           return;
         }
+        final shouldResetReminder =
+            salaryPayDay != _salaryPayDay &&
+            !_reminderCheckScheduled &&
+            !_reminderDialogOpen;
         setState(() {
           _companyCurrency = currency;
           _salaryPayDay = salaryPayDay;
-          _reminderHandledForActivation = false;
+          if (shouldResetReminder) {
+            _reminderHandledForActivation = false;
+          }
           _combinePayroll();
         });
         _scheduleAttendanceFetch();
@@ -823,8 +917,17 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         }
       }, onError: _handlePayrollStreamError);
 
-      _attendanceSub = _firestore.attendanceStream.listen((_) {
-        if (mounted) _scheduleAttendanceFetch();
+      _attendanceSub = _firestore.attendanceStream.listen((snapshot) {
+        if (!mounted) return;
+        _liveAttendanceRecords = snapshot.docs
+            .map(
+              (doc) => {
+                ...?doc.data() as Map<String, dynamic>?,
+                'id': doc.id,
+              },
+            )
+            .toList();
+        _scheduleAttendanceFetch();
       }, onError: _handlePayrollStreamError);
 
       _holidaysSub = _firestore.holidaysStream.listen((_) {
@@ -859,115 +962,131 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
 
     var selectedDay = _salaryPayDay ?? DateTime.now().day;
-    final day = await showDialog<int>(
+    final day = await showGeneralDialog<int>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.35),
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      barrierDismissible: true,
+      barrierLabel: 'SetPayDayDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (_, _, _) => const SizedBox(),
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
           ),
-          title: Row(
-            children: [
-              const Icon(
-                Icons.calendar_month_rounded,
-                color: Color(0xFF0247C4),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text('set_salary_day'.tr())),
-            ],
-          ),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'salary_day_help'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 13,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const SizedBox(height: 18),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                  ),
-                  itemCount: 31,
-                  itemBuilder: (context, index) {
-                    final value = index + 1;
-                    final selected = value == selectedDay;
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () =>
-                          setDialogState(() => selectedDay = value),
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : const Color(0xFFF7F8FA),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: selected
-                                ? const Color(0xFF0247C4)
-                                : const Color(0xFFE5E7EB),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: StatefulBuilder(
+                builder: (dialogContext, setDialogState) =>
+                    _desktopDialogShell(
+                      dialogContext: dialogContext,
+                      title: 'set_salary_day'.tr(),
+                      width: 540,
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'salary_day_help'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 13,
+                              height: 1.35,
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          '$value',
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : const Color(0xFF111827),
-                            fontSize: 14,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
+                          const SizedBox(height: 18),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 7,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                  childAspectRatio: 1.2,
+                                ),
+                            itemCount: 31,
+                            itemBuilder: (context, index) {
+                              final value = index + 1;
+                              final selected = value == selectedDay;
+                              return MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () => setDialogState(
+                                    () => selectedDay = value,
+                                  ),
+                                  child: Container(
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? const Color(0xFF004FDE)
+                                          : const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: selected
+                                            ? const Color(0xFF004FDE)
+                                            : const Color(0xFFE5E7EB),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '$value',
+                                      style: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFFFFFFFF)
+                                            : const Color(0xFF0F172A),
+                                        fontSize: 14,
+                                        fontWeight: selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ],
+                      actions: [
+                        _desktopDialogButton(
+                          label: 'cancel'.tr(),
+                          onTap: () => Navigator.pop(dialogContext),
+                        ),
+                        _desktopDialogButton(
+                          label: 'save'.tr(),
+                          primary: true,
+                          onTap: () =>
+                              Navigator.pop(dialogContext, selectedDay),
+                        ),
+                      ],
+                    ),
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('cancel'.tr()),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, selectedDay),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0247C4),
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
-              child: Text('save'.tr()),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
     if (day == null || !mounted) return;
 
     try {
       await _firestore.updateUserProfile({'salaryPayDay': day});
       if (!mounted) return;
+      final shouldResetReminder =
+          !_reminderCheckScheduled && !_reminderDialogOpen;
       setState(() {
         _salaryPayDay = day;
-        _reminderHandledForActivation = false;
+        if (shouldResetReminder) {
+          _reminderHandledForActivation = false;
+        }
       });
       FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       _schedulePayrollReminderCheck();
@@ -1062,14 +1181,33 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          'pay_roll_list'.tr(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'pay_roll_list'.tr(),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF000000),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'current_pay_period_label'.tr(
+                                namedArgs: {
+                                  'period': _payPeriodLabelFor(_payrollMonth),
+                                },
+                              ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF667085),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Padding(

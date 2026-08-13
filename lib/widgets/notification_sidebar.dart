@@ -9,7 +9,7 @@ import '../providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
-import '../utils/delete_dialog.dart';
+import '../utils/dialog_utils.dart';
 
 class NotificationSidebar extends ConsumerStatefulWidget {
   final VoidCallback onClose;

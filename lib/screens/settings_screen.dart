@@ -8,7 +8,7 @@ import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import '../utils/snackbar_utils.dart';
+import '../utils/ui_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';

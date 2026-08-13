@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class FlashySnackBar {
   static OverlayEntry? _currentEntry;
@@ -241,4 +242,73 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
       ),
     );
   }
+}
+
+PageRoute<T> noTransitionRoute<T>({
+  required WidgetBuilder builder,
+  RouteSettings? settings,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        child,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+  );
+}
+
+PageRoute<T> authTransitionRoute<T>({
+  required WidgetBuilder builder,
+  RouteSettings? settings,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+    transitionDuration: const Duration(milliseconds: 240),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curvedAnimation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.04, 0),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class SvgFillColorMapper extends ColorMapper {
+  const SvgFillColorMapper({required this.source, required this.replacement});
+
+  final Color source;
+  final Color replacement;
+
+  @override
+  Color substitute(
+    String? id,
+    String elementName,
+    String attributeName,
+    Color color,
+  ) {
+    return color == source ? replacement : color;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is SvgFillColorMapper &&
+      other.source == source &&
+      other.replacement == replacement;
+
+  @override
+  int get hashCode => Object.hash(source, replacement);
 }

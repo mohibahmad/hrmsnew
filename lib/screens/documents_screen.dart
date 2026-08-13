@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io' as io;
 import 'package:firebase_storage/firebase_storage.dart';
-import '../utils/file_opener.dart';
+import '../utils/file_utils.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -16,8 +16,8 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
 import '../services/error_reporter.dart';
-import '../utils/image_utils.dart';
-import '../utils/snackbar_utils.dart';
+
+import '../utils/ui_utils.dart';
 import '../utils/localization_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +26,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pdfx/pdfx.dart';
 import 'add_worker_flow.dart' show PdfPagePreview, DocPreview;
 import '../utils/guest_restriction.dart';
-import '../utils/document_file_name.dart';
+
 
 class DocumentsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

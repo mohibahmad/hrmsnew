@@ -129,7 +129,7 @@ class PayrollService {
     DateTime date, {
     int? payDay,
     int leadDays = 3,
-    int overdueDays = 3,
+    int? overdueDays,
   }) {
     final today = DateTime(date.year, date.month, date.day);
     final currentMonth = DateTime(today.year, today.month, 1);
@@ -146,7 +146,8 @@ class PayrollService {
     }
 
     final daysAfterCurrentDue = today.difference(currentDueDate).inDays;
-    if (daysAfterCurrentDue > 0 && daysAfterCurrentDue <= overdueDays) {
+    if (daysAfterCurrentDue > 0 &&
+        (overdueDays == null || daysAfterCurrentDue <= overdueDays)) {
       return PayrollReminderWindow(
         payrollMonth: currentMonth,
         dueDate: currentDueDate,
@@ -159,7 +160,8 @@ class PayrollService {
         ? payPeriodEnd(previousMonth)
         : payrollDueDate(previousMonth, payDay);
     final daysAfterPreviousDue = today.difference(previousDueDate).inDays;
-    if (daysAfterPreviousDue > 0 && daysAfterPreviousDue <= overdueDays) {
+    if (daysAfterPreviousDue > 0 &&
+        (overdueDays == null || daysAfterPreviousDue <= overdueDays)) {
       return PayrollReminderWindow(
         payrollMonth: previousMonth,
         dueDate: previousDueDate,

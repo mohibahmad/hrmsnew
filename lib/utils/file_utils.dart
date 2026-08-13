@@ -1,8 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:open_file/open_file.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 const int _maxCacheBytes = 50 * 1024 * 1024;
 int _currentCacheBytes = 0;
@@ -234,5 +240,204 @@ class _WorkerAvatarState extends State<WorkerAvatar> {
             )
           : null,
     );
+  }
+}
+
+final PdfColor _hrStampColor = PdfColor.fromHex('#0B2A6F');
+const String defaultHrStampAssetPath = 'assets/default_hr_stamp.png';
+
+Future<Uint8List?> loadDefaultHrStampBytes() async {
+  try {
+    final data = await rootBundle.load(defaultHrStampAssetPath);
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+  } catch (_) {
+    return null;
+  }
+}
+
+void _drawHrStampStar(
+  PdfGraphics canvas,
+  double centerX,
+  double centerY,
+  double size,
+  PdfColor color,
+) {
+  final outerRadius = size;
+  final innerRadius = size * 0.42;
+  canvas.setFillColor(color);
+  for (var index = 0; index < 10; index++) {
+    final r = index.isEven ? outerRadius : innerRadius;
+    final angle = (index * math.pi / 5) - (math.pi / 2);
+    final x = centerX + r * math.cos(angle);
+    final y = centerY + r * math.sin(angle);
+    if (index == 0) {
+      canvas.moveTo(x, y);
+    } else {
+      canvas.lineTo(x, y);
+    }
+  }
+  canvas
+    ..closePath()
+    ..fillPath();
+}
+
+pw.Widget _buildDefaultHrStamp() {
+  return pw.CustomPaint(
+    size: const PdfPoint(66, 66),
+    painter: (canvas, size) {
+      final centerX = size.x / 2;
+      final centerY = size.y / 2;
+      final radius = size.x / 2;
+      final color = _hrStampColor;
+
+      canvas.setStrokeColor(color);
+      canvas.setFillColor(color);
+
+      canvas
+        ..setLineWidth(radius * 0.009)
+        ..drawEllipse(centerX, centerY, radius * 0.95, radius * 0.95)
+        ..strokePath()
+        ..setLineWidth(radius * 0.022)
+        ..drawEllipse(centerX, centerY, radius * 0.92, radius * 0.92)
+        ..strokePath()
+        ..setLineWidth(radius * 0.018)
+        ..drawEllipse(centerX, centerY, radius * 0.59, radius * 0.59)
+        ..strokePath();
+
+      _drawHrStampStar(
+        canvas,
+        centerX - radius * 0.76,
+        centerY,
+        radius * 0.065,
+        color,
+      );
+      _drawHrStampStar(
+        canvas,
+        centerX + radius * 0.76,
+        centerY,
+        radius * 0.065,
+        color,
+      );
+    },
+    child: pw.Container(
+      width: 66,
+      height: 66,
+      alignment: pw.Alignment.center,
+      child: pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        children: [
+          pw.Text(
+            'HR',
+            style: pw.TextStyle(
+              color: _hrStampColor,
+              fontSize: 20,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
+            'HUMAN RESOURCES',
+            style: pw.TextStyle(
+              color: _hrStampColor,
+              fontSize: 3.5,
+              fontWeight: pw.FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+pw.Widget buildCompanyAuthorization({
+  required String companyName,
+  required String companyId,
+  pw.MemoryImage? stampImage,
+  required PdfColor accentColor,
+  required PdfColor mutedColor,
+  String authorizedSignatoryText = 'Authorized Signatory',
+  String companyIdLabel = '',
+  String? generatedOnText,
+  double width = 150,
+}) {
+  final cleanName = companyName.trim().isEmpty ? 'HRMS' : companyName.trim();
+
+  return pw.Container(
+    margin: const pw.EdgeInsets.only(right: 32),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: [
+        pw.SizedBox(
+          width: 60,
+          height: 60,
+          child: stampImage != null
+              ? pw.Image(stampImage, fit: pw.BoxFit.contain)
+              : _buildDefaultHrStamp(),
+        ),
+        pw.SizedBox(height: 6),
+
+        pw.Text(
+          cleanName,
+          style: pw.TextStyle(
+            color: accentColor,
+            fontSize: 8,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+        pw.SizedBox(height: 2),
+
+        pw.Container(width: 60, height: 0.6, color: accentColor),
+        pw.SizedBox(height: 3),
+        pw.Text(
+          authorizedSignatoryText,
+          style: pw.TextStyle(color: mutedColor, fontSize: 6.5),
+        ),
+        if (companyId.trim().isNotEmpty)
+          pw.Text(
+            '${companyIdLabel.isNotEmpty ? '$companyIdLabel ' : ''}${companyId.trim()}',
+            style: pw.TextStyle(color: mutedColor, fontSize: 6),
+          ),
+        if (generatedOnText != null && generatedOnText.isNotEmpty) ...[
+          pw.SizedBox(height: 3),
+          pw.Text(
+            generatedOnText,
+            style: pw.TextStyle(
+              fontSize: 6.5,
+              color: PdfColor.fromHex('#9CA3AF'),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+String cleanUploadedDocumentFileName(
+  String rawName, {
+  String fallback = 'document',
+}) {
+  if (rawName.trim().isEmpty) return fallback;
+
+  var name = rawName.trim().split('?').first;
+  try {
+    name = Uri.decodeComponent(name);
+  } catch (_) {}
+  if (name.contains('/')) {
+    name = name.split('/').last;
+  }
+
+  name = name.trim().replaceFirst(RegExp(r'^\d+_\d+_'), '');
+  return name.isNotEmpty ? name : fallback;
+}
+
+class FileOpener {
+  static Future<void> open(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return;
+      await OpenFile.open(filePath);
+    } catch (_) {}
   }
 }
