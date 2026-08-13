@@ -64,6 +64,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   String _selectedTab = 'All';
   String _recordsPeriodFilter = 'All Time';
   DateTimeRange? _customDateRange;
+  Set<DateTime>? _customSelectedDates;
   String _recordsLeaveTypeFilter = 'All';
 
   List<Map<String, dynamic>> get _filteredTimeOffRecords {
@@ -92,19 +93,40 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         if (normType != normSelected) return false;
       }
 
-      final recordDate = AppDateUtils.dateFromValue(
-        record['startDate'] ?? record['date'],
-      );
-      if (recordDate == null) return true;
-
-      final recordDay = DateTime(
-        recordDate.year,
-        recordDate.month,
-        recordDate.day,
-      );
+      final recordDates = TimeOffService.selectedDatesForRecord(record);
 
       if (_recordsPeriodFilter == 'Custom Range') {
-        if (_customDateRange != null) {
+        if (_customSelectedDates != null && _customSelectedDates!.isNotEmpty) {
+          if (recordDates.isEmpty) {
+            final fallbackDate = AppDateUtils.dateFromValue(
+              record['startDate'] ?? record['date'],
+            );
+            if (fallbackDate == null) return true;
+            final recordDay = DateTime(
+              fallbackDate.year,
+              fallbackDate.month,
+              fallbackDate.day,
+            );
+            final hasMatch = _customSelectedDates!.any(
+              (sel) =>
+                  sel.year == recordDay.year &&
+                  sel.month == recordDay.month &&
+                  sel.day == recordDay.day,
+            );
+            if (!hasMatch) return false;
+          } else {
+            final hasMatch = recordDates.any((d) {
+              final day = DateTime(d.year, d.month, d.day);
+              return _customSelectedDates!.any(
+                (sel) =>
+                    sel.year == day.year &&
+                    sel.month == day.month &&
+                    sel.day == day.day,
+              );
+            });
+            if (!hasMatch) return false;
+          }
+        } else if (_customDateRange != null) {
           final start = DateTime(
             _customDateRange!.start.year,
             _customDateRange!.start.month,
@@ -118,13 +140,48 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             59,
             59,
           );
-          if (recordDay.isBefore(start) || recordDay.isAfter(end)) return false;
+          if (recordDates.isEmpty) {
+            final fallbackDate = AppDateUtils.dateFromValue(
+              record['startDate'] ?? record['date'],
+            );
+            if (fallbackDate == null) return true;
+            final recordDay = DateTime(
+              fallbackDate.year,
+              fallbackDate.month,
+              fallbackDate.day,
+            );
+            if (recordDay.isBefore(start) || recordDay.isAfter(end)) return false;
+          } else {
+            final hasMatch = recordDates.any((d) {
+              final day = DateTime(d.year, d.month, d.day);
+              return !day.isBefore(start) && !day.isAfter(end);
+            });
+            if (!hasMatch) return false;
+          }
         }
       } else if (_recordsPeriodFilter != 'All Time') {
         final range = AttendanceReportService.rangeForPeriod(
           _recordsPeriodFilter,
         );
-        if (!range.contains(recordDay)) return false;
+        if (recordDates.isEmpty) {
+          final fallbackDate = AppDateUtils.dateFromValue(
+            record['startDate'] ?? record['date'],
+          );
+          if (fallbackDate != null) {
+            final recordDay = DateTime(
+              fallbackDate.year,
+              fallbackDate.month,
+              fallbackDate.day,
+            );
+            if (!range.contains(recordDay)) return false;
+          }
+        } else {
+          final hasMatch = recordDates.any((d) {
+            final day = DateTime(d.year, d.month, d.day);
+            return range.contains(day);
+          });
+          if (!hasMatch) return false;
+        }
       }
 
       return true;
@@ -2171,6 +2228,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               setState(() {
                 _recordsPeriodFilter = val;
                 _customDateRange = null;
+                _customSelectedDates = null;
               });
             }
           },
@@ -2550,7 +2608,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   Future<void> _selectCustomDateRange(BuildContext context) async {
     DateTime calendarDate = DateTime.now();
     Set<DateTime> selectedDates = {};
-    if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+    if (_recordsPeriodFilter == 'Custom Range' &&
+        _customSelectedDates != null &&
+        _customSelectedDates!.isNotEmpty) {
+      selectedDates = Set<DateTime>.from(_customSelectedDates!);
+      calendarDate = _customSelectedDates!.first;
+    } else if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
       for (
         var d = _customDateRange!.start;
         !d.isAfter(_customDateRange!.end);
@@ -2787,6 +2850,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     if (result != null && result.isNotEmpty) {
       setState(() {
+        _customSelectedDates = result.toSet();
         _customDateRange = DateTimeRange(start: result.first, end: result.last);
         _recordsPeriodFilter = 'Custom Range';
       });

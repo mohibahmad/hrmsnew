@@ -468,7 +468,7 @@ class _WorkersAttendanceScreenState
     if (_isGuest || _autoMarkInProgress || _autoMarkDoneForToday) return;
     if (!_workersLoaded || !_timeOffLoaded || !_attendanceLoaded) return;
     _autoMarkInProgress = true;
-    _autoMarkDoneForToday = true;
+    bool hasFailures = false;
     try {
       final now = DateTime.now();
       final todayKey =
@@ -525,6 +525,7 @@ class _WorkersAttendanceScreenState
           );
           marked.add({...attendanceRecord, 'id': result.attendanceId});
         } catch (error, stackTrace) {
+          hasFailures = true;
           ErrorReporter.report(
             error,
             stackTrace,
@@ -544,6 +545,9 @@ class _WorkersAttendanceScreenState
           }
           _todayAttendance = updated;
         });
+      }
+      if (!hasFailures) {
+        _autoMarkDoneForToday = true;
       }
     } finally {
       _autoMarkInProgress = false;
