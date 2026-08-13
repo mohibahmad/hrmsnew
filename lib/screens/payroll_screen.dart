@@ -119,6 +119,139 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     return 'salary_day_value'.tr(namedArgs: {'day': formattedDay});
   }
 
+  Widget _desktopDialogButton({
+    required String label,
+    required VoidCallback onTap,
+    bool primary = false,
+  }) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: primary
+                ? const Color(0xFF004FDE)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: primary
+                  ? const Color(0xFFFFFFFF)
+                  : const Color(0xFF0F172A),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopDialogShell({
+    required BuildContext dialogContext,
+    required String title,
+    required Widget content,
+    required List<Widget> actions,
+    double width = 540,
+  }) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Center(
+        child: Container(
+          width: width,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 48,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                color: const Color(0xFF004FDE),
+                child: Row(
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        child: const SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFFFFFFFF),
+                            size: 21,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 32),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: content,
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    for (var index = 0; index < actions.length; index++) ...[
+                      if (index > 0) const SizedBox(width: 10),
+                      actions[index],
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   bool _requirePayableSalary(Map<String, dynamic> worker) {
     final salary = PayrollService.extractSalary(
       PayrollService.currentSalaryDisplay(
@@ -238,112 +371,167 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     _reminderHandledForActivation = true;
     _reminderDialogOpen = true;
-    final action = await showDialog<_PayrollReminderAction>(
+    final offset = window.dayOffset;
+    final status = offset < -1
+        ? 'payroll_due_in_days'.tr(namedArgs: {'days': '${offset.abs()}'})
+        : offset == -1
+        ? 'payroll_due_tomorrow'.tr()
+        : offset == 0
+        ? 'payroll_due_today'.tr()
+        : offset == 1
+        ? 'payroll_overdue_one_day'.tr()
+        : 'payroll_overdue_days'.tr(namedArgs: {'days': '$offset'});
+    final dueDate = AppDateUtils.fromValueLocalized(
+      window.dueDate,
+      locale: context.locale.toString(),
+    );
+    final visibleNames = payableWorkers
+        .take(4)
+        .map((worker) => (worker['name'] ?? 'Worker').toString())
+        .join(', ');
+    final extraCount = payableWorkers.length - 4;
+    final action = await showGeneralDialog<_PayrollReminderAction>(
       context: context,
       barrierDismissible: true,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.45),
-      builder: (dialogContext) {
-        final offset = window.dayOffset;
-        final status = offset < -1
-            ? 'payroll_due_in_days'.tr(namedArgs: {'days': '${offset.abs()}'})
-            : offset == -1
-            ? 'payroll_due_tomorrow'.tr()
-            : offset == 0
-            ? 'payroll_due_today'.tr()
-            : offset == 1
-            ? 'payroll_overdue_one_day'.tr()
-            : 'payroll_overdue_days'.tr(namedArgs: {'days': '$offset'});
-        final dueDate = AppDateUtils.fromValueLocalized(
-          window.dueDate,
-          locale: context.locale.toString(),
+      barrierLabel: 'PayrollReminderDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (_, _, _) => const SizedBox(),
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
         );
-        final visibleNames = payableWorkers
-            .take(4)
-            .map((worker) => (worker['name'] ?? 'Worker').toString())
-            .join(', ');
-        final extraCount = payableWorkers.length - 4;
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
           ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.notifications_active_rounded,
-                color: offset > 0
-                    ? const Color(0xFFE74C3C)
-                    : const Color(0xFF0247C4),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  offset > 0
-                      ? 'overdue_payroll'.tr()
-                      : 'pay_due_reminder'.tr(),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: _desktopDialogShell(
+                dialogContext: dialogContext,
+                title: offset > 0
+                    ? 'overdue_payroll'.tr()
+                    : 'pay_due_reminder'.tr(),
+                width: 560,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: offset > 0
+                            ? const Color(0xFFFEF2F2)
+                            : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: offset > 0
+                              ? const Color(0xFFFECACA)
+                              : const Color(0xFFBFDBFE),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.notifications_active_rounded,
+                            color: offset > 0
+                                ? const Color(0xFFEF4444)
+                                : const Color(0xFF004FDE),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                color: offset > 0
+                                    ? const Color(0xFFDC2626)
+                                    : const Color(0xFF004FDE),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'payroll_due_message'.tr(
+                        namedArgs: {
+                          'count': '${payableWorkers.length}',
+                          'date': dueDate,
+                        },
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 14,
+                        height: 1.4,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Text(
+                        extraCount > 0
+                            ? '$visibleNames +$extraCount'
+                            : visibleNames,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                actions: [
+                  _desktopDialogButton(
+                    label: 'remind_me_later'.tr(),
+                    onTap: () => Navigator.pop(
+                      dialogContext,
+                      _PayrollReminderAction.remindLater,
+                    ),
+                  ),
+                  _desktopDialogButton(
+                    label: 'ignore'.tr(),
+                    onTap: () => Navigator.pop(
+                      dialogContext,
+                      _PayrollReminderAction.ignore,
+                    ),
+                  ),
+                  _desktopDialogButton(
+                    label: 'payable'.tr(),
+                    primary: true,
+                    onTap: () => Navigator.pop(
+                      dialogContext,
+                      _PayrollReminderAction.viewPayable,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          content: SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: offset > 0
-                        ? const Color(0xFFE74C3C)
-                        : const Color(0xFF0247C4),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'payroll_due_message'.tr(
-                    namedArgs: {
-                      'count': '${payableWorkers.length}',
-                      'date': dueDate,
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  extraCount > 0 ? '$visibleNames +$extraCount' : visibleNames,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                _PayrollReminderAction.remindLater,
-              ),
-              child: Text('remind_me_later'.tr()),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, _PayrollReminderAction.ignore),
-              child: Text('ignore'.tr()),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0247C4),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () =>
-                  Navigator.pop(
-                    dialogContext,
-                    _PayrollReminderAction.viewPayable,
-                  ),
-              child: Text('payable'.tr()),
-            ),
-          ],
         );
       },
     );
