@@ -424,18 +424,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final deletePasswordController = TextEditingController();
     final deleteFormKey = GlobalKey<FormState>();
 
-    final confirm = await showGeneralDialog<bool>(
+    await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'DeleteAccountDialog',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         final curve = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutBack,
         );
+        var dialogIsDeleting = false;
+
         return Stack(
           children: [
             Positioned.fill(
@@ -456,206 +458,333 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               opacity: animation,
               child: ScaleTransition(
                 scale: curve,
-                child: Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: Container(
-                    width: 380,
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF000000,
-                          ).withValues(alpha: 0.15),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+                child: StatefulBuilder(
+                  builder: (dialogContext, setDialogState) {
+                    Future<void> executeAccountDeletion() async {
+                      if (dialogIsDeleting) return;
+                      if (usesPasswordProvider &&
+                          !(deleteFormKey.currentState?.validate() ?? false)) {
+                        return;
+                      }
+
+                      final deletionPassword = deletePasswordController.text;
+                      setDialogState(() => dialogIsDeleting = true);
+
+                      final isGuest =
+                          _authService.currentUser?.isAnonymous ?? false;
+                      if (isGuest) {
+                        await _authService.signOut();
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const HomeScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        }
+                        return;
+                      }
+
+                      final user = _authService.currentUser;
+                      if (user == null) {
+                        setDialogState(() => dialogIsDeleting = false);
+                        if (context.mounted) {
+                          FlashySnackBar.show(
+                            context,
+                            message: 'failed_delete_account'.tr(
+                              namedArgs: {'error': 'user-not-found'},
+                            ),
+                            isError: true,
+                          );
+                        }
+                        return;
+                      }
+
+                      var profileMarkedDeleted = false;
+                      try {
+                        await _authService.reauthenticateForAccountDeletion(
+                          password: usesPasswordProvider
+                              ? deletionPassword
+                              : null,
+                        );
+                        await _firestore.deleteUserData();
+                        profileMarkedDeleted = true;
+
+                        try {
+                          await _authService.signOut();
+                        } catch (_) {}
+
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                        if (context.mounted) {
+                          FlashySnackBar.show(
+                            context,
+                            message: 'account_deleted_successfully'.tr(),
+                            title: 'account_deleted'.tr(),
+                          );
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        }
+                      } on FirebaseAuthException catch (error) {
+                        if (profileMarkedDeleted &&
+                            _authService.currentUser != null) {
+                          try {
+                            await _firestore.updateUserProfile({
+                              'isDeleted': false,
+                            });
+                          } catch (_) {}
+                        }
+                        setDialogState(() => dialogIsDeleting = false);
+                        if (context.mounted) {
+                          FlashySnackBar.show(
+                            context,
+                            message: _deleteAccountErrorMessage(error),
+                            isError: true,
+                          );
+                        }
+                      } catch (error) {
+                        if (profileMarkedDeleted &&
+                            _authService.currentUser != null) {
+                          try {
+                            await _firestore.updateUserProfile({
+                              'isDeleted': false,
+                            });
+                          } catch (_) {}
+                        }
+                        setDialogState(() => dialogIsDeleting = false);
+                        if (context.mounted) {
+                          FlashySnackBar.show(
+                            context,
+                            message: 'failed_delete_account'.tr(
+                              namedArgs: {
+                                'error': error.runtimeType.toString(),
+                              },
+                            ),
+                            isError: true,
+                          );
+                        }
+                      }
+                    }
+
+                    return Dialog(
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        width: 380,
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF000000,
+                              ).withValues(alpha: 0.15),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Form(
-                      key: deleteFormKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFEE2E2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.warning_rounded,
-                                color: Color(0xFFEF4444),
-                                size: 36,
+                        child: Form(
+                          key: deleteFormKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 64,
+                                height: 64,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFEE2E2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.warning_rounded,
+                                    color: Color(0xFFEF4444),
+                                    size: 36,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'delete_account_question'.tr(),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF000000),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'delete_account_desc'.tr(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w400,
-                              fontFamily: 'SF Pro Display',
-                              height: 1.4,
-                            ),
-                          ),
-                          if (usesPasswordProvider) ...[
-                            const SizedBox(height: 20),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'password_label'.tr(),
+                              const SizedBox(height: 20),
+                              Text(
+                                'delete_account_question'.tr(),
                                 style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF111827),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF000000),
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: deletePasswordController,
-                              obscureText: true,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) {
-                                if (deleteFormKey.currentState?.validate() ??
-                                    false) {
-                                  Navigator.pop(context, true);
-                                }
-                              },
-                              decoration: InputDecoration(
-                                hintText: 'password_hint'.tr(),
-                                prefixIcon: const Icon(
-                                  Icons.lock_outline_rounded,
-                                  color: Color(0xFF0247C4),
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFF0247C4),
-                                    width: 1.5,
-                                  ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'delete_account_desc'.tr(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.4,
                                 ),
                               ),
-                              validator: (value) =>
-                                  (value == null || value.isEmpty)
-                                  ? 'password_required'.tr()
-                                  : null,
-                            ),
-                          ],
-                          const SizedBox(height: 28),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: GestureDetector(
-                                    onTap: () => Navigator.pop(context, false),
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Container(
-                                      height: 48,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'cancel'.tr(),
-                                        style: const TextStyle(
-                                          color: Color(0xFF000000),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
+                              if (usesPasswordProvider) ...[
+                                const SizedBox(height: 20),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'password_label'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF111827),
+                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      if (usesPasswordProvider &&
-                                          !(deleteFormKey.currentState
-                                                  ?.validate() ??
-                                              false)) {
-                                        return;
-                                      }
-                                      Navigator.pop(context, true);
-                                    },
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Container(
-                                      height: 48,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEF4444),
-                                        borderRadius: BorderRadius.circular(6),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: const Color(
-                                              0xFFEF4444,
-                                            ).withValues(alpha: 0.2),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: deletePasswordController,
+                                  enabled: !dialogIsDeleting,
+                                  obscureText: true,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) =>
+                                      executeAccountDeletion(),
+                                  decoration: InputDecoration(
+                                    hintText: 'password_hint'.tr(),
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: Color(0xFF0247C4),
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFC),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF0247C4),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) =>
+                                      (value == null || value.isEmpty)
+                                      ? 'password_required'.tr()
+                                      : null,
+                                ),
+                              ],
+                              const SizedBox(height: 28),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: dialogIsDeleting
+                                            ? null
+                                            : () => Navigator.of(
+                                                  dialogContext,
+                                                ).pop(),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          height: 48,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        'delete_account'.tr(),
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'SF Pro Display',
+                                          child: Text(
+                                            'cancel'.tr(),
+                                            style: const TextStyle(
+                                              color: Color(0xFF000000),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: dialogIsDeleting
+                                            ? null
+                                            : executeAccountDeletion,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          height: 48,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEF4444),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(
+                                                  0xFFEF4444,
+                                                ).withValues(alpha: 0.2),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: dialogIsDeleting
+                                              ? const SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : Text(
+                                                  'delete_account'.tr(),
+                                                  style: const TextStyle(
+                                                    color: Color(0xFFFFFFFF),
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily:
+                                                        'SF Pro Display',
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -664,90 +793,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       },
     );
 
-    final deletionPassword = deletePasswordController.text;
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await Future<void>.delayed(const Duration(milliseconds: 400));
     deletePasswordController.dispose();
-    if (confirm != true || !context.mounted) return;
-
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      await _authService.signOut();
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
-      }
-      return;
-    }
-
-    final user = _authService.currentUser;
-    if (user == null) {
-      FlashySnackBar.show(
-        context,
-        message: 'failed_delete_account'.tr(
-          namedArgs: {'error': 'user-not-found'},
-        ),
-        isError: true,
-      );
-      return;
-    }
-
-    setState(() => _isDeletingAccount = true);
-    var profileMarkedDeleted = false;
-
-    try {
-      await _authService.reauthenticateForAccountDeletion(
-        password: usesPasswordProvider ? deletionPassword : null,
-      );
-      await _firestore.deleteUserData();
-      profileMarkedDeleted = true;
-
-      try {
-        await _authService.signOut();
-      } catch (_) {}
-
-      if (!context.mounted) return;
-      FlashySnackBar.show(
-        context,
-        message: 'account_deleted_successfully'.tr(),
-        title: 'account_deleted'.tr(),
-      );
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    } on FirebaseAuthException catch (error) {
-      if (profileMarkedDeleted && _authService.currentUser != null) {
-        try {
-          await _firestore.updateUserProfile({'isDeleted': false});
-        } catch (_) {}
-      }
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: _deleteAccountErrorMessage(error),
-          isError: true,
-        );
-      }
-    } catch (error) {
-      if (profileMarkedDeleted && _authService.currentUser != null) {
-        try {
-          await _firestore.updateUserProfile({'isDeleted': false});
-        } catch (_) {}
-      }
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'failed_delete_account'.tr(
-            namedArgs: {'error': error.runtimeType.toString()},
-          ),
-          isError: true,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDeletingAccount = false);
-    }
   }
 
   String _deleteAccountErrorMessage(FirebaseAuthException error) {
