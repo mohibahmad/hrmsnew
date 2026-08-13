@@ -510,7 +510,7 @@
   "start_date": "Start Date",
   "end_date": "End Date",
   "selected_dates": "Selected Dates",
-  "selected_dates_count_title": "Selected Dates ({count} total)",
+  "selected_dates_count_title": "Selected Dates ({count} Total)",
   "no_dates_selected": "No dates selected",
   "selected_days": "Selected Days",
   "tap_dates_to_select": "Tap individual dates, or swipe from one date to another to select the full range.",

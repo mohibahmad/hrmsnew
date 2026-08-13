@@ -1808,12 +1808,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 380,
-          height: MediaQuery.sizeOf(ctx).height * 0.75,
+          width: 520,
+          height: MediaQuery.sizeOf(ctx).height * 0.60,
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.85,
-            minHeight: 380,
-            maxHeight: MediaQuery.sizeOf(ctx).height * 0.85,
+            maxWidth: MediaQuery.sizeOf(ctx).width * 0.90,
+            minHeight: 340,
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.72,
           ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
