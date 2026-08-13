@@ -587,50 +587,9 @@ class _WorkersAttendanceScreenState
     return matchingNames == 1;
   }
 
-  Map<String, dynamic>? _attendanceManagedTimeOffForWorker(
-    Map<String, dynamic> worker,
-    DateTime date,
-  ) {
-    final target = DateTime(date.year, date.month, date.day);
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
-    final workerName = WorkerIdentity.normalizeName(worker['name']);
-
-    for (final record in _timeOffRecords) {
-      if (!_isAttendanceManagedTimeOff(record)) continue;
-      if (!TimeOffService.isActiveRecord(record)) continue;
-
-      final belongsToWorker = _isGuest
-          ? () {
-              final recordWorkerId = (record['workerId'] ?? '')
-                  .toString()
-                  .trim();
-              final recordEmail = WorkerIdentity.normalizeEmail(
-                record['email'],
-              );
-              final recordName = WorkerIdentity.normalizeName(
-                record['name'] ?? record['workerName'],
-              );
-              return workerId.isNotEmpty && recordWorkerId.isNotEmpty
-                  ? workerId == recordWorkerId
-                  : workerEmail.isNotEmpty && recordEmail.isNotEmpty
-                  ? workerEmail == recordEmail
-                  : workerName.isNotEmpty && workerName == recordName;
-            }()
-          : _authenticatedRecordBelongsToWorker(record, worker);
-
-      if (!belongsToWorker) continue;
-      if (TimeOffService.selectedDatesForRecord(record).contains(target)) {
-        return record;
-      }
-    }
-    return null;
-  }
-
   Future<bool> _syncAttendanceAnnualLeave({
     required Map<String, dynamic> worker,
+    required Map<String, dynamic> originalAttendance,
     required String selectedStatus,
     required String leaveType,
     required String reason,
@@ -643,36 +602,95 @@ class _WorkersAttendanceScreenState
     if (workerId.isEmpty) {
       throw StateError('Missing worker identity');
     }
+    // Use a fresh Firestore snapshot for every edit transition. The dialog can
+    // open before the realtime Time Off stream has delivered its first event;
+    // relying on that local list is what made an existing leave look new.
+    final syncTimeOffRecords = await _firestore.getTimeoffOnce();
 
     final today = DateTime.now();
     final normalizedToday = DateTime(today.year, today.month, today.day);
-    final existing =
-        _attendanceManagedTimeOffForWorker(worker, normalizedToday) ??
-        TimeOffService.activeLeaveForWorker(
-          worker,
-          _plannedTimeOffRecords,
-          onDate: normalizedToday,
-        );
-    final shouldHaveLeave = selectedStatus == 'Leave';
-    final existingId = (existing?['id'] ?? '').toString().trim();
-    final hasTimeOffChange = shouldHaveLeave || existingId.isNotEmpty;
-
-    if (shouldHaveLeave) {
-      final existingType = TimeOffService.normalizeLeaveType(
-        (existing?['type'] ?? existing?['action'] ?? '').toString(),
-      );
-      final selectedType = TimeOffService.normalizeLeaveType(leaveType);
-      final isKeepingExistingType =
-          existing != null && existingType == selectedType;
-      if (!isKeepingExistingType &&
-          TimeOffService.getLeaveBalance(worker, selectedType) <= 0) {
-        return false;
+    String dateOnlyString(DateTime date) =>
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+    final linkedTimeOffId = (originalAttendance['timeOffId'] ?? '')
+        .toString()
+        .trim();
+    Map<String, dynamic>? existing;
+    if (linkedTimeOffId.isNotEmpty) {
+      for (final record in syncTimeOffRecords) {
+        if ((record['id'] ?? '').toString().trim() == linkedTimeOffId &&
+            TimeOffService.isActiveRecord(record)) {
+          existing = record;
+          break;
+        }
       }
     }
+    existing ??= TimeOffService.activeLeaveForWorker(
+      worker,
+      syncTimeOffRecords,
+      onDate: normalizedToday,
+    );
 
-    final projectedRecords = _timeOffRecords
+    final shouldHaveLeave = selectedStatus == 'Leave';
+    final existingId = (existing?['id'] ?? '').toString().trim();
+    final oldStatus = (originalAttendance['status'] ?? '').toString().trim();
+    final oldType = TimeOffService.normalizeLeaveType(
+      (originalAttendance['type'] ?? '').toString(),
+    );
+    final selectedType = TimeOffService.normalizeLeaveType(leaveType);
+    final existingType = TimeOffService.normalizeLeaveType(
+      (existing?['type'] ?? existing?['action'] ?? '').toString(),
+    );
+    final keepsExistingReservation =
+        shouldHaveLeave && existing != null && existingType == selectedType;
+    final keepsLegacyManualLeave =
+        shouldHaveLeave &&
+        existing == null &&
+        oldStatus == 'Leave' &&
+        oldType == selectedType;
+    final writesTimeOff =
+        shouldHaveLeave && !keepsExistingReservation && !keepsLegacyManualLeave;
+    final existingDates = existing == null
+        ? const <DateTime>[]
+        : TimeOffService.selectedDatesForRecord(existing);
+    final remainingExistingDates =
+        existingDates
+            .where(
+              (date) =>
+                  date.year != normalizedToday.year ||
+                  date.month != normalizedToday.month ||
+                  date.day != normalizedToday.day,
+            )
+            .toList()
+          ..sort();
+    final updatesRemainingTimeOff =
+        existingId.isNotEmpty &&
+        remainingExistingDates.isNotEmpty &&
+        (writesTimeOff || !shouldHaveLeave);
+    final deletesTimeOff =
+        !shouldHaveLeave &&
+        existingId.isNotEmpty &&
+        remainingExistingDates.isEmpty;
+    final createsSplitTimeOff = writesTimeOff && updatesRemainingTimeOff;
+    final hasTimeOffChange =
+        writesTimeOff || deletesTimeOff || updatesRemainingTimeOff;
+
+    if (writesTimeOff &&
+        TimeOffService.remainingForType(
+              worker,
+              syncTimeOffRecords,
+              selectedType,
+              excludingRecordId: existingId.isEmpty ? null : existingId,
+            ) <
+            1) {
+      return false;
+    }
+
+    final projectedRecords = syncTimeOffRecords
         .where(
           (record) =>
+              !hasTimeOffChange ||
               existing == null ||
               (existingId.isNotEmpty
                   ? record['id']?.toString() != existingId
@@ -682,7 +700,7 @@ class _WorkersAttendanceScreenState
         .toList();
 
     Map<String, dynamic>? attendanceTimeOff;
-    if (shouldHaveLeave) {
+    if (writesTimeOff) {
       final dateKey =
           '${normalizedToday.year}-'
           '${normalizedToday.month.toString().padLeft(2, '0')}-'
@@ -709,66 +727,54 @@ class _WorkersAttendanceScreenState
       };
       projectedRecords.add({
         ...attendanceTimeOff,
-        'id': existingId.isNotEmpty ? existingId : 'pending_attendance_leave',
+        'id': existingId.isNotEmpty && !createsSplitTimeOff
+            ? existingId
+            : 'pending_attendance_leave',
       });
     }
 
-    final canonicalLeaveFields = TimeOffService.canonicalWorkerLeaveFields(
-      worker,
-    );
-    final Map<String, dynamic> perTypeBalances = Map<String, dynamic>.from(
-      canonicalLeaveFields['leaveBalances'] as Map,
-    );
-
-    String balanceFieldFor(String type) =>
-        switch (TimeOffService.normalizeLeaveType(type)) {
-          'Annual Leave' => 'annualLeave',
-          'Sick Leave' => 'sickLeave',
-          'Casual Leave' => 'casualLeave',
-          'Medical Leave' => 'medicalLeave',
-          _ => '',
-        };
-
-    int balanceFor(String field) {
-      return int.tryParse(perTypeBalances[field]?.toString() ?? '0') ?? 0;
+    Map<String, dynamic>? remainingTimeOffRecord;
+    if (updatesRemainingTimeOff && existing != null) {
+      remainingTimeOffRecord = Map<String, dynamic>.from(existing)
+        ..remove('id')
+        ..['selectedDates'] = remainingExistingDates
+            .map(dateOnlyString)
+            .toList()
+        ..['startDate'] = dateOnlyString(remainingExistingDates.first)
+        ..['endDate'] = dateOnlyString(remainingExistingDates.last)
+        ..['requestedDays'] = remainingExistingDates.length;
+      projectedRecords.add({...remainingTimeOffRecord, 'id': existingId});
     }
 
-    const allBalanceFields = [
-      'annualLeave',
-      'sickLeave',
-      'casualLeave',
-      'medicalLeave',
-    ];
-    for (final field in allBalanceFields) {
-      perTypeBalances.putIfAbsent(field, () => balanceFor(field));
-    }
+    final Map<String, dynamic>? balanceUpdate = hasTimeOffChange
+        ? TimeOffService.canonicalWorkerLeaveFields(
+            worker,
+            remainingBalances:
+                TimeOffService.remainingBalancesFromAssignedRecords(
+                  worker,
+                  projectedRecords,
+                ),
+          )
+        : null;
 
-    final previousType = existing != null
-        ? (existing['type'] ?? existing['action'] ?? '').toString()
-        : '';
-    final previousField = balanceFieldFor(previousType);
-    if (previousField.isNotEmpty) {
-      perTypeBalances[previousField] = balanceFor(previousField) + 1;
+    final attendancePayload = Map<String, dynamic>.from(attendanceData)
+      ..['source'] = 'manual';
+    if (shouldHaveLeave && existingId.isNotEmpty) {
+      attendancePayload['timeOffId'] = existingId;
+    } else {
+      attendancePayload['timeOffId'] = FieldValue.delete();
     }
-
-    final newField = balanceFieldFor(leaveType);
-    if (shouldHaveLeave && newField.isNotEmpty) {
-      perTypeBalances[newField] = (balanceFor(newField) - 1).clamp(0, 99999);
-    }
-
-    final balanceUpdate = TimeOffService.canonicalWorkerLeaveFields(
-      worker,
-      remainingBalances: perTypeBalances,
-    );
 
     final result = await _firestore.saveAttendanceWithLeaveSync(
-      attendanceRecord: attendanceData,
+      attendanceRecord: attendancePayload,
       attendanceId: attendanceId,
       timeOffId: existingId.isEmpty ? null : existingId,
-      timeOffRecord: shouldHaveLeave ? attendanceTimeOff : null,
-      deleteTimeOff: !shouldHaveLeave,
+      timeOffRecord: writesTimeOff ? attendanceTimeOff : null,
+      remainingTimeOffRecord: remainingTimeOffRecord,
+      createNewTimeOff: createsSplitTimeOff,
+      deleteTimeOff: deletesTimeOff,
       workerId: workerId,
-      balance: hasTimeOffChange ? balanceUpdate : null,
+      balance: balanceUpdate,
     );
     final savedTimeOffId = result.timeOffId.isEmpty
         ? existingId
@@ -781,7 +787,7 @@ class _WorkersAttendanceScreenState
             (record) => record['id']?.toString() != 'pending_attendance_leave',
           )
           .toList();
-      if (shouldHaveLeave && attendanceTimeOff != null) {
+      if (writesTimeOff && attendanceTimeOff != null) {
         _timeOffRecords.insert(0, {...attendanceTimeOff, 'id': savedTimeOffId});
       }
       final savedAttId = result.attendanceId.isNotEmpty
@@ -796,7 +802,13 @@ class _WorkersAttendanceScreenState
             _authenticatedRecordBelongsToWorker(r, worker),
       );
 
-      final cleanAttData = Map<String, dynamic>.from(attendanceData);
+      final cleanAttData = Map<String, dynamic>.from(attendancePayload);
+      cleanAttData['source'] = 'manual';
+      if (shouldHaveLeave && savedTimeOffId.isNotEmpty) {
+        cleanAttData['timeOffId'] = savedTimeOffId;
+      } else {
+        cleanAttData.remove('timeOffId');
+      }
       if (selectedStatus != 'Leave') {
         cleanAttData.remove('type');
         cleanAttData.remove('desc');
@@ -810,6 +822,7 @@ class _WorkersAttendanceScreenState
       if (selectedStatus != 'Leave') {
         updatedLocalRecord.remove('type');
         updatedLocalRecord.remove('desc');
+        updatedLocalRecord.remove('timeOffId');
       }
 
       if (existingIndex != -1) {
@@ -823,7 +836,7 @@ class _WorkersAttendanceScreenState
             (item['id'] ?? item['workerId'] ?? '').toString().trim() ==
             workerId,
       );
-      if (workerIndex != -1) {
+      if (workerIndex != -1 && balanceUpdate != null) {
         _workers[workerIndex] = {..._workers[workerIndex], ...balanceUpdate};
       }
       _rebuildWorkerIndexes();
@@ -1430,6 +1443,7 @@ class _WorkersAttendanceScreenState
 
         final leaveBalanceSynced = await _syncAttendanceAnnualLeave(
           worker: workerData,
+          originalAttendance: todayRecord,
           selectedStatus: status,
           leaveType: type ?? 'Annual Leave',
           reason: desc ?? '',
@@ -1844,9 +1858,16 @@ class _WorkersAttendanceScreenState
         orElse: () => <String, dynamic>{},
       );
     }
+    int remainingLeaveForType(String type) =>
+        TimeOffService.remainingForType(workerData, _timeOffRecords, type);
     final canSelectLeave =
         todayRecord['status'] == 'Leave' ||
-        TimeOffService.totalAvailableLeaves(workerData) > 0;
+        const [
+          'Annual Leave',
+          'Sick Leave',
+          'Casual Leave',
+          'Medical Leave',
+        ].any((type) => remainingLeaveForType(type) > 0);
 
     const validStatuses = {'Present', 'Absent', 'Leave'};
 
@@ -1884,8 +1905,7 @@ class _WorkersAttendanceScreenState
           bool canSelectLeaveType(String type) {
             final isCurrentAttendanceLeave =
                 todayRecord['status'] == 'Leave' && initialType == type;
-            return isCurrentAttendanceLeave ||
-                TimeOffService.getLeaveBalance(workerData, type) > 0;
+            return isCurrentAttendanceLeave || remainingLeaveForType(type) > 0;
           }
 
           String? firstAvailableLeaveType() {
@@ -1927,19 +1947,13 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Annual Leave')
                     ? 'false'
                     : 'true',
-                'balance': TimeOffService.getLeaveBalance(
-                  workerData,
-                  'Annual Leave',
-                ),
+                'balance': remainingLeaveForType('Annual Leave'),
               },
               {
                 'value': 'Sick Leave',
                 'key': 'sick_leave_type',
                 'disabled': canSelectLeaveType('Sick Leave') ? 'false' : 'true',
-                'balance': TimeOffService.getLeaveBalance(
-                  workerData,
-                  'Sick Leave',
-                ),
+                'balance': remainingLeaveForType('Sick Leave'),
               },
               {
                 'value': 'Casual Leave',
@@ -1947,10 +1961,7 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Casual Leave')
                     ? 'false'
                     : 'true',
-                'balance': TimeOffService.getLeaveBalance(
-                  workerData,
-                  'Casual Leave',
-                ),
+                'balance': remainingLeaveForType('Casual Leave'),
               },
               {
                 'value': 'Medical Leave',
@@ -1958,10 +1969,7 @@ class _WorkersAttendanceScreenState
                 'disabled': canSelectLeaveType('Medical Leave')
                     ? 'false'
                     : 'true',
-                'balance': TimeOffService.getLeaveBalance(
-                  workerData,
-                  'Medical Leave',
-                ),
+                'balance': remainingLeaveForType('Medical Leave'),
               },
             ];
           }
@@ -2394,6 +2402,8 @@ class _WorkersAttendanceScreenState
                                                   final leaveBalanceSynced =
                                                       await _syncAttendanceAnnualLeave(
                                                         worker: workerData,
+                                                        originalAttendance:
+                                                            todayRecord,
                                                         selectedStatus:
                                                             selectedStatus,
                                                         leaveType:

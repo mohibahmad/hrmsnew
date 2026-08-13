@@ -322,6 +322,8 @@ class AttendanceService {
     List<Map<String, dynamic>> timeOffRecords,
   ) {
     final latestByWorkerAndDay = <String, Map<String, dynamic>>{};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     for (final record in records) {
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = WorkerIdentity.normalizeEmail(record['email']);
@@ -337,6 +339,14 @@ class AttendanceService {
           ? 'name:$name'
           : 'record:$recordId';
       final recordDate = AppDateUtils.attendanceRecordDate(record);
+      if (recordDate != null) {
+        final recordDay = DateTime(
+          recordDate.year,
+          recordDate.month,
+          recordDate.day,
+        );
+        if (recordDay.isAfter(today)) continue;
+      }
       final dayKey = recordDate == null
           ? 'undated:$recordId'
           : _dateKey(recordDate);

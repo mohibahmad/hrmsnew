@@ -702,16 +702,34 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   int _baseAvailableDaysForType(String type) {
     if (_selectedWorker == null) return 0;
-    return TimeOffService.availableBalanceForEditingRecord(
+    final base = TimeOffService.availableBalanceForEditingRecord(
       _selectedWorkerForService,
+      _timeoffRecords,
       type,
       _editingRecord,
     );
+    if (!_isAggregateOverview) return base;
+
+    final assignedDates =
+        TimeOffService.assignedLeaveDatesForWorkerByType(
+          _selectedWorkerForService,
+          _timeoffRecords,
+        )[TimeOffService.normalizeLeaveType(type)]?.length ??
+        0;
+    final limit = TimeOffService.configuredLimitForType(
+      _selectedWorkerForService,
+      type,
+    );
+    return (base + assignedDates).clamp(0, limit);
   }
 
   int _availableDaysForType(String type) {
     if (widget.viewOnly) {
-      return TimeOffService.getLeaveBalance(_selectedWorkerForService, type);
+      return TimeOffService.remainingForType(
+        _selectedWorkerForService,
+        _timeoffRecords,
+        type,
+      );
     }
     final base = _baseAvailableDaysForType(type);
     final normType = TimeOffService.normalizeLeaveType(type);
@@ -722,6 +740,15 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return projectedTimeOffBalance(
       availableDays: base,
       requestedDays: currentlySelected,
+    );
+  }
+
+  int _remainingDaysForType(String type) {
+    if (_selectedWorker == null) return 0;
+    return TimeOffService.remainingForType(
+      _selectedWorkerForService,
+      _timeoffRecords,
+      type,
     );
   }
 
@@ -787,6 +814,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     if (_isAggregateOverview) return _selectedDaysCount;
     return TimeOffService.projectedAssignedDaysForEditingRecord(
       _selectedWorkerForService,
+      _timeoffRecords,
       _timeOffType,
       _editingRecord,
       _selectedDaysCount,
@@ -1378,7 +1406,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   return _leaveTypeOptions.map((option) {
                     final label = option['labelKey']!.tr();
                     final typeVal = option['value']!;
-                    final avail = _availableDaysForType(typeVal);
+                    final avail = _remainingDaysForType(typeVal);
                     final displayLabel =
                         (_selectedWorker != null && avail < 999)
                         ? '$label ($avail)'
@@ -1402,7 +1430,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 items: _leaveTypeOptions.map((option) {
                   final label = option['labelKey']!.tr();
                   final typeVal = option['value']!;
-                  final avail = _availableDaysForType(typeVal);
+                  final avail = _remainingDaysForType(typeVal);
 
                   final displayLabel = (_selectedWorker != null && avail < 999)
                       ? '$label ($avail)'
@@ -1906,7 +1934,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
-    
     if (!isRemoving && _selectedWorker != null) {
       final existingLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
@@ -2722,6 +2749,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
       final available = TimeOffService.availableBalanceForEditingRecord(
         _selectedWorkerForService,
+        _timeoffRecords,
         draft.leaveType,
         draft.editingRecord,
       );

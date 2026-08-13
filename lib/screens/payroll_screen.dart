@@ -63,6 +63,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   String _companyCurrency = CurrencyUtils.defaultCode;
   DateTime _payrollMonth = PayrollService.currentPayrollMonth();
   int? _salaryPayDay;
+  DateTime _payPeriodStart = PayrollService.payPeriodStart(DateTime.now());
+  DateTime _payPeriodEnd = PayrollService.payPeriodEnd(DateTime.now());
 
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
@@ -90,6 +92,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       _rawPayrollDocs,
       month: month,
       companyCurrency: _companyCurrency,
+      periodStart:
+          month.year == _payrollMonth.year && month.month == _payrollMonth.month
+          ? _payPeriodStart
+          : null,
+      periodEnd:
+          month.year == _payrollMonth.year && month.month == _payrollMonth.month
+          ? _payPeriodEnd
+          : null,
     );
   }
 
@@ -100,6 +110,22 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     final value = profile?['salaryPayDay'] ?? profile?['salary_pay_day'];
     final day = value is num ? value.toInt() : int.tryParse('$value');
     return day != null && day >= 1 && day <= 31 ? day : null;
+  }
+
+  PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
+    final savedStart = AppDateUtils.dateFromValue(
+      profile?['payrollCycleStart'],
+    );
+    final savedEnd = AppDateUtils.dateFromValue(profile?['payrollCycleEnd']);
+    if (savedStart != null &&
+        savedEnd != null &&
+        savedStart.isBefore(savedEnd)) {
+      return PayrollPeriod(
+        start: DateTime(savedStart.year, savedStart.month, savedStart.day),
+        end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
+      );
+    }
+    return PayrollService.payDayPeriod(DateTime.now(), payDay);
   }
 
   String _payDayButtonLabel() {
@@ -267,8 +293,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   String _payPeriodLabelFor(DateTime month) {
-    final start = PayrollService.payPeriodStart(month);
-    final end = PayrollService.payPeriodEnd(month);
+    final isCurrent =
+        month.year == _payrollMonth.year && month.month == _payrollMonth.month;
+    final start = isCurrent
+        ? _payPeriodStart
+        : PayrollService.payPeriodStart(month);
+    final end = isCurrent ? _payPeriodEnd : PayrollService.payPeriodEnd(month);
     return PayrollService.formatPayPeriodRange(
       start,
       end,
@@ -296,6 +326,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       month: _payrollMonth,
       allowUndatedRecords: isGuest,
       companyCurrency: _companyCurrency,
+      periodStart: _payPeriodStart,
+      periodEnd: _payPeriodEnd,
     );
 
     final zeroAmount = '${CurrencyUtils.symbolFor(_companyCurrency)} 0';
@@ -350,28 +382,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     final forceReminder = _forceReminderForActivation;
     _forceReminderForActivation = false;
 
+    final today = DateTime(now.year, now.month, now.day);
+    final offset = today.difference(_payPeriodEnd).inDays;
     PayrollReminderWindow? window;
-    if (forceReminder) {
-      // A direct Payroll sidebar click always checks the current pay period.
-      // If payable workers remain, show a reminder before/on pay day and an
-      // overdue message after pay day, regardless of prior dismissal.
-      final today = DateTime(now.year, now.month, now.day);
-      final payrollMonth = PayrollService.currentPayrollMonth(
-        referenceDate: today,
-      );
-      final dueDate = _salaryPayDay == null
-          ? PayrollService.payPeriodEnd(payrollMonth)
-          : PayrollService.payrollDueDate(payrollMonth, _salaryPayDay!);
+    if (offset >= -3) {
       window = PayrollReminderWindow(
-        payrollMonth: payrollMonth,
-        dueDate: dueDate,
-        dayOffset: today.difference(dueDate).inDays,
-      );
-    } else {
-      window = PayrollService.reminderWindowForDate(
-        now,
-        payDay: _salaryPayDay,
-        overdueDays: 0,
+        payrollMonth: _payrollMonth,
+        dueDate: _payPeriodEnd,
+        dayOffset: offset,
       );
     }
     if (window == null) {
@@ -398,7 +416,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     _reminderHandledForActivation = true;
     _reminderDialogOpen = true;
-    final offset = reminderWindow.dayOffset;
     final status = offset < -1
         ? 'payroll_due_in_days'.tr(namedArgs: {'days': '${offset.abs()}'})
         : offset == -1
@@ -611,13 +628,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                       _PayrollReminderAction.remindLater,
                     ),
                   ),
-                  _desktopDialogButton(
-                    label: 'ignore'.tr(),
-                    onTap: () => Navigator.pop(
-                      dialogContext,
-                      _PayrollReminderAction.ignore,
+                  if (offset > 0)
+                    _desktopDialogButton(
+                      label: 'ignore'.tr(),
+                      onTap: () => Navigator.pop(
+                        dialogContext,
+                        _PayrollReminderAction.ignore,
+                      ),
                     ),
-                  ),
                   _desktopDialogButton(
                     label: 'payable'.tr(),
                     primary: true,
@@ -644,9 +662,11 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         if (mounted) setState(() => _selectedFilter = 'All');
         break;
       case _PayrollReminderAction.ignore:
-        await PreferencesService.ignorePayrollReminder(
-          reminderWindow.suppressionKey,
-        );
+        if (await _confirmAndAdvanceOverdueCycle(reminderWindow)) {
+          await PreferencesService.ignorePayrollReminder(
+            reminderWindow.suppressionKey,
+          );
+        }
         break;
       case _PayrollReminderAction.viewPayable:
         if (mounted) {
@@ -659,9 +679,81 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         }
         break;
       case null:
-        if (mounted) setState(() => _selectedFilter = 'Paid');
+        if (mounted) setState(() => _selectedFilter = 'All');
         break;
     }
+  }
+
+  Future<bool> _confirmAndAdvanceOverdueCycle(
+    PayrollReminderWindow reminderWindow,
+  ) async {
+    if (!mounted || _salaryPayDay == null) return false;
+    final confirmed = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'ConfirmPayrollOverdueIgnore',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (dialogContext, _, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: const ColoredBox(color: Colors.transparent),
+          ),
+          _desktopDialogShell(
+            dialogContext: dialogContext,
+            title: 'overdue_payroll'.tr(),
+            width: 500,
+            content: const Text(
+              'The current workers will remain payable. This overdue reminder '
+              'will not be shown again, and the payroll cycle will move to the '
+              'next pay period. Do you want to continue?',
+              style: TextStyle(
+                color: Color(0xFF334155),
+                fontSize: 14,
+                height: 1.45,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            actions: [
+              _desktopDialogButton(
+                label: 'cancel'.tr(),
+                onTap: () => Navigator.pop(dialogContext, false),
+              ),
+              _desktopDialogButton(
+                label: 'ignore'.tr(),
+                primary: true,
+                onTap: () => Navigator.pop(dialogContext, true),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return false;
+
+    final next = PayrollService.nextPayDayPeriod(
+      PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+      _salaryPayDay!,
+    );
+    await _firestore.updateUserProfile({
+      'payrollCycleStart': next.start.toIso8601String(),
+      'payrollCycleEnd': next.end.toIso8601String(),
+      'payrollCycleAdvancedAt': DateTime.now().toIso8601String(),
+      'payrollCyclePreviousDueDate': reminderWindow.dueDate.toIso8601String(),
+    });
+    if (!mounted) return true;
+    setState(() {
+      _payPeriodStart = next.start;
+      _payPeriodEnd = next.end;
+      _payrollMonth = DateTime(next.end.year, next.end.month, 1);
+      _selectedFilter = 'Pay';
+      _reminderHandledForActivation = true;
+      _combinePayroll();
+    });
+    _scheduleAttendanceFetch();
+    return true;
   }
 
   void _scheduleAttendanceFetch() {
@@ -790,13 +882,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _loadCompanySettings() async {
     String companyCurrency = CurrencyUtils.defaultCode;
     int? salaryPayDay;
+    Map<String, dynamic>? profile;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      final profile = await PreferencesService.getGuestProfileData();
+      profile = await PreferencesService.getGuestProfileData();
       companyCurrency = CurrencyUtils.normalize(profile?['currency']);
       salaryPayDay = _payDayFromProfile(profile);
     } else {
-      final profile = await _firestore.getUserProfile();
+      profile = await _firestore.getUserProfile();
       companyCurrency = CurrencyUtils.normalize(profile?['currency']);
       salaryPayDay = _payDayFromProfile(profile);
 
@@ -814,10 +907,18 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     }
     if (!mounted) return;
+    final period = salaryPayDay == null
+        ? PayrollPeriod(
+            start: PayrollService.payPeriodStart(DateTime.now()),
+            end: PayrollService.payPeriodEnd(DateTime.now()),
+          )
+        : _periodFromProfile(profile, salaryPayDay);
     setState(() {
       _companyCurrency = companyCurrency;
       _salaryPayDay = salaryPayDay;
-      _payrollMonth = PayrollService.currentPayrollMonth();
+      _payPeriodStart = period.start;
+      _payPeriodEnd = period.end;
+      _payrollMonth = DateTime(period.end.year, period.end.month, 1);
       _combinePayroll();
     });
     _scheduleAttendanceFetch();
@@ -889,16 +990,35 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         if (!mounted || profile == null) return;
         final currency = CurrencyUtils.normalize(profile['currency']);
         final salaryPayDay = _payDayFromProfile(profile);
-        if (currency == _companyCurrency && salaryPayDay == _salaryPayDay) {
+        final period = salaryPayDay == null
+            ? PayrollPeriod(
+                start: PayrollService.payPeriodStart(DateTime.now()),
+                end: PayrollService.payPeriodEnd(DateTime.now()),
+              )
+            : _periodFromProfile(profile, salaryPayDay);
+        if (currency == _companyCurrency &&
+            salaryPayDay == _salaryPayDay &&
+            PayrollService.periodDateKey(period.start) ==
+                PayrollService.periodDateKey(_payPeriodStart) &&
+            PayrollService.periodDateKey(period.end) ==
+                PayrollService.periodDateKey(_payPeriodEnd)) {
           return;
         }
+        final periodChanged =
+            PayrollService.periodDateKey(period.start) !=
+                PayrollService.periodDateKey(_payPeriodStart) ||
+            PayrollService.periodDateKey(period.end) !=
+                PayrollService.periodDateKey(_payPeriodEnd);
         final shouldResetReminder =
-            salaryPayDay != _salaryPayDay &&
+            (salaryPayDay != _salaryPayDay || periodChanged) &&
             !_reminderCheckScheduled &&
             !_reminderDialogOpen;
         setState(() {
           _companyCurrency = currency;
           _salaryPayDay = salaryPayDay;
+          _payPeriodStart = period.start;
+          _payPeriodEnd = period.end;
+          _payrollMonth = DateTime(period.end.year, period.end.month, 1);
           if (shouldResetReminder) {
             _reminderHandledForActivation = false;
           }
@@ -1086,12 +1206,22 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     if (day == null || !mounted) return;
 
     try {
-      await _firestore.updateUserProfile({'salaryPayDay': day});
+      final period = day == _salaryPayDay
+          ? PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd)
+          : PayrollService.payDayPeriod(DateTime.now(), day);
+      await _firestore.updateUserProfile({
+        'salaryPayDay': day,
+        'payrollCycleStart': period.start.toIso8601String(),
+        'payrollCycleEnd': period.end.toIso8601String(),
+      });
       if (!mounted) return;
       final shouldResetReminder =
           !_reminderCheckScheduled && !_reminderDialogOpen;
       setState(() {
         _salaryPayDay = day;
+        _payPeriodStart = period.start;
+        _payPeriodEnd = period.end;
+        _payrollMonth = DateTime(period.end.year, period.end.month, 1);
         if (shouldResetReminder) {
           _reminderHandledForActivation = false;
         }
@@ -1123,6 +1253,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       final summary = await PayrollRunner().payAll(
         context,
         payrollMonth: payrollMonth,
+        payPeriodStart: _payPeriodStart,
+        payPeriodEnd: _payPeriodEnd,
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(
@@ -1152,6 +1284,8 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       return AddPayrollScreen(
         workerData: _workerForPayroll!,
         payrollMonth: _payrollMonth,
+        payPeriodStart: _payPeriodStart,
+        payPeriodEnd: _payPeriodEnd,
         readOnly: _isViewOnly,
         onNotificationTap: widget.onNotificationTap,
         onProfileTap: widget.onProfileTap,

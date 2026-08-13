@@ -138,6 +138,8 @@ class AttendanceReportService {
     required AttendanceDateRange range,
   }) {
     final recordsByDay = <String, Map<String, dynamic>>{};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     final rawRecords = AttendanceService.recordsForWorker(
       worker: worker,
@@ -147,12 +149,14 @@ class AttendanceReportService {
     final leaveDates = TimeOffService.allLeaveDatesForWorker(
       worker,
       timeOffRecords,
-    );
+    ).where((date) => !date.isAfter(today)).toSet();
     final leaveDateKeys = leaveDates.map(_dateKey).toSet();
 
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
-      if (date == null || !range.contains(date)) continue;
+      if (date == null || date.isAfter(today) || !range.contains(date)) {
+        continue;
+      }
 
       final status = (record['status'] ?? '').toString().trim().toLowerCase();
       final key = _dateKey(date);

@@ -62,6 +62,8 @@ Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
 class AddPayrollScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> workerData;
   final DateTime payrollMonth;
+  final DateTime? payPeriodStart;
+  final DateTime? payPeriodEnd;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
@@ -71,6 +73,8 @@ class AddPayrollScreen extends ConsumerStatefulWidget {
     super.key,
     required this.workerData,
     required this.payrollMonth,
+    this.payPeriodStart,
+    this.payPeriodEnd,
     this.onNotificationTap,
     this.onProfileTap,
     this.onBack,
@@ -138,11 +142,10 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   String get _profileImage =>
       (widget.workerData['profileImage'] ?? '').toString();
 
-  String get _salaryStr =>
-      PayrollService.currentSalaryDisplay(
-        widget.workerData,
-        companyCurrency: _currencyCode,
-      );
+  String get _salaryStr => PayrollService.currentSalaryDisplay(
+    widget.workerData,
+    companyCurrency: _currencyCode,
+  );
 
   String get _currencyCode {
     final companyCurr = PreferencesService.cachedCompanyCurrency;
@@ -165,20 +168,14 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _firestore = ref.read(firestoreServiceProvider);
 
     if (!(_authService.currentUser?.isAnonymous ?? false)) {
-      _attendanceSub = _firestore.attendanceStream.listen(
-        (snapshot) {
-          _liveAttendanceRecords = snapshot.docs
-              .map(
-                (doc) => {
-                  ...?doc.data() as Map<String, dynamic>?,
-                  'id': doc.id,
-                },
-              )
-              .toList();
-          _scheduleAttendanceRefresh();
-        },
-        onError: (_, _) {},
-      );
+      _attendanceSub = _firestore.attendanceStream.listen((snapshot) {
+        _liveAttendanceRecords = snapshot.docs
+            .map(
+              (doc) => {...?doc.data() as Map<String, dynamic>?, 'id': doc.id},
+            )
+            .toList();
+        _scheduleAttendanceRefresh();
+      }, onError: (_, _) {});
     }
 
     _salaryCtrl.text = AmountText.formatFull(
@@ -200,8 +197,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       _overtimeAmountCtrl.text = _editableAmountValue(
         widget.workerData['overtimeAmount'],
       );
-      _absentDeductionCtrl.text =
-          widget.workerData['hasPayrollRecord'] == true
+      _absentDeductionCtrl.text = widget.workerData['hasPayrollRecord'] == true
           ? _editableAmountValue(widget.workerData['absentDeduction'])
           : '';
       _leaveDeductionCtrl.text = _editableAmountValue(
@@ -391,8 +387,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }
     }
     return (
-      PayrollService.payPeriodStart(_payrollMonth),
-      PayrollService.payPeriodEnd(_payrollMonth),
+      widget.payPeriodStart ?? PayrollService.payPeriodStart(_payrollMonth),
+      widget.payPeriodEnd ?? PayrollService.payPeriodEnd(_payrollMonth),
     );
   }
 
@@ -1793,9 +1789,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                       child: Text(
                         CurrencyUtils.symbolFor(_currencyCode),
                         style: TextStyle(
-                          color: readOnly
-                              ? const Color(0xFF9CA3AF)
-                              : _textDark,
+                          color: readOnly ? const Color(0xFF9CA3AF) : _textDark,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),

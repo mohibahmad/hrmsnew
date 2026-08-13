@@ -25,6 +25,7 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
+import '../services/time_off_service.dart';
 import '../utils/ui_utils.dart';
 import '../utils/date_time_utils.dart';
 import '../utils/worker_identity.dart';
@@ -389,14 +390,18 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       _experienceLevelController.text =
           (widget.workerToEdit!['experienceLevel'] ?? 'Mid-Level').toString();
-      if (_experienceLevelController.text.isEmpty) { _experienceLevelController.text = 'Mid-Level'; }
+      if (_experienceLevelController.text.isEmpty) {
+        _experienceLevelController.text = 'Mid-Level';
+      }
 
       _educationController.text =
           (widget.workerToEdit!['education'] ?? 'Bachelor').toString();
       if (_educationController.text.trim() == 'Bachelors') {
         _educationController.text = 'Bachelor';
       }
-      if (_educationController.text.isEmpty) { _educationController.text = 'Bachelor'; }
+      if (_educationController.text.isEmpty) {
+        _educationController.text = 'Bachelor';
+      }
 
       _salaryAmountController.text = CurrencyUtils.amountText(
         widget.workerToEdit!['salaryAmount'],
@@ -404,7 +409,9 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       _leavePolicyController.text =
           (widget.workerToEdit!['leavePolicy'] ?? 'Standard').toString();
-      if (_leavePolicyController.text.isEmpty) { _leavePolicyController.text = 'Standard'; }
+      if (_leavePolicyController.text.isEmpty) {
+        _leavePolicyController.text = 'Standard';
+      }
 
       _annualLeavesController.text = LeaveBalanceHelper.leaveDaysText(
         widget.workerToEdit!['annualLeaves'],
@@ -598,90 +605,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   void _clampCasualLeaves() => _clampLeaveDays(_casualLeavesController);
 
   void _clampMedicalLeaves() => _clampLeaveDays(_medicalLeavesController);
-
-  int _getUsedLeavesCount(Map<String, dynamic> worker, String leaveType) {
-    final usedKeyMap = {
-      'Medical Leave': 'medicalLeavesUsed',
-      'Sick Leave': 'sickLeavesUsed',
-      'Casual Leave': 'casualLeavesUsed',
-      'Annual Leave': 'annualLeavesUsed',
-    };
-    final explicitKey = usedKeyMap[leaveType];
-    if (explicitKey != null && worker.containsKey(explicitKey)) {
-      final val = int.tryParse(worker[explicitKey]?.toString() ?? '');
-      if (val != null && val > 0) return val;
-    }
-
-    final totalKeyMap = {
-      'Medical Leave': 'medicalLeaves',
-      'Sick Leave': 'sickLeaves',
-      'Casual Leave': 'casualLeaves',
-      'Annual Leave': 'annualLeaves',
-    };
-    final availKeyMap = {
-      'Medical Leave': 'availableMedicalLeaves',
-      'Sick Leave': 'availableSickLeaves',
-      'Casual Leave': 'availableCasualLeaves',
-      'Annual Leave': 'availableAnnualLeaves',
-    };
-    final balanceKeyMap = {
-      'Medical Leave': 'medicalLeave',
-      'Sick Leave': 'sickLeave',
-      'Casual Leave': 'casualLeave',
-      'Annual Leave': 'annualLeave',
-    };
-
-    final totalKey = totalKeyMap[leaveType];
-    final availKey = availKeyMap[leaveType];
-    final balanceKey = balanceKeyMap[leaveType];
-
-    int total = 0;
-    if (totalKey != null) {
-      total = int.tryParse(worker[totalKey]?.toString() ?? '') ?? 0;
-    }
-
-    int? available;
-    if (availKey != null && worker.containsKey(availKey)) {
-      available = int.tryParse(worker[availKey]?.toString() ?? '');
-    }
-    if (available == null &&
-        balanceKey != null &&
-        worker['leaveBalances'] is Map) {
-      final map = worker['leaveBalances'] as Map;
-      if (map.containsKey(balanceKey)) {
-        available = int.tryParse(map[balanceKey]?.toString() ?? '');
-      }
-    }
-
-    int calcUsed = 0;
-    if (total > 0 && available != null) {
-      calcUsed = total - available;
-      if (calcUsed < 0) calcUsed = 0;
-    }
-
-    final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final workerId = (worker['id'] ?? worker['docId'] ?? '').toString().trim();
-    int countFromAtt = 0;
-    if (email.isNotEmpty || workerId.isNotEmpty) {
-      for (final att in DummyData.attendance) {
-        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-        final attWorkerId = (att['workerId'] ?? '').toString().trim();
-        final matches =
-            (workerId.isNotEmpty && attWorkerId == workerId) ||
-            (email.isNotEmpty && attEmail == email);
-        if (matches && att['status'] == 'Leave') {
-          final attType = (att['type'] ?? att['leaveType'] ?? '')
-              .toString()
-              .trim();
-          if (attType.toLowerCase() == leaveType.toLowerCase()) {
-            countFromAtt++;
-          }
-        }
-      }
-    }
-
-    return calcUsed > countFromAtt ? calcUsed : countFromAtt;
-  }
 
   void _clampLeaveDays(TextEditingController controller) {
     final text = controller.text;
@@ -999,9 +922,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
   Future<void> _pickProfileImage() async {
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.image,
-      );
+      final result = await FilePicker.pickFiles(type: FileType.image);
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
         final bytes = await _readPickedFileBytes(
@@ -1695,20 +1616,31 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
       if (widget.workerToEdit != null) {
         final worker = widget.workerToEdit!;
-        final usedAnnual = _getUsedLeavesCount(worker, 'Annual Leave');
-        final usedSick = _getUsedLeavesCount(worker, 'Sick Leave');
-        final usedCasual = _getUsedLeavesCount(worker, 'Casual Leave');
-        final usedMedical = _getUsedLeavesCount(worker, 'Medical Leave');
+        final timeOffRecords = isGuest
+            ? List<Map<String, dynamic>>.from(DummyData.timeoff)
+            : await _firestore.getTimeoffOnce();
+        final assignedByType = TimeOffService.paidDaysUsedForWorkerByType(
+          worker,
+          timeOffRecords,
+        );
+        final assignedAnnual = assignedByType['Annual Leave'] ?? 0;
+        final assignedSick = assignedByType['Sick Leave'] ?? 0;
+        final assignedCasual = assignedByType['Casual Leave'] ?? 0;
+        final assignedMedical = assignedByType['Medical Leave'] ?? 0;
 
         final leaveValidations = [
-          (type: 'Annual Leave', newValue: newAnnual, used: usedAnnual),
-          (type: 'Sick Leave', newValue: newSick, used: usedSick),
-          (type: 'Casual Leave', newValue: newCasual, used: usedCasual),
-          (type: 'Medical Leave', newValue: newMedical, used: usedMedical),
+          (type: 'Annual Leave', newValue: newAnnual, assigned: assignedAnnual),
+          (type: 'Sick Leave', newValue: newSick, assigned: assignedSick),
+          (type: 'Casual Leave', newValue: newCasual, assigned: assignedCasual),
+          (
+            type: 'Medical Leave',
+            newValue: newMedical,
+            assigned: assignedMedical,
+          ),
         ];
 
         for (final item in leaveValidations) {
-          if (item.used > 0 && item.newValue < item.used) {
+          if (item.assigned > 0 && item.newValue < item.assigned) {
             if (mounted) {
               setState(() {
                 _isSaving = false;
@@ -1716,7 +1648,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
               FlashySnackBar.show(
                 context,
                 message:
-                    'This worker has already used ${item.used} ${item.type}. You cannot set ${item.type} below used leaves.',
+                    '${item.assigned} ${item.type} days are already assigned. '
+                    'The allowance cannot be set below ${item.assigned}.',
                 isError: true,
               );
             }
@@ -1724,10 +1657,10 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           }
         }
 
-        availAnnual = (newAnnual - usedAnnual).clamp(0, newAnnual);
-        availSick = (newSick - usedSick).clamp(0, newSick);
-        availCasual = (newCasual - usedCasual).clamp(0, newCasual);
-        availMedical = (newMedical - usedMedical).clamp(0, newMedical);
+        availAnnual = (newAnnual - assignedAnnual).clamp(0, newAnnual);
+        availSick = (newSick - assignedSick).clamp(0, newSick);
+        availCasual = (newCasual - assignedCasual).clamp(0, newCasual);
+        availMedical = (newMedical - assignedMedical).clamp(0, newMedical);
       }
 
       final data = <String, dynamic>{
@@ -5009,7 +4942,9 @@ Widget _buildInputField(
 
                       if (intPart.length > 12) return oldValue;
 
-                      if (parts.length > 1 && parts[1].length > 2) { return oldValue; }
+                      if (parts.length > 1 && parts[1].length > 2) {
+                        return oldValue;
+                      }
                       final decPart = parts.length > 1 ? '.${parts[1]}' : '';
                       final buffer = StringBuffer();
                       for (int i = 0; i < intPart.length; i++) {
@@ -5042,8 +4977,12 @@ Widget _buildInputField(
                 ]
               : () {
                   final list = <TextInputFormatter>[];
-                  if (isEmailField) { list.add(LengthLimitingTextInputFormatter(100)); }
-                  if (isReligion) { list.add(LengthLimitingTextInputFormatter(30)); }
+                  if (isEmailField) {
+                    list.add(LengthLimitingTextInputFormatter(100));
+                  }
+                  if (isReligion) {
+                    list.add(LengthLimitingTextInputFormatter(30));
+                  }
                   return list.isEmpty ? null : list;
                 }(),
           style: const TextStyle(

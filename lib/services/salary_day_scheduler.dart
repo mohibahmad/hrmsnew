@@ -195,6 +195,8 @@ class PayrollRunner {
     BuildContext context, {
     bool autoMode = false,
     DateTime? payrollMonth,
+    DateTime? payPeriodStart,
+    DateTime? payPeriodEnd,
     String? positionFilter,
   }) async {
     final isGuest =
@@ -207,6 +209,8 @@ class PayrollRunner {
         context,
         autoMode: autoMode,
         payrollMonth: payrollMonth,
+        payPeriodStart: payPeriodStart,
+        payPeriodEnd: payPeriodEnd,
         positionFilter: positionFilter,
       );
     }
@@ -217,6 +221,8 @@ class PayrollRunner {
         context,
         autoMode: autoMode,
         payrollMonth: payrollMonth,
+        payPeriodStart: payPeriodStart,
+        payPeriodEnd: payPeriodEnd,
         positionFilter: positionFilter,
       );
     } finally {
@@ -228,6 +234,8 @@ class PayrollRunner {
     BuildContext context, {
     required bool autoMode,
     DateTime? payrollMonth,
+    DateTime? payPeriodStart,
+    DateTime? payPeriodEnd,
     String? positionFilter,
   }) async {
     final authService = ProviderScope.containerOf(
@@ -306,6 +314,10 @@ class PayrollRunner {
     final periodLabel = PayrollService.payrollPeriodLabel(
       effectivePayrollMonth,
     );
+    final effectivePeriodStart =
+        payPeriodStart ?? PayrollService.payPeriodStart(effectivePayrollMonth);
+    final effectivePeriodEnd =
+        payPeriodEnd ?? PayrollService.payPeriodEnd(effectivePayrollMonth);
 
     // ── Parallel fetch: company profile + payroll snapshot + working days ──
     Map<String, dynamic>? companyProfile;
@@ -340,8 +352,7 @@ class PayrollRunner {
           // the Firestore query by month can miss legacy records whose saved
           // attendance date is not a Timestamp, even though the attendance
           // screen and Add Payroll can already see those records.
-          firestoreService.attendanceStream
-              .first
+          firestoreService.attendanceStream.first
               .timeout(const Duration(seconds: 20))
               .then(
                 (snapshot) => {
@@ -415,6 +426,8 @@ class PayrollRunner {
         month: effectivePayrollMonth,
         allowUndatedRecords: isGuest,
         companyCurrency: companyCurrency,
+        periodStart: effectivePeriodStart,
+        periodEnd: effectivePeriodEnd,
       );
       workers2 = payableWorkers;
     } catch (error, stackTrace) {
@@ -717,7 +730,13 @@ class PayrollRunner {
       if (!context.mounted) return null;
       FlashySnackBar.show(context, message: 'processing_payroll'.tr());
       try {
-        await _commitPayrollRun(filteredSummary, isGuest, context);
+        await _commitPayrollRun(
+          filteredSummary,
+          isGuest,
+          context,
+          periodStart: effectivePeriodStart,
+          periodEnd: effectivePeriodEnd,
+        );
       } catch (error, stackTrace) {
         if (!isGuest) {
           ErrorReporter.report(
@@ -746,12 +765,20 @@ class PayrollRunner {
           paidResults,
           filteredSummary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
+          periodStart: effectivePeriodStart,
+          periodEnd: effectivePeriodEnd,
         );
       }
     } else {
       if (!context.mounted) return null;
       try {
-        await _commitPayrollRun(summary, isGuest, context);
+        await _commitPayrollRun(
+          summary,
+          isGuest,
+          context,
+          periodStart: effectivePeriodStart,
+          periodEnd: effectivePeriodEnd,
+        );
       } catch (error, stackTrace) {
         if (!isGuest) {
           ErrorReporter.report(
@@ -778,6 +805,8 @@ class PayrollRunner {
           paidResults,
           summary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
+          periodStart: effectivePeriodStart,
+          periodEnd: effectivePeriodEnd,
         );
       }
     }
@@ -797,12 +826,16 @@ class PayrollRunner {
   Future<PayrollRunSummary?> payAll(
     BuildContext context, {
     DateTime? payrollMonth,
+    DateTime? payPeriodStart,
+    DateTime? payPeriodEnd,
     String? positionFilter,
   }) async {
     final result = await runPayroll(
       context,
       autoMode: false,
       payrollMonth: payrollMonth,
+      payPeriodStart: payPeriodStart,
+      payPeriodEnd: payPeriodEnd,
       positionFilter: positionFilter,
     );
     return result;
@@ -812,10 +845,18 @@ class PayrollRunner {
     required Map<String, dynamic> record,
     required Map<String, dynamic> worker,
     required DateTime month,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) {
     final status = (record['status'] ?? '').toString().trim().toLowerCase();
     if (status != 'paid') return false;
-    if (!PayrollService.isRecordInMonth(record, month)) return false;
+    if (periodStart != null && periodEnd != null) {
+      if (!PayrollService.isRecordInPayPeriod(record, periodStart, periodEnd)) {
+        return false;
+      }
+    } else if (!PayrollService.isRecordInMonth(record, month)) {
+      return false;
+    }
 
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
@@ -841,14 +882,10 @@ class PayrollRunner {
   Future<int> _commitPayrollRun(
     PayrollRunSummary summary,
     bool isGuest,
-    BuildContext context,
-  ) async {
-    final periodReference =
-        PayrollService.parsePayrollPeriodLabel(summary.periodLabel) ??
-        summary.runDate;
-    final periodStart = PayrollService.payPeriodStart(periodReference);
-    final periodEnd = PayrollService.payPeriodEnd(periodReference);
-
+    BuildContext context, {
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) async {
     if (isGuest) {
       final savedPayroll = DummyData.payroll.toList();
       final savedExpenses = DummyData.expenses.toList();
@@ -951,6 +988,8 @@ class PayrollRunner {
           record: record,
           worker: {'id': result.workerId, 'email': result.email},
           month: payPeriodDate,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
         ),
       );
       return !isAlreadyPaid;
@@ -1082,8 +1121,10 @@ class PayrollRunner {
     BuildContext context,
     List<AutoPayrollResult> selected,
     String periodLabel,
-    Map<String, dynamic> companyProfile,
-  ) async {
+    Map<String, dynamic> companyProfile, {
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) async {
     if (selected.isEmpty) return;
 
     if (context.mounted) {
@@ -1095,10 +1136,6 @@ class PayrollRunner {
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
-      final periodReference =
-          PayrollService.parsePayrollPeriodLabel(periodLabel) ?? now;
-      final periodStart = PayrollService.payPeriodStart(periodReference);
-      final periodEnd = PayrollService.payPeriodEnd(periodReference);
       final periodDisplay = PayrollService.formatPayPeriodRange(
         periodStart,
         periodEnd,
@@ -1209,10 +1246,8 @@ class PayrollRunner {
         final generated = await Future.wait(
           List.generate(
             end - start,
-            (offset) => generateInvoice(
-              start + offset,
-              successful[start + offset],
-            ),
+            (offset) =>
+                generateInvoice(start + offset, successful[start + offset]),
           ),
         );
         invoiceFiles.addAll(generated);

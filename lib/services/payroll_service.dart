@@ -19,6 +19,13 @@ class PayrollReminderWindow {
       '${periodKey}_${PayrollService.periodDateKey(dueDate)}';
 }
 
+class PayrollPeriod {
+  final DateTime start;
+  final DateTime end;
+
+  const PayrollPeriod({required this.start, required this.end});
+}
+
 class PayrollService {
   static final PayrollService _instance = PayrollService._();
   factory PayrollService() => _instance;
@@ -34,6 +41,32 @@ class PayrollService {
 
   static DateTime payPeriodEnd(DateTime month) =>
       DateTime(month.year, month.month + 1, 0);
+
+  static DateTime _payDayInMonth(DateTime month, int payDay) {
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    return DateTime(month.year, month.month, payDay.clamp(1, lastDay).toInt());
+  }
+
+  static PayrollPeriod payDayPeriod(DateTime dueMonth, int payDay) {
+    return PayrollPeriod(
+      start: _payDayInMonth(
+        DateTime(dueMonth.year, dueMonth.month - 1, 1),
+        payDay,
+      ),
+      end: _payDayInMonth(dueMonth, payDay),
+    );
+  }
+
+  static PayrollPeriod nextPayDayPeriod(PayrollPeriod current, int payDay) {
+    final nextEndMonth = DateTime(current.end.year, current.end.month + 1, 1);
+    return PayrollPeriod(
+      start: _payDayInMonth(
+        DateTime(nextEndMonth.year, nextEndMonth.month - 1, 1),
+        payDay,
+      ),
+      end: _payDayInMonth(nextEndMonth, payDay),
+    );
+  }
 
   static String payrollPeriodLabel(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
@@ -243,6 +276,8 @@ class PayrollService {
     required DateTime month,
     bool allowUndatedRecords = false,
     String? companyCurrency,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) {
     return combinePayroll(
       workersList,
@@ -250,6 +285,8 @@ class PayrollService {
       month: month,
       allowUndatedRecords: allowUndatedRecords,
       companyCurrency: companyCurrency,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
     ).where((worker) => worker['isPaid'] != true).toList();
   }
 
@@ -259,6 +296,8 @@ class PayrollService {
     required DateTime month,
     bool allowUndatedRecords = false,
     String? companyCurrency,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) {
     return unpaidWorkersForPeriod(
       workersList,
@@ -266,6 +305,8 @@ class PayrollService {
       month: month,
       allowUndatedRecords: allowUndatedRecords,
       companyCurrency: companyCurrency,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
     ).where((worker) {
       return extractSalary(
             currentSalaryDisplay(worker, companyCurrency: companyCurrency),
@@ -500,12 +541,22 @@ class PayrollService {
     DateTime? month,
     bool allowUndatedRecords = false,
     String? companyCurrency,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) {
     final targetMonth = month ?? DateTime.now();
+    final effectivePeriodStart = periodStart ?? payPeriodStart(targetMonth);
+    final effectivePeriodEnd = periodEnd ?? payPeriodEnd(targetMonth);
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final activeWorkers = workersList
         .where(isWorkerEligibleForPayroll)
-        .where((worker) => workerJoinedBeforePeriodEnd(worker, targetMonth))
+        .where((worker) {
+          final joiningDate = _parseDate(
+            worker['joiningDate'] ?? worker['dateOfJoining'],
+          );
+          return joiningDate == null ||
+              !joiningDate.isAfter(effectivePeriodEnd);
+        })
         .map(Map<String, dynamic>.from)
         .toList();
 
@@ -515,9 +566,10 @@ class PayrollService {
 
     final monthlyPayrollDocs = rawPayrollDocs
         .where(
-          (record) => isRecordInMonth(
+          (record) => isRecordInPayPeriod(
             record,
-            targetMonth,
+            effectivePeriodStart,
+            effectivePeriodEnd,
             allowUndated: allowUndatedRecords,
           ),
         )
@@ -536,8 +588,8 @@ class PayrollService {
           ? ''
           : payrollKeyForPeriod(
               identity,
-              payPeriodStart(targetMonth),
-              payPeriodEnd(targetMonth),
+              effectivePeriodStart,
+              effectivePeriodEnd,
             );
       final legacyPayrollKey = identity.isEmpty
           ? ''
@@ -560,9 +612,10 @@ class PayrollService {
             );
       final canonicalRecordMovedOut =
           canonicalRecord != null &&
-          !isRecordInMonth(
+          !isRecordInPayPeriod(
             canonicalRecord,
-            targetMonth,
+            effectivePeriodStart,
+            effectivePeriodEnd,
             allowUndated: allowUndatedRecords,
           );
 
@@ -728,6 +781,23 @@ class PayrollService {
     final date = payrollRecordDate(record);
     if (date == null) return allowUndated;
     return date.year == month.year && date.month == month.month;
+  }
+
+  static bool isRecordInPayPeriod(
+    Map<String, dynamic> record,
+    DateTime periodStart,
+    DateTime periodEnd, {
+    bool allowUndated = false,
+  }) {
+    final savedStart = _parseDate(record['payPeriodStart']);
+    final savedEnd = _parseDate(record['payPeriodEnd']);
+    if (savedStart != null || savedEnd != null) {
+      return savedStart != null &&
+          savedEnd != null &&
+          periodDateKey(savedStart) == periodDateKey(periodStart) &&
+          periodDateKey(savedEnd) == periodDateKey(periodEnd);
+    }
+    return isRecordInMonth(record, periodEnd, allowUndated: allowUndated);
   }
 
   static DateTime? payrollRecordDate(Map<String, dynamic> record) {
