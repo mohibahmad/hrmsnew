@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_time_utils.dart';
@@ -1175,6 +1174,35 @@ class FirestoreService {
     await batch.commit();
   }
 
+  Future<void> upsertBulkPayrollExpenses(
+    List<Map<String, dynamic>> expenses,
+  ) async {
+    final coll = _expenses;
+    if (coll == null) throw StateError('No authenticated user');
+    if (expenses.isEmpty) return;
+
+    const chunkSize = 450;
+    for (var start = 0; start < expenses.length; start += chunkSize) {
+      final end = (start + chunkSize).clamp(0, expenses.length).toInt();
+      final batch = _db.batch();
+      for (final expense in expenses.sublist(start, end)) {
+        Validators.validateExpense(expense);
+        final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+        if (payrollKey.isEmpty) {
+          throw ArgumentError('payrollKey is required for a payroll expense');
+        }
+        final docRef = coll.doc(_payrollExpenseDocumentId(payrollKey));
+        batch.set(docRef, {
+          ...expense,
+          'payrollKey': payrollKey,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+      await batch.commit();
+    }
+  }
+
   Future<void> deleteExpense(String id) async {
     final coll = _expenses;
     if (coll == null) return;
@@ -1780,39 +1808,28 @@ class FirestoreService {
   Future<int> addBulkPayrollRecords(List<Map<String, dynamic>> records) async {
     final coll = _payroll;
     if (coll == null) return 0;
+    if (records.isEmpty) return 0;
 
     var saved = 0;
-
-    const chunkSize = 50;
+    const chunkSize = 450;
     for (var start = 0; start < records.length; start += chunkSize) {
       final end = (start + chunkSize).clamp(0, records.length).toInt();
       final chunk = records.sublist(start, end);
-
-      final results = await Future.wait(
-        chunk.map((record) async {
-          try {
-            Validators.validatePayroll(record);
-            final payrollKey = (record['payrollKey'] ?? '').toString().trim();
-            final docRef = payrollKey.isEmpty
-                ? coll.doc()
-                : coll.doc(_payrollDocumentId(payrollKey));
-            final existing = await docRef.get();
-
-            await docRef.set({
-              ...record,
-              if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
-            return true;
-          } catch (e, st) {
-            debugPrint('addBulkPayrollRecords error: $e\n$st');
-            ErrorReporter.report(e, st, context: 'addBulkPayrollRecords');
-            return false;
-          }
-        }),
-      );
-
-      saved += results.where((result) => result).length;
+      final batch = _db.batch();
+      for (final record in chunk) {
+        Validators.validatePayroll(record);
+        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+        final docRef = payrollKey.isEmpty
+            ? coll.doc()
+            : coll.doc(_payrollDocumentId(payrollKey));
+        batch.set(docRef, {
+          ...record,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+      await batch.commit();
+      saved += chunk.length;
     }
 
     return saved;

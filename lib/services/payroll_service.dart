@@ -458,16 +458,18 @@ class PayrollService {
         .trim();
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
 
-    if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
-      return workerId == recordWorkerId;
-    }
-
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final recordEmail = (record['email'] ?? '').toString().trim().toLowerCase();
 
-    if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
-      return workerEmail == recordEmail;
-    }
+    final idMatches =
+        workerId.isNotEmpty &&
+        recordWorkerId.isNotEmpty &&
+        workerId == recordWorkerId;
+    final emailMatches =
+        workerEmail.isNotEmpty &&
+        recordEmail.isNotEmpty &&
+        workerEmail == recordEmail;
+    if (idMatches || emailMatches) return true;
 
     if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) ||
         recordEmail.isNotEmpty) {

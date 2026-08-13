@@ -358,9 +358,9 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     PayrollReminderWindow? window;
     if (forceReminder) {
-      // A direct Payroll sidebar click always checks the current payroll
-      // period. This must not fall back to the previous month's reminder
-      // window when the selected pay day is still more than three days away.
+      // A direct Payroll sidebar click always checks the current pay period.
+      // If payable workers remain, show a reminder before/on pay day and an
+      // overdue message after pay day, regardless of prior dismissal.
       final today = DateTime(now.year, now.month, now.day);
       final payrollMonth = PayrollService.currentPayrollMonth(
         referenceDate: today,
@@ -377,6 +377,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       window = PayrollService.reminderWindowForDate(
         now,
         payDay: _salaryPayDay,
+        overdueDays: 0,
       );
     }
     if (window == null) {
@@ -646,13 +647,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           reminderWindow.suppressionKey,
           now: now,
         );
-        if (mounted) setState(() => _selectedFilter = 'Paid');
+        if (mounted) setState(() => _selectedFilter = 'All');
         break;
       case _PayrollReminderAction.ignore:
         await PreferencesService.ignorePayrollReminder(
           reminderWindow.suppressionKey,
         );
-        if (mounted) setState(() => _selectedFilter = 'Paid');
         break;
       case _PayrollReminderAction.viewPayable:
         if (mounted) {

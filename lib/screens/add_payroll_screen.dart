@@ -139,7 +139,10 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       (widget.workerData['profileImage'] ?? '').toString();
 
   String get _salaryStr =>
-      PayrollService.currentSalaryDisplay(widget.workerData);
+      PayrollService.currentSalaryDisplay(
+        widget.workerData,
+        companyCurrency: _currencyCode,
+      );
 
   String get _currencyCode {
     final companyCurr = PreferencesService.cachedCompanyCurrency;
@@ -197,9 +200,10 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       _overtimeAmountCtrl.text = _editableAmountValue(
         widget.workerData['overtimeAmount'],
       );
-      _absentDeductionCtrl.text = _editableAmountValue(
-        widget.workerData['absentDeduction'],
-      );
+      _absentDeductionCtrl.text =
+          widget.workerData['hasPayrollRecord'] == true
+          ? _editableAmountValue(widget.workerData['absentDeduction'])
+          : '';
       _leaveDeductionCtrl.text = _editableAmountValue(
         widget.workerData['leaveDeduction'],
       );
@@ -1780,6 +1784,28 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                 ]
               : null,
           decoration: InputDecoration(
+            prefixIcon: isCurrency
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 8),
+                    child: Align(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      child: Text(
+                        CurrencyUtils.symbolFor(_currencyCode),
+                        style: TextStyle(
+                          color: readOnly
+                              ? const Color(0xFF9CA3AF)
+                              : _textDark,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+            prefixIconConstraints: isCurrency
+                ? const BoxConstraints(minWidth: 0, minHeight: 0)
+                : null,
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
             contentPadding: const EdgeInsets.symmetric(

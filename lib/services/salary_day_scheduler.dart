@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -21,6 +22,18 @@ import '../utils/currency_utils.dart';
 import '../utils/ui_utils.dart';
 import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
+
+Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
+  final archive = Archive();
+  for (final file in files) {
+    final name = file['name']! as String;
+    final bytes = file['bytes']! as Uint8List;
+    archive.addFile(ArchiveFile(name, bytes.length, bytes));
+  }
+  final encoded = ZipEncoder().encode(archive);
+  if (encoded.isEmpty) throw StateError('ZIP encoding failed');
+  return Uint8List.fromList(encoded);
+}
 
 class AutoPayrollResult {
   final String workerId;
@@ -489,7 +502,7 @@ class PayrollRunner {
       final worker = workers[i];
       final workerId = isGuest
           ? (worker['id'] ?? '').toString()
-          : (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+          : (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
       final name = (worker['name'] ?? '').toString();
       final email = (worker['email'] ?? '').toString();
       final salaryStr = PayrollService.currentSalaryDisplay(
@@ -577,112 +590,35 @@ class PayrollRunner {
         (prevRecord?['customDeduction'] ?? '0').toString(),
       );
 
-      late double absentDeductionTotal;
+      double absentDeductionTotal = 0;
       late double leaveDeductionTotal;
       String netSalary;
       double rawNetVal = 0;
 
       try {
-        if (isGuest) {
-          final workerAbsentDeduction = (worker['absentDeduction'] ?? '')
-              .toString()
-              .trim();
-          final prevAbsentDeduction = (prevRecord?['absentDeduction'] ?? '')
-              .toString()
-              .trim();
-          final absentDeductionPerDay = workerAbsentDeduction.isNotEmpty
-              ? workerAbsentDeduction
-              : prevAbsentDeduction;
+        final enteredSalary = PayrollService.extractSalary(salaryStr);
+        final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+            ? enteredSalary / 12
+            : enteredSalary;
+        final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
+        leaveDeductionTotal = dailyRate * unpaidLeaves;
 
-          final perDayVal = PayrollService.extractSalary(absentDeductionPerDay);
-          final enteredSalary = PayrollService.extractSalary(salaryStr);
-          final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-              ? enteredSalary / 12
-              : enteredSalary;
-          final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
-          absentDeductionTotal = perDayVal > 0
-              ? perDayVal * absents
-              : dailyRate * absents;
-          final effectiveDays = workDays - absents - unpaidLeaves;
-          final calc = PayrollService.calculatePayroll(
-            salary: salaryStr,
-            totalWorkDays: workDays.toString(),
-            daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
-            absents: absents.toString(),
-            leaves: unpaidLeaves.toString(),
-            overtimeAmount: overtimeAmount,
-            absentDeductionPerDay: absentDeductionPerDay,
-            salaryType: salaryType,
-            prorationFactor: prorationFactor,
-          );
-          leaveDeductionTotal =
-              (calc['leaveDeduction'] as num?)?.toDouble() ?? 0;
-          absentDeductionTotal = PayrollService.cappedAbsentDeduction(
-            hasAbsences: absents > 0 || halfDays > 0,
-            requestedDeduction: absentDeductionTotal,
-            salary: salaryStr,
-            overtimeAmount: overtimeAmount,
-            leaveDeduction: leaveDeductionTotal.toString(),
-            customDeduction: prevCustomDeduction.toString(),
-            salaryType: salaryType,
-            prorationFactor: prorationFactor,
-          );
-          rawNetVal = PayrollService.calculateNetFromTotals(
-            salary: salaryStr,
-            overtimeAmount: overtimeAmount,
-            absentDeduction: absentDeductionTotal.toString(),
-            leaveDeduction: leaveDeductionTotal.toString(),
-            customDeduction: prevCustomDeduction.toString(),
-            salaryType: salaryType,
-            prorationFactor: prorationFactor,
-          );
-          final currency = PayrollService.getCurrencyPrefix(salaryStr);
-          final prefix = currency.isNotEmpty ? '$currency ' : '';
-          netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
-        } else {
-          final workerAbsentDeduction = (worker['absentDeduction'] ?? '')
-              .toString()
-              .trim();
-          final prevAbsentDeduction = (prevRecord?['absentDeduction'] ?? '')
-              .toString()
-              .trim();
-          final absentDeductionPerDay = workerAbsentDeduction.isNotEmpty
-              ? workerAbsentDeduction
-              : prevAbsentDeduction;
-
-          final enteredSalary = PayrollService.extractSalary(salaryStr);
-          final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-              ? enteredSalary / 12
-              : enteredSalary;
-          final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
-          leaveDeductionTotal = dailyRate * unpaidLeaves;
-          final perDayVal = PayrollService.extractSalary(absentDeductionPerDay);
-          absentDeductionTotal = perDayVal > 0
-              ? perDayVal * (absents + (halfDays * 0.5))
-              : dailyRate * (absents + (halfDays * 0.5));
-          absentDeductionTotal = PayrollService.cappedAbsentDeduction(
-            hasAbsences: absents > 0 || halfDays > 0,
-            requestedDeduction: absentDeductionTotal,
-            salary: salaryStr,
-            overtimeAmount: overtimeAmount,
-            leaveDeduction: leaveDeductionTotal.toString(),
-            customDeduction: prevCustomDeduction.toString(),
-            salaryType: salaryType,
-            prorationFactor: prorationFactor,
-          );
-          rawNetVal = PayrollService.calculateNetFromTotals(
-            salary: salaryStr,
-            overtimeAmount: overtimeAmount,
-            absentDeduction: absentDeductionTotal.toString(),
-            leaveDeduction: leaveDeductionTotal.toString(),
-            customDeduction: prevCustomDeduction.toString(),
-            salaryType: salaryType,
-            prorationFactor: prorationFactor,
-          );
-          final currency = PayrollService.getCurrencyPrefix(salaryStr);
-          final prefix = currency.isNotEmpty ? '$currency ' : '';
-          netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
-        }
+        // Absence attendance enables the editable deduction field, but HR is
+        // responsible for choosing the amount. Never infer it from daily rate
+        // or carry it forward from a previous payroll period.
+        absentDeductionTotal = 0;
+        rawNetVal = PayrollService.calculateNetFromTotals(
+          salary: salaryStr,
+          overtimeAmount: overtimeAmount,
+          absentDeduction: '0',
+          leaveDeduction: leaveDeductionTotal.toString(),
+          customDeduction: prevCustomDeduction.toString(),
+          salaryType: salaryType,
+          prorationFactor: prorationFactor,
+        );
+        final currency = PayrollService.getCurrencyPrefix(salaryStr);
+        final prefix = currency.isNotEmpty ? '$currency ' : '';
+        netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
       } catch (error, stackTrace) {
         if (!isGuest) {
           ErrorReporter.report(
@@ -805,10 +741,13 @@ class PayrollRunner {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
-        await _generateAndSaveZip(
-          context,
-          paidResults,
-          filteredSummary.periodLabel,
+        unawaited(
+          _generateAndSaveZip(
+            context,
+            paidResults,
+            filteredSummary.periodLabel,
+            companyProfile ?? const <String, dynamic>{},
+          ),
         );
       }
     } else {
@@ -836,7 +775,14 @@ class PayrollRunner {
 
       if (summary.successCount >= 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
-        await _generateAndSaveZip(context, paidResults, summary.periodLabel);
+        unawaited(
+          _generateAndSaveZip(
+            context,
+            paidResults,
+            summary.periodLabel,
+            companyProfile ?? const <String, dynamic>{},
+          ),
+        );
       }
     }
 
@@ -875,22 +821,25 @@ class PayrollRunner {
     if (status != 'paid') return false;
     if (!PayrollService.isRecordInMonth(record, month)) return false;
 
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-    if (recordWorkerId.isNotEmpty) {
-      return workerId.isNotEmpty && recordWorkerId == workerId;
-    }
-
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final recordEmail = (record['email'] ?? record['workerEmail'] ?? '')
         .toString()
         .trim()
         .toLowerCase();
-    return workerEmail.isNotEmpty &&
+
+    final idMatches =
+        workerId.isNotEmpty &&
+        recordWorkerId.isNotEmpty &&
+        recordWorkerId == workerId;
+    final emailMatches =
+        workerEmail.isNotEmpty &&
         recordEmail.isNotEmpty &&
         workerEmail == recordEmail;
+    return idMatches || emailMatches;
   }
 
   Future<int> _commitPayrollRun(
@@ -1090,29 +1039,23 @@ class PayrollRunner {
       throw StateError('Not all payroll records could be saved');
     }
 
+    final notificationFuture = firestoreService
+        .addBulkNotifications(notifications)
+        .catchError((error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'PayrollRunnerNotifications',
+          );
+        });
+
     try {
-      await Future.wait(
-        expenseRecords.map(
-          (expense) => firestoreService.upsertPayrollExpense(
-            expense,
-            payrollKey: (expense['payrollKey'] ?? '').toString(),
-          ),
-        ),
-      );
+      await firestoreService.upsertBulkPayrollExpenses(expenseRecords);
     } catch (error) {
       await _rollbackPayrollRecords(firestoreService, payrollRecords);
       rethrow;
     }
-
-    try {
-      await firestoreService.addBulkNotifications(notifications);
-    } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'PayrollRunnerNotifications',
-      );
-    }
+    await notificationFuture;
 
     return payrollCount;
   }
@@ -1143,6 +1086,7 @@ class PayrollRunner {
     BuildContext context,
     List<AutoPayrollResult> selected,
     String periodLabel,
+    Map<String, dynamic> companyProfile,
   ) async {
     if (selected.isEmpty) return;
 
@@ -1151,12 +1095,7 @@ class PayrollRunner {
     }
 
     try {
-      final archive = Archive();
       final now = DateTime.now();
-      final companyProfile =
-          await CompanyProfileHelper.getCompanyProfileWithFirestore(
-            ProviderScope.containerOf(context).read(firestoreServiceProvider),
-          );
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -1169,9 +1108,20 @@ class PayrollRunner {
         periodEnd,
       );
 
-      for (var index = 0; index < selected.length; index++) {
-        final r = selected[index];
-        if (!r.success) continue;
+      final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
+      final companyStampUrl = (companyProfile['companyStampUrl'] ?? '')
+          .toString();
+      final sharedAssets = await Future.wait<Uint8List?>([
+        InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
+        InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+      ]);
+      final companyLogoBytes = sharedAssets[0];
+      final companyStampBytes = sharedAssets[1];
+
+      Future<Map<String, Object>> generateInvoice(
+        int index,
+        AutoPayrollResult r,
+      ) async {
         final enteredSalary = PayrollService.extractSalary(r.salary);
         final rawSalary = r.salaryType.trim().toLowerCase() == 'annual'
             ? enteredSalary / 12
@@ -1234,9 +1184,8 @@ class PayrollRunner {
           companyEmail: (companyProfile['email'] ?? '').toString(),
           companyPhone: (companyProfile['phone'] ?? '').toString(),
           companyId: (companyProfile['companyId'] ?? '').toString(),
-          companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
-              .toString(),
-          companyLogoUrl: (companyProfile['profilePicUrl'] ?? '').toString(),
+          companyLogoBytes: companyLogoBytes,
+          companyStampBytes: companyStampBytes,
           workerId: r.workerId,
         );
 
@@ -1247,19 +1196,34 @@ class PayrollRunner {
         final safeName = sanitizedName.isNotEmpty
             ? sanitizedName
             : 'worker_${index + 1}';
-        archive.addFile(
-          ArchiveFile(
-            '${safeName}_invoice_$payPeriod.pdf',
-            pdfBytes.length,
-            pdfBytes,
-          ),
-        );
+        return <String, Object>{
+          'name': '${safeName}_invoice_$payPeriod.pdf',
+          'bytes': pdfBytes,
+        };
       }
 
-      final zipBytes = ZipEncoder().encode(archive);
-      if (zipBytes.isEmpty) throw Exception('ZIP encoding failed');
+      final successful = selected.where((result) => result.success).toList();
+      final invoiceFiles = <Map<String, Object>>[];
+      const maxParallelPdfs = 4;
+      for (var start = 0; start < successful.length; start += maxParallelPdfs) {
+        final end = (start + maxParallelPdfs)
+            .clamp(0, successful.length)
+            .toInt();
+        final generated = await Future.wait(
+          List.generate(
+            end - start,
+            (offset) => generateInvoice(
+              start + offset,
+              successful[start + offset],
+            ),
+          ),
+        );
+        invoiceFiles.addAll(generated);
+      }
+      if (invoiceFiles.isEmpty) return;
 
-      final zipData = Uint8List.fromList(zipBytes);
+      // ZIP compression is CPU-heavy; keep it off the desktop UI isolate.
+      final zipData = await compute(_encodePayrollInvoiceZip, invoiceFiles);
       final fileName = 'payroll_invoices_$payPeriod.zip';
 
       final result = await FilePicker.saveFile(
@@ -1271,15 +1235,13 @@ class PayrollRunner {
       );
 
       if (result != null) {
-        final file = File(result);
-        await file.writeAsBytes(zipData);
         if (context.mounted) {
           FlashySnackBar.show(
             context,
             message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
           );
-          await FileOpener.open(result);
         }
+        unawaited(FileOpener.open(result));
       }
     } catch (e) {
       if (context.mounted) {
@@ -1359,7 +1321,12 @@ class PayrollRunner {
                 builder: (context, setDialogState) {
                   List<AutoPayrollResult> posFiltered;
                   if (positionFilter == 'All') {
-                    posFiltered = summary.results;
+                    posFiltered = List<AutoPayrollResult>.from(summary.results)
+                      ..sort(
+                        (a, b) => a.workerName.trim().toLowerCase().compareTo(
+                          b.workerName.trim().toLowerCase(),
+                        ),
+                      );
                   } else {
                     posFiltered = summary.results
                         .where(
@@ -2629,13 +2596,12 @@ class PayrollRunner {
                                       ),
                                       _metricRow(
                                         'overtime_amount'.tr(),
-                                        result.overtimeAmount.isNotEmpty
-                                            ? AmountText.formatCompact(
-                                                result.overtimeAmount,
-                                                locale: detailContext.locale
-                                                    .toString(),
-                                              )
-                                            : _zeroAmount(result.salary),
+                                        AmountText.formatCompact(
+                                          '${CurrencyUtils.symbolFor(result.currency)} '
+                                          '${PayrollService.extractSalary(result.overtimeAmount)}',
+                                          locale: detailContext.locale
+                                              .toString(),
+                                        ),
                                         const Color(0xFFECFDF5),
                                         const Color(0xFF10B981),
                                         const Color(0xFF10B981),
@@ -2655,6 +2621,9 @@ class PayrollRunner {
                                         value: result.absentDeduction,
                                         controllerKey: originalIndex * 10 + 1,
                                         controllers: overtimeControllers,
+                                        currencySymbol: CurrencyUtils.symbolFor(
+                                          result.currency,
+                                        ),
                                         enabled:
                                             (result.absents > 0 ||
                                                 result.halfDays > 0) &&
@@ -2905,13 +2874,17 @@ class PayrollRunner {
     required String value,
     required int controllerKey,
     required Map<int, TextEditingController> controllers,
+    required String currencySymbol,
     required bool enabled,
     required double maximumValue,
     required void Function(String) onChanged,
   }) {
     if (!controllers.containsKey(controllerKey)) {
+      final initialValue = PayrollService.extractSalary(value);
       controllers[controllerKey] = TextEditingController(
-        text: enabled ? value.replaceAll(RegExp(r'[^0-9.]'), '') : '0',
+        text: enabled && initialValue > 0
+            ? value.replaceAll(RegExp(r'[^0-9.]'), '')
+            : '',
       );
     }
     final controller = controllers[controllerKey]!;
@@ -2955,7 +2928,7 @@ class PayrollRunner {
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 90,
+            width: 110,
             child: TextField(
               controller: controller,
               enabled: enabled,
@@ -2974,6 +2947,13 @@ class PayrollRunner {
               ),
               textAlign: TextAlign.end,
               decoration: InputDecoration(
+                prefixText: '$currencySymbol ',
+                prefixStyle: TextStyle(
+                  color: accentColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'SF Pro Display',
+                ),
                 hintText: '0',
                 hintStyle: TextStyle(
                   color: accentColor.withValues(alpha: 0.4),
@@ -3064,6 +3044,13 @@ class PayrollRunner {
               color: Color(0xFF111827),
             ),
             decoration: InputDecoration(
+              prefixText: '${CurrencyUtils.symbolFor(r.currency)} ',
+              prefixStyle: const TextStyle(
+                color: Color(0xFF111827),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
               hintText: 'amount_hint'.tr(),
               hintStyle: TextStyle(
                 color: const Color(0xFF6B7280).withValues(alpha: 0.6),

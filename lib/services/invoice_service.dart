@@ -15,6 +15,15 @@ import 'package:pdf/widgets.dart' as pw;
 class InvoiceService {
   static const int _maxCompanyStampBytes = 5 * 1024 * 1024;
   static const Duration _companyStampTimeout = Duration(seconds: 15);
+  static Future<ByteData?>? _payrollFontDataFuture;
+
+  static Future<ByteData?> _loadPayrollFontData() async {
+    try {
+      return await rootBundle.load('assets/fonts/SF-Pro.ttf');
+    } catch (_) {
+      return null;
+    }
+  }
 
   static String _l(String key, String fallback) {
     final translated = key.tr().trim();
@@ -54,6 +63,7 @@ class InvoiceService {
     String? companyStampImageUrl,
     String? companyLogoUrl,
     Uint8List? companyLogoBytes,
+    Uint8List? companyStampBytes,
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
     String workerId = '',
@@ -66,9 +76,12 @@ class InvoiceService {
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
-      final fontData = await rootBundle.load('assets/fonts/SF-Pro.ttf');
-      regularFont = pw.Font.ttf(fontData);
-      boldFont = pw.Font.ttf(fontData);
+      final fontData = await (_payrollFontDataFuture ??=
+          _loadPayrollFontData());
+      if (fontData != null) {
+        regularFont = pw.Font.ttf(fontData);
+        boldFont = pw.Font.ttf(fontData);
+      }
     } catch (e) {
       debugPrint(
         'InvoiceService: could not load assets/fonts/SF-Pro.ttf for the '
@@ -98,12 +111,12 @@ class InvoiceService {
     } catch (_) {
       logoImage = null;
     }
-    final companyStampBytes =
-        await _loadCompanyStampBytes(companyStampImageUrl) ??
-        await loadDefaultHrStampBytes();
-    final companyStampImage = companyStampBytes == null
+    final resolvedCompanyStampBytes =
+        companyStampBytes ??
+        await resolveCompanyStampBytes(companyStampImageUrl);
+    final companyStampImage = resolvedCompanyStampBytes == null
         ? null
-        : pw.MemoryImage(companyStampBytes);
+        : pw.MemoryImage(resolvedCompanyStampBytes);
 
     final now = DateTime.now();
     final datePrefix =
@@ -948,6 +961,11 @@ class InvoiceService {
     } catch (_) {
       return null;
     }
+  }
+
+  static Future<Uint8List?> resolveCompanyStampBytes(String? source) async {
+    return await _loadCompanyStampBytes(source) ??
+        await loadDefaultHrStampBytes();
   }
 
   static Future<Uint8List?> _loadCompanyStampBytes(String? source) async {
