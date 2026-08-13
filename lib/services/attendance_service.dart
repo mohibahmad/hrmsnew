@@ -45,7 +45,9 @@ class AttendanceService {
     required Map<String, dynamic> worker,
     required Map<String, dynamic> attendanceRecord,
   }) {
-    return true;
+    final recordDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
+    if (recordDate == null) return true;
+    return workerExistedOnDate(worker, recordDate);
   }
 
   static bool isRecordForDate(
