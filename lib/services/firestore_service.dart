@@ -1606,6 +1606,8 @@ class FirestoreService {
     String email, {
     String? workerId,
     DateTime? month,
+    DateTime? startDate,
+    DateTime? endDate,
     List<Map<String, dynamic>>? preFetchedRecords,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
@@ -1656,8 +1658,22 @@ class FirestoreService {
       if (!identityMatches) continue;
       final date = AppDateUtils.attendanceRecordDate(att);
       if (date == null) continue;
-      if (date.year != targetMonth.year || date.month != targetMonth.month) {
-        continue;
+
+      if (startDate != null && endDate != null) {
+        final normDate = DateTime(date.year, date.month, date.day);
+        final normStart = DateTime(
+          startDate.year,
+          startDate.month,
+          startDate.day,
+        );
+        final normEnd = DateTime(endDate.year, endDate.month, endDate.day);
+        if (normDate.isBefore(normStart) || normDate.isAfter(normEnd)) {
+          continue;
+        }
+      } else {
+        if (date.year != targetMonth.year || date.month != targetMonth.month) {
+          continue;
+        }
       }
       final identityKey = normalizedWorkerId.isNotEmpty
           ? normalizedWorkerId

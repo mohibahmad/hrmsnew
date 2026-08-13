@@ -644,7 +644,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                       ),
                     ),
                   _desktopDialogButton(
-                    label: 'payable'.tr(),
+                    label: 'pay'.tr(),
                     primary: true,
                     onTap: () => Navigator.pop(
                       dialogContext,
@@ -684,6 +684,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             _combinePayroll();
           });
           _scheduleAttendanceFetch();
+          await _handlePayAllForMonth(reminderWindow.payrollMonth);
         }
         break;
       case null:

@@ -493,6 +493,8 @@ class PayrollRunner {
                   email,
                   workerId: workerId,
                   month: effectivePayrollMonth,
+                  startDate: effectivePeriodStart,
+                  endDate: effectivePeriodEnd,
                   preFetchedRecords: preFetchedAttendance,
                 );
             return <String, dynamic>{...attendance};

@@ -415,6 +415,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         _savedValuesFingerprint.isEmpty) {
       _captureSavedValues();
     }
+    final periodRange = _currentPayPeriod;
     try {
       final futures = <Future<Map<String, int>>>[
         _firestore
@@ -422,6 +423,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               _email,
               workerId: _workerId,
               month: _payrollMonth,
+              startDate: periodRange.$1,
+              endDate: periodRange.$2,
               preFetchedRecords: _liveAttendanceRecords,
             )
             .timeout(
