@@ -741,13 +741,11 @@ class PayrollRunner {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
-        unawaited(
-          _generateAndSaveZip(
-            context,
-            paidResults,
-            filteredSummary.periodLabel,
-            companyProfile ?? const <String, dynamic>{},
-          ),
+        await _generateAndSaveZip(
+          context,
+          paidResults,
+          filteredSummary.periodLabel,
+          companyProfile ?? const <String, dynamic>{},
         );
       }
     } else {
@@ -775,13 +773,11 @@ class PayrollRunner {
 
       if (summary.successCount >= 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
-        unawaited(
-          _generateAndSaveZip(
-            context,
-            paidResults,
-            summary.periodLabel,
-            companyProfile ?? const <String, dynamic>{},
-          ),
+        await _generateAndSaveZip(
+          context,
+          paidResults,
+          summary.periodLabel,
+          companyProfile ?? const <String, dynamic>{},
         );
       }
     }
@@ -1197,7 +1193,8 @@ class PayrollRunner {
             ? sanitizedName
             : 'worker_${index + 1}';
         return <String, Object>{
-          'name': '${safeName}_invoice_$payPeriod.pdf',
+          // Keep every invoice unique even when workers share the same name.
+          'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
           'bytes': pdfBytes,
         };
       }
@@ -1235,6 +1232,15 @@ class PayrollRunner {
       );
 
       if (result != null) {
+        // file_picker writes the supplied bytes on desktop. Verify the result
+        // before reporting success and repair an incomplete write if needed.
+        final savedZip = File(result);
+        final exists = await savedZip.exists();
+        final savedLength = exists ? await savedZip.length() : 0;
+        if (!exists || savedLength != zipData.length) {
+          await savedZip.writeAsBytes(zipData, flush: true);
+        }
+
         if (context.mounted) {
           FlashySnackBar.show(
             context,
