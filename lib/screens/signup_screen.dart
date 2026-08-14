@@ -607,7 +607,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
             foregroundColor: const Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(0xFF0044C9).withValues(alpha: 0.6),
+            disabledBackgroundColor: const Color(
+              0xFF0044C9,
+            ).withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -783,7 +785,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                       color: Color(0xFFFFFFFF),
                                       fontFamily: 'SF Pro',
                                       height: 1.2,
-                                      letterSpacing: 2,
+                                      letterSpacing: 1.6,
                                     ),
                                   ),
                                 ],
@@ -822,7 +824,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                         spreadRadius: 3,
                                       ),
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.3),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.3,
+                                        ),
                                         blurRadius: 30,
                                         offset: const Offset(10, 9),
                                       ),
