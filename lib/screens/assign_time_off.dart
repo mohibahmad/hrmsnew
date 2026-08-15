@@ -878,24 +878,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return (_displayedLeaveBalance - _summaryRequestedDays).clamp(0, 9999);
   }
 
-  List<(DateTime, String)> _allSelectedEntries() {
-    final entries =
-        _selectedDateToTypeMap.entries.map((e) => (e.key, e.value)).toList()
-          ..sort((a, b) => a.$1.compareTo(b.$1));
-    return entries;
-  }
-
-  int get _allTypesSelectedDaysCount => _allSelectedEntries().length;
-
-  String get _allTypesSelectedDatesSummary {
-    final entries = _allSelectedEntries();
-    if (entries.isEmpty) return 'select_date'.tr();
-    final labels = entries
-        .map(
-          (e) =>
-              '${LocalizationHelper.localizeLeaveType(e.$2)} ${_formatDate(e.$1)}',
-        )
-        .toList();
+  String get _currentSelectedDatesSummary {
+    final dates = _sortedSelectedDates;
+    if (dates.isEmpty) return 'select_date'.tr();
+    final typeLabel = LocalizationHelper.localizeLeaveType(_timeOffType);
+    final labels = dates.map((d) => '$typeLabel ${_formatDate(d)}').toList();
     final visible = labels.take(3).join(', ');
     final remaining = labels.length - 3;
     return remaining > 0 ? '$visible +$remaining' : visible;
@@ -1333,9 +1320,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'selected_dates'.tr(),
-            _allTypesSelectedDatesSummary,
+            _currentSelectedDatesSummary,
             onTap: () {
-              if (_allSelectedEntries().isEmpty) return;
+              if (_sortedSelectedDates.isEmpty) return;
               _showSelectedDatesListDialog(context);
             },
           ),
@@ -1345,7 +1332,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'selected_days'.tr(),
-            '$_allTypesSelectedDaysCount',
+            '$_selectedDaysCount',
           ),
         ),
         const SizedBox(width: 16),
@@ -2927,7 +2914,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   void _showSelectedDatesListDialog(BuildContext context) {
-    final entries = _allSelectedEntries();
+    final entries = _sortedSelectedDates
+        .map((d) => (d, TimeOffService.normalizeLeaveType(_timeOffType)))
+        .toList();
     final localeName = context.locale.toString();
     showDialog(
       context: context,
