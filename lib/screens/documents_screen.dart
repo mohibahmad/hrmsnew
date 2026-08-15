@@ -105,7 +105,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (q.isEmpty) return _workers;
     return _workers.where((w) {
       final name = (w['name'] ?? '').toString().toLowerCase();
-      final position = (w['position'] ?? '').toString().toLowerCase();
+      final position =
+          (w['position'] ?? w['role'] ?? w['jobPosition'] ?? '')
+              .toString()
+              .toLowerCase();
       return name.contains(q) || position.contains(q);
     }).toList();
   }
@@ -228,7 +231,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             setState(() => _searchQuery = val);
                           },
                           decoration: InputDecoration(
-                            hintText: 'search_workers_name'.tr(),
+                            hintText: 'search_workers_name_position'.tr(),
                             hintStyle: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 14,
@@ -272,10 +275,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
-    final double dynamicHeight = MediaQuery.of(context).size.height - 450;
+    final double dynamicHeight = (MediaQuery.of(context).size.height - 230)
+        .clamp(440.0, 1200.0);
     return Container(
       width: double.infinity,
-      height: dynamicHeight < 300 ? 300 : dynamicHeight,
+      height: dynamicHeight,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),

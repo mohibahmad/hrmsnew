@@ -150,7 +150,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               fallbackDate.month,
               fallbackDate.day,
             );
-            if (recordDay.isBefore(start) || recordDay.isAfter(end)) return false;
+            if (recordDay.isBefore(start) || recordDay.isAfter(end))
+              return false;
           } else {
             final hasMatch = recordDates.any((d) {
               final day = DateTime(d.year, d.month, d.day);
@@ -2125,7 +2126,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   'no_records_selected_filter',
                   'No time off records found for the selected filter.',
                 ))
-        : 'no_time_off_records'.tr();
+        : _l('no_time_off_records', 'No time off record found');
 
     return Container(
       width: double.infinity,
@@ -2613,7 +2614,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         _customSelectedDates!.isNotEmpty) {
       selectedDates = Set<DateTime>.from(_customSelectedDates!);
       calendarDate = _customSelectedDates!.first;
-    } else if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+    } else if (_recordsPeriodFilter == 'Custom Range' &&
+        _customDateRange != null) {
       for (
         var d = _customDateRange!.start;
         !d.isAfter(_customDateRange!.end);

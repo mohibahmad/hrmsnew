@@ -46,10 +46,10 @@ class PayrollScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PayrollScreen> createState() => _PayrollScreenState();
+  ConsumerState<PayrollScreen> createState() => PayrollScreenState();
 }
 
-class _PayrollScreenState extends ConsumerState<PayrollScreen> {
+class PayrollScreenState extends ConsumerState<PayrollScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   final _searchController = TextEditingController();
@@ -117,15 +117,28 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       profile?['payrollCycleStart'],
     );
     final savedEnd = AppDateUtils.dateFromValue(profile?['payrollCycleEnd']);
+    final normalizedPayDay = payDay.clamp(1, 28);
     if (savedStart != null &&
         savedEnd != null &&
-        savedStart.isBefore(savedEnd)) {
+        savedStart.isBefore(savedEnd) &&
+        savedStart.day == normalizedPayDay &&
+        savedEnd.day == normalizedPayDay &&
+        savedEnd.difference(savedStart).inDays >= 25 &&
+        savedEnd.difference(savedStart).inDays <= 35) {
       return PayrollPeriod(
         start: DateTime(savedStart.year, savedStart.month, savedStart.day),
         end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
       );
     }
-    return PayrollService.payDayPeriod(DateTime.now(), payDay);
+    return PayrollService.payDayPeriodContaining(DateTime.now(), payDay);
+  }
+
+  bool get _isTodayPayDay {
+    if (_salaryPayDay == null) return false;
+    final now = DateTime.now();
+    final lastDay = DateTime(now.year, now.month + 1, 0).day;
+    final payDay = _salaryPayDay!.clamp(1, lastDay);
+    return now.day == payDay;
   }
 
   String _payDayButtonLabel() {
@@ -368,6 +381,25 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     });
   }
 
+  /// Public entry point so the host screen (Home) can fire the payroll
+  /// reminder globally — i.e. even when the Payroll tab is not the one
+  /// currently visible. This reuses the exact same dialog/actions as the
+  /// in-screen reminder, so there is a single source of truth.
+  Future<void> triggerGlobalPayrollReminder() async {
+    if (!mounted) return;
+    if (_reminderCheckScheduled || _reminderDialogOpen) return;
+    _reminderCheckScheduled = true;
+    try {
+      await _maybeShowPayrollReminder();
+    } finally {
+      _reminderCheckScheduled = false;
+    }
+  }
+
+  /// Whether the data needed to decide the reminder has finished loading.
+  bool get isPayrollReminderDataReady =>
+      _workersLoaded && _payrollLoaded && _salaryPayDay != null;
+
   Future<void> _maybeShowPayrollReminder() async {
     if (!widget.isActive ||
         _isLoading ||
@@ -401,6 +433,27 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       reminderWindow.payrollMonth,
     );
     if (payableWorkers.isEmpty) {
+      if (offset >= 0 && _salaryPayDay != null) {
+        final next = PayrollService.nextPayDayPeriod(
+          PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+          _salaryPayDay!,
+        );
+        await _firestore.updateUserProfile({
+          'payrollCycleStart': next.start.toIso8601String(),
+          'payrollCycleEnd': next.end.toIso8601String(),
+          'payrollCycleAdvancedAt': DateTime.now().toIso8601String(),
+        });
+        if (mounted) {
+          setState(() {
+            _payPeriodStart = next.start;
+            _payPeriodEnd = next.end;
+            _payrollMonth = DateTime(next.end.year, next.end.month, 1);
+            _selectedFilter = 'All';
+            _combinePayroll();
+          });
+          _scheduleAttendanceFetch();
+        }
+      }
       _reminderHandledForActivation = true;
       return;
     }
@@ -808,7 +861,11 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       workingDays = 22;
     } else {
       try {
-        workingDays = await _firestore.getMonthlyWorkingDays(month: month);
+        workingDays = await _firestore.getMonthlyWorkingDays(
+          month: month,
+          startDate: _payPeriodStart,
+          endDate: _payPeriodEnd,
+        );
       } catch (_) {
         workingDays = 22;
       }
@@ -1189,7 +1246,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                               mainAxisSpacing: 8,
                               childAspectRatio: 1.2,
                             ),
-                        itemCount: 31,
+                        itemCount: 28,
                         itemBuilder: (context, index) {
                           final value = index + 1;
                           final selected = value == selectedDay;
@@ -1253,9 +1310,24 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     if (day == null || !mounted) return;
 
     try {
-      final period = day == _salaryPayDay
-          ? PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd)
-          : PayrollService.payDayPeriod(DateTime.now(), day);
+      final hasPaidInCurrentCycle = _payrollDocs.any((rec) =>
+          rec['isPaid'] == true ||
+          (rec['status'] ?? '').toString().toLowerCase() == 'paid');
+
+      PayrollPeriod period;
+      if (hasPaidInCurrentCycle) {
+        period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+        FlashySnackBar.show(
+          context,
+          message: 'Salary Day updated! It will take effect starting from the next cycle.',
+        );
+      } else {
+        period = day == _salaryPayDay
+            ? PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd)
+            : PayrollService.payDayPeriodContaining(DateTime.now(), day);
+        FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
+      }
+
       await _firestore.updateUserProfile({
         'salaryPayDay': day,
         'payrollCycleStart': period.start.toIso8601String(),
@@ -1273,7 +1345,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           _reminderHandledForActivation = false;
         }
       });
-      FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       _schedulePayrollReminderCheck();
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SaveSalaryPayDay');
@@ -1427,8 +1498,9 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
+                      if (_isTodayPayDay)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
                         child: ElevatedButton.icon(
                           onPressed:
                               _isRunningPayroll || !hasCurrentPayableWorkers
@@ -2250,6 +2322,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
         companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
             .toString(),
         companyLogoUrl: (companyProfile['profilePic'] ?? '').toString(),
+        invoiceNo: (data['invoiceNo'] ?? data['invoiceNumber'] ?? '').toString(),
         workerId: (data['workerId'] ?? data['id'] ?? '').toString(),
       );
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
@@ -2336,6 +2409,35 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
             salaryType: (data['salaryType'] ?? 'Monthly').toString(),
           )
         : const <String, dynamic>{};
+    if (basePreviewCalculation.isNotEmpty && !deductionsAreTotals) {
+      final storedAbsentDeduction =
+          PayrollService.extractSalary(rawAbsentDeduction);
+      if (storedAbsentDeduction == 0) {
+        final autoCalc =
+            basePreviewCalculation['absentDeduction'] as double? ?? 0;
+        if (autoCalc > 0) {
+          basePreviewCalculation['absentDeduction'] = 0.0;
+          basePreviewCalculation['formattedAbsentDeduct'] = '0';
+          basePreviewCalculation['netSalary'] =
+              (basePreviewCalculation['netSalary'] as double? ?? 0) + autoCalc;
+          basePreviewCalculation['totalDeductions'] =
+              (basePreviewCalculation['totalDeductions'] as double? ?? 0) -
+              autoCalc;
+          final cur = PayrollService.getCurrencyPrefix(
+            PayrollService.currentSalaryDisplay(
+              data,
+              companyCurrency: _companyCurrency,
+            ),
+          );
+          final pfx = cur.isNotEmpty ? '$cur ' : '';
+          final netVal = basePreviewCalculation['netSalary'] as double? ?? 0;
+          basePreviewCalculation['formattedNet'] =
+              '$pfx${PayrollService.formatFullNumber(netVal)}';
+          basePreviewCalculation['formattedNetSalary'] =
+              basePreviewCalculation['formattedNet'];
+        }
+      }
+    }
     final previewCalculation =
         deductionsAreTotals && basePreviewCalculation.isNotEmpty
         ? {
@@ -2377,6 +2479,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           .toString(),
       locale: context.locale.toString(),
     );
+
 
     final paidDate = PayrollService.payrollPaymentDate(data);
     final paidDateText = paidDate == null
@@ -2639,6 +2742,18 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: _buildMetricCard(
+                                                  icon: _buildSalaryIcon(),
+                                                  title: 'salary'.tr(),
+                                                  value: salary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildMetricCard(
                                                   icon: const Icon(
                                                     Icons
                                                         .account_balance_wallet,
@@ -2649,18 +2764,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                                                       'salary_after_deduction'
                                                           .tr(),
                                                   value: salaryAfterDeduction,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: _buildMetricCard(
-                                                  icon: _buildSalaryIcon(),
-                                                  title: 'salary'.tr(),
-                                                  value: salary,
                                                 ),
                                               ),
                                               const SizedBox(width: 12),

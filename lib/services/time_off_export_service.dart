@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -8,6 +9,8 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../utils/date_time_utils.dart';
 import '../utils/file_utils.dart';
+import 'time_off_service.dart';
+import 'invoice_service.dart';
 
 class TimeOffExportService {
   TimeOffExportService._();
@@ -18,12 +21,16 @@ class TimeOffExportService {
   }
 
   static String _formatDate(dynamic value) {
-    final dt = AppDateUtils.dateFromValue(value);
-    if (dt == null) return (value ?? '').toString();
-    return DateFormat('dd MMM yyyy').format(dt);
+    final date = AppDateUtils.dateFromValue(value);
+    if (date == null) return '';
+    return DateFormat('yyyy-MM-dd').format(date);
   }
 
   static String _extractDays(Map<String, dynamic> record) {
+    final explicitDays = record['requestedDays'] ?? record['durationDays'];
+    if (explicitDays != null && explicitDays.toString().trim().isNotEmpty) {
+      return explicitDays.toString().trim();
+    }
     final rawDays =
         record['days'] ?? record['numberOfDays'] ?? record['totalDays'];
     if (rawDays != null && rawDays.toString().trim().isNotEmpty) {
@@ -36,36 +43,44 @@ class TimeOffExportService {
     return '1';
   }
 
+  static String _escapeCsvCell(dynamic value) {
+    if (value == null) return '""';
+    var text = value.toString().trim();
+    if (text.isEmpty) return '""';
+    // Neutralize formula injection in spreadsheets (Excel / Google Sheets / Calc)
+    if (text.startsWith('=') ||
+        text.startsWith('+') ||
+        text.startsWith('-') ||
+        text.startsWith('@') ||
+        text.startsWith('\t') ||
+        text.startsWith('\r')) {
+      text = "'$text";
+    }
+    final escaped = text.replaceAll('"', '""').replaceAll('\n', ' ');
+    return '"$escaped"';
+  }
+
   static String generateCsvContent(List<Map<String, dynamic>> records) {
+    final activeRecords = records.where(TimeOffService.isActiveRecord).toList();
     final buffer = StringBuffer();
     buffer.writeln(
       'Worker Name,Leave Type,From Date,To Date,Days,Status,Reason',
     );
 
-    for (final record in records) {
-      final name =
-          (record['workerName'] ?? record['name'] ?? record['email'] ?? '')
-              .toString()
-              .replaceAll(',', ' ');
-      final type = (record['leaveType'] ?? record['type'] ?? 'Leave')
-          .toString()
-          .replaceAll(',', ' ');
+    for (final record in activeRecords) {
+      final name = (record['workerName'] ?? record['name'] ?? record['email'] ?? '').toString();
+      final type = (record['leaveType'] ?? record['type'] ?? record['action'] ?? 'Leave').toString();
       final from = _formatDate(record['startDate'] ?? record['date']);
       final to = _formatDate(
         record['endDate'] ?? record['startDate'] ?? record['date'],
       );
       final days = _extractDays(record);
-      final status = (record['status'] ?? 'Approved').toString().replaceAll(
-        ',',
-        ' ',
-      );
-      final reason = (record['reason'] ?? record['description'] ?? '')
-          .toString()
-          .replaceAll(',', ' ')
-          .replaceAll('\n', ' ');
+      final statusRaw = (record['status'] ?? '').toString().trim();
+      final status = statusRaw.isEmpty ? 'Pending' : statusRaw;
+      final reason = (record['notes'] ?? record['reason'] ?? record['description'] ?? '').toString();
 
       buffer.writeln(
-        '"$name","$type","$from","$to","$days","$status","$reason"',
+        '${_escapeCsvCell(name)},${_escapeCsvCell(type)},${_escapeCsvCell(from)},${_escapeCsvCell(to)},${_escapeCsvCell(days)},${_escapeCsvCell(status)},${_escapeCsvCell(reason)}',
       );
     }
 
@@ -77,7 +92,7 @@ class TimeOffExportService {
     String fileName = 'time_off_records.csv',
   }) async {
     final content = generateCsvContent(records);
-    final bytes = Uint8List.fromList(content.codeUnits);
+    final bytes = Uint8List.fromList(utf8.encode(content));
 
     final result = await FilePicker.saveFile(
       dialogTitle: _l('export_time_off_records', 'Export Time Off Records'),
@@ -104,7 +119,10 @@ class TimeOffExportService {
     required String periodLabel,
     required String leaveTypeFilter,
     String companyName = 'HRMS',
+    String? companyStampImageUrl,
+    Uint8List? companyStampBytes,
   }) async {
+    final activeRecords = records.where(TimeOffService.isActiveRecord).toList();
     final pdf = pw.Document();
 
     pw.Font? regularFont;
@@ -125,7 +143,13 @@ class TimeOffExportService {
     final textColor = PdfColor.fromHex('#111B4F');
     final mutedText = PdfColor.fromHex('#586080');
 
-    Uint8List? stampBytes = await loadDefaultHrStampBytes();
+    Uint8List? stampBytes = companyStampBytes;
+    if (stampBytes == null && (companyStampImageUrl ?? '').trim().isNotEmpty) {
+      try {
+        stampBytes = await InvoiceService.resolveCompanyStampBytes(companyStampImageUrl);
+      } catch (_) {}
+    }
+    stampBytes ??= await loadDefaultHrStampBytes();
     final stampImage = stampBytes != null ? pw.MemoryImage(stampBytes) : null;
 
     pdf.addPage(
@@ -195,7 +219,7 @@ class TimeOffExportService {
                 _l('days', 'Days'),
                 _l('status', 'Status'),
               ],
-              data: records.map((r) {
+              data: activeRecords.map((r) {
                 final name = (r['workerName'] ?? r['name'] ?? r['email'] ?? '')
                     .toString();
                 final type = (r['leaveType'] ?? r['type'] ?? 'Leave')
@@ -215,7 +239,7 @@ class TimeOffExportService {
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
                 pw.Text(
-                  '${_l('total_records', 'Total Records')}: ${records.length}',
+                  '${_l('total_records', 'Total Records')}: ${activeRecords.length}',
                   style: pw.TextStyle(
                     fontSize: 10,
                     color: navy,
@@ -248,6 +272,8 @@ class TimeOffExportService {
     required String periodLabel,
     required String leaveTypeFilter,
     String companyName = 'HRMS',
+    String? companyStampImageUrl,
+    Uint8List? companyStampBytes,
     String fileName = 'time_off_records.pdf',
   }) async {
     final pdfBytes = await generatePdfReport(
@@ -255,6 +281,8 @@ class TimeOffExportService {
       periodLabel: periodLabel,
       leaveTypeFilter: leaveTypeFilter,
       companyName: companyName,
+      companyStampImageUrl: companyStampImageUrl,
+      companyStampBytes: companyStampBytes,
     );
 
     final result = await FilePicker.saveFile(

@@ -51,8 +51,6 @@ class InvoiceService {
     required String totalDeductions,
     required String netSalary,
     required String currency,
-    String taxDeduction = '',
-    String taxRatePercent = '',
     String invoiceNo = '',
 
     String companyName = 'HRMS',
@@ -119,10 +117,7 @@ class InvoiceService {
         : pw.MemoryImage(resolvedCompanyStampBytes);
 
     final now = DateTime.now();
-    final datePrefix =
-        '${now.year}'
-        '${_twoDigits(now.month)}'
-        '${_twoDigits(now.day)}';
+    final datePrefix = _periodDatePrefix(payPeriod);
 
     final invoiceNumber = _buildReadableInvoiceNumber(
       explicitInvoiceNumber: invoiceNo,
@@ -144,7 +139,6 @@ class InvoiceService {
         _parseValue(absentDeduction) > 0 && _parseValue(absents) > 0;
     final hasLeaveDeduction =
         _parseValue(leaveDeduction) > 0 && _parseValue(deductibleLeaveDays) > 0;
-    final hasTaxDeduction = _parseValue(taxDeduction) > 0;
     final hasDeductions = _parseValue(totalDeductions) > 0;
     final isNegativeNet = _parseValue(netSalary) < 0;
 
@@ -296,18 +290,6 @@ class InvoiceService {
                 quantity: deductibleLeaveDays,
                 total:
                     '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
-                textColor: textColor,
-                lineColor: lineColor,
-              ),
-
-            if (hasTaxDeduction)
-              _tableRow(
-                description:
-                    '${_l('tax_deduction', 'Tax Deduction')} (${taxRatePercent.isEmpty ? '0' : taxRatePercent}%)',
-                rate: '${taxRatePercent.isEmpty ? '0' : taxRatePercent}%',
-                quantity: '1',
-                total:
-                    '-${_money(taxDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
                 lineColor: lineColor,
               ),
@@ -577,7 +559,7 @@ class InvoiceService {
             child: pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
-                _l('days', 'Days'),
+                _l('qty', 'Qty'),
                 style: pw.TextStyle(
                   fontSize: 8.5,
                   color: white,
@@ -1071,6 +1053,38 @@ class InvoiceService {
     }
   }
 
+  static String _periodDatePrefix(String payPeriod) {
+    if (payPeriod.trim().isNotEmpty) {
+      final yearMatch = RegExp(r'20\d\d').firstMatch(payPeriod);
+      if (yearMatch != null) {
+        final year = yearMatch.group(0)!;
+        final monthMatches = {
+          'jan': '01',
+          'feb': '02',
+          'mar': '03',
+          'apr': '04',
+          'may': '05',
+          'jun': '06',
+          'jul': '07',
+          'aug': '08',
+          'sep': '09',
+          'oct': '10',
+          'nov': '11',
+          'dec': '12',
+        };
+        final lower = payPeriod.toLowerCase();
+        for (final entry in monthMatches.entries) {
+          if (lower.contains(entry.key)) {
+            return '$year${entry.value}';
+          }
+        }
+        return year;
+      }
+    }
+    final now = DateTime.now();
+    return '${now.year}${_twoDigits(now.month)}${_twoDigits(now.day)}';
+  }
+
   static String _buildReadableInvoiceNumber({
     String explicitInvoiceNumber = '',
     required String datePrefix,
@@ -1081,20 +1095,19 @@ class InvoiceService {
       return trimmed;
     }
 
-    String suffix = '001';
-    final numericOnly = workerId.replaceAll(RegExp(r'[^0-9]'), '');
+    String suffix = '0001';
+    final cleanWorkerId = workerId.trim();
+    final numericOnly = cleanWorkerId.replaceAll(RegExp(r'[^0-9]'), '');
     if (numericOnly.isNotEmpty) {
       final numVal = int.tryParse(numericOnly);
       if (numVal != null) {
-        final val = numVal == 0 ? 1 : numVal;
-        suffix = val.toString().padLeft(3, '0');
-        if (suffix.length > 3) {
-          suffix = suffix.substring(suffix.length - 3);
-        }
+        suffix = numVal.toString().padLeft(4, '0');
+      } else {
+        suffix = numericOnly;
       }
-    } else if (workerId.trim().isNotEmpty) {
-      final code = (workerId.trim().hashCode.abs() % 900 + 100).toString();
-      suffix = code;
+    } else if (cleanWorkerId.isNotEmpty) {
+      final hashHex = cleanWorkerId.hashCode.abs().toRadixString(16).toUpperCase();
+      suffix = hashHex.padLeft(4, '0');
     }
 
     return 'PAY-$datePrefix-$suffix';

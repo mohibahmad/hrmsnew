@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
+import '../services/preferences_service.dart';
 
 import '../utils/date_time_utils.dart';
 import '../utils/currency_utils.dart';
@@ -220,9 +221,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   bool _isPayrollExpense(Map<String, dynamic> expense) {
-    final category = (expense['category'] ?? '').toString().trim().toLowerCase();
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
-    return category == 'salary' && payrollKey.isNotEmpty;
+    final sourceType = (expense['sourceType'] ?? '').toString().trim().toLowerCase();
+    return payrollKey.isNotEmpty || sourceType == 'payroll';
   }
 
   String _expenseDisplayName(Map<String, dynamic> expense) {
@@ -347,15 +348,66 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
 
     if (payrollKey != null && amt != null) {
-      final payrollIndex = DummyData.payroll.indexWhere(
-        (record) => (record['payrollKey'] ?? '').toString().trim() == payrollKey,
-      );
-      if (payrollIndex != -1) {
-        DummyData.payroll[payrollIndex] = {
-          ...DummyData.payroll[payrollIndex],
-          ...PayrollService.editedNetSalaryFields(amt, currency: _currencyCode),
+      Map<String, dynamic> updateRecord(Map<String, dynamic> record) {
+        final baseSalary = PayrollService.extractSalary(
+          record['salary'] ?? record['salaryAmount'],
+        );
+
+        // Net Pay = Base Salary + Overtime - Absence Deduction - Leave Deduction
+        final double overtime;
+        final double absenceDeduction;
+        if (amt >= baseSalary) {
+          overtime = amt - baseSalary;
+          absenceDeduction = 0.0;
+        } else {
+          overtime = 0.0;
+          absenceDeduction = baseSalary - amt;
+        }
+
+        final formatted = PayrollService.formatAmountInCurrency(
+          amt,
+          _currencyCode,
+        );
+        return {
+          ...record,
+          'netSalaryAmount': amt,
+          'netSalary': formatted,
+          'netSalaryFormatted': formatted,
+          'salaryAfterDeduction': formatted,
+          'amount': amt,
+          'overtimeAmount': overtime,
+          'absentDeduction': absenceDeduction,
+          'leaveDeduction': 0.0,
+          'status': 'Paid',
+          'isPaid': true,
+          'paid': true,
+          'paymentStatus': 'paid',
+          'updatedAt': DateTime.now(),
+          'lastModified': DateTime.now(),
         };
       }
+
+      final payrollIndex = DummyData.payroll.indexWhere(
+        (record) =>
+            (record['payrollKey'] ?? '').toString().trim() == payrollKey,
+      );
+      if (payrollIndex != -1) {
+        DummyData.payroll[payrollIndex] = updateRecord(
+          DummyData.payroll[payrollIndex],
+        );
+      }
+
+      PreferencesService.getGuestPayroll().then((guestPayroll) {
+        if (guestPayroll != null) {
+          final idx = guestPayroll.indexWhere(
+            (p) => (p['payrollKey'] ?? '').toString().trim() == payrollKey,
+          );
+          if (idx != -1) {
+            guestPayroll[idx] = updateRecord(guestPayroll[idx]);
+            PreferencesService.setGuestPayroll(guestPayroll);
+          }
+        }
+      });
     }
     DummyData.saveToPrefs();
   }
@@ -367,15 +419,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     });
     DummyData.expenses.removeWhere((e) => e['id'] == docId);
     if (payrollKey != null) {
-      final payrollIndex = DummyData.payroll.indexWhere(
-        (record) => (record['payrollKey'] ?? '').toString().trim() == payrollKey,
+      final normalizedKey = payrollKey.trim();
+      DummyData.payroll.removeWhere(
+        (record) =>
+            (record['payrollKey'] ?? '').toString().trim() == normalizedKey,
       );
-      if (payrollIndex != -1) {
-        DummyData.payroll[payrollIndex] = {
-          ...DummyData.payroll[payrollIndex],
-          ...PayrollService.reopenedPayrollFields(),
-        };
-      }
+      PreferencesService.getGuestPayroll().then((guestPayroll) {
+        if (guestPayroll != null) {
+          guestPayroll.removeWhere(
+            (p) => (p['payrollKey'] ?? '').toString().trim() == normalizedKey,
+          );
+          PreferencesService.setGuestPayroll(guestPayroll);
+        }
+      });
     }
     DummyData.saveToPrefs();
   }
@@ -408,6 +464,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         } else {
           await _firestore.deleteExpense(docId);
         }
+      }
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'expense_deleted'.tr());
       }
     } catch (e) {
       if (!mounted) return;
@@ -521,9 +580,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       },
     );
 
-    categoryController.dispose();
-    amountController.dispose();
-    descriptionController.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      categoryController.dispose();
+      amountController.dispose();
+      descriptionController.dispose();
+    });
   }
 
   Widget _buildDialogHeader(
@@ -839,6 +900,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           if (mounted) {
             FlashySnackBar.show(context, message: 'expense_updated'.tr());
           }
+        } on ArgumentError catch (e) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: e.message?.toString() ?? 'failed_to_update_expense'.tr(),
+              isError: true,
+            );
+          }
         } catch (e) {
           if (mounted) {
             FlashySnackBar.show(
@@ -847,7 +916,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               isError: true,
             );
           }
-          rethrow;
         }
       },
     );
@@ -891,8 +959,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             maxLength: maxLength,
             inputFormatters: isAmount
                 ? [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-                    LengthLimitingTextInputFormatter(12),
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
+                    LengthLimitingTextInputFormatter(18),
+                    _ThousandsSeparatorInputFormatter(),
                   ]
                 : maxLength != null
                     ? [LengthLimitingTextInputFormatter(maxLength)]
@@ -1616,6 +1685,44 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    String cleanText = newValue.text.replaceAll(',', '');
+    final parts = cleanText.split('.');
+    if (parts.length > 2) return oldValue;
+    if (parts.length == 2 && parts[1].length > 2) return oldValue;
+
+    final rawInteger = parts[0];
+    if (rawInteger.length > 12) return oldValue;
+
+    String formattedInteger = '';
+    if (rawInteger.isNotEmpty) {
+      final parsed = int.tryParse(rawInteger);
+      if (parsed == null) return oldValue;
+      formattedInteger = NumberFormat('#,##0', 'en_US').format(parsed);
+    }
+
+    String formatted = formattedInteger;
+    if (parts.length > 1) {
+      formatted += '.${parts[1]}';
+    }
+
+    int charsFromEnd = newValue.text.length - newValue.selection.end;
+    int selectionIndex = (formatted.length - charsFromEnd).clamp(0, formatted.length);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: selectionIndex),
     );
   }
 }

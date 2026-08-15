@@ -1781,7 +1781,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              LocalizationHelper.localizeHolidayName(item.name),
+              '${LocalizationHelper.localizeHolidayName(item.name)}${item.isRecurring ? ' (Every Year)' : ''}',
               style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF000000),
@@ -2013,13 +2013,17 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'no_holidays_found'.tr(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0247C4),
-              fontFamily: 'SF Pro Display',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'no_holidays_found'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0247C4),
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ],

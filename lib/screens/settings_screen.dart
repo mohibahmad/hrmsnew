@@ -1033,7 +1033,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildActionSettingItem(
                     'assets/permenantly_delete.svg',
                     'delete_profile_desc'.tr(),
-                    'delete_profile'.tr(),
+                    'delete_account'.tr(),
                     onTap: widget.isGuest || _isDeletingAccount
                         ? null
                         : () => _deleteAccount(context),

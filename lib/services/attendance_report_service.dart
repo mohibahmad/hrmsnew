@@ -7,11 +7,21 @@ import '../utils/date_time_utils.dart';
 class AttendanceDateRange {
   final DateTime start;
   final DateTime end;
+  final Set<DateTime>? discreteDates;
 
-  const AttendanceDateRange({required this.start, required this.end});
+  const AttendanceDateRange({
+    required this.start,
+    required this.end,
+    this.discreteDates,
+  });
 
   bool contains(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
+    if (discreteDates != null && discreteDates!.isNotEmpty) {
+      return discreteDates!.any(
+        (d) => d.year == day.year && d.month == day.month && d.day == day.day,
+      );
+    }
     final startDay = DateTime(start.year, start.month, start.day);
     final endDay = DateTime(end.year, end.month, end.day);
     return !day.isBefore(startDay) && !day.isAfter(endDay);
@@ -20,10 +30,15 @@ class AttendanceDateRange {
 
 class WorkerAttendanceSnapshot {
   final List<Map<String, dynamic>> records;
+  final int? expectedWorkingDays;
 
-  const WorkerAttendanceSnapshot(this.records);
+  const WorkerAttendanceSnapshot(this.records, {this.expectedWorkingDays});
 
-  int get totalWorkingDays => records.length;
+  int get totalWorkingDays =>
+      (expectedWorkingDays != null && expectedWorkingDays! > 0)
+          ? expectedWorkingDays!
+          : records.length;
+
   int get presents =>
       records.where((d) => _normalizedStatus(d) == 'present').length;
   int get absents =>

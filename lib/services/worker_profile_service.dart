@@ -133,7 +133,7 @@ class WorkerProfileService {
       'worker_name_label': _localized('worker_name_label', 'Name'),
       'father_husband_name': _localized(
         'father_husband_name',
-        'Father/Husband Name',
+        'Father / Husband Name',
       ),
       'position': _localized('position', 'Position'),
       'national_id': _localized('national_id', 'National ID'),
@@ -416,13 +416,17 @@ pw.Widget _label(String text) {
 }
 
 pw.Widget _detailRow(String label, String value) {
+  final displayVal = value.trim().isNotEmpty ? value : '-';
+  final isLong = displayVal.length > 22;
+  final valFontSize = isLong ? (displayVal.length > 30 ? 8.0 : 8.5) : 10.0;
+
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 4),
     child: pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.SizedBox(
-          width: 130,
+          width: 95,
           child: pw.Text(
             label,
             style: pw.TextStyle(
@@ -433,9 +437,9 @@ pw.Widget _detailRow(String label, String value) {
         ),
         pw.Expanded(
           child: pw.Text(
-            value.trim().isNotEmpty ? value : '-',
+            displayVal,
             style: pw.TextStyle(
-              fontSize: 10,
+              fontSize: valFontSize,
               fontWeight: pw.FontWeight.bold,
               color: PdfColors.black,
             ),

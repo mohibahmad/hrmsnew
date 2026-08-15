@@ -2,63 +2,72 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/currency_utils.dart';
 
 // ============= SINGLE PARSER EXTENSION (SAB KAAM EK JAGAH) =============
-extension SafeParser on dynamic {
-  // String with trim
-  String get asString => (this?.toString() ?? '').trim();
-  
-  // Nullable String
-  String? get asStringOrNull {
-    final s = (this?.toString() ?? '').trim();
+class SafeParser {
+  SafeParser._();
+
+  static String asString(dynamic value) => (value?.toString() ?? '').trim();
+
+  static String? asStringOrNull(dynamic value) {
+    final s = (value?.toString() ?? '').trim();
     return s.isEmpty ? null : s;
   }
-  
-  // Number - int, double, num sab handle karega
-  num? get asNumber {
-    if (this == null) return null;
-    if (this is num) return this as num;
-    return num.tryParse(toString().trim());
+
+  static num? asNumber(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value;
+    final clean = value.toString().trim().replaceAll(',', '');
+    return num.tryParse(clean);
   }
-  
-  // Double
-  double? get asDouble {
-    final num = asNumber;
-    if (num == null) return null;
-    return num.isFinite ? num.toDouble() : null;
+
+  static double? asDouble(dynamic value) {
+    final n = asNumber(value);
+    if (n == null) return null;
+    return n.isFinite ? n.toDouble() : null;
   }
-  
-  // Integer
-  int? get asInt => asNumber?.toInt();
-  
-  // Boolean - string, int, bool sab handle
-  bool? get asBool {
-    if (this == null) return null;
-    if (this is bool) return this as bool;
-    if (this is num) return (this as num) != 0;
-    final text = toString().trim().toLowerCase();
+
+  static int? asInt(dynamic value) => asNumber(value)?.toInt();
+
+  static bool? asBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value.toString().trim().toLowerCase();
     if (['true', '1', 'yes'].contains(text)) return true;
     if (['false', '0', 'no'].contains(text)) return false;
     return null;
   }
-  
-  // DateTime with Timestamp support
-  DateTime? get asDateTime {
-    if (this == null) return null;
-    if (this is Timestamp) return (this as Timestamp).toDate().toUtc();
-    if (this is DateTime) return (this as DateTime).toUtc();
-    return DateTime.tryParse(toString().trim())?.toUtc();
+
+  static DateTime? asDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate().toUtc();
+    if (value is DateTime) return value.toUtc();
+    return DateTime.tryParse(value.toString().trim())?.toUtc();
   }
-  
-  // Date only (no time)
-  DateTime? get asDateOnly {
-    final dt = asDateTime;
+
+  static DateTime? asDateOnly(dynamic value) {
+    final dt = asDateTime(value);
     if (dt == null) return null;
     return DateTime.utc(dt.year, dt.month, dt.day);
   }
 }
 
+extension SafeParserExtension on Object? {
+  String get asString => SafeParser.asString(this);
+  String? get asStringOrNull => SafeParser.asStringOrNull(this);
+  num? get asNumber => SafeParser.asNumber(this);
+  double? get asDouble => SafeParser.asDouble(this);
+  int? get asInt => SafeParser.asInt(this);
+  bool? get asBool => SafeParser.asBool(this);
+  DateTime? get asDateTime => SafeParser.asDateTime(this);
+  DateTime? get asDateOnly => SafeParser.asDateOnly(this);
+}
+
 // ============= SINGLE FIELD ADDER (4 FUNCTIONS KI JAGAH 1) =============
 extension FieldAdder on Map<String, dynamic> {
-  void addField(String key, dynamic value, bool forUpdate, {
+  void addField(
+    String key,
+    dynamic value,
+    bool forUpdate, {
     bool isDate = false,
     bool isTimestamp = false,
   }) {
@@ -66,7 +75,7 @@ extension FieldAdder on Map<String, dynamic> {
       if (forUpdate) this[key] = FieldValue.delete();
       return;
     }
-    
+
     if (isDate && value is DateTime) {
       final y = value.year.toString().padLeft(4, '0');
       final m = value.month.toString().padLeft(2, '0');
@@ -74,7 +83,7 @@ extension FieldAdder on Map<String, dynamic> {
       this[key] = '$y-$m-$d';
     } else if (isTimestamp && value is DateTime) {
       this[key] = Timestamp.fromDate(
-        DateTime(value.year, value.month, value.day)
+        DateTime(value.year, value.month, value.day),
       );
     } else {
       this[key] = value;
@@ -82,7 +91,6 @@ extension FieldAdder on Map<String, dynamic> {
   }
 }
 
-// ============= STATUS NORMALIZER (SAME AS BEFORE) =============
 String _normalizeWorkerStatus(dynamic value) {
   final raw = value?.toString().trim() ?? '';
   if (raw.isEmpty) return 'Active';
@@ -181,10 +189,12 @@ class Worker {
 
   // ============= fromMap - CLEANER BUT SAME LOGIC =============
   factory Worker.fromMap(Map<String, dynamic> data, {String? id}) {
-    final rawSalary = data['salaryAmount'].asDouble ?? data['salary'].asDouble;
+    final rawSalary =
+        SafeParser.asDouble(data['salaryAmount']) ??
+        SafeParser.asDouble(data['salary']);
     final salary = (rawSalary != null && rawSalary < 0) ? null : rawSalary;
 
-    final rawCurrency = data['currency'].asStringOrNull;
+    final rawCurrency = SafeParser.asStringOrNull(data['currency']);
     final currency = rawCurrency != null
         ? CurrencyUtils.normalize(rawCurrency)
         : null;
@@ -192,42 +202,55 @@ class Worker {
     final status = _normalizeWorkerStatus(data['status']);
 
     return Worker(
-      id: (id ?? data['id']).asStringOrNull,
-      name: data['name'].asString,
-      fatherName: data['fatherName'].asStringOrNull,
-      email: data['email'].asStringOrNull,
-      phone: (data['phone'] ?? data['contact']).asStringOrNull,
-      nationalId: (data['nationalId'] ?? data['cnic']).asStringOrNull,
-      religion: data['religion'].asStringOrNull,
-      dob: data['dob'].asDateOnly,
-      gender: data['gender'].asStringOrNull,
-      address: data['address'].asStringOrNull,
-      relationshipStatus: data['relationshipStatus'].asStringOrNull,
-      type1: (data['type1'] ?? data['workType']).asStringOrNull,
-      position: (data['position'] ?? data['role']).asStringOrNull,
-      type2: (data['type2'] ?? data['attendanceType']).asStringOrNull,
-      experienceLevel: data['experienceLevel'].asStringOrNull,
-      education: data['education'].asStringOrNull,
-      salaryType: data['salaryType'].asStringOrNull,
+      id: id ?? SafeParser.asStringOrNull(data['id']),
+      name: SafeParser.asString(data['name']),
+      fatherName: SafeParser.asStringOrNull(data['fatherName']),
+      email: SafeParser.asStringOrNull(data['email']),
+      phone: SafeParser.asStringOrNull(data['phone'] ?? data['contact']),
+      nationalId: SafeParser.asStringOrNull(data['nationalId'] ?? data['cnic']),
+      religion: SafeParser.asStringOrNull(data['religion']),
+      dob: SafeParser.asDateOnly(data['dob']),
+      gender: SafeParser.asStringOrNull(data['gender']),
+      address: SafeParser.asStringOrNull(data['address']),
+      relationshipStatus: SafeParser.asStringOrNull(data['relationshipStatus']),
+      type1: SafeParser.asStringOrNull(data['type1'] ?? data['workType']),
+      position: SafeParser.asStringOrNull(data['position'] ?? data['role']),
+      type2: SafeParser.asStringOrNull(data['type2'] ?? data['attendanceType']),
+      experienceLevel: SafeParser.asStringOrNull(data['experienceLevel']),
+      education: SafeParser.asStringOrNull(data['education']),
+      salaryType: SafeParser.asStringOrNull(data['salaryType']),
       currency: currency,
       salaryAmount: salary,
-      leavePolicy: data['leavePolicy'].asStringOrNull,
-      annualLeaves: data['annualLeaves'].asInt,
-      sickLeaves: data['sickLeaves'].asInt,
-      casualLeaves: data['casualLeaves'].asInt,
-      medicalLeaves: data['medicalLeaves'].asInt,
-      availableAnnualLeaves: data['availableAnnualLeaves'].asInt,
-      availableSickLeaves: data['availableSickLeaves'].asInt,
-      availableCasualLeaves: data['availableCasualLeaves'].asInt,
-      availableMedicalLeaves: data['availableMedicalLeaves'].asInt,
-      leavesUsed: data['leavesUsed'].asInt,
-      joiningDate: (data['joiningDate'] ?? data['dateOfJoining']).asDateOnly,
-      profileImage: data['profileImage'].asStringOrNull,
-      frontId: (data['idFront'] ?? data['frontId'] ?? data['front_id'] ?? data['id_front']).asStringOrNull,
-      backId: (data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back']).asStringOrNull,
-      cv: data['cv'].asStringOrNull,
-      createdAt: data['createdAt'].asDateTime,
-      payrollInitialized: (data['payroll_initialized'] ?? data['payrollInitialized']).asBool ?? false,
+      leavePolicy: SafeParser.asStringOrNull(data['leavePolicy']),
+      annualLeaves: SafeParser.asInt(data['annualLeaves']),
+      sickLeaves: SafeParser.asInt(data['sickLeaves']),
+      casualLeaves: SafeParser.asInt(data['casualLeaves']),
+      medicalLeaves: SafeParser.asInt(data['medicalLeaves']),
+      availableAnnualLeaves: SafeParser.asInt(data['availableAnnualLeaves']),
+      availableSickLeaves: SafeParser.asInt(data['availableSickLeaves']),
+      availableCasualLeaves: SafeParser.asInt(data['availableCasualLeaves']),
+      availableMedicalLeaves: SafeParser.asInt(data['availableMedicalLeaves']),
+      leavesUsed: SafeParser.asInt(data['leavesUsed']),
+      joiningDate: SafeParser.asDateOnly(
+        data['joiningDate'] ?? data['dateOfJoining'],
+      ),
+      profileImage: SafeParser.asStringOrNull(data['profileImage']),
+      frontId: SafeParser.asStringOrNull(
+        data['idFront'] ??
+            data['frontId'] ??
+            data['front_id'] ??
+            data['id_front'],
+      ),
+      backId: SafeParser.asStringOrNull(
+        data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back'],
+      ),
+      cv: SafeParser.asStringOrNull(data['cv']),
+      createdAt: SafeParser.asDateTime(data['createdAt']),
+      payrollInitialized:
+          SafeParser.asBool(
+            data['payroll_initialized'] ?? data['payrollInitialized'],
+          ) ??
+          false,
       status: status,
     );
   }
@@ -256,8 +279,9 @@ class Worker {
       'idBack': backId,
       'cv': cv,
       'status': status,
+      'leavePolicy': leavePolicy,
     };
-    
+
     stringValues.forEach((key, value) {
       map.addField(key, value, forUpdate);
     });
@@ -282,7 +306,7 @@ class Worker {
       'availableMedicalLeaves': availableMedicalLeaves,
       'leavesUsed': leavesUsed,
     };
-    
+
     numericValues.forEach((key, value) {
       if (value != null && value.isFinite) {
         map[key] = value;
@@ -292,7 +316,7 @@ class Worker {
     });
 
     // Date fields
-    map.addField('dob', dob, forUpdate, isDate: true);
+    map.addField('dob', dob, forUpdate, isTimestamp: true);
     map.addField('joiningDate', joiningDate, forUpdate, isTimestamp: true);
 
     // Created at
@@ -304,7 +328,7 @@ class Worker {
       }
     }
 
-    map['payroll_initialized'] = payrollInitialized ?? false;
+    map['payroll_initialized'] = payrollInitialized ?? true;
 
     return map;
   }
@@ -374,10 +398,13 @@ class Worker {
       sickLeaves: sickLeaves ?? this.sickLeaves,
       casualLeaves: casualLeaves ?? this.casualLeaves,
       medicalLeaves: medicalLeaves ?? this.medicalLeaves,
-      availableAnnualLeaves: availableAnnualLeaves ?? this.availableAnnualLeaves,
+      availableAnnualLeaves:
+          availableAnnualLeaves ?? this.availableAnnualLeaves,
       availableSickLeaves: availableSickLeaves ?? this.availableSickLeaves,
-      availableCasualLeaves: availableCasualLeaves ?? this.availableCasualLeaves,
-      availableMedicalLeaves: availableMedicalLeaves ?? this.availableMedicalLeaves,
+      availableCasualLeaves:
+          availableCasualLeaves ?? this.availableCasualLeaves,
+      availableMedicalLeaves:
+          availableMedicalLeaves ?? this.availableMedicalLeaves,
       leavesUsed: leavesUsed ?? this.leavesUsed,
       joiningDate: joiningDate ?? this.joiningDate,
       profileImage: profileImage ?? this.profileImage,

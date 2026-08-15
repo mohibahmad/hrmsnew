@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -292,7 +293,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     for (final key in ['dob', 'joiningDate']) {
       final raw = normalized[key]?.toString().trim() ?? '';
       if (raw.isNotEmpty) {
-        final parsed = AppDateUtils.parseDdMmYyyy(raw);
+        final parsed =
+            AppDateUtils.parseDdMmYyyy(raw) ?? AppDateUtils.dateFromValue(raw);
         normalized[key] = parsed != null
             ? AppDateUtils.asUtcDateOnly(parsed)
             : '';
@@ -309,7 +311,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         final rowId = (w['clientRowId'] ?? w['client_row_id'] ?? '')
             .toString()
             .trim();
-        final result = Worker.fromMap(_preNormalizeForWorker(clean)).toMap();
+        final normalizedMap = _preNormalizeForWorker(clean);
+        final result = Worker.fromMap(normalizedMap).toMap();
+        result['payroll_initialized'] = true;
         if (rowId.isNotEmpty) {
           result['clientRowId'] = rowId;
         }
@@ -620,18 +624,12 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   }
 
   Future<bool> _revalidateAllWorkers() async {
-    final ({Set<String> emails, Set<String> nationalIds}) existing;
+    ({Set<String> emails, Set<String> nationalIds}) existing;
     try {
       existing = await _loadExistingIdentitySets();
-    } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'could_not_validate_csv_duplicates'.tr(),
-          isError: true,
-        );
-      }
-      return false;
+    } catch (e) {
+      debugPrint('Error loading existing identity sets: $e');
+      existing = (emails: <String>{}, nationalIds: <String>{});
     }
     final existingEmails = existing.emails;
     final existingNationalIds = existing.nationalIds;
@@ -2860,54 +2858,106 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       ),
     );
 
-    if (value.startsWith('data:image')) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return imageFallback;
+
+    if (fieldKey == 'cv' || trimmed.endsWith('.pdf') || trimmed.contains('application/pdf')) {
+      return documentFallback;
+    }
+
+    // 1. Check data URI or base64 string with data: prefix
+    if (trimmed.startsWith('data:')) {
       try {
-        final commaIndex = value.indexOf(',');
-        if (commaIndex >= 0) {
-          final bytes = base64Decode(value.substring(commaIndex + 1));
-          if (bytes.isNotEmpty) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.memory(
-                bytes,
-                width: 24,
-                height: 24,
-                fit: BoxFit.cover,
-                cacheWidth: 48,
-                cacheHeight: 48,
-                errorBuilder: (_, _, _) => imageFallback,
-              ),
-            );
-          }
+        final commaIndex = trimmed.indexOf(',');
+        final base64Content = commaIndex >= 0 ? trimmed.substring(commaIndex + 1) : trimmed;
+        final bytes = base64Decode(base64Content.trim());
+        if (bytes.isNotEmpty) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.memory(
+              bytes,
+              width: 24,
+              height: 24,
+              fit: BoxFit.cover,
+              cacheWidth: 48,
+              cacheHeight: 48,
+              errorBuilder: (_, _, _) => imageFallback,
+            ),
+          );
         }
       } catch (_) {}
       return imageFallback;
     }
 
-    if (value.startsWith('data:')) {
-      return fieldKey == 'cv' ? documentFallback : imageFallback;
+    // 2. Check Flutter assets
+    if (trimmed.startsWith('assets/')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.asset(
+          trimmed,
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => imageFallback,
+        ),
+      );
     }
 
-    if (fieldKey == 'cv') return documentFallback;
-
-    final uri = Uri.tryParse(value);
-    if (uri == null ||
-        !uri.hasAuthority ||
-        (uri.scheme != 'http' && uri.scheme != 'https')) {
-      return imageFallback;
+    // 3. Check HTTP / HTTPS network URL
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.network(
+          trimmed,
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          cacheWidth: 48,
+          cacheHeight: 48,
+          errorBuilder: (_, _, _) => imageFallback,
+        ),
+      );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Image.network(
-        value,
-        width: 24,
-        height: 24,
-        fit: BoxFit.cover,
-        cacheWidth: 48,
-        cacheHeight: 48,
-        errorBuilder: (_, _, _) => imageFallback,
-      ),
-    );
+    // 4. Check local file path
+    if (trimmed.startsWith('/') || trimmed.startsWith('file://')) {
+      try {
+        final filePath = trimmed.startsWith('file://') ? Uri.parse(trimmed).toFilePath() : trimmed;
+        final file = io.File(filePath);
+        if (file.existsSync()) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.file(
+              file,
+              width: 24,
+              height: 24,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => imageFallback,
+            ),
+          );
+        }
+      } catch (_) {}
+    }
+
+    // 5. Try raw base64 string fallback
+    try {
+      final bytes = base64Decode(trimmed);
+      if (bytes.isNotEmpty) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Image.memory(
+            bytes,
+            width: 24,
+            height: 24,
+            fit: BoxFit.cover,
+            cacheWidth: 48,
+            cacheHeight: 48,
+            errorBuilder: (_, _, _) => imageFallback,
+          ),
+        );
+      }
+    } catch (_) {}
+
+    return imageFallback;
   }
 }

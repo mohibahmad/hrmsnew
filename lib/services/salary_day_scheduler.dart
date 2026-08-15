@@ -22,6 +22,7 @@ import '../utils/currency_utils.dart';
 import '../utils/ui_utils.dart';
 import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
+import '../utils/date_time_utils.dart';
 
 Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
   final archive = Archive();
@@ -331,6 +332,8 @@ class PayrollRunner {
         existingPayroll = List<Map<String, dynamic>>.from(DummyData.payroll);
         autoWorkDays = await firestoreService.getMonthlyWorkingDays(
           month: effectivePayrollMonth,
+          startDate: effectivePeriodStart,
+          endDate: effectivePeriodEnd,
         );
       } else {
         final results = await Future.wait([
@@ -346,7 +349,11 @@ class PayrollRunner {
             const Duration(seconds: 20),
           ),
           firestoreService
-              .getMonthlyWorkingDays(month: effectivePayrollMonth)
+              .getMonthlyWorkingDays(
+                month: effectivePayrollMonth,
+                startDate: effectivePeriodStart,
+                endDate: effectivePeriodEnd,
+              )
               .then((v) => {'_days': v}),
           // Use the same live collection snapshot as Add Payroll. Filtering
           // the Firestore query by month can miss legacy records whose saved
@@ -553,7 +560,25 @@ class PayrollRunner {
         continue;
       }
 
-      const prorationFactor = 1.0;
+      final joiningDate = AppDateUtils.dateFromValue(
+        worker['joiningDate'] ?? worker['dateOfJoining'],
+      );
+      double prorationFactor = 1.0;
+      if (joiningDate != null) {
+        final normJoining = DateTime(joiningDate.year, joiningDate.month, joiningDate.day);
+        final normStart = DateTime(effectivePeriodStart.year, effectivePeriodStart.month, effectivePeriodStart.day);
+        final normEnd = DateTime(effectivePeriodEnd.year, effectivePeriodEnd.month, effectivePeriodEnd.day);
+
+        if (normJoining.isAfter(normStart) && !normJoining.isAfter(normEnd)) {
+          final totalDaysInPeriod = normEnd.difference(normStart).inDays + 1;
+          final activeDaysInPeriod = normEnd.difference(normJoining).inDays + 1;
+          if (totalDaysInPeriod > 0) {
+            prorationFactor = (activeDaysInPeriod / totalDaysInPeriod).clamp(0.0, 1.0);
+          }
+        } else if (normJoining.isAfter(normEnd)) {
+          prorationFactor = 0.0;
+        }
+      }
 
       if (!isGuest && attendanceError.isNotEmpty) {
         results.add(
@@ -757,14 +782,14 @@ class PayrollRunner {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
-        unawaited(_generateAndSaveZip(
+        await _generateAndSaveZip(
           context,
           paidResults,
           filteredSummary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
           periodStart: effectivePeriodStart,
           periodEnd: effectivePeriodEnd,
-        ));
+        );
       }
     } else {
       if (!context.mounted) return null;
@@ -797,14 +822,14 @@ class PayrollRunner {
 
       if (summary.successCount >= 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
-        unawaited(_generateAndSaveZip(
+        await _generateAndSaveZip(
           context,
           paidResults,
           summary.periodLabel,
           companyProfile ?? const <String, dynamic>{},
           periodStart: effectivePeriodStart,
           periodEnd: effectivePeriodEnd,
-        ));
+        );
       }
     }
 
@@ -1071,23 +1096,22 @@ class PayrollRunner {
       throw StateError('Not all payroll records could be saved');
     }
 
-    final notificationFuture = firestoreService
-        .addBulkNotifications(notifications)
-        .catchError((error, stackTrace) {
-          ErrorReporter.report(
-            error,
-            stackTrace,
-            context: 'PayrollRunnerNotifications',
-          );
-        });
-
     try {
       await firestoreService.upsertBulkPayrollExpenses(expenseRecords);
     } catch (error) {
       await _rollbackPayrollRecords(firestoreService, payrollRecords);
       rethrow;
     }
-    await notificationFuture;
+
+    try {
+      await firestoreService.addBulkNotifications(notifications);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollRunnerNotifications',
+      );
+    }
 
     return payrollCount;
   }

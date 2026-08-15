@@ -66,9 +66,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<bool> _activatedScreens = List.filled(13, false);
   final GlobalKey<WorkersScreenState> _workersKey =
       GlobalKey<WorkersScreenState>();
+  final GlobalKey<AssignTimeOffScreenState> _assignTimeOffKey =
+      GlobalKey<AssignTimeOffScreenState>();
+  final GlobalKey<PayrollScreenState> _payrollKey =
+      GlobalKey<PayrollScreenState>();
   late AuthService _authService;
   late FirestoreService _firestore;
   String _currencyCode = CurrencyUtils.defaultCode;
+  bool _globalPayrollReminderFired = false;
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -95,36 +100,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       case 3:
         return PayrollScreen(
-          isActive:
-              _getStackIndex() == 3 &&
-              !_showAssignTimeOff &&
-              !_showProfile &&
-              !_showWorkersAttendance &&
-              !_showNotifications,
-          activationToken: _payrollActivationToken,
+          key: _payrollKey,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onAssignTimeOff: () {
-            setState(() {
-              _selectedTimeOffWorker = null;
-              _showAssignTimeOff = true;
-              _activatedScreens[9] = true;
-            });
-          },
+          activationToken: _payrollActivationToken,
           onNotificationTap: _toggleNotifications,
         );
       case 4:
         return TimeOffScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onAssignTimeOff: (worker) {
-            setState(() {
-              _selectedTimeOffWorker = worker;
-              _showAssignTimeOff = true;
-              _activatedScreens[9] = true;
-            });
-          },
           onNotificationTap: _toggleNotifications,
+          onAssignTimeOff: (worker) {
+            _openAssignTimeOff(worker: worker);
+          },
         );
       case 5:
         return AssetsScreen(
@@ -153,13 +142,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       case 9:
         return AssignTimeOffScreen(
-          key: ValueKey(
-            'assign_time_off_${_selectedTimeOffWorker?['id'] ?? _selectedTimeOffWorker?['workerId'] ?? _selectedTimeOffWorker?['email'] ?? 'new'}',
-          ),
-          onBack: () => setState(() {
-            _showAssignTimeOff = false;
-            _selectedTimeOffWorker = null;
-          }),
+          key: _assignTimeOffKey,
+          onBack: () {
+            setState(() {
+              _showAssignTimeOff = false;
+              _selectedTimeOffWorker = null;
+            });
+          },
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
           initialWorker: _selectedTimeOffWorker,
@@ -295,6 +284,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _openAssignTimeOff({Map<String, dynamic>? worker}) {
+    setState(() {
+      _showProfile = false;
+      _showWorkersAttendance = false;
+      _showNotifications = false;
+      _showAssignTimeOff = true;
+      _selectedTimeOffWorker = worker;
+      _activatedScreens[9] = true;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -303,6 +303,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
+    // Keep the Payroll screen built at startup so its payroll reminder can
+    // fire from ANY screen when the pay day arrives (not only when the
+    // Payroll tab is opened).
+    _activatedScreens[3] = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tryFireGlobalPayrollReminder();
+    });
+  }
+
+  /// Fires the (identical) Payroll screen reminder from the host screen so
+  /// it can appear even when the user is on another tab. It re-uses the
+  /// PayrollScreen's own reminder logic, so there is a single dialog.
+  Future<void> _tryFireGlobalPayrollReminder() async {
+    if (_globalPayrollReminderFired) return;
+    int attempts = 0;
+    while (mounted && attempts < 8) {
+      final state = _payrollKey.currentState;
+      if (state == null) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        attempts++;
+        continue;
+      }
+      if (state.isPayrollReminderDataReady) {
+        _globalPayrollReminderFired = true;
+        try {
+          await state.triggerGlobalPayrollReminder();
+        } catch (_) {}
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      attempts++;
+    }
   }
 
   @override
@@ -542,10 +574,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           int mCount = 0;
           int fCount = 0;
           int oCount = 0;
+          int activeHeadcount = 0;
+          final today = DateTime.now();
           final list = <Map<String, dynamic>>[];
           for (final doc in snap.docs) {
             final data = doc.data() as Map<String, dynamic>? ?? {};
             list.add({...data, 'id': doc.id});
+
+            if (!PayrollService.isWorkerEligibleForPayroll(data)) continue;
+            final joiningDate = AppDateUtils.dateFromValue(
+              data['joiningDate'] ?? data['dateOfJoining'],
+            );
+            if (joiningDate != null) {
+              final normJoining = DateTime(
+                joiningDate.year,
+                joiningDate.month,
+                joiningDate.day,
+              );
+              final normToday = DateTime(today.year, today.month, today.day);
+              if (normJoining.isAfter(normToday)) continue;
+            }
+
+            activeHeadcount++;
             final genderStr = (data['gender'] ?? '')
                 .toString()
                 .trim()
@@ -559,7 +609,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             }
           }
           setState(() {
-            _totalWorkersCount = snap.docs.length;
+            _totalWorkersCount = activeHeadcount;
             _maleWorkersCount = mCount;
             _femaleWorkersCount = fCount;
             _otherWorkersCount = oCount;
@@ -1004,7 +1054,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _openProfile() {
+  Future<void> _openProfile() async {
+    if (_showAssignTimeOff && (_assignTimeOffKey.currentState?.hasUnsavedChanges ?? false)) {
+      final shouldDiscard = await UnsavedChangesDialog.show(context);
+      if (!shouldDiscard) return;
+    }
     setState(() {
       _showProfile = true;
       _showWorkersAttendance = false;
@@ -1020,20 +1074,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() {
       _showNotifications = opening;
     });
-    if (opening) {
-      _markNotificationsSeen();
-    }
   }
 
-  Future<void> _markNotificationsSeen() async {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) return;
-    try {
-      await _firestore.markAllNotificationsRead();
-    } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'MarkNotificationsSeen');
-    }
-  }
+
 
   void _handleNotificationNavigation(String type) {
     setState(() {

@@ -825,6 +825,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     String period, {
     DateTime? startDate,
     DateTime? endDate,
+    Set<DateTime>? customSelectedDates,
   }) async {
     try {
       late final AttendanceDateRange range;
@@ -840,6 +841,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         range = AttendanceDateRange(
           start: DateTime(startDate.year, startDate.month, startDate.day),
           end: DateTime(endDate.year, endDate.month, endDate.day),
+          discreteDates: customSelectedDates,
         );
       } else {
         range = AttendanceReportService.rangeForPeriod(period);

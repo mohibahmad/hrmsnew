@@ -57,7 +57,9 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
+      _notifications = List<Map<String, dynamic>>.from(
+        DummyData.notifications.where((n) => n['isRead'] != true),
+      );
 
       var backfilled = false;
       for (var i = 0; i < _notifications.length; i++) {
@@ -78,6 +80,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
             setState(() {
               _notifications = snap.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .where((n) => n['isRead'] != true)
                   .toList();
               _isLoading = false;
             });
@@ -108,6 +111,28 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       await DummyData.saveToPrefs();
     } else {
       await _firestore.deleteNotification(notificationId);
+    }
+    if (mounted) {
+      setState(() {
+        _notifications.removeWhere((n) => n['id'] == notificationId);
+      });
+    }
+  }
+
+  Future<void> _markAsReadNotification(String notificationId) async {
+    if (notificationId.trim().isEmpty) return;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      final idx = DummyData.notifications.indexWhere(
+        (n) => n['id']?.toString() == notificationId,
+      );
+      if (idx != -1) {
+        DummyData.notifications[idx]['isRead'] = true;
+        DummyData.notifications[idx]['readAt'] = DateTime.now().toIso8601String();
+        await DummyData.saveToPrefs();
+      }
+    } else {
+      await _firestore.markNotificationAsRead(notificationId);
     }
     if (mounted) {
       setState(() {
@@ -594,7 +619,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
     return GestureDetector(
       onTap: () {
         widget.onNotificationTap?.call('welcome');
-        _removeNotification(notificationId);
+        _markAsReadNotification(notificationId);
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -733,7 +758,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                       const Spacer(),
                       GestureDetector(
                         onTap: () async {
-                          await _removeNotification(notificationId);
+                          await _markAsReadNotification(notificationId);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -786,7 +811,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
           GestureDetector(
             onTap: () {
               widget.onNotificationTap?.call(type);
-              _removeNotification(notificationId);
+              _markAsReadNotification(notificationId);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

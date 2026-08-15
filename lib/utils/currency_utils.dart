@@ -18,6 +18,18 @@ class CurrencyUtils {
     return text;
   }
 
+  static String formatWithCommas(dynamic value) {
+    if (value == null) return '';
+    final clean = amountText(value).replaceAll(',', '');
+    if (clean.isEmpty) return '';
+    final parts = clean.split('.');
+    final intPart = parts[0];
+    final parsed = int.tryParse(intPart);
+    if (parsed == null) return clean;
+    final formattedInt = NumberFormat('#,##0', 'en_US').format(parsed);
+    return parts.length > 1 ? '$formattedInt.${parts[1]}' : formattedInt;
+  }
+
   static const String defaultCode = 'USD';
 
   static String get companyCurrency =>
@@ -227,12 +239,17 @@ class CurrencyUtils {
     final scaled = unit == 1 ? value : value / unit;
     String numberPart;
     try {
-      numberPart = NumberFormat('0.0', locale).format(scaled);
+      numberPart = NumberFormat('0.##', locale).format(scaled);
     } catch (_) {
-      numberPart = scaled.toStringAsFixed(1);
+      numberPart = scaled.toStringAsFixed(2);
+      if (numberPart.contains('.')) {
+        numberPart = numberPart
+            .replaceAll(RegExp(r'0+$'), '')
+            .replaceAll(RegExp(r'\.$'), '');
+      }
     }
 
-    numberPart = numberPart.replaceFirst(RegExp(r'[,.]0$'), '');
+    numberPart = numberPart.replaceFirst(RegExp(r'[,.]0+$'), '');
     if (suffix.isEmpty) return '$symbol$numberPart';
 
     return lang == 'en'

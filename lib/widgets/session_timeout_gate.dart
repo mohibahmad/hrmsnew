@@ -270,7 +270,10 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
                 child: TickerMode(enabled: !_locked, child: widget.child),
               ),
             ),
-            if (_locked) _buildLockScreen(context),
+            Offstage(
+              offstage: !_locked,
+              child: _buildLockScreen(context),
+            ),
           ],
         ),
       ),
@@ -287,109 +290,107 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
         ? 'session_biometric_failed'.tr()
         : 'session_locked_message'.tr();
 
-    return Positioned.fill(
-      child: Material(
-        color: const Color(0xFFF4F7FC),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x14001B44),
-                        blurRadius: 32,
-                        offset: Offset(0, 12),
+    return Material(
+      color: const Color(0xFFF4F7FC),
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14001B44),
+                      blurRadius: 32,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEAF1FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock_clock_rounded,
+                          size: 36,
+                          color: Color(0xFF0247C4),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEAF1FF),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.lock_clock_rounded,
-                            size: 36,
-                            color: Color(0xFF0247C4),
-                          ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'session_locked_title'.tr(),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF162033),
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'session_locked_title'.tr(),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF162033),
-                          ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                          color: const Color(0xFF667085),
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          message,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            height: 1.45,
-                            color: const Color(0xFF667085),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        if (_biometricAvailable)
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: FilledButton.icon(
-                              onPressed: _authenticating
-                                  ? null
-                                  : _unlockWithBiometrics,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF0247C4),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              icon: _authenticating
-                                  ? const SizedBox.square(
-                                      dimension: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.fingerprint_rounded),
-                              label: Text(
-                                _authenticating
-                                    ? 'session_verifying'.tr()
-                                    : 'session_unlock_with_biometric'.tr(
-                                        namedArgs: {
-                                          'biometric': _biometricName,
-                                        },
-                                      ),
+                      ),
+                      const SizedBox(height: 28),
+                      if (_biometricAvailable)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton.icon(
+                            onPressed: _authenticating
+                                ? null
+                                : _unlockWithBiometrics,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0247C4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                          ),
-                        if (_biometricAvailable) const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _signingOut ? null : _signInAgain,
-                          child: Text(
-                            _signingOut
-                                ? 'session_signing_out'.tr()
-                                : 'session_sign_in_again'.tr(),
+                            icon: _authenticating
+                                ? const SizedBox.square(
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.fingerprint_rounded),
+                            label: Text(
+                              _authenticating
+                                  ? 'session_verifying'.tr()
+                                  : 'session_unlock_with_biometric'.tr(
+                                      namedArgs: {
+                                        'biometric': _biometricName,
+                                      },
+                                    ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                      if (_biometricAvailable) const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _signingOut ? null : _signInAgain,
+                        child: Text(
+                          _signingOut
+                              ? 'session_signing_out'.tr()
+                              : 'session_sign_in_again'.tr(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -121,7 +121,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
 
-  static const double _prorationFactor = 1.0;
+  double get _prorationFactor => 1.0;
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
 
@@ -192,17 +192,21 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _leavesCtrl.text = (attendanceCounts['leaves'] ?? 0).toString();
 
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
+    final isCancelledPayroll = widget.workerData['hasPayrollRecord'] == true &&
+        widget.workerData['isPaid'] != true;
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
-      _overtimeAmountCtrl.text = _editableAmountValue(
-        widget.workerData['overtimeAmount'],
-      );
-      _absentDeductionCtrl.text = widget.workerData['hasPayrollRecord'] == true
-          ? _editableAmountValue(widget.workerData['absentDeduction'])
-          : '';
-      _leaveDeductionCtrl.text = _editableAmountValue(
-        widget.workerData['leaveDeduction'],
-      );
+      _overtimeAmountCtrl.text = isCancelledPayroll
+          ? ''
+          : _editableAmountValue(widget.workerData['overtimeAmount']);
+      _absentDeductionCtrl.text = isCancelledPayroll
+          ? ''
+          : (widget.workerData['hasPayrollRecord'] == true
+              ? _editableAmountValue(widget.workerData['absentDeduction'])
+              : '');
+      _leaveDeductionCtrl.text = isCancelledPayroll
+          ? ''
+          : _editableAmountValue(widget.workerData['leaveDeduction']);
       _recalc();
     }
 
@@ -453,7 +457,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }
 
       final workingDays = await _firestore
-          .getMonthlyWorkingDays(month: _payrollMonth)
+          .getMonthlyWorkingDays(
+            month: _payrollMonth,
+            startDate: periodRange.$1,
+            endDate: periodRange.$2,
+          )
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {

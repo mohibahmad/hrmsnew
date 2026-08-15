@@ -248,6 +248,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           setState(() {
             final sortedList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .where((w) => w['isDeleted'] != true && w['status'] != 'Terminated')
                 .toList();
             sortedList.sort((a, b) {
               final aDate = _workerDateTime(a['updatedAt'] ?? a['createdAt']);
@@ -309,8 +310,9 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     return list;
   }
 
-  Future<void> _deleteWorker(String docId) async {
-    final normalizedId = docId.trim();
+  Future<void> _deleteWorker(Map<String, dynamic> worker) async {
+    final normalizedId = (worker['id'] ?? '').toString().trim();
+    final workerName = (worker['name'] ?? '').toString().trim();
     if (normalizedId.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -343,11 +345,21 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         }
       } else {
         await _firestore.deleteWorker(normalizedId);
+        if (mounted) {
+          setState(() {
+            _allWorkers.removeWhere(
+              (w) => (w['id'] ?? '').toString().trim() == normalizedId,
+            );
+          });
+        }
       }
       if (mounted) {
+        final successMsg = workerName.isNotEmpty
+            ? '$workerName ${'has_been_removed_successfully'.tr()}'
+            : 'worker_deleted_successfully'.tr();
         FlashySnackBar.show(
           context,
-          message: 'worker_deleted_successfully'.tr(),
+          message: successMsg,
         );
       }
     } catch (e) {
@@ -362,6 +374,8 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       _deletingWorkerIds.remove(normalizedId);
     }
   }
+
+
 
   Future<void> _openAuthenticatedAddFlow({required bool bulk}) async {
     if (_isOpeningAddFlow) return;
@@ -800,7 +814,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     final position = (worker['position'] ?? '').toString();
     final type2 = (worker['type2'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
-    final docId = (worker['id'] ?? '').toString();
 
     final localizedType1 = LocalizationHelper.localizeType1(type1);
     final localizedType2 = LocalizationHelper.localizeType2(type2);
@@ -942,10 +955,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                     showGuestRestrictionDialog(context);
                     return;
                   }
-                  _deleteWorker(docId);
+                  _deleteWorker(worker);
                 }
               },
-              constraints: const BoxConstraints(maxWidth: 168),
+              constraints: const BoxConstraints(maxWidth: 190),
               itemBuilder: (BuildContext context) => [
                 PopupMenuItem<String>(
                   value: 'preview',
@@ -962,7 +975,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                         child: Text(
                           'preview'.tr(),
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color(0xFF000000),
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -1012,9 +1025,9 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'delete'.tr(),
+                          'delete_worker'.tr(),
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.red,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,

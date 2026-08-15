@@ -146,24 +146,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       final field = m.field;
       final key = m.key;
       final value = (worker[key] ?? worker[field] ?? '').toString().trim();
-      final isEmbeddedFile =
-          value.startsWith('data:') && value.contains(';base64,');
-      final uri = Uri.tryParse(value);
-      final isRemoteFile =
-          uri != null &&
-          uri.hasAuthority &&
-          (uri.scheme == 'http' || uri.scheme == 'https');
-      if (!isEmbeddedFile && !isRemoteFile) {
-        if (value.isNotEmpty) {
-          final workerName = (worker['name'] ?? 'Worker').toString();
-          throw StateError(
-            '$workerName — ${mediaFieldName(field)}: '
-            '${'bulk_media_invalid_url'.tr()}',
-          );
-        }
-        continue;
-      }
-
       final storedName =
           (worker['${key}_name'] ?? worker['${field}_name'] ?? '')
               .toString()
@@ -173,6 +155,9 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
           : field == 'cv'
           ? 'worker_cvs'
           : 'identity_documents';
+
+      final isEmbeddedFile =
+          value.startsWith('data:') && value.contains(';base64,');
 
       if (isEmbeddedFile) {
         final separator = value.indexOf(';base64,');

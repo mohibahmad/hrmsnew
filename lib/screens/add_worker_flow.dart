@@ -403,7 +403,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         _educationController.text = 'Bachelor';
       }
 
-      _salaryAmountController.text = CurrencyUtils.amountText(
+      _salaryAmountController.text = CurrencyUtils.formatWithCommas(
         widget.workerToEdit!['salaryAmount'],
       );
 
@@ -1178,7 +1178,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         normalizeEducation((edit['education'] ?? 'Bachelor').toString())) {
       return true;
     }
-    if (CurrencyUtils.amountText(_salaryAmountController.text) !=
+    if (CurrencyUtils.amountText(_salaryAmountController.text.replaceAll(',', '')) !=
         CurrencyUtils.amountText(edit['salaryAmount'])) {
       return true;
     }
@@ -3672,7 +3672,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Expanded(
                           child: _buildInputField(
                             'job_position_label'.tr(),
-                            'enter_your_level'.tr(),
+                            'enter_job_position'.tr(),
                             controller: widget.positionController,
                           ),
                         ),
@@ -4312,17 +4312,11 @@ class DocumentationSection extends StatelessWidget {
                                       : onUploadFrontTap,
                                   child: Text(
                                     'upload_front_side'.tr(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
-                                      color:
-                                          (frontIdBytes != null ||
-                                              (existingFrontIdUrl != null &&
-                                                  existingFrontIdUrl!
-                                                      .isNotEmpty))
-                                          ? const Color(0xFF9CA3AF)
-                                          : const Color(0xFF000000),
+                                      color: Color(0xFF000000),
                                     ),
                                   ),
                                 ),
@@ -4533,17 +4527,11 @@ class DocumentationSection extends StatelessWidget {
       sourceName = sourceName.replaceFirst(RegExp(r'^\d+_\d+_'), '');
     }
     final lowerSourceName = sourceName.toLowerCase();
+    final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
     final bool isPdf =
         lowerSourceName.endsWith('.pdf') ||
+        cleanUrl.endsWith('.pdf') ||
         (existingUrl?.startsWith('data:application/pdf') ?? false);
-    final bool isImage =
-        lowerSourceName.endsWith('.jpg') ||
-        lowerSourceName.endsWith('.jpeg') ||
-        lowerSourceName.endsWith('.png') ||
-        lowerSourceName.endsWith('.gif') ||
-        lowerSourceName.endsWith('.bmp') ||
-        lowerSourceName.endsWith('.webp') ||
-        (existingUrl?.startsWith('data:image') ?? false);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -4568,7 +4556,7 @@ class DocumentationSection extends StatelessWidget {
                 children: [
                   if (isPdf)
                     PdfPagePreview(cvBytes: bytes, existingCvUrl: existingUrl)
-                  else if (bytes != null && isImage)
+                  else if (bytes != null)
                     Image.memory(
                       bytes,
                       fit: BoxFit.cover,
@@ -4576,8 +4564,7 @@ class DocumentationSection extends StatelessWidget {
                           _buildIdPlaceholder(label, hasFile),
                     )
                   else if (existingUrl != null &&
-                      existingUrl.startsWith('http') &&
-                      isImage)
+                      existingUrl.startsWith('http'))
                     CachedNetworkImage(
                       imageUrl: existingUrl,
                       fit: BoxFit.cover,
@@ -4594,7 +4581,7 @@ class DocumentationSection extends StatelessWidget {
                           _buildIdPlaceholder(label, hasFile),
                     )
                   else if (existingUrl != null &&
-                      existingUrl.startsWith('data:image'))
+                      existingUrl.startsWith('data:'))
                     Image.memory(
                       base64Decode(existingUrl.split(',').last),
                       fit: BoxFit.cover,
@@ -4923,7 +4910,7 @@ Widget _buildInputField(
               ? [
                   FilteringTextInputFormatter.allow(
                     isAmount
-                        ? RegExp(r'[\d.]')
+                        ? RegExp(r'[\d,.]')
                         : (isNationalId
                               ? RegExp(r'^[A-Za-z0-9\-]*')
                               : isContact
@@ -4931,15 +4918,8 @@ Widget _buildInputField(
                               : RegExp(r'^\d*')),
                   ),
                   if (isAmount) ...[
-                    LengthLimitingTextInputFormatter(14),
-                    TextInputFormatter.withFunction((oldValue, newValue) {
-                      if (newValue.text.isEmpty) return newValue;
-                      final text = newValue.text.replaceAll(',', '');
-                      if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) {
-                        return oldValue;
-                      }
-                      return newValue.copyWith(text: text);
-                    }),
+                    LengthLimitingTextInputFormatter(18),
+                    _ThousandsSeparatorInputFormatter(),
                   ],
                   if (isContact) LengthLimitingTextInputFormatter(20),
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
@@ -5532,4 +5512,42 @@ ImageProvider getProfileImageProvider(String? url) {
     return CachedNetworkImageProvider(url);
   }
   return AssetImage(url);
+}
+
+class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    String cleanText = newValue.text.replaceAll(',', '');
+    final parts = cleanText.split('.');
+    if (parts.length > 2) return oldValue;
+    if (parts.length == 2 && parts[1].length > 2) return oldValue;
+
+    final rawInteger = parts[0];
+    if (rawInteger.length > 12) return oldValue;
+
+    String formattedInteger = '';
+    if (rawInteger.isNotEmpty) {
+      final parsed = int.tryParse(rawInteger);
+      if (parsed == null) return oldValue;
+      formattedInteger = NumberFormat('#,##0', 'en_US').format(parsed);
+    }
+
+    String formatted = formattedInteger;
+    if (parts.length > 1) {
+      formatted += '.${parts[1]}';
+    }
+
+    int charsFromEnd = newValue.text.length - newValue.selection.end;
+    int selectionIndex = (formatted.length - charsFromEnd).clamp(0, formatted.length);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: selectionIndex),
+    );
+  }
 }

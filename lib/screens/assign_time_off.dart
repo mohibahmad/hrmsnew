@@ -15,6 +15,7 @@ import '../utils/ui_utils.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/date_time_utils.dart';
 import '../utils/localization_helper.dart';
+import '../utils/validators.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
@@ -36,7 +37,7 @@ class AssignTimeOffScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<AssignTimeOffScreen> createState() =>
-      _AssignTimeOffScreenState();
+      AssignTimeOffScreenState();
 }
 
 class LeaveColors {
@@ -80,7 +81,7 @@ class LeaveColors {
   }
 }
 
-class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
+class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   static const List<Map<String, String>> _leaveTypeOptions = [
     {'value': 'Annual Leave', 'labelKey': 'annual_leave'},
     {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
@@ -157,23 +158,30 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   bool _isAggregateOverview = false;
   final Map<String, PendingTimeOffDraft> _pendingDrafts = {};
 
+  void _resetForWorker(Map<String, dynamic>? worker) {
+    _selectedWorker = worker;
+    _editingRecord = null;
+    _editingId = null;
+    _isAggregateOverview = false;
+    _bypassingConfirm = false;
+    _timeoffRecords = [];
+
+    if (worker != null) {
+      _isAggregateOverview = worker['_aggregateTimeOffEdit'] == true;
+      final action = (worker['action'] ?? '').toString().trim();
+      if (action.isNotEmpty && !_isAggregateOverview) {
+        _editingRecord = Map<String, dynamic>.from(worker);
+        _editingId = (_editingRecord!['id'] ?? worker['id'])?.toString();
+      }
+    }
+
+    _resetFormFields();
+  }
+
   @override
   void initState() {
     super.initState();
-    if (widget.initialWorker != null) {
-      _selectedWorker = widget.initialWorker;
-
-      _isAggregateOverview =
-          widget.initialWorker!['_aggregateTimeOffEdit'] == true;
-
-      final hasAction = (widget.initialWorker!['action'] ?? '')
-          .toString()
-          .isNotEmpty;
-      if (hasAction && !_isAggregateOverview) {
-        _editingRecord = Map<String, dynamic>.from(widget.initialWorker!);
-      }
-    }
-    _resetFormFields();
+    _resetForWorker(widget.initialWorker);
   }
 
   @override
@@ -193,8 +201,10 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     if (identical(first, second)) return true;
     if (first == null || second == null) return false;
 
-    final firstId = (first['id'] ?? '').toString().trim();
-    final secondId = (second['id'] ?? '').toString().trim();
+    final firstId = (first['id'] ?? first['workerId'] ?? '').toString().trim();
+    final secondId = (second['id'] ?? second['workerId'] ?? '')
+        .toString()
+        .trim();
     final firstAction = (first['action'] ?? first['type'] ?? '')
         .toString()
         .trim();
@@ -211,21 +221,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   void didUpdateWidget(covariant AssignTimeOffScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final isGuest =
-        _initialized && (_authService.currentUser?.isAnonymous ?? false);
-    if (isGuest) {
-      if (widget.initialWorker != null &&
-          widget.initialWorker!['email'] != oldWidget.initialWorker?['email']) {
-        _selectedWorker = widget.initialWorker;
-        _resetFormFields();
-        _loadTimeoffForSelectedWorker();
-      }
-      return;
-    }
-
     if (!_sameInitialSelection(widget.initialWorker, oldWidget.initialWorker)) {
-      _selectedWorker = widget.initialWorker;
-      _resetFormFields();
+      _resetForWorker(widget.initialWorker);
       _loadTimeoffForSelectedWorker();
     }
   }
@@ -319,6 +316,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   bool get _hasUnsavedChanges =>
       _currentHasUnsavedChanges ||
       _pendingDrafts.values.any((draft) => draft.hasChanges);
+
+  bool get hasUnsavedChanges => _hasUnsavedChanges;
 
   PendingTimeOffDraft _currentDraft() => PendingTimeOffDraft(
     leaveType: _timeOffType,
@@ -518,7 +517,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
       return;
     }
-    if (_watchedTimeoffWorkerId == workerId && _timeoffSub != null && _attendanceSub != null) {
+    if (_watchedTimeoffWorkerId == workerId &&
+        _timeoffSub != null &&
+        _attendanceSub != null) {
       return;
     }
 
@@ -768,6 +769,20 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return (base + assignedDates).clamp(0, limit);
   }
 
+  Map<DateTime, String> get _selectedDateToTypeMap {
+    final map = <DateTime, String>{};
+    for (final d in _selectedDates) {
+      map[_dateOnly(d)] = TimeOffService.normalizeLeaveType(_timeOffType);
+    }
+    for (final draft in _pendingDrafts.values) {
+      final normType = TimeOffService.normalizeLeaveType(draft.leaveType);
+      for (final d in draft.selectedDates) {
+        map[_dateOnly(d)] = normType;
+      }
+    }
+    return map;
+  }
+
   int _availableDaysForType(String type) {
     if (widget.viewOnly) {
       return TimeOffService.remainingForType(
@@ -779,27 +794,15 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final base = _baseAvailableDaysForType(type);
     final normType = TimeOffService.normalizeLeaveType(type);
 
-    int currentlySelected = 0;
-    if (TimeOffService.normalizeLeaveType(_timeOffType) == normType) {
-      currentlySelected = _selectedDates.length;
-    } else {
-      final existingDraft = _pendingDrafts.values.cast<PendingTimeOffDraft?>().firstWhere(
-        (d) => TimeOffService.normalizeLeaveType(d?.leaveType ?? '') == normType,
-        orElse: () => null,
-      );
-      currentlySelected = existingDraft?.selectedDates.length ?? 0;
-      if (currentlySelected == 0 && _selectedDates.isNotEmpty) {
-        currentlySelected = _selectedDates.length;
-      }
-    }
+    final currentlySelected = _selectedDateToTypeMap.values
+        .where((t) => TimeOffService.normalizeLeaveType(t) == normType)
+        .length;
 
     return projectedTimeOffBalance(
       availableDays: base,
       requestedDays: currentlySelected,
     );
   }
-
-
 
   int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
 
@@ -876,18 +879,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   List<(DateTime, String)> _allSelectedEntries() {
-    final entries = <(DateTime, String)>[];
-    final seen = <DateTime>{};
-    for (final d in _sortedSelectedDates) {
-      final key = _dateOnly(d);
-      if (seen.add(key)) entries.add((d, _timeOffType));
-    }
-    for (final draft in _pendingDrafts.values) {
-      for (final d in draft.selectedDates.toList()..sort()) {
-        final key = _dateOnly(d);
-        if (seen.add(key)) entries.add((d, draft.leaveType));
-      }
-    }
+    final entries =
+        _selectedDateToTypeMap.entries.map((e) => (e.key, e.value)).toList()
+          ..sort((a, b) => a.$1.compareTo(b.$1));
     return entries;
   }
 
@@ -917,7 +911,10 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     super.dispose();
   }
 
+  bool _bypassingConfirm = false;
+
   Future<bool> _confirmDiscardChanges() async {
+    if (_bypassingConfirm) return true;
     final currentContext = context;
     if (!_hasUnsavedChanges) {
       return true;
@@ -1020,16 +1017,16 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                                 child: Text(
                                   'cancel'.tr(),
                                   style: const TextStyle(
-                                    color: Color(0xFF000000),
                                     fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF334155),
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: GestureDetector(
                               onTap: () => Navigator.pop(ctx, true),
@@ -1040,22 +1037,13 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEF4444),
                                   borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: Text(
                                   'discard'.tr(),
                                   style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
                                     fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFFFFFFF),
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
@@ -1073,6 +1061,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         );
       },
     );
+    if (shouldDiscard == true) {
+      _bypassingConfirm = true;
+    }
     return shouldDiscard ?? false;
   }
 
@@ -1928,7 +1919,8 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   Future<void> _toggleDate(DateTime date) async {
     final selectedDate = _dateOnly(date);
-    final isRemoving = _selectedDates.contains(selectedDate);
+    final existingSessionType = _selectedDateToTypeMap[selectedDate];
+    final isRemoving = existingSessionType != null;
     final today = DateTime.now();
     final todayStart = DateTime(today.year, today.month, today.day);
     final isPastDate = selectedDate.isBefore(todayStart);
@@ -1943,8 +1935,20 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
+    if (isRemoving) {
+      setState(() {
+        _selectedDates.remove(selectedDate);
+        for (final draft in _pendingDrafts.values) {
+          draft.selectedDates.remove(selectedDate);
+        }
+        _pendingDrafts.removeWhere((key, draft) => draft.selectedDates.isEmpty);
+        _hasDateSelectionChanged = true;
+        _syncSelectionBounds();
+      });
+      return;
+    }
+
     if (_isAggregateOverview) {
-      if (!isRemoving || _selectedWorker == null) return;
       final owningRecord = TimeOffService.activeLeaveForWorker(
         _selectedWorkerForService,
         _timeoffRecords,
@@ -1952,16 +1956,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
       if (owningRecord == null ||
           !TimeOffService.recordHasLeaveType(owningRecord, _timeOffType)) {
-        return;
-      }
-      final today = DateTime.now();
-      final todayStart = DateTime(today.year, today.month, today.day);
-      if (selectedDate.isBefore(todayStart)) {
-        FlashySnackBar.show(
-          context,
-          message: 'past_time_off_edit_blocked'.tr(),
-          isError: true,
-        );
         return;
       }
       if (!mounted) return;
@@ -1992,15 +1986,6 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         excludingRecordId: _editingId,
       );
       if (existingLeave != null) {
-        if (isPastDate) {
-          FlashySnackBar.show(
-            context,
-            message: 'past_time_off_edit_blocked'.tr(),
-            isError: true,
-          );
-          return;
-        }
-
         if (!mounted) return;
         _stashCurrentDraft();
         setState(() {
@@ -2022,11 +2007,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
     setState(() {
-      if (isRemoving) {
-        _selectedDates.remove(selectedDate);
-      } else {
-        _selectedDates.add(selectedDate);
-      }
+      _selectedDates.add(selectedDate);
       _hasDateSelectionChanged = true;
       _syncSelectionBounds();
     });
@@ -2042,45 +2023,27 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return const SizedBox(width: 50, height: 50);
     }
 
+    final cellDate = date != null ? _dateOnly(date) : null;
+    final activeSessionType = cellDate != null
+        ? _selectedDateToTypeMap[cellDate]
+        : null;
+    final isSelectedInSession = activeSessionType != null;
+
     Map<String, dynamic>? savedLeave;
-    if (!isSelected && date != null && _selectedWorker != null) {
-      final candidateLeave = TimeOffService.activeLeaveForWorker(
+    if (!isSelectedInSession && date != null && _selectedWorker != null) {
+      savedLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
         _timeoffRecords,
         onDate: date,
         excludingRecordId: _editingId,
       );
-      if (candidateLeave != null) {
-        final recId = (candidateLeave['id'] ?? '').toString().trim();
-        final draft = recId.isNotEmpty ? _pendingDrafts[recId] : null;
-        if (draft != null) {
-          if (draft.selectedDates.contains(date)) {
-            savedLeave = candidateLeave;
-          }
-        } else {
-          savedLeave = candidateLeave;
-        }
-      }
     }
-    if (!isSelected && savedLeave == null && date != null) {
-      for (final draft in _pendingDrafts.values) {
-        final draftId = (draft.editingId ?? '').trim();
-        if ((draftId.isEmpty || draftId != (_editingId ?? '').trim()) &&
-            draft.selectedDates.contains(date)) {
-          savedLeave = {
-            'action': draft.leaveType,
-            'type': draft.leaveType,
-            'id': draft.editingId,
-          };
-          break;
-        }
-      }
-    }
+
     final savedType = savedLeave != null
         ? (savedLeave['action'] ?? savedLeave['type']).toString()
         : null;
-    final isCellHighlighted = isSelected || savedLeave != null;
-    final effectiveType = isSelected ? _timeOffType : savedType;
+    final isCellHighlighted = isSelectedInSession || savedLeave != null;
+    final effectiveType = isSelectedInSession ? activeSessionType : savedType;
     final effectiveColor = effectiveType != null
         ? LeaveColors.getColor(effectiveType)
         : null;
@@ -2429,9 +2392,17 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               );
             }
           }
+          final oldDates = TimeOffService.selectedDatesForRecord(oldRecord);
+          final oldDatesFormatted = oldDates.map(_dateOnlyString).toList();
+          final cleanRecord = Map<String, dynamic>.from(oldRecord);
+          cleanRecord.remove('selectedDates');
+          cleanRecord.remove('startDate');
+          cleanRecord.remove('endDate');
           DummyData.timeoff[recordIndex] = {
-            ...oldRecord,
+            ...cleanRecord,
             'status': 'Cancelled',
+            if (oldDatesFormatted.isNotEmpty)
+              'originalSelectedDates': oldDatesFormatted,
           };
           await DummyData.saveToPrefs();
         } else {
@@ -2491,6 +2462,27 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         isError: true,
       );
       return;
+    }
+
+    final joiningDate = AppDateUtils.dateFromValue(
+      _selectedWorker?['joiningDate'] ?? _selectedWorker?['dateOfJoining'],
+    );
+    if (joiningDate != null) {
+      final normJoining = DateTime(
+        joiningDate.year,
+        joiningDate.month,
+        joiningDate.day,
+      );
+      if (_selectedDates.any(
+        (d) => DateTime(d.year, d.month, d.day).isBefore(normJoining),
+      )) {
+        FlashySnackBar.show(
+          context,
+          message: 'Cannot assign leave before worker joining date.',
+          isError: true,
+        );
+        return;
+      }
     }
 
     if (TimeOffService.hasOverlappingApprovedLeave(
@@ -2672,6 +2664,7 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         );
       }
 
+      final wasEditing = _editingId != null;
       if (mounted) {
         setState(() {
           _editingRecord = null;
@@ -2688,9 +2681,9 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         FlashySnackBar.show(
           context,
           message:
-              (_editingId == null
-                      ? 'assign_time_off_success'
-                      : 'update_time_off_success')
+              (wasEditing
+                      ? 'update_time_off_success'
+                      : 'assign_time_off_success')
                   .tr(
                     namedArgs: {
                       'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
@@ -2715,6 +2708,14 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           message: 'past_time_off_edit_blocked'.tr(),
           isError: true,
         );
+      }
+    } on ValidationException catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.message, isError: true);
+      }
+    } on StateError catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.message, isError: true);
       }
     } catch (e) {
       if (mounted) {
@@ -2821,45 +2822,62 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await Future.wait(
-        drafts.map((draft) async {
-          if (draft.selectedDates.isEmpty && draft.editingId != null) {
-            await _firestore.cancelTimeOffWithWorkerBalance(
-              timeOffId: draft.editingId!,
-              workerId: workerId,
-            );
-            return;
-          }
-          if (draft.selectedDates.isEmpty) return;
-
-          final sortedDates = draft.selectedDates.toList()..sort();
-          final record = <String, dynamic>{
-            'workerId': workerId,
-            'name': worker['name'] ?? 'Worker',
-            'email': worker['email'] ?? '',
-            'position': worker['position'] ?? 'Worker',
-            'contact': _getWorkerPhone(worker),
-            'action': draft.leaveType,
-            'type': draft.leaveType,
-            'startDate': _dateOnlyString(sortedDates.first),
-            'endDate': _dateOnlyString(sortedDates.last),
-            'selectedDates': sortedDates.map(_dateOnlyString).toList(),
-            'notes': draft.notes,
-            'requestedDays': sortedDates.length,
-            'status': 'Approved',
-            'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
-            'workerName': worker['name'] ?? 'Worker',
-            'workerAvatar': worker['profileImage'] ?? '',
-          };
-          await _firestore.saveTimeOffWithWorkerBalance(
-            timeOffId: draft.editingId,
-            record: record,
+      final batchItems = <Map<String, dynamic>>[];
+      for (final draft in drafts) {
+        if (draft.selectedDates.isEmpty && draft.editingId != null) {
+          await _firestore.cancelTimeOffWithWorkerBalance(
+            timeOffId: draft.editingId!,
             workerId: workerId,
-            leaveType: draft.leaveType,
-            requestedDays: sortedDates.length,
           );
-        }),
-      );
+          continue;
+        }
+        if (draft.selectedDates.isEmpty) continue;
+
+        final sortedDates = draft.selectedDates.toList()..sort();
+        final record = <String, dynamic>{
+          'workerId': workerId,
+          'name': worker['name'] ?? 'Worker',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? 'Worker',
+          'contact': _getWorkerPhone(worker),
+          'action': draft.leaveType,
+          'type': draft.leaveType,
+          'startDate': _dateOnlyString(sortedDates.first),
+          'endDate': _dateOnlyString(sortedDates.last),
+          'selectedDates': sortedDates.map(_dateOnlyString).toList(),
+          'notes': draft.notes,
+          'requestedDays': sortedDates.length,
+          'status': 'Approved',
+          'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
+          'workerName': worker['name'] ?? 'Worker',
+          'workerAvatar': worker['profileImage'] ?? '',
+        };
+
+        batchItems.add({
+          'timeOffId': draft.editingId,
+          'record': record,
+          'leaveType': draft.leaveType,
+          'requestedDays': sortedDates.length,
+        });
+      }
+
+      if (batchItems.isNotEmpty) {
+        if (_isGuest) {
+          for (final item in batchItems) {
+            DummyData.timeoff.add({
+              ...item['record'] as Map<String, dynamic>,
+              'id':
+                  'guest_${DateTime.now().millisecondsSinceEpoch}_${DummyData.timeoff.length}',
+            });
+          }
+          await DummyData.saveToPrefs();
+        } else {
+          await _firestore.saveMultipleTimeOffWithWorkerBalance(
+            workerId: workerId,
+            items: batchItems,
+          );
+        }
+      }
 
       if (!mounted) return;
       _pendingDrafts.clear();
@@ -2886,6 +2904,14 @@ class _AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           message: 'past_time_off_edit_blocked'.tr(),
           isError: true,
         );
+      }
+    } on ValidationException catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.message, isError: true);
+      }
+    } on StateError catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.message, isError: true);
       }
     } catch (_) {
       if (mounted) {

@@ -609,7 +609,15 @@ class _WorkersAttendanceScreenState
     // Use a fresh Firestore snapshot for every edit transition. The dialog can
     // open before the realtime Time Off stream has delivered its first event;
     // relying on that local list is what made an existing leave look new.
-    final syncTimeOffRecords = await _firestore.getTimeoffOnce();
+    final shouldHaveLeave = selectedStatus == 'Leave';
+    final wasLeave = (originalAttendance['status'] ?? '').toString().trim() == 'Leave';
+
+    List<Map<String, dynamic>> syncTimeOffRecords = const [];
+    if (shouldHaveLeave || wasLeave) {
+      try {
+        syncTimeOffRecords = await _firestore.getTimeoffOnce(workerId: workerId);
+      } catch (_) {}
+    }
 
     final today = DateTime.now();
     final normalizedToday = DateTime(today.year, today.month, today.day);
@@ -635,8 +643,6 @@ class _WorkersAttendanceScreenState
       syncTimeOffRecords,
       onDate: normalizedToday,
     );
-
-    final shouldHaveLeave = selectedStatus == 'Leave';
     final existingId = (existing?['id'] ?? '').toString().trim();
     final oldStatus = (originalAttendance['status'] ?? '').toString().trim();
     final oldType = TimeOffService.normalizeLeaveType(
@@ -724,7 +730,7 @@ class _WorkersAttendanceScreenState
         'notes': reason,
         'requestedDays': 1,
         'status': 'Approved',
-        'isPaidLeave': true,
+        'isPaidLeave': TimeOffService.isPaidLeaveType(leaveType),
         'source': 'attendance',
         'attendanceDate': dateKey,
         'workerAvatar': worker['profileImage'] ?? '',
@@ -1950,7 +1956,12 @@ class _WorkersAttendanceScreenState
             final isSelectedInDialog =
                 selectedStatus == 'Leave' &&
                 TimeOffService.normalizeLeaveType(selectedLeaveType) == normType;
-            if (isSelectedInDialog) {
+            final wasInitialLeave =
+                todayRecord['status'] == 'Leave' &&
+                TimeOffService.normalizeLeaveType(initialType) == normType;
+            // Only subtract 1 in edit mode (worker already had this leave),
+            // NOT for new leave assignments before saving.
+            if (isSelectedInDialog && wasInitialLeave) {
               avail -= 1;
             }
             return avail < 0 ? 0 : avail;

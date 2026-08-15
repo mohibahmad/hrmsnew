@@ -86,6 +86,16 @@ class HolidayCard extends StatelessWidget {
     Color subTextColor = isActive ? activeSubTextColor : inactiveSubTextColor;
     Color badgeBg = isActive ? activeBadgeBg : inactiveBadgeBg;
 
+    // Removes any 4-digit year wrapped in parentheses (e.g. "(2026)") so it
+    // does not show after the holiday name and does not break localization.
+    String cleanHolidayName(String name) => name.replaceAll(
+      RegExp(r'[\s-]*\(\d{4}\)'),
+      '',
+    );
+    final cleanedHolidayNames = holidayNames
+        .map((n) => LocalizationHelper.localizeHolidayName(cleanHolidayName(n)))
+        .join(', ');
+
     return Container(
       height: 115,
       clipBehavior: Clip.antiAlias,
@@ -189,9 +199,7 @@ class HolidayCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    holidayNames
-                        .map(LocalizationHelper.localizeHolidayName)
-                        .join(', '),
+                    cleanedHolidayNames,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

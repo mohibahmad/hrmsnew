@@ -47,24 +47,69 @@ class PayrollService {
     return DateTime(month.year, month.month, payDay.clamp(1, lastDay).toInt());
   }
 
-  static PayrollPeriod payDayPeriod(DateTime dueMonth, int payDay) {
+  /// Returns the active pay-day period that CONTAINS [date].
+  ///
+  /// When [date] is on/after this month's pay day the period runs
+  /// `this month pay day → next month pay day` (e.g. Jul 3 → Aug 3 when
+  /// today is Jul 10). When [date] is before this month's pay day the
+  /// period runs `last month pay day → this month pay day` (e.g. Jun 3 →
+  /// Jul 3 when today is Jul 1). This guarantees the fallback never points
+  /// at an already-ended payroll cycle.
+  static PayrollPeriod payDayPeriodContaining(DateTime date, int payDay) {
+    final month = DateTime(date.year, date.month, 1);
+    final payDayThisMonth = _payDayInMonth(month, payDay);
+    final today = DateTime(date.year, date.month, date.day);
+    if (!today.isBefore(payDayThisMonth)) {
+      return PayrollPeriod(
+        start: payDayThisMonth,
+        end: _payDayInMonth(
+          DateTime(month.year, month.month + 1, 1),
+          payDay,
+        ),
+      );
+    }
     return PayrollPeriod(
       start: _payDayInMonth(
-        DateTime(dueMonth.year, dueMonth.month - 1, 1),
+        DateTime(month.year, month.month - 1, 1),
         payDay,
       ),
+      end: payDayThisMonth,
+    );
+  }
+
+  static PayrollPeriod payDayPeriod(DateTime dueMonth, int payDay) {
+    final prevMonthPayDay = _payDayInMonth(
+      DateTime(dueMonth.year, dueMonth.month - 1, 1),
+      payDay,
+    );
+    return PayrollPeriod(
+      start: prevMonthPayDay,
       end: _payDayInMonth(dueMonth, payDay),
     );
   }
 
+  /// Advances exactly ONE payroll cycle.
+  ///
+  /// The next period always starts on the current period's pay-day boundary
+  /// (the pay day in the month of [current.end]) and ends on the pay day of
+  /// the following month. It never adds `+1 day` to the next start and can
+  /// never skip multiple cycles, so:
+  ///   Jul 3 – Aug 3  →  Aug 3 – Sep 3
+  ///   Aug 3 – Sep 3  →  Sep 3 – Oct 3
   static PayrollPeriod nextPayDayPeriod(PayrollPeriod current, int payDay) {
-    final nextEndMonth = DateTime(current.end.year, current.end.month + 1, 1);
+    final currentEndMonth = DateTime(
+      current.end.year,
+      current.end.month,
+      1,
+    );
+    final currentEndPayDay = _payDayInMonth(currentEndMonth, payDay);
+    final nextEnd = _payDayInMonth(
+      DateTime(currentEndMonth.year, currentEndMonth.month + 1, 1),
+      payDay,
+    );
     return PayrollPeriod(
-      start: _payDayInMonth(
-        DateTime(nextEndMonth.year, nextEndMonth.month - 1, 1),
-        payDay,
-      ),
-      end: _payDayInMonth(nextEndMonth, payDay),
+      start: currentEndPayDay,
+      end: nextEnd,
     );
   }
 
@@ -178,9 +223,9 @@ class PayrollService {
       );
     }
 
+    final effectiveOverdueCutoff = overdueDays ?? 3;
     final daysAfterCurrentDue = today.difference(currentDueDate).inDays;
-    if (daysAfterCurrentDue > 0 &&
-        (overdueDays == null || daysAfterCurrentDue <= overdueDays)) {
+    if (daysAfterCurrentDue > 0 && daysAfterCurrentDue <= effectiveOverdueCutoff) {
       return PayrollReminderWindow(
         payrollMonth: currentMonth,
         dueDate: currentDueDate,
@@ -193,8 +238,7 @@ class PayrollService {
         ? payPeriodEnd(previousMonth)
         : payrollDueDate(previousMonth, payDay);
     final daysAfterPreviousDue = today.difference(previousDueDate).inDays;
-    if (daysAfterPreviousDue > 0 &&
-        (overdueDays == null || daysAfterPreviousDue <= overdueDays)) {
+    if (daysAfterPreviousDue > 0 && daysAfterPreviousDue <= effectiveOverdueCutoff) {
       return PayrollReminderWindow(
         payrollMonth: previousMonth,
         dueDate: previousDueDate,
@@ -207,16 +251,25 @@ class PayrollService {
   static Map<String, dynamic> editedNetSalaryFields(
     double amount, {
     required String currency,
+    double? absentDeduction,
   }) {
     final normalizedAmount = amount.clamp(0, double.infinity).toDouble();
     final formatted = formatAmountInCurrency(normalizedAmount, currency);
-    return {
+    final result = <String, dynamic>{
       'netSalaryAmount': normalizedAmount,
       'netSalary': formatted,
       'netSalaryFormatted': formatted,
       'salaryAfterDeduction': formatted,
       'amount': normalizedAmount,
+      'status': 'Paid',
+      'isPaid': true,
+      'paid': true,
+      'paymentStatus': 'paid',
     };
+    if (absentDeduction != null) {
+      result['absentDeduction'] = absentDeduction;
+    }
+    return result;
   }
 
   static Map<String, dynamic> reopenedPayrollFields() => const {
@@ -350,18 +403,21 @@ class PayrollService {
     return combined.where((worker) => worker['isPaid'] != true).length;
   }
 
-  static bool isWorkerEligibleForPayroll(Map<String, dynamic> worker) {
+  static String canonicalWorkerStatus(Map<String, dynamic> worker) {
     if (_isTruthy(worker['isDeleted']) ||
         _isTruthy(worker['deleted']) ||
         _isTruthy(worker['isArchived'])) {
-      return false;
+      return 'Terminated';
     }
+    for (final key in ['employmentStatus', 'workerStatus', 'status']) {
+      final value = (worker[key] ?? '').toString().trim();
+      if (value.isNotEmpty) return value;
+    }
+    return 'Active';
+  }
 
-    final status = (worker['employmentStatus'] ?? worker['status'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
-
+  static bool isWorkerEligibleForPayroll(Map<String, dynamic> worker) {
+    final status = canonicalWorkerStatus(worker).trim().toLowerCase();
     return !const {
       'deleted',
       'inactive',
@@ -549,7 +605,19 @@ class PayrollService {
     final effectivePeriodEnd = periodEnd ?? payPeriodEnd(targetMonth);
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final activeWorkers = workersList
-        .where(isWorkerEligibleForPayroll)
+        .where((worker) {
+          if (isWorkerEligibleForPayroll(worker)) return true;
+          final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+              .toString()
+              .trim();
+          final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+          return rawPayrollDocs.any((doc) {
+            final docId = (doc['workerId'] ?? doc['id'] ?? '').toString().trim();
+            final docEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+            return (workerId.isNotEmpty && docId == workerId) ||
+                (email.isNotEmpty && docEmail == email);
+          });
+        })
         .where((worker) {
           final joiningDate = _parseDate(
             worker['joiningDate'] ?? worker['dateOfJoining'],
@@ -677,11 +745,11 @@ class PayrollService {
         final historicalSalary = (payrollRecord['salary'] ?? '')
             .toString()
             .trim();
-        final mergedSalary = currentSalary.isNotEmpty
-            ? currentSalary
-            : companyCurrencyCode == null || historicalSalary.isEmpty
-            ? historicalSalary
-            : formatAmountInCurrency(historicalSalary, companyCurrencyCode);
+        final mergedSalary = historicalSalary.isNotEmpty
+            ? (companyCurrencyCode == null
+                ? historicalSalary
+                : formatAmountInCurrency(historicalSalary, companyCurrencyCode))
+            : currentSalary;
         final historicalNetSalary = _preferNonEmpty(
           payrollRecord['netSalary'],
           payrollRecord['netSalaryFormatted'],
@@ -1059,7 +1127,6 @@ class PayrollService {
     String leaveDeduction = '',
     String customDeduction = '',
     String salaryType = 'Monthly',
-    double taxRatePercent = 0.0,
     double prorationFactor = 1.0,
   }) {
     final enteredSalary = extractSalary(salary);
@@ -1071,18 +1138,14 @@ class PayrollService {
     final leaveVal = extractSalary(leaveDeduction);
     final customVal = extractSalary(customDeduction);
 
-    final subtotal =
+    final netSalary =
         (periodSalary * prorationFactor +
                 overtimeVal -
                 absentVal -
                 leaveVal -
                 customVal)
             .clamp(0.0, double.infinity);
-    final taxDeduction = taxRatePercent > 0
-        ? (subtotal * (taxRatePercent / 100))
-        : 0.0;
-    final netSalary = subtotal - taxDeduction;
-    return netSalary.clamp(0.0, double.infinity).toDouble();
+    return netSalary.toDouble();
   }
 
   static double maximumAbsentDeduction({
@@ -1170,7 +1233,6 @@ class PayrollService {
     String absentDeductionPerDay = '',
     String leaveDeductionPerDay = '',
     String salaryType = 'Monthly',
-    double taxRatePercent = 0.0,
     double prorationFactor = 1.0,
   }) {
     final rawSalaryVal = extractSalary(salary);
@@ -1182,7 +1244,6 @@ class PayrollService {
     final leaveDays = parseIntSafe(leaves);
     final customOvertimeAmount = extractSalary(overtimeAmount);
     final customAbsentDeduction = extractSalary(absentDeductionPerDay);
-    final customLeaveDeduction = extractSalary(leaveDeductionPerDay);
     final currency = getCurrencyPrefix(salary);
     final p = currency.isNotEmpty ? '$currency ' : '';
 
@@ -1201,14 +1262,10 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
-    final leaveDeduction = leaveDays > 0
-        ? (customLeaveDeduction > 0
-              ? customLeaveDeduction
-              : leaveDays * dailyRate)
-        : 0.0;
+    final leaveDeduction = 0.0;
     final requestedAbsentDeduction = absentDays > 0
         ? (customAbsentDeduction > 0
-              ? customAbsentDeduction
+              ? absentDays * customAbsentDeduction
               : absentDays * dailyRate)
         : 0.0;
     final absentDeduction = cappedAbsentDeduction(
@@ -1221,16 +1278,7 @@ class PayrollService {
       prorationFactor: prorationFactor,
     );
 
-    final subtotalBeforeTax =
-        (grossSalary + overtimePay - absentDeduction - leaveDeduction).clamp(
-          0.0,
-          double.infinity,
-        );
-    final taxDeduction = taxRatePercent > 0
-        ? (subtotalBeforeTax * (taxRatePercent / 100))
-        : 0.0;
-
-    final totalDeductions = absentDeduction + leaveDeduction + taxDeduction;
+    final totalDeductions = absentDeduction + leaveDeduction;
 
     final netSalary = (grossSalary + overtimePay - totalDeductions).clamp(
       0.0,
@@ -1256,8 +1304,6 @@ class PayrollService {
           : 0.0,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
-      'taxRatePercent': taxRatePercent,
-      'taxDeduction': taxDeduction,
       'totalDeductions': totalDeductions,
       'netSalary': netSalary,
       'formattedDailyRate': _fmt(dailyRate, p),
@@ -1269,9 +1315,6 @@ class PayrollService {
           : _fmt(0.0, p),
       'formattedLeaveDeduct': leaveDeduction > 0
           ? '-${_fmt(leaveDeduction, p)}'
-          : _fmt(0.0, p),
-      'formattedTaxDeduct': taxDeduction > 0
-          ? '-${_fmt(taxDeduction, p)}'
           : _fmt(0.0, p),
       'formattedTotalDeductions': totalDeductions > 0
           ? '-${_fmt(totalDeductions, p)}'

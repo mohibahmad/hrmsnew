@@ -397,9 +397,12 @@ class TimeOffService {
 
       final dateStr = AppDateUtils.formatDate(dateOnly);
       final workerId = (att['workerId'] ?? '').toString().trim();
-      final workerName = (att['name'] ?? att['workerName'] ?? '').toString().trim();
+      final workerName = (att['name'] ?? att['workerName'] ?? '')
+          .toString()
+          .trim();
       final workerEmail = (att['email'] ?? '').toString().trim();
-      final lType = (att['leaveType'] ?? att['type'] ?? 'Annual Leave').toString();
+      final lType = (att['leaveType'] ?? att['type'] ?? 'Annual Leave')
+          .toString();
 
       combined.add({
         'id': 'att_leave_${att['id'] ?? workerId}_$dateStr',
@@ -458,19 +461,21 @@ class TimeOffService {
     required String workerId,
     required String workerEmail,
     required String workerName,
+    bool isUniqueName = true,
   }) {
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
     if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
       return workerId == recordWorkerId;
     }
     final leaveEmail = (record['email'] ?? '').toString().trim().toLowerCase();
+    if (workerEmail.isNotEmpty && leaveEmail.isNotEmpty) {
+      return workerEmail == leaveEmail;
+    }
     final leaveName = (record['name'] ?? record['workerName'] ?? '')
         .toString()
         .trim()
         .toLowerCase();
-    return workerEmail.isNotEmpty && leaveEmail.isNotEmpty
-        ? workerEmail == leaveEmail
-        : workerName.isNotEmpty && workerName == leaveName;
+    return isUniqueName && workerName.isNotEmpty && workerName == leaveName;
   }
 
   static int paidDaysUsedForWorker(
@@ -885,6 +890,8 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
     required DateTime month,
+    DateTime? startDate,
+    DateTime? endDate,
     DateTime? referenceDate,
   }) {
     final now = referenceDate ?? DateTime.now();
@@ -897,6 +904,13 @@ class TimeOffService {
     final paidDates = <DateTime>{};
     final unpaidDates = <DateTime>{};
 
+    final normStart = startDate == null
+        ? null
+        : DateTime(startDate.year, startDate.month, startDate.day);
+    final normEnd = endDate == null
+        ? null
+        : DateTime(endDate.year, endDate.month, endDate.day);
+
     for (final record in timeOffRecords) {
       if (!isActiveRecord(record)) continue;
       if (!_belongsToWorker(
@@ -907,12 +921,13 @@ class TimeOffService {
       )) {
         continue;
       }
-      final dates = selectedDatesForRecord(record).where(
-        (date) =>
-            date.year == month.year &&
-            date.month == month.month &&
-            !date.isAfter(today),
-      );
+      final dates = selectedDatesForRecord(record).where((date) {
+        if (date.isAfter(today)) return false;
+        if (normStart != null && normEnd != null) {
+          return !date.isBefore(normStart) && !date.isAfter(normEnd);
+        }
+        return date.year == month.year && date.month == month.month;
+      });
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);
       } else if (isUnpaidRecord(record)) {

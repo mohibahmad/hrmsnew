@@ -142,17 +142,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
-    final validWorkers = workers
-        .where(
-          (worker) =>
-              (worker['name'] ?? '').toString().trim().isNotEmpty &&
-              _isAssetEligibleWorker(worker),
-        )
+    final allNamedWorkers = workers
+        .where((worker) => (worker['name'] ?? '').toString().trim().isNotEmpty)
         .toList();
-    _workerNames = validWorkers.map(_workerOption).toList();
+
     _workersMap = {
-      for (final worker in validWorkers) _workerOption(worker): worker,
+      for (final worker in allNamedWorkers) _workerOption(worker): worker,
     };
+
+    final activeWorkers = allNamedWorkers
+        .where(_isAssetEligibleWorker)
+        .toList();
+
+    _workerNames = activeWorkers.map(_workerOption).toList();
   }
 
   String? _optionForAsset(AssetData asset) {
@@ -339,7 +341,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -430,16 +434,15 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   }
 
                                   final selectedWorkerData =
-                                      _workersMap[selectedOption] ??
-                                      {
-                                        'id':
-                                            'manual_${DateTime.now().millisecondsSinceEpoch}',
-                                        'name': selectedOption,
-                                        'position': position,
-                                        'email': '',
-                                        'phone': '',
-                                        'joiningDate': '',
-                                      };
+                                      _workersMap[selectedOption];
+                                  if (selectedWorkerData == null) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_select_valid_worker'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
 
                                   if (selectedWorkerName != null &&
                                       typeController.text.isNotEmpty &&
@@ -892,9 +895,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             context: context,
                             initialDate: returnedDate,
                             minimumDate: loanedDate,
-                            maximumDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
+                            maximumDate: DateTime.now(),
                             title: 'returned_date'.tr(),
                             onDateSelected: (picked) {
                               setModalState(() {
@@ -1869,7 +1870,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -2243,9 +2246,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             context: context,
                             initialDate: returnedDate,
                             minimumDate: loanedDate,
-                            maximumDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
+                            maximumDate: DateTime.now(),
                             title: 'returned_date'.tr(),
                             onDateSelected: (picked) {
                               setModalState(() {
@@ -2293,13 +2294,17 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            isSearchEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0247C4),
-              fontFamily: 'SF Pro Display',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              isSearchEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0247C4),
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ],
