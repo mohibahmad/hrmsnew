@@ -192,8 +192,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   late final TextEditingController _contact2Controller;
   late final TextEditingController _addressController;
 
-  late final AuthService _authService;
-  late final FirestoreService _firestore;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   bool _isLoading = true;
   bool _isEditing = false;
@@ -1842,15 +1842,19 @@ class ProfilePreviewDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: 24),
                     Expanded(
-                      child: Text(
-                        businessName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _kWhite,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: _kFontFamily,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          businessName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _kWhite,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: _kFontFamily,
+                          ),
                         ),
                       ),
                     ),

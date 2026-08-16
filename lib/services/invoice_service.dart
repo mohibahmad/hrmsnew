@@ -1,34 +1,18 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import '../utils/helpers.dart';
 
-import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
+import '../utils/image_loader.dart';
+import '../utils/pdf_helpers.dart';
 import '../utils/utils.dart';
-import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 class InvoiceService {
   static const int _maxCompanyStampBytes = 5 * 1024 * 1024;
   static const Duration _companyStampTimeout = Duration(seconds: 15);
-  static Future<ByteData?>? _payrollFontDataFuture;
-
-  static Future<ByteData?> _loadPayrollFontData() async {
-    try {
-      return await rootBundle.load('assets/fonts/SF-Pro.ttf');
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static String _l(String key, String fallback) {
-    final translated = key.tr().trim();
-    return translated.isEmpty || translated == key ? fallback : translated;
-  }
 
   static Future<Uint8List> generatePayrollInvoice({
     required String employeeName,
@@ -51,7 +35,6 @@ class InvoiceService {
     required String netSalary,
     required String currency,
     String invoiceNo = '',
-
     String companyName = 'HRMS',
     String companyAddress = 'Human Resource Management System',
     String companyEmail = 'hr@company.com',
@@ -64,22 +47,11 @@ class InvoiceService {
     String paymentMethod = 'Company Payroll',
     String workerId = '',
   }) async {
-    final detectedCurrency = _displayCurrency(
-      currency.isEmpty ? _detectCurrency(salary) : currency,
-    );
+    final detectedCurrency = _displayCurrency(currency.isEmpty ? _detectCurrency(salary) : currency);
     final pdf = pw.Document();
 
     final font = await _loadFont();
     final theme = _createTheme(font);
-
-    final colors = _PdfColors(
-      navy: PdfColor.fromHex('#111B4F'),
-      appBlue: PdfColor.fromHex('#0247C4'),
-      textColor: PdfColor.fromHex('#111B4F'),
-      mutedText: PdfColor.fromHex('#586080'),
-      lineColor: PdfColor.fromHex('#6B7398'),
-      white: PdfColors.white,
-    );
 
     final logoImage = await _loadLogo(companyLogoBytes, companyLogoUrl);
     final stampImage = await _loadStamp(companyStampBytes, companyStampImageUrl);
@@ -92,11 +64,7 @@ class InvoiceService {
       workerId: workerId,
     );
 
-    final invoiceLeaves = resolveInvoiceLeaveDays(
-      leaves: leaves,
-      paidLeaves: paidLeaves,
-      unpaidLeaves: unpaidLeaves,
-    );
+    final invoiceLeaves = resolveInvoiceLeaveDays(leaves: leaves, paidLeaves: paidLeaves, unpaidLeaves: unpaidLeaves);
     final deductibleLeaveDays = _getDeductibleLeaveDays(unpaidLeaves, leaves);
 
     final hasOvertime = _parseValue(overtimePay) > 0;
@@ -111,7 +79,6 @@ class InvoiceService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(24, 28, 24, 40),
         build: (context) => _buildContent(
-          colors: colors,
           logoImage: logoImage,
           stampImage: stampImage,
           companyName: companyName,
@@ -146,7 +113,7 @@ class InvoiceService {
           invoiceLeaves: invoiceLeaves,
           paymentMethod: paymentMethod,
         ),
-        footer: (context) => _buildFooter(colors),
+        footer: (context) => _buildFooter(),
       ),
     );
 
@@ -157,22 +124,8 @@ class InvoiceService {
     return unpaidLeaves.trim().isNotEmpty ? unpaidLeaves.trim() : leaves;
   }
 
-  static Future<pw.Font?> _loadFont() async {
-    try {
-      final fontData = await (_payrollFontDataFuture ??= _loadPayrollFontData());
-      return fontData != null ? pw.Font.ttf(fontData) : null;
-    } catch (e) {
-      debugPrint('InvoiceService: could not load fonts (falling back to Helvetica): $e');
-      return null;
-    }
-  }
-
-  static pw.ThemeData _createTheme(pw.Font? font) {
-    return pw.ThemeData.withFont(
-      base: font ?? pw.Font.helvetica(),
-      bold: font ?? pw.Font.helveticaBold(),
-    );
-  }
+  static Future<pw.Font?> _loadFont() async => PdfHelpers.loadFont();
+  static pw.ThemeData _createTheme(pw.Font? font) => PdfHelpers.buildTheme(font);
 
   static Future<pw.MemoryImage?> _loadLogo(Uint8List? companyLogoBytes, String? companyLogoUrl) async {
     try {
@@ -189,7 +142,6 @@ class InvoiceService {
   }
 
   static List<pw.Widget> _buildContent({
-    required _PdfColors colors,
     required pw.MemoryImage? logoImage,
     required pw.MemoryImage? stampImage,
     required String companyName,
@@ -225,21 +177,21 @@ class InvoiceService {
     required String paymentMethod,
   }) {
     return [
-      _buildHeader(colors, logoImage, companyName),
+      _buildHeader(logoImage, companyName),
       pw.SizedBox(height: 32),
-      _buildInvoiceInfo(colors, invoiceNumber, now),
+      _buildInvoiceInfo(invoiceNumber, now),
       pw.SizedBox(height: 38),
-      _buildCompanyEmployeeInfo(colors, companyName, companyAddress, companyEmail, companyPhone, companyId, employeeName, position, email, payPeriod),
+      _buildCompanyEmployeeInfo(companyName, companyAddress, companyEmail, companyPhone, companyId, employeeName, position, email, payPeriod),
       pw.SizedBox(height: 28),
-      _buildTable(colors, detectedCurrency, dailyRate, totalWorkDays, grossPay, hasOvertime, overtimeAmount, overtimePay, hasAbsentDeduction, absentDeduction, absents, hasLeaveDeduction, leaveDeduction, deductibleLeaveDays),
+      _buildTable(detectedCurrency, dailyRate, totalWorkDays, grossPay, hasOvertime, overtimeAmount, overtimePay, hasAbsentDeduction, absentDeduction, absents, hasLeaveDeduction, leaveDeduction, deductibleLeaveDays),
       pw.SizedBox(height: 18),
-      _buildPayrollSummary(colors, detectedCurrency, paymentMethod, salary, absents, invoiceLeaves, grossPay, overtimePay, hasOvertime, hasDeductions, totalDeductions, netSalary, isNegativeNet),
+      _buildPayrollSummary(detectedCurrency, paymentMethod, salary, absents, invoiceLeaves, grossPay, overtimePay, hasOvertime, hasDeductions, totalDeductions, netSalary, isNegativeNet),
       pw.SizedBox(height: 8),
-      _buildAuthorization(colors, companyName, companyId, stampImage),
+      _buildAuthorization(companyName, companyId, stampImage),
     ];
   }
 
-  static pw.Widget _buildHeader(_PdfColors colors, pw.MemoryImage? logoImage, String companyName) {
+  static pw.Widget _buildHeader(pw.MemoryImage? logoImage, String companyName) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -250,30 +202,26 @@ class InvoiceService {
                 ? pw.SizedBox(width: 32, height: 32, child: pw.Image(logoImage, fit: pw.BoxFit.contain))
                 : pw.SizedBox(width: 32, height: 32),
             pw.SizedBox(width: 12),
-            pw.Text(companyName.isEmpty ? 'HRMS' : companyName, style: pw.TextStyle(fontSize: 23, color: colors.navy)),
+            pw.Text(companyName.isEmpty ? 'HRMS' : companyName, style: pw.TextStyle(fontSize: 23, color: PdfColorPalette.navy)),
           ],
         ),
-        pw.Text(
-          _l('payroll_invoice_title', 'PAYROLL INVOICE'),
-          style: pw.TextStyle(fontSize: 21, color: colors.appBlue, fontWeight: pw.FontWeight.normal),
-        ),
+        pw.Text(PdfHelpers.translate('payroll_invoice_title', 'PAYROLL INVOICE'), style: pw.TextStyle(fontSize: 21, color: PdfColorPalette.appBlue, fontWeight: pw.FontWeight.normal)),
       ],
     );
   }
 
-  static pw.Widget _buildInvoiceInfo(_PdfColors colors, String invoiceNumber, DateTime now) {
+  static pw.Widget _buildInvoiceInfo(String invoiceNumber, DateTime now) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text('${_l('invoice_no', 'Invoice No.')} $invoiceNumber', style: pw.TextStyle(fontSize: 9, color: colors.textColor)),
+        pw.Text('${PdfHelpers.translate('invoice_no', 'Invoice No.')} $invoiceNumber', style: pw.TextStyle(fontSize: 9, color: PdfColorPalette.textColor)),
         pw.SizedBox(height: 7),
-        pw.Text(_formatDate(now), style: pw.TextStyle(fontSize: 9, color: colors.textColor)),
+        pw.Text(_formatDate(now), style: pw.TextStyle(fontSize: 9, color: PdfColorPalette.textColor)),
       ],
     );
   }
 
   static pw.Widget _buildCompanyEmployeeInfo(
-    _PdfColors colors,
     String companyName,
     String companyAddress,
     String companyEmail,
@@ -289,32 +237,32 @@ class InvoiceService {
       children: [
         pw.Expanded(
           child: _informationBlock(
-            title: _l('employer', 'Employer'),
-            titleColor: colors.navy,
-            titleTextColor: colors.white,
+            title: PdfHelpers.translate('employer', 'Employer'),
+            titleColor: PdfColorPalette.navy,
+            titleTextColor: PdfColors.white,
             lines: [
               companyName,
               companyAddress,
               if (companyEmail.trim().isNotEmpty) companyEmail,
               if (companyPhone.trim().isNotEmpty) companyPhone,
-              if (companyId.trim().isNotEmpty) '${_l('company_id_label', 'Company ID:')} $companyId',
+              if (companyId.trim().isNotEmpty) '${PdfHelpers.translate('company_id_label', 'Company ID:')} $companyId',
             ],
-            textColor: colors.textColor,
+            textColor: PdfColorPalette.textColor,
           ),
         ),
         pw.SizedBox(width: 54),
         pw.Expanded(
           child: _informationBlock(
-            title: _l('employee', 'Employee'),
-            titleColor: colors.navy,
-            titleTextColor: colors.white,
+            title: PdfHelpers.translate('employee', 'Employee'),
+            titleColor: PdfColorPalette.navy,
+            titleTextColor: PdfColors.white,
             lines: [
               employeeName,
               position,
               email,
-              '${_l('pay_period', 'Pay period:')} $payPeriod',
+              '${PdfHelpers.translate('pay_period', 'Pay period:')} $payPeriod',
             ],
-            textColor: colors.textColor,
+            textColor: PdfColorPalette.textColor,
           ),
         ),
       ],
@@ -322,7 +270,6 @@ class InvoiceService {
   }
 
   static pw.Widget _buildTable(
-    _PdfColors colors,
     String detectedCurrency,
     String dailyRate,
     String totalWorkDays,
@@ -338,61 +285,60 @@ class InvoiceService {
     String deductibleLeaveDays,
   ) {
     final rows = <pw.Widget>[
-      _tableHeader(colors.navy, colors.white),
+      _tableHeader(PdfColorPalette.navy, PdfColors.white),
       _tableRow(
-        description: _l('basic_salary', 'Basic Salary'),
+        description: PdfHelpers.translate('basic_salary', 'Basic Salary'),
         rate: _money(dailyRate, defaultCurrency: detectedCurrency),
         quantity: totalWorkDays,
         total: _money(grossPay, defaultCurrency: detectedCurrency),
-        textColor: colors.textColor,
-        lineColor: colors.lineColor,
+        textColor: PdfColorPalette.textColor,
+        lineColor: PdfColorPalette.lineColor,
       ),
     ];
 
     if (hasOvertime) {
       rows.add(_tableRow(
-        description: _l('overtime_pay', 'Overtime Pay'),
+        description: PdfHelpers.translate('overtime_pay', 'Overtime Pay'),
         rate: _money(overtimeAmount, defaultCurrency: detectedCurrency),
         quantity: '1',
         total: _money(overtimePay, defaultCurrency: detectedCurrency),
-        textColor: colors.textColor,
-        lineColor: colors.lineColor,
+        textColor: PdfColorPalette.textColor,
+        lineColor: PdfColorPalette.lineColor,
       ));
     }
 
     if (hasAbsentDeduction) {
       rows.add(_tableRow(
-        description: _l('unpaid_absence_deduction', 'Absent Deduction'),
+        description: PdfHelpers.translate('unpaid_absence_deduction', 'Absent Deduction'),
         rate: _perDayRate(absentDeduction, absents, defaultCurrency: detectedCurrency),
         quantity: absents,
         total: '-${_money(absentDeduction, defaultCurrency: detectedCurrency)}',
-        textColor: colors.textColor,
-        lineColor: colors.lineColor,
+        textColor: PdfColorPalette.textColor,
+        lineColor: PdfColorPalette.lineColor,
       ));
     }
 
     if (hasLeaveDeduction) {
       rows.add(_tableRow(
-        description: _l('unpaid_leave_deduction', 'Unpaid Leave Deduction'),
+        description: PdfHelpers.translate('unpaid_leave_deduction', 'Unpaid Leave Deduction'),
         rate: _perDayRate(leaveDeduction, deductibleLeaveDays, defaultCurrency: detectedCurrency),
         quantity: deductibleLeaveDays,
         total: '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
-        textColor: colors.textColor,
-        lineColor: colors.lineColor,
+        textColor: PdfColorPalette.textColor,
+        lineColor: PdfColorPalette.lineColor,
       ));
     }
 
-    if (!hasOvertime) rows.add(_emptyTableRow(colors.textColor, colors.lineColor));
-    if (!hasAbsentDeduction) rows.add(_emptyTableRow(colors.textColor, colors.lineColor));
-    if (!hasLeaveDeduction) rows.add(_emptyTableRow(colors.textColor, colors.lineColor));
+    if (!hasOvertime) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
+    if (!hasAbsentDeduction) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
+    if (!hasLeaveDeduction) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
 
-    rows.add(_emptyTableRow(colors.textColor, colors.lineColor));
+    rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
 
     return pw.Column(children: rows);
   }
 
   static pw.Widget _buildPayrollSummary(
-    _PdfColors colors,
     String detectedCurrency,
     String paymentMethod,
     String salary,
@@ -416,18 +362,15 @@ class InvoiceService {
             children: [
               pw.Container(
                 width: double.infinity,
-                color: colors.navy,
+                color: PdfColorPalette.navy,
                 padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                child: pw.Text(
-                  _l('payroll_information', 'Payroll Information'),
-                  style: pw.TextStyle(fontSize: 8, color: colors.white),
-                ),
+                child: pw.Text(PdfHelpers.translate('payroll_information', 'Payroll Information'), style: pw.TextStyle(fontSize: 8, color: PdfColors.white)),
               ),
               pw.SizedBox(height: 8),
-              _smallInfoLine(_l('payment_method', 'Payment Method'), paymentMethod, colors.textColor),
-              _smallInfoLine(_l('basic_salary', 'Basic Salary'), _money(salary, defaultCurrency: detectedCurrency), colors.textColor),
-              _smallInfoLine(_l('absents', 'Absents'), absents, colors.textColor),
-              _smallInfoLine(_l('leaves', 'Leaves'), invoiceLeaves, colors.textColor),
+              _smallInfoLine(PdfHelpers.translate('payment_method', 'Payment Method'), paymentMethod, PdfColorPalette.textColor),
+              _smallInfoLine(PdfHelpers.translate('basic_salary', 'Basic Salary'), _money(salary, defaultCurrency: detectedCurrency), PdfColorPalette.textColor),
+              _smallInfoLine(PdfHelpers.translate('absents', 'Absents'), absents, PdfColorPalette.textColor),
+              _smallInfoLine(PdfHelpers.translate('leaves', 'Leaves'), invoiceLeaves, PdfColorPalette.textColor),
             ],
           ),
         ),
@@ -437,28 +380,24 @@ class InvoiceService {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              _summaryLine(_l('gross_pay', 'Gross Pay'), _money(grossPay, defaultCurrency: detectedCurrency), colors.textColor),
-              if (hasOvertime) _summaryLine(_l('overtime_pay', 'Overtime Pay'), _money(overtimePay, defaultCurrency: detectedCurrency), colors.textColor),
+              _summaryLine(PdfHelpers.translate('gross_pay', 'Gross Pay'), _money(grossPay, defaultCurrency: detectedCurrency), PdfColorPalette.textColor),
+              if (hasOvertime) _summaryLine(PdfHelpers.translate('overtime_pay', 'Overtime Pay'), _money(overtimePay, defaultCurrency: detectedCurrency), PdfColorPalette.textColor),
               _summaryLine(
-                _l('deductions', 'Deductions'),
-                hasDeductions
-                    ? '-${_money(totalDeductions, defaultCurrency: detectedCurrency)}'
-                    : _money('0', defaultCurrency: detectedCurrency),
-                colors.textColor,
+                PdfHelpers.translate('deductions', 'Deductions'),
+                hasDeductions ? '-${_money(totalDeductions, defaultCurrency: detectedCurrency)}' : _money('0', defaultCurrency: detectedCurrency),
+                PdfColorPalette.textColor,
               ),
               pw.SizedBox(height: 8),
               pw.Container(
-                color: colors.navy,
+                color: PdfColorPalette.navy,
                 padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(_l('net_salary', 'Net Salary'), style: pw.TextStyle(fontSize: 10, color: colors.white)),
+                    pw.Text(PdfHelpers.translate('net_salary', 'Net Salary'), style: pw.TextStyle(fontSize: 10, color: PdfColors.white)),
                     pw.Text(
-                      isNegativeNet
-                          ? _money('0', defaultCurrency: detectedCurrency)
-                          : _money(netSalary, defaultCurrency: detectedCurrency),
-                      style: pw.TextStyle(fontSize: 10, color: colors.white, fontWeight: pw.FontWeight.bold),
+                      isNegativeNet ? _money('0', defaultCurrency: detectedCurrency) : _money(netSalary, defaultCurrency: detectedCurrency),
+                      style: pw.TextStyle(fontSize: 10, color: PdfColors.white, fontWeight: pw.FontWeight.bold),
                     ),
                   ],
                 ),
@@ -470,50 +409,44 @@ class InvoiceService {
     );
   }
 
-  static pw.Widget _buildAuthorization(_PdfColors colors, String companyName, String companyId, pw.MemoryImage? stampImage) {
+  static pw.Widget _buildAuthorization(String companyName, String companyId, pw.MemoryImage? stampImage) {
     return pw.Align(
       alignment: pw.Alignment.centerRight,
       child: buildCompanyAuthorization(
         companyName: companyName,
         companyId: companyId,
         stampImage: stampImage,
-        accentColor: colors.appBlue,
-        mutedColor: colors.mutedText,
-        authorizedSignatoryText: _l('authorized_signatory', 'Authorized Signatory'),
-        companyIdLabel: _l('company_id_label', 'Company ID:'),
+        accentColor: PdfColorPalette.appBlue,
+        mutedColor: PdfColorPalette.mutedText,
+        authorizedSignatoryText: PdfHelpers.translate('authorized_signatory', 'Authorized Signatory'),
+        companyIdLabel: PdfHelpers.translate('company_id_label', 'Company ID:'),
       ),
     );
   }
 
-  static pw.Widget _buildFooter(_PdfColors colors) {
+  static pw.Widget _buildFooter() {
     return pw.Column(
       children: [
-        pw.Divider(color: colors.lineColor, height: 1, thickness: 0.5),
+        pw.Divider(color: PdfColorPalette.lineColor, height: 1, thickness: 0.5),
         pw.SizedBox(height: 8),
         pw.Align(
           alignment: pw.Alignment.centerLeft,
-          child: pw.Text(_l('thank_you_contribution', 'Thank you for your contribution!'), style: pw.TextStyle(fontSize: 14, color: colors.appBlue)),
+          child: pw.Text(PdfHelpers.translate('thank_you_contribution', 'Thank you for your contribution!'), style: pw.TextStyle(fontSize: 14, color: PdfColorPalette.appBlue)),
         ),
         pw.SizedBox(height: 6),
         pw.Align(
           alignment: pw.Alignment.centerRight,
-          child: pw.Text(_l('generated_by_hrms', 'Generated by HRMS'), style: pw.TextStyle(fontSize: 7, color: colors.mutedText)),
+          child: pw.Text(PdfHelpers.translate('generated_by_hrms', 'Generated by HRMS'), style: pw.TextStyle(fontSize: 7, color: PdfColorPalette.mutedText)),
         ),
       ],
     );
   }
 
-  static String resolveInvoiceLeaveDays({
-    required String leaves,
-    String paidLeaves = '',
-    String unpaidLeaves = '',
-  }) {
+  static String resolveInvoiceLeaveDays({required String leaves, String paidLeaves = '', String unpaidLeaves = ''}) {
     final total = _parseValue(leaves);
     final splitTotal = _parseValue(paidLeaves) + _parseValue(unpaidLeaves);
     final resolved = total > splitTotal ? total : splitTotal;
-    return resolved == resolved.roundToDouble()
-        ? resolved.toStringAsFixed(0)
-        : resolved.toStringAsFixed(1);
+    return resolved == resolved.roundToDouble() ? resolved.toStringAsFixed(0) : resolved.toStringAsFixed(1);
   }
 
   static pw.Widget _informationBlock({
@@ -537,13 +470,10 @@ class InvoiceService {
           padding: const pw.EdgeInsets.only(left: 13),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: lines
-                .where((line) => line.trim().isNotEmpty)
-                .map((line) => pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 3),
-                      child: pw.Text(line, style: pw.TextStyle(fontSize: 8.5, color: textColor)),
-                    ))
-                .toList(),
+            children: lines.where((line) => line.trim().isNotEmpty).map((line) => pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 3),
+              child: pw.Text(line, style: pw.TextStyle(fontSize: 8.5, color: textColor)),
+            )).toList(),
           ),
         ),
       ],
@@ -556,31 +486,10 @@ class InvoiceService {
       padding: const pw.EdgeInsets.fromLTRB(10, 6, 10, 6),
       child: pw.Row(
         children: [
-          pw.Expanded(
-            flex: 5,
-            child: pw.Text(_l('description', 'Description'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(_l('rate', 'Rate'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)),
-            ),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(_l('qty', 'Qty'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)),
-            ),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(_l('total', 'Total'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)),
-            ),
-          ),
+          pw.Expanded(flex: 5, child: pw.Text(PdfHelpers.translate('description', 'Description'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(PdfHelpers.translate('rate', 'Rate'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(PdfHelpers.translate('qty', 'Qty'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(PdfHelpers.translate('total', 'Total'), style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold)))),
         ],
       ),
     );
@@ -596,50 +505,20 @@ class InvoiceService {
   }) {
     return pw.Container(
       padding: const pw.EdgeInsets.fromLTRB(10, 9, 10, 8),
-      decoration: pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: lineColor, width: 0.6)),
-      ),
+      decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: lineColor, width: 0.6))),
       child: pw.Row(
         children: [
-          pw.Expanded(
-            flex: 5,
-            child: pw.Text(description, style: pw.TextStyle(fontSize: 8.5, color: textColor)),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(rate, style: pw.TextStyle(fontSize: 8, color: textColor)),
-            ),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(quantity, style: pw.TextStyle(fontSize: 8, color: textColor)),
-            ),
-          ),
-          pw.Expanded(
-            flex: 2,
-            child: pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text(total, style: pw.TextStyle(fontSize: 8, color: textColor)),
-            ),
-          ),
+          pw.Expanded(flex: 5, child: pw.Text(description, style: pw.TextStyle(fontSize: 8.5, color: textColor))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(rate, style: pw.TextStyle(fontSize: 8, color: textColor)))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(quantity, style: pw.TextStyle(fontSize: 8, color: textColor)))),
+          pw.Expanded(flex: 2, child: pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text(total, style: pw.TextStyle(fontSize: 8, color: textColor)))),
         ],
       ),
     );
   }
 
   static pw.Widget _emptyTableRow(PdfColor textColor, PdfColor lineColor) {
-    return _tableRow(
-      description: '',
-      rate: '',
-      quantity: '',
-      total: '',
-      textColor: textColor,
-      lineColor: lineColor,
-    );
+    return _tableRow(description: '', rate: '', quantity: '', total: '', textColor: textColor, lineColor: lineColor);
   }
 
   static pw.Widget _smallInfoLine(String label, String value, PdfColor color) {
@@ -673,11 +552,11 @@ class InvoiceService {
   static String _formatDate(DateTime date) {
     final months = LocalizationHelper.englishMonthNames.sublist(1);
     final monthKey = 'month_${months[date.month - 1].toLowerCase()}';
-    final monthName = _l(monthKey, months[date.month - 1]);
+    final monthName = PdfHelpers.translate(monthKey, months[date.month - 1]);
     return '$monthName ${date.day}, ${date.year}';
   }
 
-  static String _twoDigits(int value) => value.toString().padLeft(2, '0');
+  static String _twoDigits(int value) => pad2(value);
 
   static String _money(String raw, {String? defaultCurrency}) {
     final trimmed = raw.trim();
@@ -695,9 +574,7 @@ class InvoiceService {
     }
 
     final value = _parseValue(trimmed).abs();
-    final formatted = value
-        .toStringAsFixed(2)
-        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    final formatted = value.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
     return '$prefix $formatted';
   }
 
@@ -756,46 +633,13 @@ class InvoiceService {
     }
   }
 
-  static bool _isValidPdfImageBytes(Uint8List bytes) {
-    if (bytes.lengthInBytes < 4) return false;
-    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return true;
-    if (bytes[0] == 0xFF && bytes[1] == 0xD8) return true;
-    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
-    if (bytes.lengthInBytes >= 12) {
-      final riff = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
-      final webp = ascii.decode(bytes.sublist(8, 12), allowInvalid: true);
-      if (riff == 'RIFF' && webp == 'WEBP') return true;
-    }
-    return bytes[0] == 0x42 && bytes[1] == 0x4D;
-  }
-
   static Future<Uint8List?> _loadCompanyLogoBytes(String? source) async {
-    final value = source?.trim() ?? '';
-    if (value.isEmpty) return null;
-    try {
-      Uint8List? bytes;
-      if (value.startsWith('data:')) {
-        final separator = value.indexOf(',');
-        if (separator > 0) {
-          final encoded = value.substring(separator + 1).replaceAll(RegExp(r'\s+'), '');
-          if (encoded.isNotEmpty) bytes = base64Decode(encoded);
-        }
-      } else {
-        final uri = Uri.tryParse(value);
-        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-          bytes = await _downloadCompanyStamp(uri);
-        } else if (uri != null && uri.scheme == 'file') {
-          bytes = await _readCompanyStampFile(File.fromUri(uri));
-        } else {
-          bytes = await _readCompanyStampFile(File(value));
-        }
-      }
-      if (bytes == null || bytes.isEmpty) return null;
-      if (_isValidPdfImageBytes(bytes)) return bytes;
-      final decoded = img.decodeImage(bytes);
-      if (decoded != null) return Uint8List.fromList(img.encodePng(decoded));
-    } catch (_) {}
-    return null;
+    return await ImageLoader.load(
+      source: source,
+      maxSizeBytes: _maxCompanyStampBytes,
+      timeout: _companyStampTimeout,
+      convertToPng: true,
+    );
   }
 
   static Future<Uint8List?> resolveCompanyLogoBytes(String? source) async {
@@ -814,84 +658,12 @@ class InvoiceService {
   }
 
   static Future<Uint8List?> _loadCompanyStampBytes(String? source) async {
-    final value = source?.trim() ?? '';
-    if (value.isEmpty) return null;
-
-    Uint8List? bytes;
-    try {
-      if (value.startsWith('data:')) {
-        final separator = value.indexOf(',');
-        if (separator > 0) {
-          final encoded = value.substring(separator + 1).replaceAll(RegExp(r'\s+'), '');
-          if (encoded.isNotEmpty && encoded.length <= ((_maxCompanyStampBytes * 4) ~/ 3) + 16) {
-            bytes = base64Decode(encoded);
-          }
-        }
-      } else {
-        final uri = Uri.tryParse(value);
-        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-          bytes = await _downloadCompanyStamp(uri);
-        } else if (uri != null && uri.scheme == 'file') {
-          bytes = await _readCompanyStampFile(File.fromUri(uri));
-        } else {
-          bytes = await _readCompanyStampFile(File(value));
-          if (bytes == null) {
-            final data = await rootBundle.load(value).timeout(_companyStampTimeout);
-            bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-          }
-        }
-      }
-    } catch (_) {
-      return null;
-    }
-
-    if (bytes == null || bytes.isEmpty || bytes.lengthInBytes > _maxCompanyStampBytes) return null;
-    if (_isValidPdfImageBytes(bytes)) return bytes;
-
-    try {
-      final decoded = img.decodeImage(bytes);
-      if (decoded != null) return Uint8List.fromList(img.encodePng(decoded));
-    } catch (_) {}
-    return null;
-  }
-
-  static Future<Uint8List?> _downloadCompanyStamp(Uri uri) async {
-    final client = HttpClient()..connectionTimeout = _companyStampTimeout;
-    try {
-      final request = await client.getUrl(uri).timeout(_companyStampTimeout);
-      request.followRedirects = true;
-      request.maxRedirects = 5;
-      final response = await request.close().timeout(_companyStampTimeout);
-      if (response.statusCode != HttpStatus.ok) return null;
-
-      final contentType = response.headers.contentType?.mimeType.toLowerCase();
-      if (contentType != null && (contentType.startsWith('text/html') || contentType.startsWith('application/json'))) return null;
-      if (response.contentLength > _maxCompanyStampBytes) return null;
-
-      final builder = BytesBuilder(copy: false);
-      var total = 0;
-      await for (final chunk in response.timeout(_companyStampTimeout)) {
-        total += chunk.length;
-        if (total > _maxCompanyStampBytes) return null;
-        builder.add(chunk);
-      }
-      return builder.takeBytes();
-    } catch (_) {
-      return null;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  static Future<Uint8List?> _readCompanyStampFile(File file) async {
-    try {
-      if (!await file.exists().timeout(_companyStampTimeout)) return null;
-      final length = await file.length().timeout(_companyStampTimeout);
-      if (length <= 0 || length > _maxCompanyStampBytes) return null;
-      return await file.readAsBytes().timeout(_companyStampTimeout);
-    } catch (_) {
-      return null;
-    }
+    return await ImageLoader.load(
+      source: source,
+      maxSizeBytes: _maxCompanyStampBytes,
+      timeout: _companyStampTimeout,
+      convertToPng: true,
+    );
   }
 
   static String _periodDatePrefix(String payPeriod) {
@@ -938,7 +710,7 @@ class InvoiceService {
 
   static Future<bool> shareInvoice(Uint8List bytes, String fileName) async {
     final result = await FilePicker.saveFile(
-      dialogTitle: _l('save_payroll_invoice', 'Save Payroll Invoice'),
+      dialogTitle: PdfHelpers.translate('save_payroll_invoice', 'Save Payroll Invoice'),
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -952,22 +724,4 @@ class InvoiceService {
     await FileOpener.open(outputPath);
     return true;
   }
-}
-
-class _PdfColors {
-  final PdfColor navy;
-  final PdfColor appBlue;
-  final PdfColor textColor;
-  final PdfColor mutedText;
-  final PdfColor lineColor;
-  final PdfColor white;
-
-  const _PdfColors({
-    required this.navy,
-    required this.appBlue,
-    required this.textColor,
-    required this.mutedText,
-    required this.lineColor,
-    required this.white,
-  });
 }

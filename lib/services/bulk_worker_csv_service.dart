@@ -10,7 +10,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
 
 List<List<String>> parseCsvInBackground(Uint8List bytes) {
-
   var csvString = utf8.decode(bytes, allowMalformed: true);
 
   if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
@@ -25,7 +24,6 @@ List<List<String>> parseCsvInBackground(Uint8List bytes) {
 }
 
 String computeFileHash(Uint8List bytes) {
-
   int hash = 0x811C9DC5;
 
   for (final byte in bytes) {
@@ -37,17 +35,14 @@ String computeFileHash(Uint8List bytes) {
 }
 
 Future<void> downloadTemplate(BuildContext context) async {
-
-  const headerRow =
-      'Full Name,Contact Number,Email Address,Father Name,National ID,'
+  const headerRow = 'Full Name,Contact Number,Email Address,Father Name,National ID,'
       'Religion,Date of Birth,Gender,Address,Relationship Status,'
       'Job Position,Employee Type,Work Model,Experience Level,Education,'
       'Monthly Salary Amount,Annual Leaves,Sick Leaves,Casual Leaves,'
       'Medical Leaves,Joining Date,'
       'Profile Image,Front ID Image,Back ID Image,CV';
 
-  const dataRows =
-      'John Doe,1234567890,john@gmail.com,Robert Doe,37405-1234567-1,'
+  const dataRows = 'John Doe,1234567890,john@gmail.com,Robert Doe,37405-1234567-1,'
       'Christianity,15/05/1990,Male,123 Street California,Single,'
       'Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,'
       '5000,15,10,5,5,15/01/2025,'
@@ -93,7 +88,6 @@ Future<void> downloadTemplate(BuildContext context) async {
   const templateStr = '$headerRow\n$dataRows';
 
   try {
-
     final String? outputFile = await FilePicker.saveFile(
       dialogTitle: 'save_worker_template'.tr(),
       fileName: 'worker_template.csv',
@@ -111,17 +105,13 @@ Future<void> downloadTemplate(BuildContext context) async {
 
     await FileOpener.open(outputFile);
   } catch (_) {
-
     if (!context.mounted) return;
-    FlashySnackBar.show(
-      context,
-      message: 'could_not_download_template'.tr(),
-      isError: true,
-    );
+    FlashySnackBar.show(context, message: 'could_not_download_template'.tr(), isError: true);
   }
 }
 
 Future<Uint8List?> pickCsvFile() async {
+  const maxBytes = 5 * 1024 * 1024;
 
   final result = await FilePicker.pickFiles(
     type: FileType.custom,
@@ -131,14 +121,9 @@ Future<Uint8List?> pickCsvFile() async {
   if (result == null || result.files.isEmpty) return null;
 
   final file = result.files.first;
-
-  const int maxBytes = 5 * 1024 * 1024;
-
   final bytes = await file.readAsBytes();
 
-  if (bytes.length > maxBytes) {
-    return null;
-  }
+  if (bytes.length > maxBytes) return null;
 
   return bytes;
 }

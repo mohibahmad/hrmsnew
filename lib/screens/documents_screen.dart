@@ -357,8 +357,8 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   String? _cvName;
   bool _isCvUploaded = false;
 
-  late final AuthService _authService;
-  late final FirestoreService _firestore;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 

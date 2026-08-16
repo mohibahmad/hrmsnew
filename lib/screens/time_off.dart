@@ -195,12 +195,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
-  String _l(String key, String fallback, {Map<String, String>? namedArgs}) {
-    final translated = key.tr(namedArgs: namedArgs).trim();
-    return (translated.isEmpty || translated == key) ? fallback : translated;
-  }
-
-  String _nv(dynamic value) => (value ?? '').toString().trim().toLowerCase();
+  String _normalizedValue(dynamic value) => (value ?? '').toString().trim().toLowerCase();
 
   String _localizedLeaveType(String type) {
     return switch (TimeOffService.normalizeLeaveType(type)) {
@@ -213,7 +208,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   bool _isAttendanceManaged(Map<String, dynamic> record) =>
-      _nv(record['source']) == 'attendance';
+      _normalizedValue(record['source']) == 'attendance';
 
   String _firstNonEmpty(Iterable<dynamic> values) {
     for (final v in values) {
@@ -227,7 +222,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     if (name.isEmpty) return false;
     var count = 0;
     for (final w in _workersList) {
-      if (_nv(w['name']) == name && ++count > 1) return false;
+      if (_normalizedValue(w['name']) == name && ++count > 1) return false;
     }
     return count == 1;
   }
@@ -254,7 +249,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   bool _canAssignTimeOff(Map<String, dynamic> worker) {
-    final status = _nv(
+    final status = _normalizedValue(
       worker['employmentStatus'] ??
           worker['workerStatus'] ??
           worker['status'] ??
@@ -279,7 +274,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       return 1;
     }
 
-    final byName = _nv(a['name']).compareTo(_nv(b['name']));
+    final byName = _normalizedValue(a['name']).compareTo(_normalizedValue(b['name']));
     if (byName != 0) return byName;
 
     return (a['id'] ?? '').toString().compareTo((b['id'] ?? '').toString());
@@ -512,15 +507,15 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   List<Map<String, String>> get _periodOptions => [
-    {'value': 'All Time', 'label': _l('all_time', 'All Time')},
-    {'value': 'This Month', 'label': _l('this_month', 'This Month')},
-    {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
-    {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-    {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
+    {'value': 'All Time', 'label': 'all_time'.tr()},
+    {'value': 'This Month', 'label': 'this_month'.tr()},
+    {'value': 'Last 6 Months', 'label': 'last_6_months'.tr()},
+    {'value': 'This Year', 'label': 'this_year'.tr()},
+    {'value': 'Custom Range', 'label': 'custom_range'.tr()},
   ];
 
   List<Map<String, String>> get _leaveTypeOptions => [
-    {'value': 'All', 'label': _l('all_filter', 'All')},
+    {'value': 'All', 'label': 'all_filter'.tr()},
     {'value': 'Sick Leave', 'label': _localizedLeaveType('Sick Leave')},
     {'value': 'Casual Leave', 'label': _localizedLeaveType('Casual Leave')},
     {'value': 'Medical Leave', 'label': _localizedLeaveType('Medical Leave')},
@@ -553,7 +548,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       if (!TimeOffService.isActiveRecord(record)) continue;
 
       final wId = (record['workerId'] ?? '').toString().trim();
-      final email = _nv(record['email']);
+      final email = _normalizedValue(record['email']);
       final isAtt = _isAttendanceManaged(record);
 
       if (wId.isNotEmpty) {
@@ -581,8 +576,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     for (final worker in _workersList) {
       final wId = (worker['id'] ?? '').toString().trim();
-      final email = _nv(worker['email']);
-      final name = _nv(worker['name']);
+      final email = _normalizedValue(worker['email']);
+      final name = _normalizedValue(worker['name']);
       final canUseName = email.isEmpty && _hasUniqueWorkerName(name);
 
       List<Map<String, dynamic>> matching;
@@ -598,8 +593,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         balance = _rawTimeoffDocs.where((r) {
           if (!TimeOffService.isActiveRecord(r)) return false;
           if ((r['workerId'] ?? '').toString().trim().isNotEmpty) return false;
-          if (_nv(r['email']).isNotEmpty) return false;
-          final rName = _nv(r['name'] ?? r['workerName']);
+          if (_normalizedValue(r['email']).isNotEmpty) return false;
+          final rName = _normalizedValue(r['name'] ?? r['workerName']);
           return canUseName && name.isNotEmpty && rName == name;
         }).toList();
 
@@ -683,22 +678,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     final combined = <Map<String, dynamic>>[];
 
     for (final worker in _workersList) {
-      final wId = (worker['id'] ?? '').toString().trim();
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+      final allowNameMatch =
+          (worker['email'] ?? '').toString().trim().isEmpty;
 
-      bool workerMatches(Map<String, dynamic> r) {
-        final rId = (r['workerId'] ?? '').toString().trim();
-        final rEmail = (r['email'] ?? '').toString().trim().toLowerCase();
-        final rName = (r['name'] ?? r['workerName'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-
-        return (wId.isNotEmpty && rId.isNotEmpty && wId == rId) ||
-            (rId.isEmpty && email.isNotEmpty && rEmail == email) ||
-            (email.isEmpty && name.isNotEmpty && rName == name);
-      }
+      bool workerMatches(Map<String, dynamic> r) =>
+          WorkerIdentity.recordsMatch(r, worker, allowName: allowNameMatch);
 
       final matching = _rawTimeoffDocs
           .where(
@@ -1263,16 +1247,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final message = hasFilters
         ? (filterName.isNotEmpty
-              ? _l(
-                  'no_records_named_filter',
-                  'No time off records found for "$filterName".',
-                  namedArgs: {'name': filterName},
-                )
-              : _l(
-                  'no_records_selected_filter',
-                  'No time off records found for the selected filter.',
-                ))
-        : _l('no_time_off_records', 'No time off record found');
+              ? 'no_records_named_filter'.tr(namedArgs: {'name': filterName})
+              : 'no_records_selected_filter'.tr())
+        : 'no_time_off_records'.tr();
 
     return Container(
       width: double.infinity,
@@ -1336,7 +1313,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     }
 
     final leaveLabel = _recordsLeaveTypeFilter == 'All'
-        ? _l('all_filter', 'All')
+        ? 'all_filter'.tr()
         : _localizedLeaveType(_recordsLeaveTypeFilter);
 
     return Wrap(
@@ -1408,7 +1385,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     color: Colors.white,
                   ),
                 const SizedBox(width: 6),
-                Text(_l('export_csv', 'Export CSV'), style: _kWhiteText16w500),
+                Text('export_csv'.tr(), style: _kWhiteText16w500),
               ],
             ),
           ),
@@ -2559,7 +2536,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                 Navigator.of(context).pop(sorted);
                               },
                         child: Text(
-                          _l('apply', 'Apply'),
+                          'apply'.tr(),
                           style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,

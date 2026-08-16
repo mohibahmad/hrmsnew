@@ -1064,9 +1064,9 @@ class _WorkerProfilePreviewDialogState
 
   bool _isSharing = false;
 
-  String _v(String key) => (widget.worker[key] ?? '').toString();
+  String _workerField(String key) => (widget.worker[key] ?? '').toString();
 
-  String _na(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
+  String _orNA(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
   String _localizedGender(String value) {
     switch (value.trim().toLowerCase()) {
@@ -1109,11 +1109,11 @@ class _WorkerProfilePreviewDialogState
 
     try {
       final worker = widget.worker;
-      final name = _v('name');
-      final email = _v('email');
+      final name = _workerField('name');
+      final email = _workerField('email');
       final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
       final profileImage = _safeOptionalString(worker['profileImage']);
-      final salaryAmount = _v('salaryAmount');
+      final salaryAmount = _workerField('salaryAmount');
 
       Map<String, dynamic> companyProfile = const {};
       try {
@@ -1162,24 +1162,24 @@ class _WorkerProfilePreviewDialogState
         name: name,
         email: email,
         phone: phone,
-        fatherHusbandName: _na(_v('fatherName')),
-        position: _capitalizeWords(_v('position')),
-        nationalId: _na(_v('nationalId')),
-        attendanceType: LocalizationHelper.localizeType2(_v('type2')),
-        workType: LocalizationHelper.localizeType1(_v('type1')),
-        experienceLevel: _na(
-          LocalizationHelper.localizeExperience(_v('experienceLevel')),
+        fatherHusbandName: _orNA(_workerField('fatherName')),
+        position: _capitalizeWords(_workerField('position')),
+        nationalId: _orNA(_workerField('nationalId')),
+        attendanceType: LocalizationHelper.localizeType2(_workerField('type2')),
+        workType: LocalizationHelper.localizeType1(_workerField('type1')),
+        experienceLevel: _orNA(
+          LocalizationHelper.localizeExperience(_workerField('experienceLevel')),
         ),
-        gender: _na(_localizedGender(_v('gender'))),
-        joiningDate: _na(_workerDateText(worker['joiningDate']) ?? ''),
+        gender: _orNA(_localizedGender(_workerField('gender'))),
+        joiningDate: _orNA(_workerDateText(worker['joiningDate']) ?? ''),
         salary: salary,
-        education: _na(LocalizationHelper.localizeEducation(_v('education'))),
-        religion: _na(_v('religion')),
-        dateOfBirth: _na(_workerDateText(worker['dob']) ?? ''),
-        relationshipStatus: _na(
-          _localizedRelationshipStatus(_v('relationshipStatus')),
+        education: _orNA(LocalizationHelper.localizeEducation(_workerField('education'))),
+        religion: _orNA(_workerField('religion')),
+        dateOfBirth: _orNA(_workerDateText(worker['dob']) ?? ''),
+        relationshipStatus: _orNA(
+          _localizedRelationshipStatus(_workerField('relationshipStatus')),
         ),
-        address: _na(_v('address')),
+        address: _orNA(_workerField('address')),
         profileImageUrl: profileImage,
         generatedOnText:
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
@@ -1239,11 +1239,11 @@ class _WorkerProfilePreviewDialogState
   @override
   Widget build(BuildContext context) {
     final worker = widget.worker;
-    final name = _v('name');
-    final email = _v('email');
+    final name = _workerField('name');
+    final email = _workerField('email');
     final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
-    final salaryAmount = _v('salaryAmount');
+    final salaryAmount = _workerField('salaryAmount');
     final companyCurr = PreferencesService.cachedCompanyCurrency;
     final currSymbol = CurrencyUtils.symbolFor(companyCurr);
     final rawSalaryStr = salaryAmount.trim();
@@ -1463,39 +1463,39 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.person,
                           'father_husband_name'.tr(),
-                          _na(_v('fatherName')),
+                          _orNA(_workerField('fatherName')),
                         ),
                         _buildInfoCard(
                           Icons.business_center,
                           'position'.tr(),
-                          LocalizationHelper.localizePosition(_v('position')),
+                          LocalizationHelper.localizePosition(_workerField('position')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.badge,
                           'national_id'.tr(),
-                          _na(_v('nationalId')),
+                          _orNA(_workerField('nationalId')),
                         ),
                         _buildInfoCard(
                           Icons.location_on,
                           'attendance_type'.tr(),
-                          LocalizationHelper.localizeType2(_v('type2')),
+                          LocalizationHelper.localizeType2(_workerField('type2')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.schedule,
                           'work_type'.tr(),
-                          LocalizationHelper.localizeType1(_v('type1')),
+                          LocalizationHelper.localizeType1(_workerField('type1')),
                           assetImage: 'assets/worktype.png',
                         ),
                         _buildInfoCard(
                           Icons.show_chart,
                           'experience_level'.tr(),
-                          _na(
+                          _orNA(
                             LocalizationHelper.localizeExperience(
-                              _v('experienceLevel'),
+                              _workerField('experienceLevel'),
                             ),
                           ),
                           assetImage: 'assets/experiencelevel.png',
@@ -1505,12 +1505,12 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(_localizedGender(_v('gender'))),
+                          _orNA(_localizedGender(_workerField('gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
                           'joining_date'.tr(),
-                          _na(_workerDateText(worker['joiningDate']) ?? ''),
+                          _orNA(_workerDateText(worker['joiningDate']) ?? ''),
                         ),
                       ),
                       _buildRow(
@@ -1523,9 +1523,9 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.school,
                           'education_title'.tr(),
-                          _na(
+                          _orNA(
                             LocalizationHelper.localizeEducation(
-                              _v('education'),
+                              _workerField('education'),
                             ),
                           ),
                         ),
@@ -1534,29 +1534,29 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.art_track,
                           'religion_title'.tr(),
-                          _na(_v('religion')),
+                          _orNA(_workerField('religion')),
                           assetImage: 'assets/religion.png',
                         ),
                         _buildInfoCard(
                           Icons.cake,
                           'date_of_birth'.tr(),
-                          _na(_workerDateText(worker['dob']) ?? ''),
+                          _orNA(_workerDateText(worker['dob']) ?? ''),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.favorite,
                           'relationship_status'.tr(),
-                          _na(
+                          _orNA(
                             _localizedRelationshipStatus(
-                              _v('relationshipStatus'),
+                              _workerField('relationshipStatus'),
                             ),
                           ),
                         ),
                         _buildInfoCard(
                           Icons.home,
                           'address'.tr(),
-                          _na(_v('address')),
+                          _orNA(_workerField('address')),
                         ),
                       ),
                     ],

@@ -22,12 +22,8 @@ class TopHeader extends ConsumerWidget {
     final user = ref.read(authServiceProvider).currentUser;
     String name = user?.displayName ?? '';
     if (name.trim().isEmpty || name == 'User') {
-      final email = user?.email ?? '';
-      if (email.contains('@')) {
-        name = email.split('@').first;
-      } else {
-        name = 'user_name'.tr();
-      }
+      final emailName = Validators.nameFromEmail(user?.email);
+      name = emailName.isNotEmpty ? emailName : 'user_name'.tr();
     }
     if (name == 'Guest User') {
       name = 'guest_user'.tr();

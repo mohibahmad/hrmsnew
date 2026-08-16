@@ -847,25 +847,6 @@ class LocalizationHelper {
     }
   }
 
-  static String localizeWorkType(String value) {
-    switch (value) {
-      case 'Full Time':
-      case 'full_time':
-      case 'Full-Time':
-      case 'employee':
-        return 'full_time'.tr();
-      case 'Part Time':
-      case 'part_time':
-      case 'Part-Time':
-        return 'part_time'.tr();
-      case 'Contract':
-      case 'contract':
-        return 'contract'.tr();
-      default:
-        return value;
-    }
-  }
-
   static String localizeExpenseCategory(String value) {
     switch (value.trim().toLowerCase()) {
       case 'salary':
@@ -1098,6 +1079,18 @@ class Validators {
         .join(' ');
   }
 
+  /// Derives a human-friendly display name from an email address.
+  ///
+  /// Takes the part before '@' and converts separators ('.', '_', '-') into
+  /// spaces with proper capitalization, e.g. 'mohib.hrms@x.com' -> 'Mohib Hrms'.
+  /// Returns an empty string when no local part is available.
+  static String nameFromEmail(String? email) {
+    final value = email?.trim() ?? '';
+    final atIndex = value.indexOf('@');
+    if (atIndex <= 0) return '';
+    return titleCase(value.substring(0, atIndex));
+  }
+
   static bool isAtLeast18(DateTime dob) {
     final now = DateTime.now();
     int age = now.year - dob.year;
@@ -1152,19 +1145,19 @@ class Validators {
     return double.tryParse(cleaned);
   }
 
-  static String _str(Map<String, dynamic> m, String key) =>
-      (m[key] ?? '').toString().trim();
+  static String _readStringField(Map<String, dynamic> record, String key) =>
+      (record[key] ?? '').toString().trim();
 
-  static void validateWorker(Map<String, dynamic> w) {
-    if (_str(w, 'name').isEmpty) {
+  static void validateWorker(Map<String, dynamic> worker) {
+    if (_readStringField(worker, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
-    final emailErr = email(w['email']?.toString());
+    final emailErr = email(worker['email']?.toString());
     if (emailErr != null) {
       throw ValidationException(emailErr, field: 'email');
     }
 
-    final dobValue = w['dob'];
+    final dobValue = worker['dob'];
     final dobText = (dobValue?.toString() ?? '').trim();
     if (dobText.isNotEmpty) {
       final dob = AppDateUtils.dateFromValue(dobValue);
@@ -1179,7 +1172,7 @@ class Validators {
       }
     }
 
-    final gender = _str(w, 'gender').toLowerCase();
+    final gender = _readStringField(worker, 'gender').toLowerCase();
     if (gender.isNotEmpty &&
         gender != 'male' &&
         gender != 'female' &&
@@ -1188,7 +1181,7 @@ class Validators {
       throw ValidationException('invalid_gender_value'.tr(), field: 'gender');
     }
 
-    final currency = _str(w, 'currency');
+    final currency = _readStringField(worker, 'currency');
     if (currency.isNotEmpty && !CurrencyUtils.isSupported(currency)) {
       throw ValidationException(
         'invalid_currency_value'.tr(),
@@ -1196,7 +1189,7 @@ class Validators {
       );
     }
 
-    final salary = parseAmount(w['salaryAmount']);
+    final salary = parseAmount(worker['salaryAmount']);
     if (salary == null || !salary.isFinite || salary <= 0) {
       throw ValidationException(
         'please_enter_salary_amount'.tr(),
@@ -1205,17 +1198,17 @@ class Validators {
     }
   }
 
-  static void validateExpense(Map<String, dynamic> e) {
-    if (_str(e, 'name').isEmpty) {
+  static void validateExpense(Map<String, dynamic> expense) {
+    if (_readStringField(expense, 'name').isEmpty) {
       throw ValidationException('expense_name_required'.tr(), field: 'name');
     }
-    if (_str(e, 'category').isEmpty) {
+    if (_readStringField(expense, 'category').isEmpty) {
       throw ValidationException(
         'expense_category_required'.tr(),
         field: 'category',
       );
     }
-    final amount = parseAmount(e['amount']);
+    final amount = parseAmount(expense['amount']);
     if (amount == null) {
       throw ValidationException('valid_amount_required'.tr(), field: 'amount');
     }
@@ -1233,23 +1226,23 @@ class Validators {
     }
   }
 
-  static void validateAttendance(Map<String, dynamic> a) {
-    if (_str(a, 'workerId').isEmpty) {
+  static void validateAttendance(Map<String, dynamic> attendance) {
+    if (_readStringField(attendance, 'workerId').isEmpty) {
       throw ValidationException('worker_id_required'.tr(), field: 'workerId');
     }
-    if (_str(a, 'name').isEmpty) {
+    if (_readStringField(attendance, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
-    if (_str(a, 'status').isEmpty) {
+    if (_readStringField(attendance, 'status').isEmpty) {
       throw ValidationException('status_required'.tr(), field: 'status');
     }
   }
 
-  static void validatePayroll(Map<String, dynamic> p) {
-    if (_str(p, 'name').isEmpty) {
+  static void validatePayroll(Map<String, dynamic> payroll) {
+    if (_readStringField(payroll, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
-    if (_str(p, 'status').isEmpty) {
+    if (_readStringField(payroll, 'status').isEmpty) {
       throw ValidationException(
         'payment_status_required'.tr(),
         field: 'status',
@@ -1257,35 +1250,35 @@ class Validators {
     }
   }
 
-  static void validateTimeOff(Map<String, dynamic> t) {
-    if (_str(t, 'workerId').isEmpty) {
+  static void validateTimeOff(Map<String, dynamic> timeOff) {
+    if (_readStringField(timeOff, 'workerId').isEmpty) {
       throw ValidationException('worker_id_required'.tr(), field: 'workerId');
     }
-    if (_str(t, 'name').isEmpty) {
+    if (_readStringField(timeOff, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
-    if (_str(t, 'action').isEmpty) {
+    if (_readStringField(timeOff, 'action').isEmpty) {
       throw ValidationException('leave_type_required'.tr(), field: 'action');
     }
-    if (_str(t, 'startDate').isEmpty) {
+    if (_readStringField(timeOff, 'startDate').isEmpty) {
       throw ValidationException('start_date_required'.tr(), field: 'startDate');
     }
-    if (_str(t, 'endDate').isEmpty) {
+    if (_readStringField(timeOff, 'endDate').isEmpty) {
       throw ValidationException('end_date_required'.tr(), field: 'endDate');
     }
   }
 
-  static void validateAsset(Map<String, dynamic> a) {
-    if (_str(a, 'name').isEmpty) {
+  static void validateAsset(Map<String, dynamic> asset) {
+    if (_readStringField(asset, 'name').isEmpty) {
       throw ValidationException('name_required'.tr(), field: 'name');
     }
-    if (_str(a, 'type').isEmpty) {
+    if (_readStringField(asset, 'type').isEmpty) {
       throw ValidationException('asset_type_required'.tr(), field: 'type');
     }
   }
 
-  static void validateHoliday(Map<String, dynamic> h) {
-    if (_str(h, 'name').isEmpty) {
+  static void validateHoliday(Map<String, dynamic> holiday) {
+    if (_readStringField(holiday, 'name').isEmpty) {
       throw ValidationException('holiday_name_required'.tr(), field: 'name');
     }
   }
@@ -1344,6 +1337,107 @@ class WorkerIdentity {
       }
     }
     return null;
+  }
+
+  /// Normalizes a worker's primary id, preferring `workerId` over `id`.
+  static String normalizeId(Map<String, dynamic> value) {
+    final workerId = (value['workerId'] ?? '').toString().trim();
+    return workerId.isNotEmpty
+        ? workerId
+        : (value['id'] ?? '').toString().trim();
+  }
+
+  /// Matches a record (attendance/time-off/payroll) against a worker.
+  ///
+  /// A record's own `workerId` always takes precedence. Email and name are
+  /// only consulted when the record carries no id.
+  static bool recordsMatch(
+    Map<String, dynamic> record,
+    Map<String, dynamic> worker, {
+    bool allowName = true,
+  }) {
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+    final workerId = normalizeId(worker);
+    if (recordWorkerId.isNotEmpty) {
+      return workerId.isNotEmpty && recordWorkerId == workerId;
+    }
+
+    final recordEmail = normalizeEmail(record['email']);
+    final workerEmail = normalizeEmail(worker['email']);
+    if (recordEmail.isNotEmpty) {
+      return workerEmail.isNotEmpty && recordEmail == workerEmail;
+    }
+
+    if (!allowName) return false;
+
+    final recordName = normalizeName(record['name'] ?? record['workerName']);
+    final workerName = normalizeName(worker['name']);
+    return recordName.isNotEmpty && recordName == workerName;
+  }
+
+  /// True when [first] (a record) and [second] (a worker) match by id or
+  /// email, where either match is sufficient on its own.
+  static bool matchesByIdOrEmail(
+    Map<String, dynamic> first,
+    Map<String, dynamic> second,
+  ) {
+    final recordWorkerId = (first['workerId'] ?? '').toString().trim();
+    final workerId = normalizeId(second);
+    if (recordWorkerId.isNotEmpty &&
+        workerId.isNotEmpty &&
+        recordWorkerId == workerId) {
+      return true;
+    }
+
+    final recordEmail = normalizeEmail(first['email']);
+    final workerEmail = normalizeEmail(second['email']);
+    return recordEmail.isNotEmpty &&
+        workerEmail.isNotEmpty &&
+        recordEmail == workerEmail;
+  }
+
+  /// True when [first] and [second] identify the same worker, preferring id
+  /// when both carry one and falling back to email.
+  static bool samePerson(
+    Map<String, dynamic> first,
+    Map<String, dynamic> second,
+  ) {
+    final firstId = normalizeId(first);
+    final secondId = normalizeId(second);
+    if (firstId.isNotEmpty && secondId.isNotEmpty) return firstId == secondId;
+
+    final firstEmail = normalizeEmail(first['email']);
+    final secondEmail = normalizeEmail(second['email']);
+    return firstEmail.isNotEmpty && firstEmail == secondEmail;
+  }
+
+  /// Returns the first worker in [workers] matching [target] by id or email.
+  static Map<String, dynamic>? findMatchingWorker(
+    Map<String, dynamic> target,
+    Iterable<Map<String, dynamic>> workers,
+  ) {
+    for (final worker in workers) {
+      if (matchesByIdOrEmail(target, worker)) return worker;
+    }
+    return null;
+  }
+
+  /// True when [record] matches [worker] by name and that name belongs to
+  /// exactly one candidate in [candidates].
+  static bool recordsMatchByUniqueName(
+    Map<String, dynamic> record,
+    Map<String, dynamic> worker,
+    Iterable<Map<String, dynamic>> candidates,
+  ) {
+    final recordName = normalizeName(record['name'] ?? record['workerName']);
+    final workerName = normalizeName(worker['name']);
+    if (recordName.isEmpty || workerName.isEmpty || recordName != workerName) {
+      return false;
+    }
+    return candidates
+            .where((candidate) => normalizeName(candidate['name']) == workerName)
+            .length ==
+        1;
   }
 }
 

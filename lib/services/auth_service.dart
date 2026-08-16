@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -8,50 +7,35 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../firebase_options.dart';
+import '../utils/helpers.dart';
 import 'dummy_data.dart';
 import 'preferences_service.dart';
 import 'firestore_service.dart';
 import 'error_reporter.dart';
 
 class AuthService {
-
   static AuthService? _instance;
   static AuthService get instance => _instance!;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
   final User _guestUser = GuestUser();
+
+  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> companyStampNotifier = ValueNotifier<String?>(null);
 
   AuthService() {
     _instance = this;
   }
 
-  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
-  static final ValueNotifier<String?> companyStampNotifier = ValueNotifier<String?>(null);
-
   Stream<User?> get authStateChanges {
-
-    if (FirestoreService.isTesting) {
-      return Stream.value(MockUser());
-    }
-
-    if (PreferencesService.cachedIsGuest) {
-      return Stream.value(_guestUser);
-    }
-
+    if (FirestoreService.isTesting) return Stream.value(MockUser());
+    if (PreferencesService.cachedIsGuest) return Stream.value(_guestUser);
     return _auth.authStateChanges();
   }
 
   User? get currentUser {
-
-    if (FirestoreService.isTesting) {
-      return MockUser();
-    }
-
-    if (PreferencesService.cachedIsGuest) {
-      return _guestUser;
-    }
-
+    if (FirestoreService.isTesting) return MockUser();
+    if (PreferencesService.cachedIsGuest) return _guestUser;
     return _auth.currentUser;
   }
 
@@ -65,29 +49,20 @@ class AuthService {
 
   String _normalizeEmail(String email) => email.trim().toLowerCase();
 
-  String _resolvedName(
-    User user, {
-    String? preferredName,
-    required String fallback,
-  }) {
-
+  String _getDisplayName(User user, {String? preferredName, required String fallback}) {
     final preferred = preferredName?.trim() ?? '';
     if (preferred.isNotEmpty) return preferred;
 
     final current = user.displayName?.trim() ?? '';
     if (current.isNotEmpty) return current;
 
-    final email = user.email?.trim() ?? '';
-    final separator = email.indexOf('@');
-    if (separator > 0) {
-      final localPart = email.substring(0, separator).trim();
-      if (localPart.isNotEmpty) return localPart;
-    }
+    final nameFromEmail = Validators.nameFromEmail(user.email);
+    if (nameFromEmail.isNotEmpty) return nameFromEmail;
 
     return fallback;
   }
 
-  Future<void> _safeUpdateDisplayName(User user, String name) async {
+  Future<void> _updateDisplayNameIfNeeded(User user, String name) async {
     if (name.trim().isEmpty || user.displayName?.trim() == name.trim()) return;
     try {
       await user.updateDisplayName(name.trim());
@@ -100,7 +75,6 @@ class AuthService {
     required User user,
     required String name,
   }) async {
-
     final snapshot = await FirebaseFirestore.instance
         .collection('hrms_user')
         .doc(user.uid)
@@ -128,8 +102,7 @@ class AuthService {
     };
   }
 
-  Future<void> _rollbackAuthenticatedSession(String contextName) async {
-
+  Future<void> _rollbackSession(String contextName) async {
     try {
       await _auth.signOut();
     } catch (e, st) {
@@ -154,17 +127,14 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
 
     try {
-
       final credential = await _auth.createUserWithEmailAndPassword(
         email: _normalizeEmail(email),
         password: password,
       );
-
       await PreferencesService.setGuest(false);
       return credential;
     } on FirebaseAuthException {
@@ -179,31 +149,26 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
 
     UserCredential? credential;
     try {
-
       credential = await _auth.signInWithEmailAndPassword(
         email: _normalizeEmail(email),
         password: password,
       );
 
       await PreferencesService.setGuest(false);
-
       await _syncPremiumStatusFromFirestore();
-
       await _clearSeededDummyDataIfNeeded();
 
       return credential;
     } on FirebaseAuthException {
       rethrow;
     } catch (e, st) {
-
       if (credential != null) {
-        await _rollbackAuthenticatedSession('emailSignInRollback');
+        await _rollbackSession('emailSignInRollback');
       }
       ErrorReporter.report(e, st, context: 'emailSignIn');
       rethrow;
@@ -213,10 +178,8 @@ class AuthService {
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
-
     await PreferencesService.setGuest(true);
     await PreferencesService.setSessionLocked(false);
-
     await DummyData.resetToDefaults();
 
     profilePicNotifier.value = null;
@@ -226,13 +189,11 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
 
-    UserCredential? authenticatedCredential;
+    UserCredential? credential;
     try {
-
       String? clientId;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
@@ -242,44 +203,41 @@ class AuthService {
       await GoogleSignIn.instance.initialize(clientId: clientId);
       final googleUser = await GoogleSignIn.instance.authenticate();
       final googleAuth = googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
+      final googleCredential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
-      authenticatedCredential = userCredential;
+      credential = await _auth.signInWithCredential(googleCredential);
 
-      final user = userCredential.user;
+      final user = credential.user;
       if (user == null) {
         throw StateError('Google authentication returned no user');
       }
 
       await PreferencesService.setGuest(false);
 
-      final name = _resolvedName(
+      final name = _getDisplayName(
         user,
         preferredName: googleUser.displayName,
         fallback: 'User',
       );
-      await _safeUpdateDisplayName(user, name);
+      await _updateDisplayNameIfNeeded(user, name);
 
       final profile = await _ensureSocialProfile(user: user, name: name);
       await _setPremiumFromProfile(profile);
 
       await _clearSeededDummyDataIfNeeded();
 
-      return userCredential;
+      return credential;
     } on GoogleSignInException catch (e) {
-
       if (e.code == GoogleSignInExceptionCode.canceled ||
           e.code == GoogleSignInExceptionCode.interrupted) {
         return null;
       }
       rethrow;
     } catch (e, st) {
-
-      if (authenticatedCredential != null) {
-        await _rollbackAuthenticatedSession('googleSignInRollback');
+      if (credential != null) {
+        await _rollbackSession('googleSignInRollback');
       }
       ErrorReporter.report(e, st, context: 'googleSignIn');
       rethrow;
@@ -287,51 +245,45 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithApple() async {
-
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
 
-    UserCredential? authenticatedCredential;
+    UserCredential? credential;
     try {
-
       final appleProvider = OAuthProvider('apple.com');
       appleProvider.setCustomParameters({'locale': 'en'});
       appleProvider.addScope('email');
       appleProvider.addScope('name');
 
-      final userCredential = await _auth.signInWithProvider(appleProvider);
-      authenticatedCredential = userCredential;
+      credential = await _auth.signInWithProvider(appleProvider);
 
-      final user = userCredential.user;
+      final user = credential.user;
       if (user == null) {
         throw StateError('Apple authentication returned no user');
       }
 
       await PreferencesService.setGuest(false);
 
-      final name = _resolvedName(user, fallback: 'Apple User');
-      await _safeUpdateDisplayName(user, name);
+      final name = _getDisplayName(user, fallback: 'Apple User');
+      await _updateDisplayNameIfNeeded(user, name);
 
       final profile = await _ensureSocialProfile(user: user, name: name);
       await _setPremiumFromProfile(profile);
 
       await _clearSeededDummyDataIfNeeded();
 
-      return userCredential;
+      return credential;
     } on FirebaseAuthException catch (e) {
-
       if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
         return null;
       }
-
-      if (authenticatedCredential != null) {
-        await _rollbackAuthenticatedSession('appleSignInRollback');
+      if (credential != null) {
+        await _rollbackSession('appleSignInRollback');
       }
       rethrow;
     } catch (e, st) {
-
-      if (authenticatedCredential != null) {
-        await _rollbackAuthenticatedSession('appleSignInRollback');
+      if (credential != null) {
+        await _rollbackSession('appleSignInRollback');
       }
       ErrorReporter.report(e, st, context: 'appleSignIn');
       rethrow;
@@ -401,20 +353,14 @@ class AuthService {
       throw FirebaseAuthException(code: 'user-not-found');
     }
 
-    final providerIds = user.providerData
-        .map((info) => info.providerId)
-        .toSet();
+    final providerIds = user.providerData.map((info) => info.providerId).toSet();
 
     if (providerIds.contains('password')) {
       final email = user.email?.trim() ?? '';
       final enteredPassword = password ?? '';
 
-      if (email.isEmpty) {
-        throw FirebaseAuthException(code: 'email-missing');
-      }
-      if (enteredPassword.isEmpty) {
-        throw FirebaseAuthException(code: 'password-required');
-      }
+      if (email.isEmpty) throw FirebaseAuthException(code: 'email-missing');
+      if (enteredPassword.isEmpty) throw FirebaseAuthException(code: 'password-required');
 
       final credential = EmailAuthProvider.credential(
         email: email,
@@ -438,9 +384,9 @@ class AuthService {
           idToken: googleAuth.idToken,
         );
         await user.reauthenticateWithCredential(credential);
-      } on GoogleSignInException catch (error) {
-        if (error.code == GoogleSignInExceptionCode.canceled ||
-            error.code == GoogleSignInExceptionCode.interrupted) {
+      } on GoogleSignInException catch (e) {
+        if (e.code == GoogleSignInExceptionCode.canceled ||
+            e.code == GoogleSignInExceptionCode.interrupted) {
           throw FirebaseAuthException(code: 'reauthentication-cancelled');
         }
         rethrow;
@@ -475,7 +421,6 @@ class UserAvatar extends StatelessWidget {
         Widget imageWidget;
 
         if (url != null && url.isNotEmpty) {
-
           if (url.startsWith('http')) {
             imageWidget = CachedNetworkImage(
               imageUrl: url,
@@ -485,9 +430,7 @@ class UserAvatar extends StatelessWidget {
               placeholder: (context, url) => _buildFallback(size),
               errorWidget: (context, url, error) => _buildFallback(size),
             );
-          }
-
-          else if (url.startsWith('data:image')) {
+          } else if (url.startsWith('data:image')) {
             try {
               final commaIndex = url.indexOf(',');
               if (commaIndex < 0 || commaIndex == url.length - 1) {
@@ -504,9 +447,7 @@ class UserAvatar extends StatelessWidget {
             } catch (e) {
               imageWidget = _buildFallback(size);
             }
-          }
-
-          else {
+          } else {
             imageWidget = Image.file(
               File(url),
               width: size,
@@ -515,19 +456,14 @@ class UserAvatar extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) => _buildFallback(size),
             );
           }
-        }
-
-        else {
+        } else {
           imageWidget = _buildFallback(size);
         }
 
         return Container(
           width: size,
           height: size,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-          ),
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.transparent),
           child: ClipOval(child: imageWidget),
         );
       },
@@ -581,34 +517,25 @@ class GuestUser implements User {
 
   @override
   String get uid => _uid;
-
   @override
   String? get email => null;
-
   @override
   String? get displayName => 'Guest User';
-
   @override
   bool get isAnonymous => true;
-
   @override
   String? get photoURL => null;
 
   @override
   Future<void> updateDisplayName(String? displayName) async {}
-
   @override
   Future<void> updatePhotoURL(String? photoURL) async {}
-
   @override
   Future<void> updatePassword(String? password) async {}
-
   @override
   Future<void> reload() async {}
-
   @override
   Future<void> delete() async {}
-
   @override
   Future<void> sendEmailVerification([ActionCodeSettings? app]) async {}
 

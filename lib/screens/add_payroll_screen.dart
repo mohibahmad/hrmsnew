@@ -2,6 +2,7 @@ import 'dart:async' show StreamSubscription, TimeoutException, Timer;
 import 'dart:ui';
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -1195,37 +1196,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
-
-    final result = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'UnsavedChangesDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-      transitionBuilder: (ctx, animation, _, __) {
-        final curve = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutBack,
-        );
-
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: _UnsavedChangesDialog(ctx: ctx),
-            ),
-          ),
-        );
-      },
-    );
-
-    return result ?? false;
+    return UnsavedChangesDialog.show(context) ?? false;
   }
 
   @override
@@ -1857,136 +1828,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _UnsavedChangesDialog extends StatelessWidget {
-  final BuildContext ctx;
-
-  const _UnsavedChangesDialog({required this.ctx});
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 380,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x260F172A),
-              blurRadius: 24,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.warning_rounded,
-                  color: Color(0xFFEF4444),
-                  size: 36,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'discard_changes'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'unsaved_changes_message'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'SF Pro Display',
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, false),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'cancel'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, true),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x33EF4444),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'discard'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

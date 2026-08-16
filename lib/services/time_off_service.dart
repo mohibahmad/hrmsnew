@@ -10,33 +10,54 @@ class PastTimeOffEditException implements Exception {
 }
 
 class TimeOffService {
-  static const _workerLeaveFields =
-      <({String balance, String total, String available, String used})>[
-        (
-          balance: 'annualLeave',
-          total: 'annualLeaves',
-          available: 'availableAnnualLeaves',
-          used: 'annualLeavesUsed',
-        ),
-        (
-          balance: 'sickLeave',
-          total: 'sickLeaves',
-          available: 'availableSickLeaves',
-          used: 'sickLeavesUsed',
-        ),
-        (
-          balance: 'casualLeave',
-          total: 'casualLeaves',
-          available: 'availableCasualLeaves',
-          used: 'casualLeavesUsed',
-        ),
-        (
-          balance: 'medicalLeave',
-          total: 'medicalLeaves',
-          available: 'availableMedicalLeaves',
-          used: 'medicalLeavesUsed',
-        ),
-      ];
+  static const _workerLeaveFields = <({String balance, String total, String available, String used})>[
+    (
+      balance: 'annualLeave',
+      total: 'annualLeaves',
+      available: 'availableAnnualLeaves',
+      used: 'annualLeavesUsed',
+    ),
+    (
+      balance: 'sickLeave',
+      total: 'sickLeaves',
+      available: 'availableSickLeaves',
+      used: 'sickLeavesUsed',
+    ),
+    (
+      balance: 'casualLeave',
+      total: 'casualLeaves',
+      available: 'availableCasualLeaves',
+      used: 'casualLeavesUsed',
+    ),
+    (
+      balance: 'medicalLeave',
+      total: 'medicalLeaves',
+      available: 'availableMedicalLeaves',
+      used: 'medicalLeavesUsed',
+    ),
+  ];
+
+  static const Set<String> paidLeaveTypes = {
+    'Annual Leave',
+    'Sick Leave',
+    'Casual Leave',
+    'Medical Leave',
+    'Maternity Leave',
+    'Paternity Leave',
+    'Hajj Leave',
+    'Emergency Leave',
+    'Study Leave',
+    'Compensatory Leave',
+  };
+
+  static const Set<String> unpaidLeaveTypes = {'Unpaid Leave'};
+
+  static const Set<String> _cancelledStatuses = {
+    'cancelled',
+    'canceled',
+    'rejected',
+    'declined',
+  };
 
   static int _leaveInt(dynamic value) {
     final parsed = value is num
@@ -60,22 +81,20 @@ class TimeOffService {
     var totalUsed = 0;
 
     for (final fields in _workerLeaveFields) {
-      final hasOverride = explicitBalances.containsKey(fields.balance);
-      final hasNestedBalance = storedBalances.containsKey(fields.balance);
-      final hasTopLevelBalance = worker.containsKey(fields.available);
-      final hasAvailable =
-          hasOverride || hasNestedBalance || hasTopLevelBalance;
-
-      final rawAvailable = hasOverride
+      final rawAvailable = explicitBalances.containsKey(fields.balance)
           ? explicitBalances[fields.balance]
-          : hasTopLevelBalance
+          : worker.containsKey(fields.available)
           ? worker[fields.available]
           : storedBalances[fields.balance];
+      
       final storedTotal = _leaveInt(worker[fields.total]);
       final storedUsed = _leaveInt(worker[fields.used]);
-      var available = hasAvailable
-          ? _leaveInt(rawAvailable)
-          : (storedTotal - storedUsed).clamp(0, storedTotal).toInt();
+      
+      var available = _leaveInt(rawAvailable);
+      if (!explicitBalances.containsKey(fields.balance) && 
+          !worker.containsKey(fields.available)) {
+        available = (storedTotal - storedUsed).clamp(0, storedTotal).toInt();
+      }
 
       final inferredTotal = available + storedUsed;
       final total = storedTotal > 0 ? storedTotal : inferredTotal;
@@ -103,8 +122,7 @@ class TimeOffService {
         final currentMap = Map<String, dynamic>.from(current);
         final expectedMap = entry.value as Map<String, int>;
         for (final balance in expectedMap.entries) {
-          if (currentMap[balance.key] is! int ||
-              currentMap[balance.key] != balance.value) {
+          if (currentMap[balance.key] is! int || currentMap[balance.key] != balance.value) {
             return false;
           }
         }
@@ -114,21 +132,6 @@ class TimeOffService {
     }
     return true;
   }
-
-  static const Set<String> paidLeaveTypes = {
-    'Annual Leave',
-    'Sick Leave',
-    'Casual Leave',
-    'Medical Leave',
-    'Maternity Leave',
-    'Paternity Leave',
-    'Hajj Leave',
-    'Emergency Leave',
-    'Study Leave',
-    'Compensatory Leave',
-  };
-
-  static const Set<String> unpaidLeaveTypes = {'Unpaid Leave'};
 
   static String normalizeLeaveType(String type) {
     final normalized = type.trim();
@@ -169,41 +172,25 @@ class TimeOffService {
 
   static String leaveType(Map<String, dynamic> record) {
     return normalizeLeaveType(
-      (record['action'] ?? record['type'] ?? record['leaveType'] ?? '')
-          .toString(),
+      (record['action'] ?? record['type'] ?? record['leaveType'] ?? '').toString(),
     );
   }
 
-  static bool recordHasLeaveType(
-    Map<String, dynamic> record,
-    String expectedType,
-  ) {
+  static bool recordHasLeaveType(Map<String, dynamic> record, String expectedType) {
     return leaveType(record) == normalizeLeaveType(expectedType);
   }
 
-  static bool isPaidLeaveType(String type) =>
-      paidLeaveTypes.contains(normalizeLeaveType(type));
-
-  static bool isUnpaidLeaveType(String type) =>
-      unpaidLeaveTypes.contains(normalizeLeaveType(type));
+  static bool isPaidLeaveType(String type) => paidLeaveTypes.contains(normalizeLeaveType(type));
+  static bool isUnpaidLeaveType(String type) => unpaidLeaveTypes.contains(normalizeLeaveType(type));
 
   static bool isCancelledRecord(Map<String, dynamic> record) {
     final status = (record['status'] ?? '').toString().trim().toLowerCase();
-    return const {
-      'cancelled',
-      'canceled',
-      'rejected',
-      'declined',
-    }.contains(status);
+    return _cancelledStatuses.contains(status);
   }
 
-  static bool isActiveRecord(Map<String, dynamic> record) =>
-      !isCancelledRecord(record);
+  static bool isActiveRecord(Map<String, dynamic> record) => !isCancelledRecord(record);
 
-  static bool isEditableRecord(
-    Map<String, dynamic> record, {
-    DateTime? referenceDate,
-  }) {
+  static bool isEditableRecord(Map<String, dynamic> record, {DateTime? referenceDate}) {
     if (!isActiveRecord(record)) return false;
     final dates = selectedDatesForRecord(record);
     if (dates.isEmpty) return false;
@@ -219,13 +206,9 @@ class TimeOffService {
   }) {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final newSet = newDates
-        .map((d) => DateTime(d.year, d.month, d.day))
-        .toSet();
+    final newSet = newDates.map((d) => DateTime(d.year, d.month, d.day)).toSet();
     return oldDates.any(
-      (d) =>
-          d.isBefore(today) &&
-          !newSet.contains(DateTime(d.year, d.month, d.day)),
+      (d) => d.isBefore(today) && !newSet.contains(DateTime(d.year, d.month, d.day)),
     );
   }
 
@@ -243,10 +226,8 @@ class TimeOffService {
       final recordId = (record['id'] ?? '').toString().trim();
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = (record['email'] ?? '').toString().trim().toLowerCase();
-      final name = (record['name'] ?? record['workerName'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
+      final name = (record['name'] ?? record['workerName'] ?? '').toString().trim().toLowerCase();
+      
       final workerKey = workerId.isNotEmpty
           ? 'id:$workerId'
           : email.isNotEmpty
@@ -254,7 +235,6 @@ class TimeOffService {
           : 'name:$name';
       keys.add('$recordId|$workerKey|${leaveType(record)}');
     }
-
     return keys;
   }
 
@@ -277,11 +257,8 @@ class TimeOffService {
       final converted = value.toDate();
       return DateTime(converted.year, converted.month, converted.day);
     }
-
     final parsed = AppDateUtils.dateFromValue(value);
-    return parsed == null
-        ? null
-        : DateTime(parsed.year, parsed.month, parsed.day);
+    return parsed == null ? null : DateTime(parsed.year, parsed.month, parsed.day);
   }
 
   static List<DateTime> inclusiveDateRange(DateTime start, DateTime end) {
@@ -300,9 +277,7 @@ class TimeOffService {
   static List<DateTime> selectedDatesForRecord(Map<String, dynamic> record) {
     final explicitDates = record['selectedDates'];
     if (explicitDates is Iterable) {
-      final dates =
-          explicitDates.map(parseDate).whereType<DateTime>().toSet().toList()
-            ..sort();
+      final dates = explicitDates.map(parseDate).whereType<DateTime>().toSet().toList()..sort();
       if (dates.isNotEmpty) return dates;
     }
 
@@ -311,11 +286,7 @@ class TimeOffService {
     if (start == null || end == null || end.isBefore(start)) return const [];
 
     final dates = <DateTime>[];
-    for (
-      var date = start;
-      !date.isAfter(end);
-      date = date.add(const Duration(days: 1))
-    ) {
+    for (var date = start; !date.isAfter(end); date = date.add(const Duration(days: 1))) {
       dates.add(date);
     }
     return dates;
@@ -329,30 +300,23 @@ class TimeOffService {
   }) {
     final date = onDate ?? DateTime.now();
     final target = DateTime(date.year, date.month, date.day);
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-    final excludeId = (excludingRecordId ?? '').trim();
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
+      
       final leaveId = (leave['id'] ?? '').toString().trim();
-      if (excludeId.isNotEmpty && leaveId.isNotEmpty && leaveId == excludeId) {
+      if (excludingRecordId?.isNotEmpty == true && leaveId.isNotEmpty && leaveId == excludingRecordId) {
         continue;
       }
-      if (!_belongsToWorker(
-        leave,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
+      
+      if (!_belongsToWorker(leave, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
 
-      final leaveDates = selectedDatesForRecord(leave);
-      if (leaveDates.contains(target)) return leave;
+      if (selectedDatesForRecord(leave).contains(target)) return leave;
     }
     return null;
   }
@@ -363,32 +327,28 @@ class TimeOffService {
   }) {
     final combined = List<Map<String, dynamic>>.from(timeOffRecords);
     final existingDates = <DateTime>{};
+    
     for (final record in timeOffRecords) {
-      if (!isActiveRecord(record)) continue;
-      existingDates.addAll(selectedDatesForRecord(record));
+      if (isActiveRecord(record)) {
+        existingDates.addAll(selectedDatesForRecord(record));
+      }
     }
 
     for (final att in attendanceRecords) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
-      if (status != 'leave' &&
-          status != 'onleave' &&
-          status != 'on leave' &&
-          status != 'l') {
-        continue;
-      }
+      if (!{'leave', 'onleave', 'on leave', 'l'}.contains(status)) continue;
+      
       final date = AppDateUtils.attendanceRecordDate(att);
       if (date == null) continue;
+      
       final dateOnly = DateTime(date.year, date.month, date.day);
       if (existingDates.contains(dateOnly)) continue;
 
       final dateStr = AppDateUtils.formatDate(dateOnly);
       final workerId = (att['workerId'] ?? '').toString().trim();
-      final workerName = (att['name'] ?? att['workerName'] ?? '')
-          .toString()
-          .trim();
+      final workerName = (att['name'] ?? att['workerName'] ?? '').toString().trim();
       final workerEmail = (att['email'] ?? '').toString().trim();
-      final lType = (att['leaveType'] ?? att['type'] ?? 'Annual Leave')
-          .toString();
+      final lType = (att['leaveType'] ?? att['type'] ?? 'Annual Leave').toString();
 
       combined.add({
         'id': 'att_leave_${att['id'] ?? workerId}_$dateStr',
@@ -413,25 +373,16 @@ class TimeOffService {
     List<Map<String, dynamic>> timeOffRecords,
   ) {
     final dates = <DateTime>{};
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
 
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
-      if (!_belongsToWorker(
-        leave,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
+      if (!_belongsToWorker(leave, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
-
-      final leaveDates = selectedDatesForRecord(leave);
-      dates.addAll(leaveDates);
+      dates.addAll(selectedDatesForRecord(leave));
     }
     return dates;
   }
@@ -440,7 +391,9 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
     DateTime? onDate,
-  }) => activeLeaveForWorker(worker, timeOffRecords, onDate: onDate) != null;
+  }) {
+    return activeLeaveForWorker(worker, timeOffRecords, onDate: onDate) != null;
+  }
 
   static bool _belongsToWorker(
     Map<String, dynamic> record, {
@@ -453,14 +406,13 @@ class TimeOffService {
     if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
       return workerId == recordWorkerId;
     }
+    
     final leaveEmail = (record['email'] ?? '').toString().trim().toLowerCase();
     if (workerEmail.isNotEmpty && leaveEmail.isNotEmpty) {
       return workerEmail == leaveEmail;
     }
-    final leaveName = (record['name'] ?? record['workerName'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    
+    final leaveName = (record['name'] ?? record['workerName'] ?? '').toString().trim().toLowerCase();
     return isUniqueName && workerName.isNotEmpty && workerName == leaveName;
   }
 
@@ -471,26 +423,16 @@ class TimeOffService {
   }) {
     if (timeOffRecords.isEmpty) return 0;
 
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
     final usedDates = <DateTime>{};
 
     for (final record in timeOffRecords) {
       if (!isActiveRecord(record)) continue;
-      if (excludingRecordId != null &&
-          record['id']?.toString() == excludingRecordId) {
-        continue;
-      }
+      if (excludingRecordId != null && record['id']?.toString() == excludingRecordId) continue;
       if (!isPaidRecord(record)) continue;
-      if (!_belongsToWorker(
-        record,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
+      if (!_belongsToWorker(record, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
       usedDates.addAll(selectedDatesForRecord(record));
@@ -508,9 +450,7 @@ class TimeOffService {
       timeOffRecords,
       excludingRecordId: excludingRecordId,
     );
-    return {
-      for (final entry in datesByType.entries) entry.key: entry.value.length,
-    };
+    return {for (final entry in datesByType.entries) entry.key: entry.value.length};
   }
 
   static Map<String, Set<DateTime>> assignedLeaveDatesForWorkerByType(
@@ -526,39 +466,24 @@ class TimeOffService {
     };
     if (timeOffRecords.isEmpty) return datesByType;
 
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-    final matchingRecords =
-        timeOffRecords.where((record) {
-          if (!isActiveRecord(record) || !isPaidRecord(record)) return false;
-          if (excludingRecordId != null &&
-              record['id']?.toString() == excludingRecordId) {
-            return false;
-          }
-          return _belongsToWorker(
-            record,
-            workerId: workerId,
-            workerEmail: workerEmail,
-            workerName: workerName,
-          );
-        }).toList()..sort((a, b) {
-          final aFromAttendance =
-              (a['source'] ?? '').toString().trim().toLowerCase() ==
-              'attendance';
-          final bFromAttendance =
-              (b['source'] ?? '').toString().trim().toLowerCase() ==
-              'attendance';
-          if (aFromAttendance != bFromAttendance) {
-            return aFromAttendance ? 1 : -1;
-          }
-          return (a['id'] ?? '').toString().compareTo(
-            (b['id'] ?? '').toString(),
-          );
-        });
+    final matchingRecords = timeOffRecords.where((record) {
+      if (!isActiveRecord(record) || !isPaidRecord(record)) return false;
+      if (excludingRecordId != null && record['id']?.toString() == excludingRecordId) {
+        return false;
+      }
+      return _belongsToWorker(record, workerId: workerId, workerEmail: workerEmail, workerName: workerName);
+    }).toList()..sort((a, b) {
+      final aFromAttendance = (a['source'] ?? '').toString().trim().toLowerCase() == 'attendance';
+      final bFromAttendance = (b['source'] ?? '').toString().trim().toLowerCase() == 'attendance';
+      if (aFromAttendance != bFromAttendance) {
+        return aFromAttendance ? 1 : -1;
+      }
+      return (a['id'] ?? '').toString().compareTo((b['id'] ?? '').toString());
+    });
 
     final claimedDates = <DateTime>{};
     for (final record in matchingRecords) {
@@ -576,7 +501,7 @@ class TimeOffService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
   ) {
-    const balanceFields = <String, String>{
+    const balanceFields = {
       'Annual Leave': 'annualLeave',
       'Sick Leave': 'sickLeave',
       'Casual Leave': 'casualLeave',
@@ -585,11 +510,9 @@ class TimeOffService {
     final assigned = paidDaysUsedForWorkerByType(worker, timeOffRecords);
     return {
       for (final entry in balanceFields.entries)
-        entry.value:
-            (configuredLimitForType(worker, entry.key) -
-                    (assigned[entry.key] ?? 0))
-                .clamp(0, configuredLimitForType(worker, entry.key))
-                .toInt(),
+        entry.value: (configuredLimitForType(worker, entry.key) - (assigned[entry.key] ?? 0))
+            .clamp(0, configuredLimitForType(worker, entry.key))
+            .toInt(),
     };
   }
 
@@ -598,26 +521,17 @@ class TimeOffService {
     List<Map<String, dynamic>> timeOffRecords,
   ) {
     final result = assignedLeaveDatesForWorkerByType(worker, timeOffRecords);
-
-    return {
-      for (final entry in result.entries)
-        entry.key: entry.value.toList()..sort(),
-    };
+    return {for (final entry in result.entries) entry.key: entry.value.toList()..sort()};
   }
 
   static int configuredPaidLeaveAllowance(Map<String, dynamic> worker) {
     final rawAnnual = worker['annualLeaves'];
-    final annual = rawAnnual is num
-        ? rawAnnual.toInt()
-        : int.tryParse((rawAnnual ?? '').toString()) ?? 0;
-
+    final annual = rawAnnual is num ? rawAnnual.toInt() : int.tryParse((rawAnnual ?? '').toString()) ?? 0;
     if (annual > 0) return annual;
 
     final sick = int.tryParse((worker['sickLeaves'] ?? '').toString()) ?? 5;
     final casual = int.tryParse((worker['casualLeaves'] ?? '').toString()) ?? 5;
-    final medical =
-        int.tryParse((worker['medicalLeaves'] ?? '').toString()) ?? 1;
-
+    final medical = int.tryParse((worker['medicalLeaves'] ?? '').toString()) ?? 1;
     final total = sick + casual + medical;
     return total > 0 ? total : 25;
   }
@@ -629,12 +543,7 @@ class TimeOffService {
   }) {
     final total = configuredPaidLeaveAllowance(worker);
     if (timeOffRecords.isEmpty) return total;
-
-    final used = paidDaysUsedForWorker(
-      worker,
-      timeOffRecords,
-      excludingRecordId: excludingRecordId,
-    );
+    final used = paidDaysUsedForWorker(worker, timeOffRecords, excludingRecordId: excludingRecordId);
     return (total - used).clamp(0, total).toInt();
   }
 
@@ -648,8 +557,7 @@ class TimeOffService {
       worker,
       timeOffRecords,
       type,
-      excludingRecordId:
-          editingRecord != null && recordHasLeaveType(editingRecord, type)
+      excludingRecordId: editingRecord != null && recordHasLeaveType(editingRecord, type)
           ? editingRecord['id']?.toString()
           : null,
     );
@@ -663,8 +571,7 @@ class TimeOffService {
     int selectedDays,
   ) {
     final total = configuredLimitForType(worker, type);
-    final excludingRecordId =
-        editingRecord != null && recordHasLeaveType(editingRecord, type)
+    final excludingRecordId = editingRecord != null && recordHasLeaveType(editingRecord, type)
         ? editingRecord['id']?.toString()
         : null;
     final assigned = assignedLeaveDatesForWorkerByType(
@@ -680,10 +587,7 @@ class TimeOffService {
     final normType = normalizeLeaveType(type);
     switch (normType) {
       case 'Annual Leave':
-        return int.tryParse(
-              worker['annualLeaves']?.toString() ?? '0',
-            ) ??
-            0;
+        return int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
       case 'Sick Leave':
         return int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
       case 'Casual Leave':
@@ -704,33 +608,21 @@ class TimeOffService {
     final normType = normalizeLeaveType(type);
     final limit = configuredLimitForType(worker, normType);
     if (limit <= 0) return 0;
-
-    final used =
-        assignedLeaveDatesForWorkerByType(
-          worker,
-          timeOffRecords,
-          excludingRecordId: excludingRecordId,
-        )[normType]?.length ??
-        0;
+    final used = assignedLeaveDatesForWorkerByType(
+      worker,
+      timeOffRecords,
+      excludingRecordId: excludingRecordId,
+    )[normType]?.length ?? 0;
     return (limit - used).clamp(0, limit).toInt();
   }
 
   static int totalAvailableLeaves(Map<String, dynamic> worker) {
-    final balances =
-        canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
+    final balances = canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
     return balances.values.fold(0, (total, value) => total + value);
   }
 
-  static bool isWorkerLimitReached(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> timeOffRecords,
-  ) {
-    const types = [
-      'Annual Leave',
-      'Sick Leave',
-      'Casual Leave',
-      'Medical Leave',
-    ];
+  static bool isWorkerLimitReached(Map<String, dynamic> worker, List<Map<String, dynamic>> timeOffRecords) {
+    const types = ['Annual Leave', 'Sick Leave', 'Casual Leave', 'Medical Leave'];
     for (final type in types) {
       if (remainingForType(worker, timeOffRecords, type) > 0) {
         return false;
@@ -745,27 +637,15 @@ class TimeOffService {
     Iterable<DateTime> requestedDates, {
     String? excludingRecordId,
   }) {
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    final requested = requestedDates
-        .map((date) => DateTime(date.year, date.month, date.day))
-        .toSet();
+    final requested = requestedDates.map((date) => DateTime(date.year, date.month, date.day)).toSet();
 
     for (final record in timeOffRecords) {
       if (!isActiveRecord(record)) continue;
-      if (excludingRecordId != null &&
-          record['id']?.toString() == excludingRecordId) {
-        continue;
-      }
-      if (!_belongsToWorker(
-        record,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
+      if (excludingRecordId != null && record['id']?.toString() == excludingRecordId) continue;
+      if (!_belongsToWorker(record, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
       if (selectedDatesForRecord(record).any(requested.contains)) return true;
@@ -783,31 +663,21 @@ class TimeOffService {
   }) {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
     final paidDates = <DateTime>{};
     final unpaidDates = <DateTime>{};
 
-    final normStart = startDate == null
-        ? null
-        : DateTime(startDate.year, startDate.month, startDate.day);
-    final normEnd = endDate == null
-        ? null
-        : DateTime(endDate.year, endDate.month, endDate.day);
+    final normStart = startDate == null ? null : DateTime(startDate.year, startDate.month, startDate.day);
+    final normEnd = endDate == null ? null : DateTime(endDate.year, endDate.month, endDate.day);
 
     for (final record in timeOffRecords) {
       if (!isActiveRecord(record)) continue;
-      if (!_belongsToWorker(
-        record,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
+      if (!_belongsToWorker(record, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
+      
       final dates = selectedDatesForRecord(record).where((date) {
         if (date.isAfter(today)) return false;
         if (normStart != null && normEnd != null) {
@@ -815,6 +685,7 @@ class TimeOffService {
         }
         return date.year == month.year && date.month == month.month;
       });
+      
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);
       } else if (isUnpaidRecord(record)) {

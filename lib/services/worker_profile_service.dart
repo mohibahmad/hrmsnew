@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
@@ -9,13 +8,17 @@ import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../utils/helpers.dart';
+import '../utils/image_loader.dart';
+import '../utils/pdf_helpers.dart';
 
 const int _maxPdfImageDimension = 400;
 
 class WorkerProfileService {
   static const int _maxProfileImageBytes = 10 * 1024 * 1024;
   static const Duration _imageLoadTimeout = Duration(seconds: 3);
+  static const int _maxCacheSize = 20;
   static final Map<String, Uint8List?> _imageCache = {};
+  static final List<String> _cacheKeys = [];
 
   static Future<Uint8List> generateWorkerProfile({
     required String name,
@@ -48,7 +51,6 @@ class WorkerProfileService {
     } catch (_) {}
 
     final rawProfileBytes = await _loadImageBytes(profileImageUrl);
-
     Uint8List? rawStampBytes;
     final stampSource = (companyStampImageUrl ?? '').trim();
     if (stampSource.isNotEmpty) {
@@ -97,16 +99,18 @@ class WorkerProfileService {
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return bytes;
-      final needsResize =
-          decoded.width > _maxPdfImageDimension ||
-          decoded.height > _maxPdfImageDimension;
+      
+      final needsResize = decoded.width > _maxPdfImageDimension || 
+                          decoded.height > _maxPdfImageDimension;
       if (!needsResize) return bytes;
+      
       final resized = img.copyResize(
         decoded,
         width: decoded.width >= decoded.height ? _maxPdfImageDimension : null,
         height: decoded.height > decoded.width ? _maxPdfImageDimension : null,
         interpolation: img.Interpolation.linear,
       );
+      
       if (decoded.hasAlpha) {
         return Uint8List.fromList(img.encodePng(resized));
       }
@@ -118,241 +122,90 @@ class WorkerProfileService {
 
   static Map<String, String> _collectStrings() {
     return {
-      'worker_profile': _localized('worker_profile', 'Worker Profile'),
-      'worker_detail': _localized('worker_detail', 'Employee Details'),
-      'contact_no_label': _localized('contact_no_label', 'Contact'),
-      'work_type': _localized('work_type', 'Work'),
-      'personal_information': _localized(
-        'personal_information',
-        'Personal Information',
-      ),
-      'experience': _localized('experience', 'Work Summary'),
-      'worker_name_label': _localized('worker_name_label', 'Name'),
-      'father_husband_name': _localized(
-        'father_husband_name',
-        'Father / Husband Name',
-      ),
-      'position': _localized('position', 'Position'),
-      'national_id': _localized('national_id', 'National ID'),
-      'gender': _localized('gender', 'Gender'),
-      'date_of_birth': _localized('date_of_birth', 'Date of Birth'),
-      'worker_email': _localized('worker_email', 'Email'),
-      'joining_date': _localized('joining_date', 'Joining Date'),
-      'attendance_type': _localized('attendance_type', 'Attendance Type'),
-      'experience_level': _localized('experience_level', 'Experience Level'),
-      'religion_title': _localized('religion_title', 'Religion'),
-      'education_title': _localized('education_title', 'Education'),
-      'relationship_status': _localized('relationship_status', 'Relationship'),
-      'address': _localized('address', 'Address'),
-      'salary': _localized('salary', 'Salary'),
-      'field': _localized('field', 'Field'),
-      'details': _localized('details', 'Details'),
-      'authorized_signatory': _localized(
-        'authorized_signatory',
-        'Authorized Signatory',
-      ),
-      'generated_on': _localized('generated_on', 'Generated on'),
+      'worker_profile': PdfHelpers.translate('worker_profile', 'Worker Profile'),
+      'worker_detail': PdfHelpers.translate('worker_detail', 'Employee Details'),
+      'contact_no_label': PdfHelpers.translate('contact_no_label', 'Contact'),
+      'work_type': PdfHelpers.translate('work_type', 'Employment Type'),
+      'personal_information': PdfHelpers.translate('personal_information', 'Personal Information'),
+      'experience': PdfHelpers.translate('experience', 'Work Summary'),
+      'worker_name_label': PdfHelpers.translate('worker_name_label', 'Name'),
+      'father_husband_name': PdfHelpers.translate('father_husband_name', 'Father / Husband Name'),
+      'position': PdfHelpers.translate('position', 'Position'),
+      'national_id': PdfHelpers.translate('national_id', 'National ID'),
+      'gender': PdfHelpers.translate('gender', 'Gender'),
+      'date_of_birth': PdfHelpers.translate('date_of_birth', 'Date of Birth'),
+      'worker_email': PdfHelpers.translate('worker_email', 'Email'),
+      'joining_date': PdfHelpers.translate('joining_date', 'Joining Date'),
+      'attendance_type': PdfHelpers.translate('attendance_type', 'Work Model'),
+      'experience_level': PdfHelpers.translate('experience_level', 'Experience Level'),
+      'religion_title': PdfHelpers.translate('religion_title', 'Religion'),
+      'education_title': PdfHelpers.translate('education_title', 'Education'),
+      'relationship_status': PdfHelpers.translate('relationship_status', 'Relationship'),
+      'address': PdfHelpers.translate('address', 'Address'),
+      'salary': PdfHelpers.translate('salary', 'Salary'),
+      'field': PdfHelpers.translate('field', 'Field'),
+      'details': PdfHelpers.translate('details', 'Details'),
+      'authorized_signatory': PdfHelpers.translate('authorized_signatory', 'Authorized Signatory'),
+      'generated_on': PdfHelpers.translate('generated_on', 'Generated on'),
     };
   }
 
   static Future<Uint8List?> _loadImageBytes(String? source) async {
     final value = source?.trim() ?? '';
     if (value.isEmpty) return null;
-    if (_imageCache.containsKey(value)) return _imageCache[value];
-
-    Uint8List? bytes;
-    if (value.startsWith('data:image/')) {
-      bytes = _decodeDataImage(value);
-    } else {
-      final uri = Uri.tryParse(value);
-      if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-        bytes = await _downloadImage(uri);
-      } else if (uri != null && uri.scheme == 'file') {
-        bytes = await _readImageFile(File.fromUri(uri));
-      } else {
-        bytes = await _readImageFile(File(value));
-        bytes ??= await _readAssetImage(value);
-      }
+    if (_imageCache.containsKey(value)) {
+      _cacheKeys.remove(value);
+      _cacheKeys.add(value);
+      return _imageCache[value];
     }
 
-    if (bytes == null ||
-        bytes.isEmpty ||
-        bytes.lengthInBytes > _maxProfileImageBytes) {
-      return null;
+    final bytes = await ImageLoader.load(
+      source: source,
+      maxSizeBytes: _maxProfileImageBytes,
+      timeout: _imageLoadTimeout,
+    );
+
+    if (bytes == null) return null;
+
+    if (_cacheKeys.length >= _maxCacheSize) {
+      final oldest = _cacheKeys.removeAt(0);
+      _imageCache.remove(oldest);
     }
-    if (!_isSupportedImageBytes(bytes)) return null;
     _imageCache[value] = bytes;
+    _cacheKeys.add(value);
     return bytes;
   }
 
-  static Uint8List? _decodeDataImage(String value) {
-    try {
-      final separator = value.indexOf(',');
-      if (separator <= 5) return null;
-      final metadata = value.substring(5, separator).toLowerCase();
-      if (!metadata.startsWith('image/') || !metadata.contains(';base64')) {
-        return null;
-      }
-      final encoded = value
-          .substring(separator + 1)
-          .replaceAll(RegExp(r'\s+'), '');
-      if (encoded.isEmpty ||
-          encoded.length > ((_maxProfileImageBytes * 4) ~/ 3) + 16) {
-        return null;
-      }
-      final bytes = base64Decode(encoded);
-      return bytes.lengthInBytes <= _maxProfileImageBytes ? bytes : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<Uint8List?> _downloadImage(Uri uri) async {
-    if (kIsWeb) {
-      try {
-        final data = await NetworkAssetBundle(
-          uri,
-        ).load(uri.toString()).timeout(_imageLoadTimeout);
-        if (data.lengthInBytes > _maxProfileImageBytes) return null;
-        return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      } catch (_) {
-        return null;
-      }
-    }
-
-    final client = HttpClient()..connectionTimeout = _imageLoadTimeout;
-    try {
-      final request = await client.getUrl(uri).timeout(_imageLoadTimeout);
-      request.followRedirects = true;
-      request.maxRedirects = 5;
-      final response = await request.close().timeout(_imageLoadTimeout);
-      if (response.statusCode != HttpStatus.ok) return null;
-
-      final contentType = response.headers.contentType?.mimeType.toLowerCase();
-      if (contentType != null &&
-          (contentType.startsWith('text/html') ||
-              contentType.startsWith('application/json'))) {
-        return null;
-      }
-
-      final contentLength = response.contentLength;
-      if (contentLength > _maxProfileImageBytes) return null;
-
-      final bytes = BytesBuilder(copy: false);
-      var total = 0;
-      await for (final chunk in response.timeout(_imageLoadTimeout)) {
-        total += chunk.length;
-        if (total > _maxProfileImageBytes) return null;
-        bytes.add(chunk);
-      }
-      return bytes.takeBytes();
-    } catch (_) {
-      return null;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  static Future<Uint8List?> _readImageFile(File file) async {
-    try {
-      if (!await file.exists().timeout(_imageLoadTimeout)) return null;
-      final length = await file.length().timeout(_imageLoadTimeout);
-      if (length <= 0 || length > _maxProfileImageBytes) return null;
-      return await file.readAsBytes().timeout(_imageLoadTimeout);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<Uint8List?> _readAssetImage(String path) async {
-    try {
-      final data = await rootBundle.load(path).timeout(_imageLoadTimeout);
-      if (data.lengthInBytes <= 0 ||
-          data.lengthInBytes > _maxProfileImageBytes) {
-        return null;
-      }
-      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static bool _isSupportedImageBytes(Uint8List bytes) {
-    if (bytes.lengthInBytes >= 8 &&
-        bytes[0] == 0x89 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x4E &&
-        bytes[3] == 0x47 &&
-        bytes[4] == 0x0D &&
-        bytes[5] == 0x0A &&
-        bytes[6] == 0x1A &&
-        bytes[7] == 0x0A) {
-      return true;
-    }
-    if (bytes.lengthInBytes >= 3 &&
-        bytes[0] == 0xFF &&
-        bytes[1] == 0xD8 &&
-        bytes[2] == 0xFF) {
-      return true;
-    }
-    if (bytes.lengthInBytes >= 6) {
-      final header = ascii.decode(bytes.sublist(0, 6), allowInvalid: true);
-      if (header == 'GIF87a' || header == 'GIF89a') return true;
-    }
-    if (bytes.lengthInBytes >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
-      return true;
-    }
-    if (bytes.lengthInBytes >= 12) {
-      final riff = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
-      final webp = ascii.decode(bytes.sublist(8, 12), allowInvalid: true);
-      if (riff == 'RIFF' && webp == 'WEBP') return true;
-    }
-    return false;
-  }
-
-  static Future<bool> shareWorkerProfile(
-    Uint8List bytes,
-    String fileName, {
-    String? dialogTitle,
-  }) {
+  static Future<bool> shareWorkerProfile(Uint8List bytes, String fileName, {String? dialogTitle}) {
     return _saveWorkerProfile(bytes, fileName, dialogTitle: dialogTitle);
   }
 
-  static Future<bool> downloadWorkerProfile(
-    Uint8List bytes,
-    String fileName, {
-    String? dialogTitle,
-  }) {
+  static Future<bool> downloadWorkerProfile(Uint8List bytes, String fileName, {String? dialogTitle}) {
     return _saveWorkerProfile(bytes, fileName, dialogTitle: dialogTitle);
   }
 
-  static Future<bool> _saveWorkerProfile(
-    Uint8List bytes,
-    String fileName, {
-    String? dialogTitle,
-  }) async {
+  static Future<bool> _saveWorkerProfile(Uint8List bytes, String fileName, {String? dialogTitle}) async {
     if (bytes.isEmpty) {
-      throw StateError(
-        _localized('unexpected_error', 'Unable to save worker profile'),
-      );
+      throw StateError(PdfHelpers.translate('unexpected_error', 'Unable to save worker profile'));
     }
 
     final result = await FilePicker.saveFile(
       dialogTitle: dialogTitle?.trim().isNotEmpty == true
           ? dialogTitle!.trim()
-          : '${_localized('save', 'Save')} '
-                '${_localized('worker_profile', 'Worker Profile')}',
+          : '${PdfHelpers.translate('save', 'Save')} ${PdfHelpers.translate('worker_profile', 'Worker Profile')}',
       fileName: _safePdfFileName(fileName),
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
       bytes: bytes,
     );
+    
     if (result == null || result.trim().isEmpty) return false;
 
     var outputPath = result.trim();
     if (!outputPath.toLowerCase().endsWith('.pdf')) {
       outputPath = '$outputPath.pdf';
     }
+    
     await File(outputPath).writeAsBytes(bytes, flush: true);
     await FileOpener.open(outputPath);
     return true;
@@ -362,6 +215,7 @@ class WorkerProfileService {
     final segments = fileName.trim().split(RegExp(r'[\\/]'));
     var name = segments.isEmpty ? '' : segments.last.trim();
     name = name.replaceAll(RegExp(r'[:*?"<>|]'), '_');
+    
     if (name.isEmpty || name == '.' || name == '..') {
       name = 'worker_profile.pdf';
     }
@@ -383,11 +237,6 @@ String _profileInitial(String name) {
   if (words.isEmpty || words.first.isEmpty) return ('WORK', 'PROFILE');
   if (words.length == 1) return (words.first, '');
   return (words.first, words.skip(1).join(' '));
-}
-
-String _localized(String key, String fallback) {
-  final translated = key.tr().trim();
-  return translated.isEmpty || translated == key ? fallback : translated;
 }
 
 pw.Widget _label(String text) {
@@ -424,10 +273,7 @@ pw.Widget _detailRow(String label, String value) {
           width: 95,
           child: pw.Text(
             label,
-            style: pw.TextStyle(
-              fontSize: 10,
-              color: PdfColor.fromHex('#6B7280'),
-            ),
+            style: pw.TextStyle(fontSize: 10, color: PdfColor.fromHex('#6B7280')),
           ),
         ),
         pw.Expanded(
@@ -445,15 +291,9 @@ pw.Widget _detailRow(String label, String value) {
   );
 }
 
-pw.TableRow _tableRow(
-  List<String> cells,
-  PdfColor navyColor, {
-  bool isHeader = false,
-}) {
+pw.TableRow _tableRow(List<String> cells, PdfColor navyColor, {bool isHeader = false}) {
   return pw.TableRow(
-    decoration: isHeader
-        ? pw.BoxDecoration(color: PdfColor.fromHex('#F3F4F6'))
-        : null,
+    decoration: isHeader ? pw.BoxDecoration(color: PdfColor.fromHex('#F3F4F6')) : null,
     children: cells.map((cell) {
       return pw.Container(
         padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -527,31 +367,21 @@ class _PdfArgs {
 Future<Uint8List> _buildPdf(_PdfArgs args) async {
   final pdf = pw.Document();
 
-  pw.Font? regularFont;
-  pw.Font? boldFont;
+  pw.Font? font;
   if (args.fontBytes != null) {
     final byteData = ByteData.view(args.fontBytes!.buffer);
-    regularFont = pw.Font.ttf(byteData);
-    boldFont = pw.Font.ttf(byteData);
+    font = pw.Font.ttf(byteData);
   }
 
-  final theme = pw.ThemeData.withFont(
-    base: regularFont ?? pw.Font.helvetica(),
-    bold: boldFont ?? pw.Font.helveticaBold(),
-  );
+  final theme = PdfHelpers.buildTheme(font);
 
-  final navy = PdfColor.fromHex('#162036');
-  const black = PdfColors.black;
-  final lightGrey = PdfColor.fromHex('#F3F4F6');
-  final border = PdfColor.fromHex('#D1D5DB');
+  final navy = PdfColorPalette.darkNavy;
+  final border = PdfColorPalette.border;
+  final lightGrey = PdfColorPalette.lightGrey;
 
   final s = args.strings;
-  final profileImage = args.profileImageBytes == null
-      ? null
-      : pw.MemoryImage(args.profileImageBytes!);
-  final stampImage = args.stampImageBytes == null
-      ? null
-      : pw.MemoryImage(args.stampImageBytes!);
+  final profileImage = args.profileImageBytes == null ? null : pw.MemoryImage(args.profileImageBytes!);
+  final stampImage = args.stampImageBytes == null ? null : pw.MemoryImage(args.stampImageBytes!);
 
   final profileTitle = s['worker_profile']!;
   final titleLines = _titleLines(profileTitle);
@@ -559,25 +389,6 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
   final contactAndWork = '${s['contact_no_label']!} & ${s['work_type']!}';
   final personalInformation = s['personal_information']!;
   final workSummary = s['experience']!;
-  final nameLabel = s['worker_name_label']!;
-  final fatherHusbandLabel = s['father_husband_name']!;
-  final positionLabel = s['position']!;
-  final nationalIdLabel = s['national_id']!;
-  final genderLabel = s['gender']!;
-  final dateOfBirthLabel = s['date_of_birth']!;
-  final phoneLabel = s['contact_no_label']!;
-  final emailLabel = s['worker_email']!;
-  final joiningDateLabel = s['joining_date']!;
-  final workTypeLabel = s['work_type']!;
-  final attendanceTypeLabel = s['attendance_type']!;
-  final experienceLevelLabel = s['experience_level']!;
-  final religionLabel = s['religion_title']!;
-  final educationLabel = s['education_title']!;
-  final relationshipLabel = s['relationship_status']!;
-  final addressLabel = s['address']!;
-  final salaryLabel = s['salary']!;
-  final fieldLabel = s['field']!;
-  final detailsLabel = s['details']!;
 
   pdf.addPage(
     pw.MultiPage(
@@ -625,22 +436,13 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 border: pw.Border.all(color: border, width: 1.5),
               ),
               child: profileImage != null
-                  ? pw.Image(
-                      profileImage,
-                      width: 84,
-                      height: 84,
-                      fit: pw.BoxFit.cover,
-                    )
+                  ? pw.Image(profileImage, width: 84, height: 84, fit: pw.BoxFit.cover)
                   : pw.Container(
                       color: lightGrey,
                       child: pw.Center(
                         child: pw.Text(
                           _profileInitial(args.name),
-                          style: pw.TextStyle(
-                            fontSize: 36,
-                            fontWeight: pw.FontWeight.bold,
-                            color: navy,
-                          ),
+                          style: pw.TextStyle(fontSize: 36, fontWeight: pw.FontWeight.bold, color: navy),
                         ),
                       ),
                     ),
@@ -657,12 +459,12 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 children: [
                   _label(employeeDetails.toUpperCase()),
                   pw.SizedBox(height: 8),
-                  _detailRow(nameLabel, args.name),
-                  _detailRow(fatherHusbandLabel, args.fatherHusbandName),
-                  _detailRow(positionLabel, args.position),
-                  _detailRow(nationalIdLabel, args.nationalId),
-                  _detailRow(genderLabel, args.gender),
-                  _detailRow(dateOfBirthLabel, args.dateOfBirth),
+                  _detailRow(s['worker_name_label']!, args.name),
+                  _detailRow(s['father_husband_name']!, args.fatherHusbandName),
+                  _detailRow(s['position']!, args.position),
+                  _detailRow(s['national_id']!, args.nationalId),
+                  _detailRow(s['gender']!, args.gender),
+                  _detailRow(s['date_of_birth']!, args.dateOfBirth),
                 ],
               ),
             ),
@@ -673,21 +475,21 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
                 children: [
                   _label(contactAndWork.toUpperCase()),
                   pw.SizedBox(height: 8),
-                  _detailRow(phoneLabel, args.phone),
-                  _detailRow(emailLabel, args.email),
-                  _detailRow(joiningDateLabel, args.joiningDate),
-                  _detailRow(workTypeLabel, args.workType),
-                  _detailRow(attendanceTypeLabel, args.attendanceType),
-                  _detailRow(experienceLevelLabel, args.experienceLevel),
+                  _detailRow(s['contact_no_label']!, args.phone),
+                  _detailRow(s['worker_email']!, args.email),
+                  _detailRow(s['joining_date']!, args.joiningDate),
+                  _detailRow(s['work_type']!, args.workType),
+                  _detailRow(s['attendance_type']!, args.attendanceType),
+                  _detailRow(s['experience_level']!, args.experienceLevel),
                 ],
               ),
             ),
           ],
         ),
         pw.SizedBox(height: 16),
-        pw.Container(height: 1, color: black),
+        pw.Container(height: 1, color: PdfColors.black),
         pw.SizedBox(height: 2),
-        pw.Container(height: 1, color: black),
+        pw.Container(height: 1, color: PdfColors.black),
         pw.SizedBox(height: 14),
         _label(personalInformation.toUpperCase()),
         pw.SizedBox(height: 8),
@@ -701,22 +503,17 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
           border: pw.TableBorder.all(color: border, width: 0.5),
           children: [
             _tableRow(
-              [religionLabel, args.religion, educationLabel, args.education],
+              [s['religion_title']!, args.religion, s['education_title']!, args.education],
               navy,
               isHeader: true,
             ),
             _tableRow(
-              [
-                relationshipLabel,
-                args.relationshipStatus,
-                salaryLabel,
-                args.salary.isNotEmpty ? args.salary : '-',
-              ],
+              [s['relationship_status']!, args.relationshipStatus, s['salary']!, args.salary.isNotEmpty ? args.salary : '-'],
               navy,
               isHeader: true,
             ),
             _tableRow(
-              [addressLabel, args.address, '', ''],
+              [s['address']!, args.address, '', ''],
               navy,
               isHeader: true,
             ),
@@ -732,17 +529,16 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
           },
           border: pw.TableBorder.all(color: border, width: 0.5),
           children: [
-            _tableRow([fieldLabel, detailsLabel], navy, isHeader: true),
-            _tableRow([workTypeLabel, args.workType], navy),
-            _tableRow([attendanceTypeLabel, args.attendanceType], navy),
-            _tableRow([experienceLevelLabel, args.experienceLevel], navy),
-            _tableRow([joiningDateLabel, args.joiningDate], navy),
+            _tableRow([s['field']!, s['details']!], navy, isHeader: true),
+            _tableRow([s['work_type']!, args.workType], navy),
+            _tableRow([s['attendance_type']!, args.attendanceType], navy),
+            _tableRow([s['experience_level']!, args.experienceLevel], navy),
+            _tableRow([s['joining_date']!, args.joiningDate], navy),
           ],
         ),
         pw.SizedBox(height: 6),
         pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
         pw.SizedBox(height: 10),
-
         pw.Align(
           alignment: pw.Alignment.centerRight,
           child: buildCompanyAuthorization(
@@ -752,8 +548,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             accentColor: navy,
             mutedColor: PdfColor.fromHex('#6B7280'),
             authorizedSignatoryText: s['authorized_signatory']!,
-            generatedOnText:
-                args.generatedOnText ??
+            generatedOnText: args.generatedOnText ?? 
                 '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
           ),
         ),

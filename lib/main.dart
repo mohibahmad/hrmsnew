@@ -194,7 +194,7 @@ class HRMSApp extends ConsumerWidget {
           authenticate: () async {
             final biometricName = await BiometricService.getBiometricName();
             return BiometricService.authenticate(
-              localizedReason: 'session_unlock_reason'.tr(
+              reason: 'session_unlock_reason'.tr(
                 namedArgs: {
                   'biometric': LocalizationHelper.localizeBiometricName(
                     biometricName,

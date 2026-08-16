@@ -17,6 +17,7 @@ import '../services/error_reporter.dart';
 import '../utils/utils.dart';
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../utils/auth_widgets.dart';
 
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -399,7 +400,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final biometricName = await BiometricService.getBiometricName();
       final result = await BiometricService.authenticate(
-        localizedReason: 'login_with_biometric_reason'.tr(
+        reason: 'login_with_biometric_reason'.tr(
           namedArgs: {
             'biometric': LocalizationHelper.localizeBiometricName(
               biometricName,
@@ -502,55 +503,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isPassword = false,
     bool obscureText = false,
     VoidCallback? onToggleVisibility,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(
-        color: Colors.grey.shade400,
-        fontSize: 14,
-        fontFamily: 'SF Pro Display',
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-      suffixIcon: isPassword
-          ? IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey.shade400,
-              ),
-              onPressed: onToggleVisibility,
-            )
-          : null,
-    );
-  }
+  }) =>
+      buildAuthInputDecoration(
+        hint,
+        isPassword: isPassword,
+        obscureText: obscureText,
+        onToggleVisibility: onToggleVisibility,
+      );
 
-  Widget _buildFieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-          fontFamily: 'SF Pro Display',
-        ),
-      ),
-    );
-  }
+  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   List<Widget> _buildFormContent(BuildContext context) {
     _signUpRecognizer.onTap = _anyLoading
@@ -861,8 +822,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white,
                                         fontFamily: 'SF Pro',
-                                        height: 1,
-                                        letterSpacing: 1.6,
+                                        height: 0.9,
+                                        letterSpacing: 1.8,
                                       ),
                                     ),
                                   ),
@@ -877,7 +838,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                                       fontFamily: 'SF Pro',
                                       height: 1.2,
-                                      letterSpacing: 2,
+                                      letterSpacing: 1.8,
                                     ),
                                   ),
                                 ],

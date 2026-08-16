@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
 class PreferencesService {
-
   static const String _guestKey = 'is_guest';
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
@@ -66,8 +65,7 @@ class PreferencesService {
     if (bytes.isEmpty) return null;
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      final imageDir = await Directory('${appDir.path}/$_localImagesDirName')
-          .create(recursive: true);
+      final imageDir = await Directory('${appDir.path}/$_localImagesDirName').create(recursive: true);
       final file = File('${imageDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
@@ -88,13 +86,10 @@ class PreferencesService {
   }
 
   static void _migrateStampFromGuestProfile(SharedPreferences prefs) {
-    if ((_cachedCompanyStampUrl == null || _cachedCompanyStampUrl!.isEmpty) &&
-        prefs.containsKey(_guestProfileKey)) {
+    if ((_cachedCompanyStampUrl == null || _cachedCompanyStampUrl!.isEmpty) && prefs.containsKey(_guestProfileKey)) {
       try {
         final guestData = jsonDecode(prefs.getString(_guestProfileKey) ?? '{}');
-        final stamp = (guestData['companyStampUrl'] ?? guestData['stampUrl'])
-            ?.toString()
-            .trim();
+        final stamp = (guestData['companyStampUrl'] ?? guestData['stampUrl'])?.toString().trim();
         if (stamp != null && stamp.isNotEmpty) {
           _cachedCompanyStampUrl = stamp;
         }
@@ -132,31 +127,17 @@ class PreferencesService {
 
     if (saved == null) return defaultDays;
 
-    final days = saved
-        .map(int.tryParse)
-        .whereType<int>()
-        .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
-        .toSet();
-
+    final days = saved.map(int.tryParse).whereType<int>().where((day) => day >= DateTime.monday && day <= DateTime.sunday).toSet();
     return days.isEmpty ? defaultDays : days;
   }
 
   static Future<void> setCompanyWorkingDays(Iterable<int> weekdays) async {
-    final days = weekdays
-        .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
-        .toSet()
-        .toList()
-      ..sort();
-
+    final days = weekdays.where((day) => day >= DateTime.monday && day <= DateTime.sunday).toSet().toList()..sort();
     if (days.isEmpty) {
       throw ArgumentError('At least one company working day is required');
     }
-
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _companyWorkingDaysKey,
-      days.map((day) => day.toString()).toList(),
-    );
+    await prefs.setStringList(_companyWorkingDaysKey, days.map((day) => day.toString()).toList());
   }
 
   static Future<void> setGuestProfileData(Map<String, String> data) async {
@@ -167,7 +148,8 @@ class PreferencesService {
   static Future<Map<String, String>?> getGuestProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_guestProfileKey);
-    return (raw == null || raw.isEmpty) ? null : Map<String, String>.from(jsonDecode(raw));
+    if (raw == null || raw.isEmpty) return null;
+    return Map<String, String>.from(jsonDecode(raw));
   }
 
   static Future<List<Map<String, dynamic>>?> getGuestWorkers() async {
@@ -175,11 +157,13 @@ class PreferencesService {
       final file = await _guestFile('workers.json');
       if (!await file.exists()) return null;
       final raw = await file.readAsString();
-      return raw.isEmpty ? null : List<Map<String, dynamic>>.from(jsonDecode(raw));
+      if (raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
     } catch (_) {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_guestWorkersKey);
-      return (raw == null || raw.isEmpty) ? null : List<Map<String, dynamic>>.from(jsonDecode(raw));
+      if (raw == null || raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
     }
   }
 
@@ -198,11 +182,13 @@ class PreferencesService {
       final file = await _guestFile('payroll.json');
       if (!await file.exists()) return null;
       final raw = await file.readAsString();
-      return raw.isEmpty ? null : List<Map<String, dynamic>>.from(jsonDecode(raw));
+      if (raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
     } catch (_) {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_guestPayrollKey);
-      return (raw == null || raw.isEmpty) ? null : List<Map<String, dynamic>>.from(jsonDecode(raw));
+      if (raw == null || raw.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(jsonDecode(raw));
     }
   }
 
@@ -213,7 +199,6 @@ class PreferencesService {
     } else {
       await prefs.remove(_profilePicUrlKey);
     }
-
     _cachedProfilePicUrl = url;
     AuthService.profilePicNotifier.value = url;
   }
@@ -241,7 +226,6 @@ class PreferencesService {
     } else {
       await prefs.remove(_companyStampUrlKey);
     }
-
     _cachedCompanyStampUrl = url;
     AuthService.companyStampNotifier.value = url;
   }
@@ -276,16 +260,10 @@ class PreferencesService {
     await prefs.setBool(_rateUsNeverShowKey, value);
   }
 
-  static Future<void> snoozePayrollReminder(
-    String periodKey, {
-    DateTime? now,
-  }) async {
+  static Future<void> snoozePayrollReminder(String periodKey, {DateTime? now}) async {
     final prefs = await SharedPreferences.getInstance();
     final snoozedUntil = (now ?? DateTime.now()).add(const Duration(days: 7));
-    await prefs.setString(
-      '$_payrollReminderSnoozedPrefix$periodKey',
-      snoozedUntil.toIso8601String(),
-    );
+    await prefs.setString('$_payrollReminderSnoozedPrefix$periodKey', snoozedUntil.toIso8601String());
   }
 
   static Future<void> ignorePayrollReminder(String periodKey) async {
@@ -306,16 +284,12 @@ class PreferencesService {
 
   static Future<bool> wasFirstExpenseTriggered() => _getBool(_rateUsFirstExpenseKey);
   static Future<void> markFirstExpenseTriggered() => _setBool(_rateUsFirstExpenseKey, true);
-
   static Future<bool> wasFirstWorkerTriggered() => _getBool(_rateUsFirstWorkerKey);
   static Future<void> markFirstWorkerTriggered() => _setBool(_rateUsFirstWorkerKey, true);
-
   static Future<bool> wasFirstHolidayTriggered() => _getBool(_rateUsFirstHolidayKey);
   static Future<void> markFirstHolidayTriggered() => _setBool(_rateUsFirstHolidayKey, true);
-
   static Future<bool> wasFirstBulkWorkerTriggered() => _getBool(_rateUsFirstBulkWorkerKey);
   static Future<void> markFirstBulkWorkerTriggered() => _setBool(_rateUsFirstBulkWorkerKey, true);
-
   static Future<bool> wasFirstAssetTriggered() => _getBool(_rateUsFirstAssetKey);
   static Future<void> markFirstAssetTriggered() => _setBool(_rateUsFirstAssetKey, true);
 
@@ -355,7 +329,6 @@ class PreferencesService {
     try {
       await _secureStorage.write(key: _biometricEmailKey, value: email);
       await _secureStorage.write(key: _biometricPasswordKey, value: password);
-
       await prefs.remove(_biometricEmailKey);
       await prefs.remove(_biometricPasswordKey);
     } catch (_) {
@@ -401,21 +374,31 @@ class PreferencesService {
     final prefs = await SharedPreferences.getInstance();
 
     final keysToRemove = [
-      _guestKey, _premiumKey, _profilePicUrlKey, _rateUsNeverShowKey,
-      _rateUsFirstExpenseKey, _rateUsFirstWorkerKey, _rateUsFirstHolidayKey,
-      _rateUsFirstBulkWorkerKey, _rateUsFirstAssetKey, _profilePicLocalPathKey,
-      _companyStampUrlKey, _companyCurrencyKey, _companyWorkingDaysKey,
-      _sessionLockedKey, _guestPayrollKey,
+      _guestKey,
+      _premiumKey,
+      _profilePicUrlKey,
+      _rateUsNeverShowKey,
+      _rateUsFirstExpenseKey,
+      _rateUsFirstWorkerKey,
+      _rateUsFirstHolidayKey,
+      _rateUsFirstBulkWorkerKey,
+      _rateUsFirstAssetKey,
+      _profilePicLocalPathKey,
+      _companyStampUrlKey,
+      _companyCurrencyKey,
+      _companyWorkingDaysKey,
+      _sessionLockedKey,
+      _guestPayrollKey,
     ];
 
-    await Future.wait(keysToRemove.map((key) => prefs.remove(key)));
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
 
-    final reminderKeys = prefs.getKeys()
-        .where((key) => key.startsWith(_payrollReminderIgnoredPrefix) ||
-            key.startsWith(_payrollReminderSnoozedPrefix))
-        .toList();
-
-    await Future.wait(reminderKeys.map((key) => prefs.remove(key)));
+    final reminderKeys = prefs.getKeys().where((key) => key.startsWith(_payrollReminderIgnoredPrefix) || key.startsWith(_payrollReminderSnoozedPrefix)).toList();
+    for (final key in reminderKeys) {
+      await prefs.remove(key);
+    }
 
     if (!preserveBiometricCredentials) {
       await clearBiometricCredentials();

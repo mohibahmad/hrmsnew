@@ -1,8 +1,9 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import '../services/upload_service.dart';
 import '../utils/helpers.dart';
 
@@ -17,13 +18,11 @@ String mediaFieldName(String field) {
 }
 
 bool isSupportedMediaType(String field, String mimeType) {
-
   final raw = mimeType.toLowerCase().split(';').first.trim();
   final normalized = switch (raw) {
     'image/jpg' => 'image/jpeg',
     'application/doc' => 'application/msword',
-    'application/docx' =>
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     _ => raw,
   };
 
@@ -34,38 +33,24 @@ bool isSupportedMediaType(String field, String mimeType) {
   return supportedImages.contains(normalized) ||
       normalized == 'application/pdf' ||
       normalized == 'application/msword' ||
-      normalized ==
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      normalized == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 }
 
 String supportedMediaMessage(String field, [String? received]) {
-  if (field == 'cv') {
-    return 'bulk_media_cv_format_error'.tr();
-  }
-  return 'bulk_media_image_format_error'.tr(
-    namedArgs: {'received': received ?? ''},
-  );
+  if (field == 'cv') return 'bulk_media_cv_format_error'.tr();
+  return 'bulk_media_image_format_error'.tr(namedArgs: {'received': received ?? ''});
 }
 
 String readableSaveError(Object error) {
-
-  if (error is TimeoutException) {
-    return error.message ?? 'bulk_media_download_timeout'.tr();
-  }
-
+  if (error is TimeoutException) return error.message ?? 'bulk_media_download_timeout'.tr();
   if (error is io.HttpException) return error.message;
-
   if (error is io.SocketException) return error.message;
-
   if (error is io.FileSystemException) return error.message;
-
   if (error is FormatException) return error.message;
 
   var message = error.toString().trim();
   for (final prefix in ['Bad state: ', 'Exception: ', 'FirebaseException: ']) {
-    if (message.startsWith(prefix)) {
-      message = message.substring(prefix.length).trim();
-    }
+    if (message.startsWith(prefix)) message = message.substring(prefix.length).trim();
   }
 
   if (message.isEmpty) return 'bulk_media_unknown_error'.tr();
@@ -79,9 +64,7 @@ Future<String?> validateRemoteWorkerMediaLink({
   final value = url.trim();
 
   final uri = Uri.tryParse(value);
-  if (uri == null ||
-      !uri.hasAuthority ||
-      (uri.scheme != 'http' && uri.scheme != 'https')) {
+  if (uri == null || !uri.hasAuthority || (uri.scheme != 'http' && uri.scheme != 'https')) {
     return 'bulk_media_invalid_url'.tr();
   }
 
@@ -94,7 +77,6 @@ Future<String?> validateRemoteWorkerMediaLink({
   final fallbackMime = field == 'cv' ? 'application/pdf' : 'image/jpeg';
 
   try {
-
     final file = await UploadService.downloadRemoteFile(
       url: value,
       folder: folder,
@@ -107,10 +89,7 @@ Future<String?> validateRemoteWorkerMediaLink({
     }
     return null;
   } catch (error) {
-
-    return 'bulk_media_broken_link_error'.tr(
-      namedArgs: {'error': readableSaveError(error)},
-    );
+    return 'bulk_media_broken_link_error'.tr(namedArgs: {'error': readableSaveError(error)});
   }
 }
 
@@ -120,10 +99,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   required Map<String, List<String>> uploadedMediaByRowId,
   void Function(int completed, int total, String currentFile)? onProgress,
 }) async {
-
-  final prepared = workers
-      .map((worker) => Map<String, dynamic>.from(worker))
-      .toList();
+  final prepared = workers.map((worker) => Map<String, dynamic>.from(worker)).toList();
 
   const mediaFields = <({String key, String field})>[
     (key: 'profileImage', field: 'profileImage'),
@@ -141,21 +117,24 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     }
   }
 
-  final embeddedFiles = <UploadFile>[];
-  final embeddedTargets = <({int workerIndex, String key})>[];
-  final remoteItems =
-      <
-        (int, String),
-        ({
-          int workerIndex,
-          String key,
-          String field,
-          String url,
-          String folder,
-          String fallbackName,
-          String fallbackMime,
-        })
-      >{};
+  final embeddedSources = <({
+    int workerIndex,
+    String key,
+    String field,
+    String mimeType,
+    Uint8List bytes,
+    String folder,
+    String fileName,
+  })>[];
+  final remoteItems = <(int, String), ({
+    int workerIndex,
+    String key,
+    String field,
+    String url,
+    String folder,
+    String fallbackName,
+    String fallbackMime,
+  })>{};
 
   for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
     final worker = prepared[workerIndex];
@@ -164,9 +143,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       final field = m.field;
       final key = m.key;
       final value = (worker[key] ?? worker[field] ?? '').toString().trim();
-      final storedName = (worker['${key}_name'] ?? worker['${field}_name'] ?? '')
-          .toString()
-          .trim();
+      final storedName = (worker['${key}_name'] ?? worker['${field}_name'] ?? '').toString().trim();
 
       final folder = field == 'profileImage'
           ? 'profile_images'
@@ -177,41 +154,35 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       final isEmbeddedFile = value.startsWith('data:') && value.contains(';base64,');
 
       if (isEmbeddedFile) {
-
         final separator = value.indexOf(';base64,');
         final mimeType = value.substring(5, separator);
         final bytes = base64Decode(value.substring(separator + 8));
 
         if (!isSupportedMediaType(field, mimeType)) {
           final workerName = (worker['name'] ?? 'Worker').toString();
-          throw StateError(
-            '$workerName — ${mediaFieldName(field)}: '
-            '${supportedMediaMessage(field, mimeType)}',
-          );
+          throw StateError('$workerName — ${mediaFieldName(field)}: ${supportedMediaMessage(field, mimeType)}');
         }
 
         final fallbackExtension = switch (mimeType) {
           'application/pdf' => 'pdf',
           'application/msword' || 'application/doc' => 'doc',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          'application/docx' => 'docx',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 'application/docx' => 'docx',
           'image/png' => 'png',
           _ => 'jpg',
         };
 
-        embeddedFiles.add(
-          UploadFile(
-            folder: folder,
-            fileName: storedName.isNotEmpty
-                ? storedName
-                : '${field}_$workerIndex.$fallbackExtension',
-            bytes: bytes,
-            mimeType: mimeType,
-          ),
-        );
-        embeddedTargets.add((workerIndex: workerIndex, key: key));
+        embeddedSources.add((
+          workerIndex: workerIndex,
+          key: key,
+          field: field,
+          mimeType: mimeType,
+          bytes: bytes,
+          folder: folder,
+          fileName: storedName.isNotEmpty
+              ? storedName
+              : '${field}_$workerIndex.$fallbackExtension',
+        ));
       } else {
-
         if (value.isNotEmpty && isHttpUrl(value)) {
           remoteItems[(workerIndex, key)] = (
             workerIndex: workerIndex,
@@ -223,7 +194,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
             fallbackMime: 'application/octet-stream',
           );
         }
-
         prepared[workerIndex][key] = value;
       }
     }
@@ -239,37 +209,36 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       maxConcurrent: uploadBatchSize,
       onProgress: (completed, total) {
         final idx = completed - 1;
-        final name = idx >= 0 && idx < batchFiles.length
-            ? batchFiles[idx].fileName
-            : '';
+        final name = idx >= 0 && idx < batchFiles.length ? batchFiles[idx].fileName : '';
         onProgress?.call(completedCount + completed, totalMedia, name);
       },
     );
 
     final failed = batchResults.indexWhere((r) => !r.isSuccess || r.url == null);
     if (failed != -1) {
-      throw StateError(
-        '${batchFiles[failed].fileName} upload: '
-        '${readableSaveError(batchResults[failed].error ?? 'bulk_media_upload_failed'.tr())}',
-      );
+      throw StateError('${batchFiles[failed].fileName} upload: ${readableSaveError(batchResults[failed].error ?? 'bulk_media_upload_failed'.tr())}');
     }
 
     for (final result in batchResults) {
-      if (result.isSuccess && result.url != null) {
-        uploadedMediaUrls.add(result.url!);
-      }
+      if (result.isSuccess && result.url != null) uploadedMediaUrls.add(result.url!);
     }
 
     completedCount += batchFiles.length;
     return batchResults;
   }
 
-  if (embeddedFiles.isNotEmpty) {
+  if (embeddedSources.isNotEmpty) {
     onProgress?.call(0, totalMedia, 'uploading_embedded');
+
+    // Downscale/compress raster images (base64 photos) in background isolates
+    // first — a 3 MB phone photo becomes ~150-400 KB, so the parallel uploads
+    // finish in seconds instead of tens of seconds.
+    final embeddedFiles = await _prepareUploadFiles(embeddedSources);
+
     final embedResults = await uploadBatch(embeddedFiles);
 
     for (var i = 0; i < embedResults.length; i++) {
-      final t = embeddedTargets[i];
+      final t = embeddedSources[i];
       prepared[t.workerIndex][t.key] = embedResults[i].url;
     }
   }
@@ -286,7 +255,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
       UploadFile? downloaded;
 
       try {
-
         downloaded = await UploadService.downloadRemoteFile(
           url: item.url,
           folder: item.folder,
@@ -295,9 +263,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
         );
       } catch (e) {
         final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
-        final errorText = 'bulk_media_broken_link_error'.tr(
-          namedArgs: {'error': readableSaveError(e)},
-        );
+        final errorText = 'bulk_media_broken_link_error'.tr(namedArgs: {'error': readableSaveError(e)});
         throw StateError('$workerName — ${mediaFieldName(item.field)} link: $errorText');
       }
 
@@ -305,13 +271,20 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
 
       if (!isSupportedMediaType(item.field, file.mimeType)) {
         final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
-        throw StateError(
-          '$workerName — ${mediaFieldName(item.field)} link: '
-          '${supportedMediaMessage(item.field, file.mimeType)}',
-        );
+        throw StateError('$workerName — ${mediaFieldName(item.field)} link: ${supportedMediaMessage(item.field, file.mimeType)}');
       }
 
-      final results = await uploadBatch([file]);
+      final compressed = await _compressForUpload(file.bytes, file.mimeType, item.field);
+      final uploadFile = compressed != null
+          ? UploadFile(
+              folder: item.folder,
+              fileName: file.fileName,
+              bytes: compressed,
+              mimeType: file.mimeType,
+            )
+          : file;
+
+      final results = await uploadBatch([uploadFile]);
       final result = results.first;
       prepared[item.workerIndex][item.key] = result.url!;
     }
@@ -333,9 +306,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
 
     await Future.wait(List.generate(maxConcurrent, (_) => worker()));
 
-    if (firstError != null) {
-      throw firstError!;
-    }
+    if (firstError != null) throw firstError!;
   }
 
   uploadedMediaByRowId.clear();
@@ -346,15 +317,122 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     final urls = <String>[];
     for (final m in mediaFields) {
       final value = (worker[m.key] ?? '').toString().trim();
-      if (value.isNotEmpty && value.startsWith('http')) {
-        urls.add(value);
-      }
+      if (value.isNotEmpty && value.startsWith('http')) urls.add(value);
     }
 
-    if (urls.isNotEmpty) {
-      uploadedMediaByRowId[rowId] = urls;
-    }
+    if (urls.isNotEmpty) uploadedMediaByRowId[rowId] = urls;
   }
 
   return prepared;
 }
+
+/// Compresses a list of embedded media files in parallel background isolates
+/// (bounded concurrency so low-end devices don't get flooded with isolates).
+/// PDFs/DOCs and already-small images are returned unchanged.
+Future<List<UploadFile>> _prepareUploadFiles(
+  List<({
+    int workerIndex,
+    String key,
+    String field,
+    String mimeType,
+    Uint8List bytes,
+    String folder,
+    String fileName,
+  })> sources,
+) async {
+  const maxConcurrent = 4;
+  final results = List<UploadFile?>.filled(sources.length, null);
+  var nextIndex = 0;
+
+  Future<void> worker() async {
+    while (true) {
+      final idx = nextIndex++;
+      if (idx >= sources.length) return;
+      final s = sources[idx];
+      final compressed = await _compressForUpload(s.bytes, s.mimeType, s.field);
+      results[idx] = UploadFile(
+        folder: s.folder,
+        fileName: s.fileName,
+        bytes: compressed ?? s.bytes,
+        mimeType: s.mimeType,
+      );
+    }
+  }
+
+  await Future.wait(List.generate(maxConcurrent, (_) => worker()));
+  return results.cast<UploadFile>();
+}
+
+/// Best-effort image compression. Returns null when the file should be
+/// uploaded unchanged (non-raster, too large to decode safely, decode error,
+/// or already small).
+Future<Uint8List?> _compressForUpload(
+  Uint8List bytes,
+  String mimeType,
+  String field,
+) async {
+  final normalizedMime = mimeType.toLowerCase().split(';').first.trim();
+  if (normalizedMime != 'image/jpeg' &&
+      normalizedMime != 'image/jpg' &&
+      normalizedMime != 'image/png') {
+    return null;
+  }
+  // Guard against pathological inputs: decoding a giant file into pixels can
+  // exhaust memory. Files over this size keep their original bytes.
+  if (bytes.length > 8 * 1024 * 1024) return null;
+
+  try {
+    return await compute(
+      _compressWorkerImageInIsolate,
+      (bytes, normalizedMime, _maxDimensionFor(field), _qualityFor(field)),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+Uint8List? _compressWorkerImageInIsolate(
+  (Uint8List, String, int, int) args,
+) {
+  return _compressWorkerImage(args.$1, args.$2, args.$3, args.$4);
+}
+
+Uint8List? _compressWorkerImage(
+  Uint8List bytes,
+  String mimeType,
+  int maxDimension,
+  int quality,
+) {
+  try {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+
+    final longestSide =
+        decoded.width > decoded.height ? decoded.width : decoded.height;
+
+    // Already small — keep the original bytes (no quality loss, no wasted time).
+    if (longestSide <= maxDimension && bytes.length <= 350 * 1024) return null;
+
+    final scale = longestSide > maxDimension
+        ? maxDimension / longestSide
+        : 1.0;
+    final resized = img.copyResize(
+      decoded,
+      width: (decoded.width * scale).round(),
+      height: (decoded.height * scale).round(),
+      interpolation: img.Interpolation.average,
+    );
+
+    if (mimeType == 'image/png') {
+      return Uint8List.fromList(img.encodePng(resized));
+    }
+    return Uint8List.fromList(img.encodeJpg(resized, quality: quality));
+  } catch (_) {
+    return null;
+  }
+}
+
+int _maxDimensionFor(String field) =>
+    field == 'profileImage' ? 1024 : 1400;
+
+int _qualityFor(String field) => field == 'profileImage' ? 80 : 85;

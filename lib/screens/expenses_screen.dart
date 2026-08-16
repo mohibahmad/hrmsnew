@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../utils/calendar_widgets.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -260,7 +261,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
   }
 
-  String _eds(dynamic value) => AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
+  String _localizedExpenseDate(dynamic value) => AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
 
   List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
@@ -774,115 +775,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    final monthYearStr =
-        '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
-
-    return Container(
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1)),
-                child: const Icon(Icons.chevron_left, size: 16, color: Colors.black),
-              ),
-              const SizedBox(width: 16),
-              Text(monthYearStr, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'SF Pro Display')),
-              const SizedBox(width: 16),
-              GestureDetector(
-                onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
-                child: const Icon(Icons.chevron_right, size: 16, color: Colors.black),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
-              const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildDaysGrid(calendarDate, selectedDay, onDaySelected),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeekday(String day, Color color) {
-    return Container(
-      height: 18,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
-      child: Text(day,
-          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 8, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
-    );
-  }
-
-  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
-    final rows = <Widget>[];
-    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
-    final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
-    final startOffset = firstWeekday == 7 ? 0 : firstWeekday;
-
-    int currentDay = 1;
-
-    for (int i = 0; i < 6; i++) {
-      final rowChildren = <Widget>[];
-      for (int j = 0; j < 7; j++) {
-        final index = i * 7 + j;
-        if (index < startOffset) {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
-        } else if (currentDay <= daysInMonth) {
-          final day = currentDay;
-          rowChildren.add(Expanded(child: _buildDayCell('$day', day == selectedDay, () => onDaySelected(day))));
-          currentDay++;
-        } else {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
-        }
-        if (j < 6) rowChildren.add(const SizedBox(width: 4));
-      }
-      rows.add(Row(children: rowChildren));
-      if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 4));
-    }
-
-    return Column(children: rows);
-  }
-
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
-    if (day.isEmpty) return const SizedBox();
-    const selectedBg = Color(0xFF0247C4);
-
-    return AspectRatio(
-      aspectRatio: 1.1,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? selectedBg : Colors.transparent,
-            border: Border.all(color: isSelected ? selectedBg : Colors.grey.shade300, width: 1),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Text(day,
-              style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 13, fontFamily: 'SF Pro Display')),
-        ),
-      ),
+    return ModalCalendar(
+      calendarDate: calendarDate,
+      selectedDay: selectedDay,
+      onDaySelected: onDaySelected,
+      onMonthChanged: onMonthChanged,
     );
   }
 
@@ -1142,7 +1039,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   Widget _buildDataRow(Map<String, dynamic> doc) {
     final name = _expenseDisplayName(doc);
-    final date = _eds(doc['date']);
+    final date = _localizedExpenseDate(doc['date']);
     final category = LocalizationHelper.localizeExpenseCategory((doc['category'] ?? '').toString());
     final amount = _expenseAmount(doc);
 

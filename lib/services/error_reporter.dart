@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 typedef ErrorBackendHandler = void Function(
@@ -24,24 +23,22 @@ class ErrorRecord {
   }) : timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'error': error.toString(),
-        'context': context,
-        'fatal': fatal,
-        'timestamp': timestamp.toIso8601String(),
-        'stackTrace': stackTrace?.toString(),
-      };
+    'error': error.toString(),
+    'context': context,
+    'fatal': fatal,
+    'timestamp': timestamp.toIso8601String(),
+    'stackTrace': stackTrace?.toString(),
+  };
 }
 
 class ErrorReporter {
-
   ErrorReporter._();
 
   static final List<ErrorRecord> _recordedErrors = [];
-
   static ErrorBackendHandler? _backendHandler;
 
-  static List<ErrorRecord> get recordedErrors =>
-      List.unmodifiable(_recordedErrors);
+  static List<ErrorRecord> get recordedErrors => List.unmodifiable(_recordedErrors);
+  static const int _maxRecordedErrors = 100;
 
   static void report(
     Object error,
@@ -50,7 +47,6 @@ class ErrorReporter {
     bool fatal = false,
   }) {
     try {
-
       final record = ErrorRecord(
         error: error,
         stackTrace: stack,
@@ -59,28 +55,25 @@ class ErrorReporter {
       );
 
       _recordedErrors.add(record);
-
-      if (_recordedErrors.length > 100) {
+      if (_recordedErrors.length > _maxRecordedErrors) {
         _recordedErrors.removeAt(0);
       }
 
       final label = context == null ? 'Error' : 'Error [$context]';
-
-      if (kDebugMode) {
-        debugPrint('⚠️ [ErrorReporter] $label: $error');
-        if (stack != null) {
-          debugPrintStack(stackTrace: stack, label: label);
-        }
-      }
-
-      else {
-        debugPrint('[PROD-ERROR] [$label] (fatal=$fatal) $error');
-      }
+      _logError(error, stack, label, fatal);
 
       _forwardToBackend(error, stack, context: context, fatal: fatal);
     } catch (e, s) {
-
       debugPrint('ErrorReporter failure: $e\n$s');
+    }
+  }
+
+  static void _logError(Object error, StackTrace? stack, String label, bool fatal) {
+    if (kDebugMode) {
+      debugPrint('⚠️ [ErrorReporter] $label: $error');
+      if (stack != null) debugPrintStack(stackTrace: stack, label: label);
+    } else {
+      debugPrint('[PROD-ERROR] [$label] (fatal=$fatal) $error');
     }
   }
 
@@ -91,10 +84,39 @@ class ErrorReporter {
     bool fatal = false,
   }) {
     try {
-
       _backendHandler?.call(error, stack, context: context, fatal: fatal);
     } catch (e) {
       debugPrint('Failed to forward error to backend handler: $e');
     }
+  }
+
+  static void setBackendHandler(ErrorBackendHandler? handler) {
+    _backendHandler = handler;
+  }
+
+  static void clearRecordedErrors() {
+    _recordedErrors.clear();
+  }
+
+  static List<ErrorRecord> getRecentErrors({int count = 10}) {
+    final start = _recordedErrors.length - count;
+    if (start < 0) return List.unmodifiable(_recordedErrors);
+    return List.unmodifiable(_recordedErrors.sublist(start));
+  }
+
+  static Map<String, dynamic> getReportSummary() {
+    final total = _recordedErrors.length;
+    final fatal = _recordedErrors.where((e) => e.fatal).length;
+    final nonFatal = total - fatal;
+    
+    final lastError = _recordedErrors.isNotEmpty ? _recordedErrors.last : null;
+    
+    return {
+      'totalErrors': total,
+      'fatalErrors': fatal,
+      'nonFatalErrors': nonFatal,
+      'lastError': lastError?.toJson(),
+      'hasErrors': _recordedErrors.isNotEmpty,
+    };
   }
 }

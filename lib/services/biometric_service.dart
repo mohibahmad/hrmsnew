@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -13,16 +12,13 @@ enum BiometricAuthResult {
 }
 
 class BiometricService {
-
   static final LocalAuthentication _auth = LocalAuthentication();
 
   static Future<bool> isSupported() async {
     try {
-
-      final isDeviceSupported = await _auth.isDeviceSupported();
-      final canCheckBiometrics = await _auth.canCheckBiometrics;
-
-      return isDeviceSupported && canCheckBiometrics;
+      final deviceSupport = await _auth.isDeviceSupported();
+      final canCheck = await _auth.canCheckBiometrics;
+      return deviceSupport && canCheck;
     } catch (e) {
       debugPrint('Biometric support check failed: $e');
       return false;
@@ -31,12 +27,9 @@ class BiometricService {
 
   static Future<bool> isAvailable() async {
     try {
-
       if (!await isSupported()) return false;
-
-      final biometrics = await _auth.getAvailableBiometrics();
-
-      return biometrics.isNotEmpty;
+      final types = await _auth.getAvailableBiometrics();
+      return types.isNotEmpty;
     } catch (e) {
       debugPrint('Biometric availability check failed: $e');
       return false;
@@ -53,45 +46,29 @@ class BiometricService {
   }
 
   static Future<BiometricAuthResult> authenticate({
-    required String localizedReason,
-    bool biometricOnly = true,
-    bool persistAcrossBackgrounding = true,
+    required String reason,
+    bool onlyBiometric = true,
+    bool stayActive = true,
   }) async {
     try {
-
-      final authenticated = await _auth.authenticate(
-        localizedReason: localizedReason,
-        biometricOnly: biometricOnly,
-        persistAcrossBackgrounding: persistAcrossBackgrounding,
+      final success = await _auth.authenticate(
+        localizedReason: reason,
+        biometricOnly: onlyBiometric,
+        persistAcrossBackgrounding: stayActive,
       );
 
-      if (authenticated) {
-        return BiometricAuthResult.success;
-      }
+      if (success) return BiometricAuthResult.success;
       return BiometricAuthResult.cancelled;
     } on LocalAuthException catch (e) {
-
       debugPrint('Biometric authentication error: ${e.code} - ${e.description}');
 
-      final code = e.code.name.toLowerCase();
-
-      return switch (code) {
-        'lockedout' ||
-        'auth_locked_out' ||
-        'too_many_attempts' =>
-          BiometricAuthResult.lockedOut,
-        'permanentlylockedout' ||
-        'auth_permanently_locked_out' =>
-          BiometricAuthResult.permanentlyLockedOut,
-        'notavailable' ||
-        'biometrynotavailable' ||
-        'biometry_not_available' ||
-        'notenrolled' ||
-        'biometrynotenrolled' ||
-        'biometry_not_enrolled' ||
-        'passcodenotset' ||
-        'passcode_not_set' =>
-          BiometricAuthResult.notAvailable,
+      final errorCode = e.code.name.toLowerCase();
+      return switch (errorCode) {
+        'lockedout' || 'auth_locked_out' || 'too_many_attempts' => BiometricAuthResult.lockedOut,
+        'permanentlylockedout' || 'auth_permanently_locked_out' => BiometricAuthResult.permanentlyLockedOut,
+        'notavailable' || 'biometrynotavailable' || 'biometry_not_available' ||
+        'notenrolled' || 'biometrynotenrolled' || 'biometry_not_enrolled' ||
+        'passcodenotset' || 'passcode_not_set' => BiometricAuthResult.notAvailable,
         _ => BiometricAuthResult.failed,
       };
     } catch (e) {
@@ -101,12 +78,9 @@ class BiometricService {
   }
 
   static Future<String> getBiometricName() async {
-
     final types = await getAvailableBiometrics();
 
-    if (types.contains(BiometricType.face)) {
-      return 'Face ID';
-    }
+    if (types.contains(BiometricType.face)) return 'Face ID';
 
     if (types.contains(BiometricType.fingerprint)) {
       final isApple = defaultTargetPlatform == TargetPlatform.iOS ||
@@ -114,10 +88,27 @@ class BiometricService {
       return isApple ? 'Touch ID' : 'Fingerprint';
     }
 
-    if (types.contains(BiometricType.iris)) {
-      return 'Iris';
-    }
+    if (types.contains(BiometricType.iris)) return 'Iris';
 
     return 'Biometric';
+  }
+
+  static Future<bool> stopAuthentication() async {
+    try {
+      await _auth.stopAuthentication();
+      return true;
+    } catch (e) {
+      debugPrint('Failed to stop authentication: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> isDeviceSupported() async {
+    try {
+      return await _auth.isDeviceSupported();
+    } catch (e) {
+      debugPrint('Device biometric support check failed: $e');
+      return false;
+    }
   }
 }

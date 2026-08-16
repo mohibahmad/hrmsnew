@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/auth_widgets.dart';
 
 import '../providers.dart';
 import '../services/auth_service.dart';
@@ -20,7 +21,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
-  late final AuthService _authService;
+  late AuthService _authService;
 
   bool _isLoading = false;
   bool _submitted = false;
@@ -92,26 +93,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     FlashySnackBar.show(context, message: message, isError: isError);
   }
 
-  InputDecoration _buildInputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5)),
-      filled: true,
-      fillColor: Colors.white,
-    );
-  }
+  InputDecoration _buildInputDecoration(String hint) =>
+      buildAuthInputDecoration(hint);
 
-  Widget _buildFieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87, fontFamily: 'SF Pro Display')),
-    );
-  }
+  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   @override
   Widget build(BuildContext context) {
@@ -152,10 +137,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('welcome_to_hrms'.tr(), maxLines: 1,
-                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1, letterSpacing: 2)),
+                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 0.9, letterSpacing: 1.8)),
                     const SizedBox(height: 10),
                     Text('welcome_banner_subtitle'.tr(), maxLines: 2,
-                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.6)),
+                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.8)),
                   ],
                 ),
               ),

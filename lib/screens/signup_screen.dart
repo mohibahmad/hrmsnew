@@ -1,5 +1,7 @@
 import 'dart:async';
 import '../utils/ui_helpers.dart';
+import '../utils/auth_widgets.dart';
+import '../utils/helpers.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -205,7 +207,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       }
 
       final credential = await _authService.signUp(email: email, password: _passwordController.text);
-      final emailLocalPart = email.split('@').first;
+      final emailLocalPart = Validators.nameFromEmail(email);
 
       try { await credential.user?.updateDisplayName(emailLocalPart); }
       catch (e, st) { ErrorReporter.report(e, st, context: 'signupDisplayName'); }
@@ -270,31 +272,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     bool isPassword = false,
     bool obscureText = false,
     VoidCallback? onToggleVisibility,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5)),
-      filled: true,
-      fillColor: Colors.white,
-      suffixIcon: isPassword
-          ? IconButton(
-              icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.grey.shade400),
-              onPressed: onToggleVisibility,
-            )
-          : null,
-    );
-  }
+  }) =>
+      buildAuthInputDecoration(
+        hint,
+        isPassword: isPassword,
+        obscureText: obscureText,
+        onToggleVisibility: onToggleVisibility,
+      );
 
-  Widget _buildFieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87, fontFamily: 'SF Pro Display')),
-    );
-  }
+  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   @override
   Widget build(BuildContext context) {
@@ -335,10 +321,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('welcome_to_hrms'.tr(), maxLines: 1,
-                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1, letterSpacing: 2)),
+                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 0.9, letterSpacing: 1.8)),
                     const SizedBox(height: 10),
                     Text('welcome_banner_subtitle'.tr(), maxLines: 2,
-                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.6)),
+                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.8)),
                   ],
                 ),
               ),

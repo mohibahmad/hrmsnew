@@ -1,15 +1,11 @@
 import '../utils/helpers.dart';
-
 import '../utils/utils.dart';
 import 'time_off_service.dart';
 
 class AttendanceService {
-
-  static final AttendanceService _instance = AttendanceService._();
-  factory AttendanceService() => _instance;
   AttendanceService._();
 
-  static const Set<String> _ineligibleAttendanceStatuses = {
+  static const Set<String> _ineligibleStatuses = {
     'inactive',
     'terminated',
     'deleted',
@@ -17,28 +13,18 @@ class AttendanceService {
   };
 
   static bool isEligibleForAttendance(Map<String, dynamic> worker) {
-    final status = (worker['status'] ?? 'Active')
-        .toString()
-        .trim()
-        .toLowerCase();
-    return !_ineligibleAttendanceStatuses.contains(status);
+    final status = (worker['status'] ?? 'Active').toString().trim().toLowerCase();
+    return !_ineligibleStatuses.contains(status);
   }
 
   static bool workerExistedOnDate(Map<String, dynamic> worker, DateTime date) {
-
     final employmentStart = AppDateUtils.dateFromValue(
       worker['joiningDate'] ?? worker['dateOfJoining'],
     );
-
     if (employmentStart == null) return true;
 
-    final startDay = DateTime(
-      employmentStart.year,
-      employmentStart.month,
-      employmentStart.day,
-    );
+    final startDay = DateTime(employmentStart.year, employmentStart.month, employmentStart.day);
     final targetDay = DateTime(date.year, date.month, date.day);
-
     return !targetDay.isBefore(startDay);
   }
 
@@ -51,13 +37,9 @@ class AttendanceService {
     return workerExistedOnDate(worker, recordDate);
   }
 
-  static bool isRecordForDate(
-    Map<String, dynamic> record,
-    DateTime requestedDate,
-  ) {
+  static bool isRecordForDate(Map<String, dynamic> record, DateTime requestedDate) {
     final recordDate = AppDateUtils.attendanceRecordDate(record);
     if (recordDate == null) return false;
-
     return recordDate.year == requestedDate.year &&
         recordDate.month == requestedDate.month &&
         recordDate.day == requestedDate.day;
@@ -68,14 +50,10 @@ class AttendanceService {
     required Map<String, dynamic> timeOffRecord,
     required String automaticDescription,
   }) {
-
     final leaveType = TimeOffService.normalizeLeaveType(
       (timeOffRecord['action'] ?? timeOffRecord['type'] ?? 'Leave').toString(),
     );
-
-    final timeOffId = (timeOffRecord['id'] ?? timeOffRecord['timeOffId'] ?? '')
-        .toString()
-        .trim();
+    final timeOffId = (timeOffRecord['id'] ?? timeOffRecord['timeOffId'] ?? '').toString().trim();
 
     return {
       ...attendanceRecord,
@@ -87,38 +65,7 @@ class AttendanceService {
     };
   }
 
-  static bool _recordMatchesWorkerIdentity(
-    Map<String, dynamic> worker,
-    Map<String, dynamic> record, {
-    bool allowNameFallback = true,
-  }) {
-
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-
-    if (recordWorkerId.isNotEmpty) {
-      return workerId.isNotEmpty && recordWorkerId == workerId;
-    }
-
-    final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
-    final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
-
-    if (recordEmail.isNotEmpty) {
-      return workerEmail.isNotEmpty && recordEmail == workerEmail;
-    }
-
-    if (!allowNameFallback) return false;
-
-    final workerName = WorkerIdentity.normalizeName(worker['name']);
-    final recordName = WorkerIdentity.normalizeName(
-      record['name'] ?? record['workerName'],
-    );
-    return workerName.isNotEmpty && recordName == workerName;
-  }
-
-  static DateTime? _recordRevisionDate(Map<String, dynamic> record) {
+  static DateTime? _getRevisionDate(Map<String, dynamic> record) {
     for (final key in ['updatedAt', 'createdAt']) {
       final date = AppDateUtils.dateFromValue(record[key]);
       if (date != null) return date;
@@ -126,25 +73,21 @@ class AttendanceService {
     return null;
   }
 
-  static bool _candidateIsNewer(
-    Map<String, dynamic> existing,
-    Map<String, dynamic> candidate,
-  ) {
-    final existingRevision = _recordRevisionDate(existing);
-    final candidateRevision = _recordRevisionDate(candidate);
+  static bool _isNewer(Map<String, dynamic> existing, Map<String, dynamic> candidate) {
+    final existingDate = _getRevisionDate(existing);
+    final candidateDate = _getRevisionDate(candidate);
 
-    if (candidateRevision != null && existingRevision == null) return true;
-    if (candidateRevision == null && existingRevision != null) return false;
+    if (candidateDate != null && existingDate == null) return true;
+    if (candidateDate == null && existingDate != null) return false;
 
-    if (candidateRevision != null && existingRevision != null) {
-      final comparison = candidateRevision.compareTo(existingRevision);
-      if (comparison != 0) return comparison > 0;
+    if (candidateDate != null && existingDate != null) {
+      final compare = candidateDate.compareTo(existingDate);
+      if (compare != 0) return compare > 0;
     }
 
     return (candidate['id'] ?? '').toString().compareTo(
           (existing['id'] ?? '').toString(),
-        ) >
-        0;
+        ) > 0;
   }
 
   static String _dateKey(DateTime date) {
@@ -161,21 +104,10 @@ class AttendanceService {
     final recordsByDay = <String, Map<String, dynamic>>{};
 
     for (final record in attendanceRecords) {
-
-      if (!_recordMatchesWorkerIdentity(
-        worker,
-        record,
-        allowNameFallback: allowNameFallback,
-      )) {
+      if (!WorkerIdentity.recordsMatch(record, worker, allowName: allowNameFallback)) {
         continue;
       }
-
-      if (!workerExistedOnRecordDate(
-        worker: worker,
-        attendanceRecord: record,
-      )) {
-        continue;
-      }
+      if (!workerExistedOnRecordDate(worker: worker, attendanceRecord: record)) continue;
 
       final date = AppDateUtils.attendanceRecordDate(record);
       final key = date == null
@@ -183,7 +115,7 @@ class AttendanceService {
           : _dateKey(date);
 
       final existing = recordsByDay[key];
-      if (existing == null || _candidateIsNewer(existing, record)) {
+      if (existing == null || _isNewer(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);
       }
     }
@@ -197,21 +129,18 @@ class AttendanceService {
       if (aDate == null) return 1;
       if (bDate == null) return -1;
 
-      final dateComparison = bDate.compareTo(aDate);
-      if (dateComparison != 0) return dateComparison;
+      final dateCompare = bDate.compareTo(aDate);
+      if (dateCompare != 0) return dateCompare;
 
-      if (_candidateIsNewer(a, b)) return 1;
-      if (_candidateIsNewer(b, a)) return -1;
+      if (_isNewer(a, b)) return 1;
+      if (_isNewer(b, a)) return -1;
       return 0;
     });
 
     return records;
   }
 
-  static bool _workerNameIsUnique(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> workersList,
-  ) {
+  static bool _isNameUnique(Map<String, dynamic> worker, List<Map<String, dynamic>> workersList) {
     final targetName = WorkerIdentity.normalizeName(worker['name']);
     if (targetName.isEmpty) return false;
 
@@ -225,11 +154,9 @@ class AttendanceService {
     return matches == 1;
   }
 
-  static String _stringValue(dynamic value) {
-    return (value ?? '').toString().trim();
-  }
+  static String _asString(dynamic value) => (value ?? '').toString().trim();
 
-  static dynamic _preferValue(dynamic primary, dynamic fallback) {
+  static dynamic _pick(dynamic primary, dynamic fallback) {
     if (primary == null) return fallback;
     if (primary is String && primary.trim().isEmpty) return fallback;
     return primary;
@@ -245,43 +172,30 @@ class AttendanceService {
 
     for (var index = 0; index < workersList.length; index++) {
       final worker = workersList[index];
-      final workerId = _stringValue(worker['id'] ?? worker['workerId']);
+      final workerId = _asString(worker['id'] ?? worker['workerId']);
       final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
       final workerName = WorkerIdentity.normalizeName(worker['name']);
-      final allowNameFallback = _workerNameIsUnique(worker, workersList);
+      final allowName = _isNameUnique(worker, workersList);
 
       final matchedRecords = recordsForWorker(
         worker: worker,
         attendanceRecords: rawAttendanceDocs,
-        allowNameFallback: allowNameFallback,
+        allowNameFallback: allowName,
       );
       final matched = matchedRecords.isEmpty ? null : matchedRecords.first;
 
       if (matched != null) {
-
         combined.add({
           ...matched,
-          'workerId': workerId.isNotEmpty
-              ? workerId
-              : _stringValue(matched['workerId']),
-          'name': _preferValue(worker['name'], matched['name']),
-          'email': _preferValue(worker['email'], matched['email']),
-          'role': _preferValue(
-            worker['position'] ?? worker['role'],
-            matched['role'],
-          ),
-          'profileImage': _preferValue(
-            worker['profileImage'],
-            matched['profileImage'],
-          ),
-          'phone': _preferValue(
-            worker['phone'] ?? worker['contact'],
-            matched['phone'] ?? matched['contact'],
-          ),
+          'workerId': workerId.isNotEmpty ? workerId : _asString(matched['workerId']),
+          'name': _pick(worker['name'], matched['name']),
+          'email': _pick(worker['email'], matched['email']),
+          'role': _pick(worker['position'] ?? worker['role'], matched['role']),
+          'profileImage': _pick(worker['profileImage'], matched['profileImage']),
+          'phone': _pick(worker['phone'] ?? worker['contact'], matched['phone'] ?? matched['contact']),
         });
       } else {
-
-        final placeholderIdentity = workerId.isNotEmpty
+        final id = workerId.isNotEmpty
             ? workerId
             : workerEmail.isNotEmpty
             ? workerEmail
@@ -290,9 +204,9 @@ class AttendanceService {
             : index.toString();
 
         combined.add({
-          'id': 'norecord_$placeholderIdentity',
+          'id': 'norecord_$id',
           'workerId': workerId,
-          'name': _preferValue(worker['name'], 'Worker'),
+          'name': _pick(worker['name'], 'Worker'),
           'email': worker['email'] ?? '',
           'role': worker['position'] ?? worker['role'] ?? '',
           'attendanceType': worker['type2'] ?? worker['attendanceType'] ?? 'On-Site',
@@ -310,19 +224,15 @@ class AttendanceService {
       final bDate = AppDateUtils.attendanceRecordDate(b);
 
       if (aDate == null && bDate == null) {
-        return _stringValue(a['name']).toLowerCase().compareTo(
-          _stringValue(b['name']).toLowerCase(),
-        );
+        return _asString(a['name']).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
       }
       if (aDate == null) return 1;
       if (bDate == null) return -1;
 
-      final dateComparison = bDate.compareTo(aDate);
-      if (dateComparison != 0) return dateComparison;
+      final dateCompare = bDate.compareTo(aDate);
+      if (dateCompare != 0) return dateCompare;
 
-      return _stringValue(a['name']).toLowerCase().compareTo(
-        _stringValue(b['name']).toLowerCase(),
-      );
+      return _asString(a['name']).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
     });
 
     return combined;
@@ -332,18 +242,14 @@ class AttendanceService {
     List<Map<String, dynamic>> records,
     List<Map<String, dynamic>> timeOffRecords,
   ) {
-
-    final latestByWorkerAndDay = <String, Map<String, dynamic>>{};
+    final latestByKey = <String, Map<String, dynamic>>{};
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     for (final record in records) {
-
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = WorkerIdentity.normalizeEmail(record['email']);
-      final name = WorkerIdentity.normalizeName(
-        record['name'] ?? record['workerName'],
-      );
+      final name = WorkerIdentity.normalizeName(record['name'] ?? record['workerName']);
       final recordId = (record['id'] ?? '').toString().trim();
 
       final workerKey = workerId.isNotEmpty
@@ -357,16 +263,16 @@ class AttendanceService {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
 
       if (recordDate != null) {
-        final recordDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
-        if (recordDay.isAfter(today)) continue;
+        final day = DateTime(recordDate.year, recordDate.month, recordDate.day);
+        if (day.isAfter(today)) continue;
       }
 
       final dayKey = recordDate == null ? 'undated:$recordId' : _dateKey(recordDate);
       final key = '$workerKey|$dayKey';
 
-      final existing = latestByWorkerAndDay[key];
-      if (existing == null || _candidateIsNewer(existing, record)) {
-        latestByWorkerAndDay[key] = record;
+      final existing = latestByKey[key];
+      if (existing == null || _isNewer(existing, record)) {
+        latestByKey[key] = record;
       }
     }
 
@@ -374,15 +280,11 @@ class AttendanceService {
     int absent = 0;
     int leave = 0;
 
-    for (final record in latestByWorkerAndDay.values) {
+    for (final record in latestByKey.values) {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
 
       final isOnLeave = recordDate != null &&
-          TimeOffService.isWorkerOnLeave(
-            record,
-            timeOffRecords,
-            onDate: recordDate,
-          );
+          TimeOffService.isWorkerOnLeave(record, timeOffRecords, onDate: recordDate);
 
       final status = normalizedAttendanceStatus(record);
 

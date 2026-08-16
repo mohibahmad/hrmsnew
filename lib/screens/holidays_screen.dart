@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../utils/calendar_widgets.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -705,132 +706,13 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    final monthYearStr =
-        '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
-    final now = DateTime.now();
-    final isAtStart = calendarDate.year == now.year && calendarDate.month == now.month;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: isAtStart ? null : () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1)),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.chevron_left, size: 20, color: isAtStart ? Colors.grey.shade300 : Colors.black),
-              ),
-            ),
-            Text(monthYearStr,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black, fontFamily: 'SF Pro Display')),
-            GestureDetector(
-              onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: ['weekday_sun', 'weekday_mon', 'weekday_tue', 'weekday_wed', 'weekday_thu', 'weekday_fri', 'weekday_sat']
-              .map((key) => _buildWeekday(key.tr(), const Color(0xFF0247C4)))
-              .expand((w) => [w, const SizedBox(width: 8)])
-              .toList()
-            ..removeLast(),
-        ),
-        const SizedBox(height: 12),
-        _buildDaysGrid(calendarDate, selectedDay, onDaySelected),
-      ],
-    );
-  }
-
-  Widget _buildWeekday(String day, Color color) {
-    final shortDay = day.length > 3 ? day.substring(0, 3) : day;
-    return Expanded(
-      child: Container(
-        height: 18,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
-        child: Text(shortDay.toUpperCase(),
-            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, fontFamily: 'SF Pro Display')),
-      ),
-    );
-  }
-
-  Widget _buildDaysGrid(DateTime calendarDate, int? selectedDay, ValueChanged<int> onDaySelected) {
-    final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
-    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
-    final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
-    final startOffset = firstWeekday == 7 ? 0 : firstWeekday;
-
-    final rows = <Widget>[];
-    int currentDay = 1;
-
-    for (int i = 0; i < 6; i++) {
-      final rowChildren = <Widget>[];
-      for (int j = 0; j < 7; j++) {
-        final index = i * 7 + j;
-        if (index < startOffset) {
-          rowChildren.add(_buildDayCell('', false, null, null));
-        } else if (currentDay <= daysInMonth) {
-          final day = currentDay;
-          final cellDate = DateTime(calendarDate.year, calendarDate.month, day);
-          final isPast = cellDate.isBefore(todayDate);
-          rowChildren.add(_buildDayCell(
-            '$day',
-            selectedDay != null && day == selectedDay,
-            isPast ? null : () => onDaySelected(day),
-            cellDate,
-          ));
-          currentDay++;
-        } else {
-          rowChildren.add(_buildDayCell('', false, null, null));
-        }
-        if (j < 6) rowChildren.add(const SizedBox(width: 8));
-      }
-      rows.add(Row(children: rowChildren));
-      if (currentDay > daysInMonth && i >= 4) break;
-      if (i < 5) rows.add(const SizedBox(height: 8));
-    }
-
-    return Column(children: rows);
-  }
-
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
-    if (day.isEmpty) return const Expanded(child: AspectRatio(aspectRatio: 1, child: SizedBox()));
-
-    final isPast = onTap == null && date != null;
-    const selectedBg = Color(0xFF0247C4);
-
-    return Expanded(
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isSelected ? selectedBg : Colors.transparent,
-              border: Border.all(
-                color: isSelected ? selectedBg : (isPast ? Colors.grey.shade200 : Colors.grey.shade300),
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(day,
-                style: TextStyle(
-                  color: isSelected ? const Color(0xFFFFFFFF) : (isPast ? Colors.grey.shade400 : Colors.black),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                )),
-          ),
-        ),
-      ),
+    return ModalCalendar(
+      calendarDate: calendarDate,
+      selectedDay: selectedDay,
+      onDaySelected: onDaySelected,
+      onMonthChanged: onMonthChanged,
+      disablePastDays: true,
+      showBorder: false,
     );
   }
 

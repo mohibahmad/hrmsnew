@@ -35,7 +35,7 @@ Future<bool> offerBiometricLogin({
   if (!context.mounted) return false;
 
   final result = await BiometricService.authenticate(
-    localizedReason: 'enable_biometric_signup_reason'.tr(
+    reason: 'enable_biometric_signup_reason'.tr(
       namedArgs: {
         'biometric': LocalizationHelper.localizeBiometricName(biometricName),
       },
@@ -408,6 +408,7 @@ Map<String, String> validateWorkerData(
       'part-time',
       'part time',
       'contract',
+      'freelance',
       'intern',
     };
     if (!valid.contains(normalized)) {
@@ -418,6 +419,8 @@ Map<String, String> validateWorkerData(
       workerData['type1'] = 'Part-Time';
     } else if (normalized == 'contract') {
       workerData['type1'] = 'Contract';
+    } else if (normalized == 'freelance') {
+      workerData['type1'] = 'Freelance';
     } else {
       workerData['type1'] = 'Intern';
     }
@@ -1616,6 +1619,20 @@ class AppDateUtils {
     return '$dayStr/$monthStr/${date.year}';
   }
 
+  static String dateKey(DateTime date) {
+    final dayStr = date.day.toString().padLeft(2, '0');
+    final monthStr = date.month.toString().padLeft(2, '0');
+    return '${date.year}-$monthStr-$dayStr';
+  }
+
+  static String monthName(DateTime date, {String? locale}) {
+    try {
+      return DateFormat('MMMM', locale ?? 'en_US').format(date);
+    } catch (_) {
+      return '';
+    }
+  }
+
   static String formatLocaleDate(DateTime date, {String? locale}) {
     try {
       final loc = locale ?? Intl.getCurrentLocale();
@@ -1823,3 +1840,8 @@ int projectedTimeOffBalance({
 }) {
   return (availableDays - requestedDays).clamp(0, 9999);
 }
+
+DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+String pad2(int n) => n.toString().padLeft(2, '0');
+String pad4(int n) => n.toString().padLeft(4, '0');

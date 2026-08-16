@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
@@ -265,7 +266,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _cachedDateToTypeMap = null;
   }
 
-  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+  DateTime _dateOnly(DateTime d) => dateOnly(d);
 
   String _dateOnlyString(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
@@ -278,22 +279,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   String _getMonthName(int month) =>
       DateFormat('MMMM', context.locale.toString()).format(DateTime(2024, month));
 
-  bool _sameWorker(Map<String, dynamic> first, Map<String, dynamic> second) {
-    final firstId = _extractIdentityId(first);
-    final secondId = _extractIdentityId(second);
-    if (firstId.isNotEmpty && secondId.isNotEmpty) return firstId == secondId;
-
-    final firstEmail = (first['email'] ?? '').toString().trim().toLowerCase();
-    final secondEmail = (second['email'] ?? '').toString().trim().toLowerCase();
-    return firstEmail.isNotEmpty && firstEmail == secondEmail;
-  }
-
-  String _extractIdentityId(Map<String, dynamic> value) {
-    final workerId = (value['workerId'] ?? '').toString().trim();
-    return workerId.isNotEmpty
-        ? workerId
-        : (value['id'] ?? '').toString().trim();
-  }
+  bool _sameWorker(Map<String, dynamic> first, Map<String, dynamic> second) =>
+      WorkerIdentity.samePerson(first, second);
 
   bool _isValidLeaveType(dynamic value) {
     final raw = value?.toString().trim() ?? '';
@@ -778,21 +765,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return idx != -1 ? _workers[idx] : null;
   }
 
-  Map<String, dynamic>? _findMatchingWorker(Map<String, dynamic> target) {
-    final initWorkerId = (target['workerId'] ?? '').toString().trim();
-    final initEmail = (target['email'] ?? '').toString().trim().toLowerCase();
-
-    for (final w in _workers) {
-      final wId = (w['workerId'] ?? w['id'] ?? '').toString().trim();
-      final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-
-      if ((initWorkerId.isNotEmpty && initWorkerId == wId) ||
-          (initEmail.isNotEmpty && initEmail == wEmail)) {
-        return w;
-      }
-    }
-    return null;
-  }
+  Map<String, dynamic>? _findMatchingWorker(Map<String, dynamic> target) =>
+      WorkerIdentity.findMatchingWorker(target, _workers);
 
   Future<void> _loadTimeoffForSelectedWorker() async {
     final worker = _selectedWorker;
@@ -1041,33 +1015,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     return shouldDiscard ?? false;
   }
 
-  Future<bool?> _showDiscardDialog() {
-    return showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'UnsavedChangesDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-      transitionBuilder: (ctx, animation, _, __) {
-        final curve = CurvedAnimation(
-            parent: animation, curve: Curves.easeOutBack);
-        return BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: _DiscardChangesDialog(ctx: ctx),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  Future<bool?> _showDiscardDialog() => UnsavedChangesDialog.show(context);
 
   Future<void> _toggleDate(DateTime date) async {
     final selectedDate = _dateOnly(date);
@@ -1547,6 +1495,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         await _firestore.cancelTimeOffWithWorkerBalance(
           timeOffId: _editingId!,
           workerId: workerId,
+          fallbackRecord: _editingRecord,
         );
       }
 
@@ -1784,6 +1733,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         await _firestore.cancelTimeOffWithWorkerBalance(
           timeOffId: draft.editingId!,
           workerId: workerId,
+          fallbackRecord: draft.editingRecord,
         );
         continue;
       }
@@ -3031,126 +2981,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _DiscardChangesDialog extends StatelessWidget {
-  final BuildContext ctx;
-
-  const _DiscardChangesDialog({required this.ctx});
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 380,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF000000).withValues(alpha: 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Icon(Icons.warning_rounded,
-                    color: Color(0xFFEF4444), size: 36),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'discard_changes'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'unsaved_changes_message'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'SF Pro Display',
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, false),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'cancel'.tr(),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF334155),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx, true),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'discard'.tr(),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFFFFFFF),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

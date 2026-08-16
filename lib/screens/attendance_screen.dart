@@ -1582,7 +1582,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 flex: 2,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 24),
-                  child: Text(LocalizationHelper.localizeWorkType(workType),
+                  child: Text(LocalizationHelper.localizeType1(workType),
                       style: const TextStyle(fontSize: 15, color: _kTextDark, fontFamily: 'SF Pro Display'),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract class AppColors {
+  static const String fontFamily = 'SF Pro Display';
 
   static const Color primaryBlue = Color(0xFF0247C4);
   static const Color primaryBlueDark = Color(0xFF004FDE);

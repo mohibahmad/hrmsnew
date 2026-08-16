@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../utils/helpers.dart';
-
 import 'error_reporter.dart';
 
 class CancellationToken {
@@ -50,17 +49,11 @@ class UploadResult {
     this.isCancelled = false,
   });
 
-  factory UploadResult.success({
-    required UploadFile file,
-    required String url,
-  }) {
+  factory UploadResult.success({required UploadFile file, required String url}) {
     return UploadResult._(file: file, url: url, isSuccess: true);
   }
 
-  factory UploadResult.failure({
-    required UploadFile file,
-    required String error,
-  }) {
+  factory UploadResult.failure({required UploadFile file, required String error}) {
     return UploadResult._(file: file, error: error, isSuccess: false);
   }
 
@@ -86,12 +79,8 @@ class UploadService {
     required String fallbackMimeType,
   }) async {
     final uri = Uri.tryParse(url.trim());
-    if (uri == null ||
-        !uri.hasAuthority ||
-        (uri.scheme != 'http' && uri.scheme != 'https')) {
-      throw const FormatException(
-        'A valid HTTP or HTTPS file URL is required.',
-      );
+    if (uri == null || !uri.hasAuthority || (uri.scheme != 'http' && uri.scheme != 'https')) {
+      throw const FormatException('A valid HTTP or HTTPS file URL is required.');
     }
 
     if (folder.trim().isEmpty) {
@@ -107,16 +96,11 @@ class UploadService {
       final response = await request.close().timeout(_downloadTimeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException(
-          'File download failed with HTTP ${response.statusCode}.',
-          uri: uri,
-        );
+        throw HttpException('File download failed with HTTP ${response.statusCode}.', uri: uri);
       }
 
       if (response.contentLength > maxFileBytes) {
-        throw const FileSystemException(
-          'Remote file is larger than the 10 MB limit.',
-        );
+        throw const FileSystemException('Remote file is larger than the 10 MB limit.');
       }
 
       final bytesBuilder = BytesBuilder(copy: false);
@@ -125,9 +109,7 @@ class UploadService {
       await for (final chunk in response.timeout(_downloadTimeout)) {
         downloadedBytes += chunk.length;
         if (downloadedBytes > maxFileBytes) {
-          throw const FileSystemException(
-            'Remote file is larger than the 10 MB limit.',
-          );
+          throw const FileSystemException('Remote file is larger than the 10 MB limit.');
         }
         bytesBuilder.add(chunk);
       }
@@ -137,22 +119,14 @@ class UploadService {
       }
 
       final downloadedData = bytesBuilder.takeBytes();
-      final remoteName = _remoteFileName(uri);
-      final requestedName = remoteName.isNotEmpty
-          ? remoteName
-          : safeFallbackName;
-      final safeName = _safeFileName(requestedName, safeFallbackName);
-      final responseMimeType = response.headers.contentType?.mimeType;
-      final detectedMimeType = _mimeTypeFromBytes(downloadedData);
-      final mimeType = _normalizedMimeType(
-        detectedMimeType ??
-            (responseMimeType == null ||
-                    responseMimeType.isEmpty ||
-                    responseMimeType == 'application/octet-stream'
-                ? mimeTypeForExtension(safeName, fallback: fallbackMimeType)
-                : responseMimeType),
-        fileName: safeName,
+      final remoteName = _getRemoteFileName(uri);
+      final safeName = _safeFileName(remoteName.isNotEmpty ? remoteName : safeFallbackName, safeFallbackName);
+      
+      final mimeType = _getMimeType(
+        response: response,
         bytes: downloadedData,
+        fileName: safeName,
+        fallbackMimeType: fallbackMimeType,
       );
 
       return UploadFile(
@@ -164,6 +138,29 @@ class UploadService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  static String _getMimeType({
+    required HttpClientResponse response,
+    required Uint8List bytes,
+    required String fileName,
+    required String fallbackMimeType,
+  }) {
+    final detectedMimeType = _detectMimeTypeFromBytes(bytes);
+    if (detectedMimeType != null) return detectedMimeType;
+
+    final responseMimeType = response.headers.contentType?.mimeType;
+    if (responseMimeType != null && 
+        responseMimeType.isNotEmpty && 
+        responseMimeType != 'application/octet-stream') {
+      return _normalizeMimeType(responseMimeType, fileName: fileName, bytes: bytes);
+    }
+
+    return _normalizeMimeType(
+      mimeTypeForExtension(fileName, fallback: fallbackMimeType),
+      fileName: fileName,
+      bytes: bytes,
+    );
   }
 
   static Future<List<UploadResult>> uploadFiles({
@@ -178,90 +175,71 @@ class UploadService {
     var completed = 0;
     final results = List<UploadResult?>.filled(total, null);
 
-    Future<void> uploadSingle(int index) async {
+    Future<void> uploadSingleFile(int index) async {
       final file = files[index];
-      UploadResult result;
-
+      
       if (cancelToken?.isCancelled == true) {
-        result = UploadResult.cancelled(file: file);
+        results[index] = UploadResult.cancelled(file: file);
       } else {
-        final validationError = _validationError(file);
+        final validationError = _validateUploadFile(file);
         if (validationError != null) {
-          result = UploadResult.failure(file: file, error: validationError);
+          results[index] = UploadResult.failure(file: file, error: validationError);
         } else {
           try {
-            final url = await _uploadToStorage(file, cancelToken: cancelToken);
-            result = UploadResult.success(file: file, url: url);
+            final url = await _performUpload(file, cancelToken: cancelToken);
+            results[index] = UploadResult.success(file: file, url: url);
           } on _UploadCancelledException {
-            result = UploadResult.cancelled(file: file);
-          } catch (e) {
-            result = UploadResult.failure(file: file, error: e.toString());
+            results[index] = UploadResult.cancelled(file: file);
+          } catch (error) {
+            results[index] = UploadResult.failure(file: file, error: error.toString());
           }
         }
       }
 
-      results[index] = result;
       completed++;
-      _notifyProgress(onProgress, completed, total);
+      _reportProgress(onProgress, completed, total);
     }
 
     final poolSize = maxConcurrent.clamp(1, 30);
     var nextIndex = 0;
 
     Future<void> worker() async {
-      while (true) {
-        if (cancelToken?.isCancelled == true) break;
+      while (nextIndex < total && cancelToken?.isCancelled != true) {
         final index = nextIndex++;
-        if (index >= total) break;
-        await uploadSingle(index);
+        await uploadSingleFile(index);
       }
     }
 
     await Future.wait(List.generate(poolSize, (_) => worker()));
+    
     for (var i = 0; i < total; i++) {
       results[i] ??= UploadResult.cancelled(file: files[i]);
     }
+    
     return results.cast<UploadResult>();
   }
 
-  static Future<String> _uploadToStorage(
-    UploadFile file, {
-    CancellationToken? cancelToken,
-  }) async {
+  static Future<String> _performUpload(UploadFile file, {CancellationToken? cancelToken}) async {
     if (cancelToken?.isCancelled == true) {
       throw const _UploadCancelledException();
     }
 
     final safeFolder = _safeFolderPath(file.folder);
     final safeName = _safeFileName(file.fileName, 'file');
-    final mimeType = _normalizedMimeType(
-      file.mimeType,
-      fileName: safeName,
-      bytes: file.bytes,
-    );
-    final uploadId = _nextUploadId();
-    final ref = FirebaseStorage.instance.ref().child(
-      'hrms_documents/$safeFolder/${uploadId}_$safeName',
-    );
+    final mimeType = _normalizeMimeType(file.mimeType, fileName: safeName, bytes: file.bytes);
+    final uploadId = _generateUploadId();
+    final ref = FirebaseStorage.instance.ref().child('hrms_documents/$safeFolder/${uploadId}_$safeName');
 
-    var uploadStarted = false;
+    UploadTask? uploadTask;
 
     for (var attempt = 0; attempt < _maxRetries; attempt++) {
       if (cancelToken?.isCancelled == true) {
-        if (uploadStarted) {
-          await _deleteQuietly(ref);
-        }
+        await _deleteQuietly(ref);
         throw const _UploadCancelledException();
       }
 
-      UploadTask? uploadTask;
-
       try {
-        uploadTask = ref.putData(
-          file.bytes,
-          SettableMetadata(contentType: mimeType),
-        );
-        uploadStarted = true;
+        uploadTask = ref.putData(file.bytes, SettableMetadata(contentType: mimeType));
 
         if (cancelToken != null) {
           unawaited(
@@ -281,35 +259,25 @@ class UploadService {
         }
 
         return await snapshot.ref.getDownloadURL();
-      } on FirebaseException catch (e) {
-        if (cancelToken?.isCancelled == true || e.code == 'canceled') {
+      } on FirebaseException catch (firebaseError) {
+        if (cancelToken?.isCancelled == true || firebaseError.code == 'canceled') {
           await _deleteQuietly(ref);
           throw const _UploadCancelledException();
         }
 
-        final isLastAttempt = attempt == _maxRetries - 1;
-        if (isLastAttempt || !_shouldRetry(e)) {
+        if (attempt == _maxRetries - 1 || !_shouldRetryUpload(firebaseError)) {
           await _deleteQuietly(ref);
           rethrow;
         }
 
-        await _waitBeforeRetry(
-          Duration(seconds: 2 * (attempt + 1)),
-          cancelToken,
-        );
-      } on _UploadCancelledException {
-        rethrow;
-      } catch (_) {
-        final isLastAttempt = attempt == _maxRetries - 1;
-        if (isLastAttempt) {
+        await _waitBeforeRetry(Duration(seconds: 2 * (attempt + 1)), cancelToken);
+      } catch (error) {
+        if (attempt == _maxRetries - 1) {
           await _deleteQuietly(ref);
           rethrow;
         }
 
-        await _waitBeforeRetry(
-          Duration(seconds: 2 * (attempt + 1)),
-          cancelToken,
-        );
+        await _waitBeforeRetry(Duration(seconds: 2 * (attempt + 1)), cancelToken);
       }
     }
 
@@ -317,38 +285,20 @@ class UploadService {
     throw Exception('Upload failed after $_maxRetries retries');
   }
 
-  static String? _validationError(UploadFile file) {
-    if (file.folder.trim().isEmpty) {
-      return 'Upload folder is required.';
-    }
-
-    if (file.fileName.trim().isEmpty) {
-      return 'File name is required.';
-    }
-
-    if (file.bytes.isEmpty) {
-      return 'File is empty.';
-    }
-
-    if (file.bytes.length > maxFileBytes) {
-      return 'File is larger than the 10 MB limit.';
-    }
-
-    final mimeType = _normalizedMimeType(
-      file.mimeType,
-      fileName: file.fileName,
-      bytes: file.bytes,
-    );
-    if (!mimeType.contains('/')) {
-      return 'A valid MIME type is required.';
-    }
-
+  static String? _validateUploadFile(UploadFile file) {
+    if (file.folder.trim().isEmpty) return 'Upload folder is required.';
+    if (file.fileName.trim().isEmpty) return 'File name is required.';
+    if (file.bytes.isEmpty) return 'File is empty.';
+    if (file.bytes.length > maxFileBytes) return 'File is larger than the 10 MB limit.';
+    
+    final mimeType = _normalizeMimeType(file.mimeType, fileName: file.fileName, bytes: file.bytes);
+    if (!mimeType.contains('/')) return 'A valid MIME type is required.';
+    
     return null;
   }
 
-  static bool _shouldRetry(FirebaseException error) {
-    final code = error.code.trim().toLowerCase();
-    return !{
+  static bool _shouldRetryUpload(FirebaseException error) {
+    const nonRetryableCodes = {
       'unauthenticated',
       'unauthorized',
       'permission-denied',
@@ -359,27 +309,21 @@ class UploadService {
       'bucket-not-found',
       'project-not-found',
       'canceled',
-    }.contains(code);
+    };
+    return !nonRetryableCodes.contains(error.code.trim().toLowerCase());
   }
 
-  static Future<void> _waitBeforeRetry(
-    Duration duration,
-    CancellationToken? cancelToken,
-  ) async {
+  static Future<void> _waitBeforeRetry(Duration duration, CancellationToken? cancelToken) async {
     if (cancelToken == null) {
       await Future.delayed(duration);
       return;
     }
 
-    if (cancelToken.isCancelled) {
-      throw const _UploadCancelledException();
-    }
+    if (cancelToken.isCancelled) throw const _UploadCancelledException();
 
     await Future.any([Future.delayed(duration), cancelToken.whenCancelled]);
 
-    if (cancelToken.isCancelled) {
-      throw const _UploadCancelledException();
-    }
+    if (cancelToken.isCancelled) throw const _UploadCancelledException();
   }
 
   static Future<void> _deleteQuietly(Reference ref) async {
@@ -388,27 +332,23 @@ class UploadService {
     } catch (_) {}
   }
 
-  static void _notifyProgress(
-    void Function(int completed, int total)? callback,
-    int completed,
-    int total,
-  ) {
-    if (callback == null) return;
-    try {
-      callback(completed, total);
-    } catch (_) {}
+  static void _reportProgress(void Function(int completed, int total)? callback, int completed, int total) {
+    if (callback != null) {
+      try {
+        callback(completed, total);
+      } catch (_) {}
+    }
   }
 
-  static String _nextUploadId() {
+  static String _generateUploadId() {
     _uploadSequence = (_uploadSequence + 1) & 0x7fffffff;
     return '${DateTime.now().microsecondsSinceEpoch}_$_uploadSequence';
   }
 
-  static String _remoteFileName(Uri uri) {
+  static String _getRemoteFileName(Uri uri) {
     if (uri.pathSegments.isEmpty) return '';
     final raw = uri.pathSegments.last.trim();
     if (raw.isEmpty) return '';
-
     try {
       return Uri.decodeComponent(raw).trim();
     } on FormatException {
@@ -423,16 +363,14 @@ class UploadService {
         .map((part) => _safePathSegment(part, ''))
         .where((part) => part.isNotEmpty)
         .toList();
-
     return parts.isEmpty ? 'uploads' : parts.join('/');
   }
 
   static String _safeFileName(String value, String fallback) {
     final safeFallback = _safePathSegment(fallback, 'file');
     final sanitized = _safePathSegment(value, safeFallback);
-    final limited = sanitized.length > 180
-        ? sanitized.substring(sanitized.length - 180)
-        : sanitized;
+    if (sanitized.length <= 180) return sanitized.isEmpty ? safeFallback : sanitized;
+    final limited = sanitized.substring(sanitized.length - 180);
     return limited.isEmpty ? safeFallback : limited;
   }
 
@@ -445,16 +383,11 @@ class UploadService {
     if (sanitized.isEmpty || sanitized == '.' || sanitized == '..') {
       return fallback;
     }
-
     return sanitized;
   }
 
-  static String _normalizedMimeType(
-    String value, {
-    required String fileName,
-    required Uint8List bytes,
-  }) {
-    final detected = _mimeTypeFromBytes(bytes);
+  static String _normalizeMimeType(String value, {required String fileName, required Uint8List bytes}) {
+    final detected = _detectMimeTypeFromBytes(bytes);
     if (detected != null) return detected;
 
     final normalized = value.split(';').first.trim().toLowerCase();
@@ -463,31 +396,20 @@ class UploadService {
     return mimeTypeForExtension(fileName);
   }
 
-  static String? _mimeTypeFromBytes(Uint8List bytes) {
+  static String? _detectMimeTypeFromBytes(Uint8List bytes) {
     bool startsWith(List<int> signature) {
       if (bytes.length < signature.length) return false;
-      for (var index = 0; index < signature.length; index++) {
-        if (bytes[index] != signature[index]) return false;
+      for (var i = 0; i < signature.length; i++) {
+        if (bytes[i] != signature[i]) return false;
       }
       return true;
     }
 
-    if (startsWith(const [0xFF, 0xD8, 0xFF])) {
-      return 'image/jpeg';
-    }
-
-    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
-      return 'image/png';
-    }
-
-    if (startsWith(const [0x47, 0x49, 0x46, 0x38])) {
-      return 'image/gif';
-    }
-
-    if (startsWith(const [0x42, 0x4D])) {
-      return 'image/bmp';
-    }
-
+    if (startsWith(const [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) return 'image/png';
+    if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+    if (startsWith(const [0x42, 0x4D])) return 'image/bmp';
+    
     if (bytes.length >= 12 &&
         startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
         bytes[8] == 0x57 &&
@@ -496,25 +418,20 @@ class UploadService {
         bytes[11] == 0x50) {
       return 'image/webp';
     }
-
-    if (startsWith(const [0x25, 0x50, 0x44, 0x46])) {
-      return 'application/pdf';
-    }
-
-    if (startsWith(const [0xD0, 0xCF, 0x11, 0xE0])) {
-      return 'application/msword';
-    }
-
+    
+    if (startsWith(const [0x25, 0x50, 0x44, 0x46])) return 'application/pdf';
+    if (startsWith(const [0xD0, 0xCF, 0x11, 0xE0])) return 'application/msword';
+    
     if (startsWith(const [0x50, 0x4B, 0x03, 0x04]) &&
-        _containsAscii(bytes, '[Content_Types].xml') &&
-        _containsAscii(bytes, 'word/')) {
+        _containsAsciiString(bytes, '[Content_Types].xml') &&
+        _containsAsciiString(bytes, 'word/')) {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
-
+    
     return null;
   }
 
-  static bool _containsAscii(Uint8List bytes, String value) {
+  static bool _containsAsciiString(Uint8List bytes, String value) {
     final pattern = ascii.encode(value);
     if (pattern.isEmpty || bytes.length < pattern.length) return false;
 
@@ -528,36 +445,31 @@ class UploadService {
       }
       if (matches) return true;
     }
-
     return false;
   }
 
   static Future<void> deleteByUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null || !uri.host.contains('firebasestorage.googleapis.com')) {
-      return;
-    }
+    if (uri == null || !uri.host.contains('firebasestorage.googleapis.com')) return;
+    
     final segments = uri.pathSegments;
     final oIndex = segments.indexOf('o');
     if (oIndex == -1 || oIndex + 1 >= segments.length) return;
+    
     final path = Uri.decodeComponent(segments[oIndex + 1]);
     if (path.trim().isEmpty) return;
+    
     try {
       await FirebaseStorage.instance.ref(path).delete();
     } catch (error, stackTrace) {
       final message = error.toString().toLowerCase();
-
       if (message.contains('already running') ||
           message.contains('object-not-found') ||
           message.contains('not found') ||
           message.contains('not_found')) {
         return;
       }
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'UploadService.deleteByUrl',
-      );
+      ErrorReporter.report(error, stackTrace, context: 'UploadService.deleteByUrl');
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../utils/helpers.dart';
 import '../utils/utils.dart';
 
 class PayrollReminderWindow {
@@ -14,8 +15,7 @@ class PayrollReminderWindow {
   });
 
   String get periodKey => PayrollService.payrollPeriodLabel(payrollMonth);
-  String get suppressionKey =>
-      '${periodKey}_${PayrollService.periodDateKey(dueDate)}';
+  String get suppressionKey => '${periodKey}_${PayrollService.periodDateKey(dueDate)}';
 }
 
 class PayrollPeriod {
@@ -26,17 +26,13 @@ class PayrollPeriod {
 }
 
 class PayrollService {
-
   static DateTime currentPayrollMonth({DateTime? referenceDate}) {
     final reference = referenceDate ?? DateTime.now();
     return DateTime(reference.year, reference.month, 1);
   }
 
-  static DateTime payPeriodStart(DateTime month) =>
-      DateTime(month.year, month.month, 1);
-
-  static DateTime payPeriodEnd(DateTime month) =>
-      DateTime(month.year, month.month + 1, 0);
+  static DateTime payPeriodStart(DateTime month) => DateTime(month.year, month.month, 1);
+  static DateTime payPeriodEnd(DateTime month) => DateTime(month.year, month.month + 1, 0);
 
   static DateTime _payDayInMonth(DateTime month, int payDay) {
     final lastDay = DateTime(month.year, month.month + 1, 0).day;
@@ -52,25 +48,16 @@ class PayrollService {
     return today.isAfter(payDayThisMonth)
         ? PayrollPeriod(
             start: payDayThisMonth,
-            end: _payDayInMonth(
-              DateTime(month.year, month.month + 1, 1),
-              payDay,
-            ),
+            end: _payDayInMonth(DateTime(month.year, month.month + 1, 1), payDay),
           )
         : PayrollPeriod(
-            start: _payDayInMonth(
-              DateTime(month.year, month.month - 1, 1),
-              payDay,
-            ),
+            start: _payDayInMonth(DateTime(month.year, month.month - 1, 1), payDay),
             end: payDayThisMonth,
           );
   }
 
   static PayrollPeriod payDayPeriod(DateTime dueMonth, int payDay) {
-    final prevMonthPayDay = _payDayInMonth(
-      DateTime(dueMonth.year, dueMonth.month - 1, 1),
-      payDay,
-    );
+    final prevMonthPayDay = _payDayInMonth(DateTime(dueMonth.year, dueMonth.month - 1, 1), payDay);
     return PayrollPeriod(
       start: prevMonthPayDay,
       end: _payDayInMonth(dueMonth, payDay),
@@ -80,27 +67,18 @@ class PayrollService {
   static PayrollPeriod nextPayDayPeriod(PayrollPeriod current, int payDay) {
     final currentEndMonth = DateTime(current.end.year, current.end.month, 1);
     final currentEndPayDay = _payDayInMonth(currentEndMonth, payDay);
-    final nextEnd = _payDayInMonth(
-      DateTime(currentEndMonth.year, currentEndMonth.month + 1, 1),
-      payDay,
-    );
+    final nextEnd = _payDayInMonth(DateTime(currentEndMonth.year, currentEndMonth.month + 1, 1), payDay);
     return PayrollPeriod(
       start: currentEndPayDay,
       end: nextEnd,
     );
   }
 
-  static String payrollPeriodLabel(DateTime month) =>
-      '${month.year}-${_pad2(month.month)}';
+  static String payrollPeriodLabel(DateTime month) => '${month.year}-${pad2(month.month)}';
 
-  static String formatPayPeriodRange(
-    DateTime start,
-    DateTime end, {
-    String? locale,
-  }) {
+  static String formatPayPeriodRange(DateTime start, DateTime end, {String? locale}) {
     final startLabel = '${_monthLabel(start, locale)} ${start.day}';
     final endLabel = '${_monthLabel(end, locale)} ${end.day}';
-
     return start.year == end.year
         ? '$startLabel – $endLabel, ${end.year}'
         : '$startLabel, ${start.year} – $endLabel, ${end.year}';
@@ -110,38 +88,21 @@ class PayrollService {
     try {
       return DateFormat('MMM', locale).format(date);
     } catch (_) {
-      return const [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][date.month];
+      return const ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.month];
     }
   }
 
-  static String _pad2(int n) => n.toString().padLeft(2, '0');
+  static String periodDateKey(DateTime d) => '${pad4(d.year)}-${pad2(d.month)}-${pad2(d.day)}';
 
-  static String periodDateKey(DateTime d) =>
-      '${_pad4(d.year)}-${_pad2(d.month)}-${_pad2(d.day)}';
-
-  static String _pad4(int n) => n.toString().padLeft(4, '0');
-
-  static String payrollKeyForPeriod(
-    String identity,
-    DateTime periodStart,
-    DateTime periodEnd,
-  ) {
+  static String payrollKeyForPeriod(String identity, DateTime periodStart, DateTime periodEnd) {
     final normalizedIdentity = identity.trim().toLowerCase();
     return normalizedIdentity.isEmpty
         ? ''
         : '${normalizedIdentity}_${periodDateKey(periodStart)}_${periodDateKey(periodEnd)}';
   }
 
-  static bool workerEmployedDuringPeriod(
-    Map<String, dynamic> worker,
-    DateTime periodEnd,
-  ) {
-    final joiningDate = _parseDate(
-      worker['joiningDate'] ?? worker['dateOfJoining'],
-    );
+  static bool workerEmployedDuringPeriod(Map<String, dynamic> worker, DateTime periodEnd) {
+    final joiningDate = _parseDate(worker['joiningDate'] ?? worker['dateOfJoining']);
     return joiningDate == null || !joiningDate.isAfter(periodEnd);
   }
 
@@ -192,12 +153,9 @@ class PayrollService {
   }
 
   static String canonicalWorkerStatus(Map<String, dynamic> worker) {
-    if (_isTruthy(worker['isDeleted']) ||
-        _isTruthy(worker['deleted']) ||
-        _isTruthy(worker['isArchived'])) {
+    if (_isTruthy(worker['isDeleted']) || _isTruthy(worker['deleted']) || _isTruthy(worker['isArchived'])) {
       return 'Terminated';
     }
-
     for (final key in ['employmentStatus', 'workerStatus', 'status']) {
       final value = (worker[key] ?? '').toString().trim();
       if (value.isNotEmpty) return value;
@@ -211,9 +169,7 @@ class PayrollService {
   }
 
   static String workerEmploymentType(Map<String, dynamic> worker) {
-    for (final key in [
-      'type1', 'employmentType', 'employment_type', 'workType', 'workerType', 'contractType'
-    ]) {
+    for (final key in ['type1', 'employmentType', 'employment_type', 'workType', 'workerType', 'contractType']) {
       final value = (worker[key] ?? '').toString().trim();
       if (value.isNotEmpty) return value;
     }
@@ -228,20 +184,14 @@ class PayrollService {
       record['grossSalary'],
     ].where(_hasValue).toList();
 
-    if (explicitSalaryValues.isNotEmpty &&
-        explicitSalaryValues.every((v) => extractSalary(v.toString()) <= 0)) {
+    if (explicitSalaryValues.isNotEmpty && explicitSalaryValues.every((v) => extractSalary(v.toString()) <= 0)) {
       return false;
     }
 
     if (_isTruthy(record['isPaid']) || _isTruthy(record['paid'])) return true;
 
-    final paymentStatus = (record['paymentStatus'] ?? record['status'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
-
-    if (const {'paid', 'completed', 'processed', 'successful', 'success'}
-        .contains(paymentStatus)) {
+    final paymentStatus = (record['paymentStatus'] ?? record['status'] ?? '').toString().trim().toLowerCase();
+    if (const {'paid', 'completed', 'processed', 'successful', 'success'}.contains(paymentStatus)) {
       return true;
     }
 
@@ -253,15 +203,12 @@ class PayrollService {
   static bool _isTruthy(dynamic value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
-
     final normalized = (value ?? '').toString().trim().toLowerCase();
     return const {'true', '1', 'yes', 'y'}.contains(normalized);
   }
 
   static bool _hasValue(dynamic value) => value != null && value.toString().trim().isNotEmpty;
-
-  static dynamic _preferNonEmpty(dynamic primary, dynamic fallback) =>
-      _hasValue(primary) ? primary : fallback;
+  static dynamic _preferNonEmpty(dynamic primary, dynamic fallback) => _hasValue(primary) ? primary : fallback;
 
   static String? _companyCurrencyCode(String? companyCurrency) {
     final value = companyCurrency?.trim() ?? '';
@@ -275,10 +222,7 @@ class PayrollService {
     return '$symbol ${formatFullNumber(extractSalary(rawValue))}';
   }
 
-  static String _salaryDisplayOrEmpty(
-    Map<String, dynamic> data, {
-    String? companyCurrency,
-  }) {
+  static String _salaryDisplayOrEmpty(Map<String, dynamic> data, {String? companyCurrency}) {
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final workerCurrency = CurrencyUtils.normalize(data['currency']);
     final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
@@ -296,10 +240,7 @@ class PayrollService {
   }
 
   static DateTime _recordSortDate(Map<String, dynamic> record) {
-    for (final key in [
-      'lastModified', 'updatedAt', 'paidAt', 'paidOn', 'paymentDate',
-      'createdAt', 'timestamp', 'payrollDate', 'date'
-    ]) {
+    for (final key in ['lastModified', 'updatedAt', 'paidAt', 'paidOn', 'paymentDate', 'createdAt', 'timestamp', 'payrollDate', 'date']) {
       final parsed = _parseDate(record[key]);
       if (parsed != null) return parsed;
     }
@@ -311,29 +252,21 @@ class PayrollService {
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> activeWorkers,
   ) {
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+    if (WorkerIdentity.matchesByIdOrEmail(record, worker)) return true;
+
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final recordEmail = (record['email'] ?? '').toString().trim().toLowerCase();
-
-    final idMatches = workerId.isNotEmpty && recordWorkerId.isNotEmpty && workerId == recordWorkerId;
-    final emailMatches = workerEmail.isNotEmpty && recordEmail.isNotEmpty && workerEmail == recordEmail;
-    if (idMatches || emailMatches) return true;
-
-    if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) || recordEmail.isNotEmpty) {
+    final workerId = WorkerIdentity.normalizeId(worker);
+    final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
+    if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) ||
+        recordEmail.isNotEmpty) {
       return false;
     }
 
-    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    final recordName = (record['name'] ?? record['workerName'] ?? '').toString().trim().toLowerCase();
-
-    if (workerName.isEmpty || recordName.isEmpty || workerName != recordName) return false;
-
-    final sameNameWorkers = activeWorkers.where((candidate) =>
-        (candidate['name'] ?? '').toString().trim().toLowerCase() == workerName
-    ).length;
-
-    return sameNameWorkers == 1;
+    return WorkerIdentity.recordsMatchByUniqueName(
+      record,
+      worker,
+      activeWorkers,
+    );
   }
 
   static List<Map<String, dynamic>> combinePayroll(
@@ -350,20 +283,11 @@ class PayrollService {
     final effectivePeriodEnd = periodEnd ?? payPeriodEnd(targetMonth);
     final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
 
-    final activeWorkers = _filterActiveWorkers(
-      workersList,
-      rawPayrollDocs,
-    ).map(Map<String, dynamic>.from).toList();
-
+    final activeWorkers = _filterActiveWorkers(workersList, rawPayrollDocs).map(Map<String, dynamic>.from).toList();
     if (activeWorkers.isEmpty) return const <Map<String, dynamic>>[];
 
     final monthlyPayrollDocs = rawPayrollDocs
-        .where((record) => isRecordInPayPeriod(
-          record,
-          effectivePeriodStart,
-          effectivePeriodEnd,
-          allowUndated: allowUndatedRecords,
-        ))
+        .where((record) => isRecordInPayPeriod(record, effectivePeriodStart, effectivePeriodEnd, allowUndated: allowUndatedRecords))
         .map(Map<String, dynamic>.from)
         .toList();
 
@@ -384,16 +308,8 @@ class PayrollService {
   ) {
     return workersList.where((worker) {
       if (isWorkerEligibleForPayroll(worker)) return true;
-
-      final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-
-      return rawPayrollDocs.any((doc) {
-        final docId = (doc['workerId'] ?? doc['id'] ?? '').toString().trim();
-        final docEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
-        return (workerId.isNotEmpty && docId == workerId) ||
-               (email.isNotEmpty && docEmail == email);
-      });
+      return rawPayrollDocs
+          .any((doc) => WorkerIdentity.matchesByIdOrEmail(doc, worker));
     }).toList();
   }
 
@@ -413,60 +329,23 @@ class PayrollService {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final identity = workerId.isNotEmpty ? workerId : email;
 
-      final canonicalKeys = _getCanonicalKeys(
-        identity,
-        effectivePeriodStart,
-        effectivePeriodEnd,
-        targetMonth,
-      );
+      final canonicalKeys = _getCanonicalKeys(identity, effectivePeriodStart, effectivePeriodEnd, targetMonth);
+      final canonicalRecord = _findCanonicalRecord(allPayrollDocs, canonicalKeys, effectivePeriodStart, effectivePeriodEnd, allowUndated: false);
+      final matchingRecords = _getMatchingRecords(worker, activeWorkers, monthlyPayrollDocs, canonicalKeys, canonicalRecord, effectivePeriodStart, effectivePeriodEnd);
 
-      final canonicalRecord = _findCanonicalRecord(
-        allPayrollDocs,
-        canonicalKeys,
-        effectivePeriodStart,
-        effectivePeriodEnd,
-        allowUndated: false,
-      );
-
-      final matchingRecords = _getMatchingRecords(
-        worker,
-        activeWorkers,
-        monthlyPayrollDocs,
-        canonicalKeys,
-        canonicalRecord,
-        effectivePeriodStart,
-        effectivePeriodEnd,
-      );
-
-      final payrollRecord = matchingRecords.isEmpty
-          ? <String, dynamic>{}
-          : matchingRecords.first;
+      final payrollRecord = matchingRecords.isEmpty ? <String, dynamic>{} : matchingRecords.first;
 
       if (payrollRecord.isNotEmpty) {
-        combined.add(_buildMergedWorkerRecord(
-          worker,
-          payrollRecord,
-          workerId,
-          companyCurrencyCode,
-        ));
+        combined.add(_buildMergedWorkerRecord(worker, payrollRecord, workerId, companyCurrencyCode));
       } else {
-        combined.add(_buildUnpaidWorkerRecord(
-          worker,
-          workerId,
-          companyCurrencyCode,
-        ));
+        combined.add(_buildUnpaidWorkerRecord(worker, workerId, companyCurrencyCode));
       }
     }
 
     return combined;
   }
 
-  static Set<String> _getCanonicalKeys(
-    String identity,
-    DateTime periodStart,
-    DateTime periodEnd,
-    DateTime targetMonth,
-  ) {
+  static Set<String> _getCanonicalKeys(String identity, DateTime periodStart, DateTime periodEnd, DateTime targetMonth) {
     if (identity.isEmpty) return <String>{};
     final newKey = payrollKeyForPeriod(identity, periodStart, periodEnd);
     final legacyKey = '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
@@ -483,23 +362,12 @@ class PayrollService {
     if (canonicalKeys.isEmpty) return null;
 
     final record = docs.cast<Map<String, dynamic>?>().firstWhere(
-      (record) => record != null &&
-          canonicalKeys.contains(
-            (record['payrollKey'] ?? '').toString().trim().toLowerCase(),
-          ),
+      (record) => record != null && canonicalKeys.contains((record['payrollKey'] ?? '').toString().trim().toLowerCase()),
       orElse: () => null,
     );
 
     if (record == null) return null;
-
-    return isRecordInPayPeriod(
-      record,
-      periodStart,
-      periodEnd,
-      allowUndated: allowUndated,
-    )
-        ? record
-        : null;
+    return isRecordInPayPeriod(record, periodStart, periodEnd, allowUndated: allowUndated) ? record : null;
   }
 
   static List<Map<String, dynamic>> _getMatchingRecords(
@@ -511,13 +379,7 @@ class PayrollService {
     DateTime periodStart,
     DateTime periodEnd,
   ) {
-    if (canonicalRecord != null &&
-        !isRecordInPayPeriod(
-          canonicalRecord,
-          periodStart,
-          periodEnd,
-          allowUndated: false,
-        )) {
+    if (canonicalRecord != null && !isRecordInPayPeriod(canonicalRecord, periodStart, periodEnd, allowUndated: false)) {
       return <Map<String, dynamic>>[];
     }
 
@@ -546,45 +408,19 @@ class PayrollService {
     String workerId,
     String? companyCurrencyCode,
   ) {
-    final salaryAmount = _preferNonEmpty(
-      worker['salaryAmount'],
-      payrollRecord['salaryAmount'],
-    );
-    final currency = companyCurrencyCode ??
-        CurrencyUtils.normalize(
-          _preferNonEmpty(worker['currency'], payrollRecord['currency']),
-        );
-    final salaryType = _preferNonEmpty(
-      worker['salaryType'],
-      payrollRecord['salaryType'],
-    );
-    final profileImage = _preferNonEmpty(
-      worker['profileImage'],
-      payrollRecord['profileImage'],
-    );
-    final phone = _preferNonEmpty(
-      worker['phone'],
-      _preferNonEmpty(
-        payrollRecord['phone'],
-        _preferNonEmpty(worker['contact'], payrollRecord['contact']),
-      ),
-    );
+    final salaryAmount = _preferNonEmpty(worker['salaryAmount'], payrollRecord['salaryAmount']);
+    final currency = companyCurrencyCode ?? CurrencyUtils.normalize(_preferNonEmpty(worker['currency'], payrollRecord['currency']));
+    final salaryType = _preferNonEmpty(worker['salaryType'], payrollRecord['salaryType']);
+    final profileImage = _preferNonEmpty(worker['profileImage'], payrollRecord['profileImage']);
+    final phone = _preferNonEmpty(worker['phone'], _preferNonEmpty(payrollRecord['phone'], _preferNonEmpty(worker['contact'], payrollRecord['contact'])));
 
-    final currentSalary = _salaryDisplayOrEmpty(
-      worker,
-      companyCurrency: companyCurrencyCode,
-    );
+    final currentSalary = _salaryDisplayOrEmpty(worker, companyCurrency: companyCurrencyCode);
     final historicalSalary = (payrollRecord['salary'] ?? '').toString().trim();
     final mergedSalary = historicalSalary.isNotEmpty
-        ? (companyCurrencyCode == null
-            ? historicalSalary
-            : formatAmountInCurrency(historicalSalary, companyCurrencyCode))
+        ? (companyCurrencyCode == null ? historicalSalary : formatAmountInCurrency(historicalSalary, companyCurrencyCode))
         : currentSalary;
 
-    final historicalNetSalary = _preferNonEmpty(
-      payrollRecord['netSalary'],
-      payrollRecord['netSalaryFormatted'],
-    ).toString().trim();
+    final historicalNetSalary = _preferNonEmpty(payrollRecord['netSalary'], payrollRecord['netSalaryFormatted']).toString().trim();
     final mergedNetSalary = companyCurrencyCode == null || historicalNetSalary.isEmpty
         ? historicalNetSalary
         : formatAmountInCurrency(historicalNetSalary, companyCurrencyCode);
@@ -618,12 +454,8 @@ class PayrollService {
     String workerId,
     String? companyCurrencyCode,
   ) {
-    final salary = _salaryDisplayOrEmpty(
-      worker,
-      companyCurrency: companyCurrencyCode,
-    );
-    final currency = companyCurrencyCode ??
-        CurrencyUtils.normalize(worker['currency']);
+    final salary = _salaryDisplayOrEmpty(worker, companyCurrency: companyCurrencyCode);
+    final currency = companyCurrencyCode ?? CurrencyUtils.normalize(worker['currency']);
 
     return {
       ...worker,
@@ -647,19 +479,13 @@ class PayrollService {
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> payrollRecords,
   ) {
-    final activeWorkers = workersList
-        .where(isWorkerEligibleForPayroll)
-        .map(Map<String, dynamic>.from)
-        .toList();
-
+    final activeWorkers = workersList.where(isWorkerEligibleForPayroll).map(Map<String, dynamic>.from).toList();
     if (activeWorkers.isEmpty || payrollRecords.isEmpty) {
       return const <Map<String, dynamic>>[];
     }
 
     return payrollRecords.where((record) =>
-        activeWorkers.any((worker) =>
-            _recordMatchesWorker(record, worker, activeWorkers)
-        )
+        activeWorkers.any((worker) => _recordMatchesWorker(record, worker, activeWorkers))
     ).toList();
   }
 
@@ -667,17 +493,10 @@ class PayrollService {
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> payrollRecords,
   ) {
-    return payrollRecordsForActiveWorkers(
-      workersList,
-      payrollRecords,
-    ).where(isPayrollRecordPaid).toList();
+    return payrollRecordsForActiveWorkers(workersList, payrollRecords).where(isPayrollRecordPaid).toList();
   }
 
-  static bool isRecordInMonth(
-    Map<String, dynamic> record,
-    DateTime month, {
-    bool allowUndated = false,
-  }) {
+  static bool isRecordInMonth(Map<String, dynamic> record, DateTime month, {bool allowUndated = false}) {
     final date = payrollRecordDate(record);
     if (date == null) return allowUndated;
     return date.year == month.year && date.month == month.month;
@@ -705,16 +524,12 @@ class PayrollService {
     final createdAt = _parseDate(record['createdAt']);
     final payrollDate = _parseDate(record['payrollDate']);
 
-    if (payrollDate != null &&
-        createdAt != null &&
+    if (payrollDate != null && createdAt != null &&
         (payrollDate.year != createdAt.year || payrollDate.month != createdAt.month)) {
       return payrollDate;
     }
 
-    for (final key in [
-      'payrollMonth', 'period', 'payPeriod', 'createdAt',
-      'timestamp', 'payrollDate', 'date', 'lastModified'
-    ]) {
+    for (final key in ['payrollMonth', 'period', 'payPeriod', 'createdAt', 'timestamp', 'payrollDate', 'date', 'lastModified']) {
       final parsed = _parseDate(record[key]);
       if (parsed != null) return parsed;
     }
@@ -723,9 +538,7 @@ class PayrollService {
   }
 
   static DateTime? _parseDateFromPayrollKey(String payrollKey) {
-    final dateRangeMatch = RegExp(
-      r'(\d{4})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})$',
-    ).firstMatch(payrollKey);
+    final dateRangeMatch = RegExp(r'(\d{4})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})$').firstMatch(payrollKey);
 
     if (dateRangeMatch != null) {
       final year = int.tryParse(dateRangeMatch.group(4)!);
@@ -796,14 +609,9 @@ class PayrollService {
     if (salaryStr.isEmpty) return 0;
     final trimmed = salaryStr.trim();
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
-    final numericPart = firstDigit == null
-        ? trimmed
-        : trimmed.substring(firstDigit.start);
+    final numericPart = firstDigit == null ? trimmed : trimmed.substring(firstDigit.start);
 
-    final suffix = RegExp(r'([KMBT])\s*$', caseSensitive: false)
-        .firstMatch(numericPart)
-        ?.group(1)
-        ?.toUpperCase();
+    final suffix = RegExp(r'([KMBT])\s*$', caseSensitive: false).firstMatch(numericPart)?.group(1)?.toUpperCase();
 
     final multiplier = switch (suffix) {
       'K' => 1e3,
@@ -825,17 +633,13 @@ class PayrollService {
     final lastComma = cleaned.lastIndexOf(',');
 
     if (lastDot >= 0 && lastComma >= 0) {
-      return lastComma > lastDot
-          ? cleaned.replaceAll('.', '').replaceAll(',', '.')
-          : cleaned.replaceAll(',', '');
+      return lastComma > lastDot ? cleaned.replaceAll('.', '').replaceAll(',', '.') : cleaned.replaceAll(',', '');
     }
 
     if (lastComma >= 0) {
       final commaCount = ','.allMatches(cleaned).length;
       final digitsAfterComma = cleaned.length - lastComma - 1;
-      return commaCount > 1 || digitsAfterComma == 3
-          ? cleaned.replaceAll(',', '')
-          : cleaned.replaceAll(',', '.');
+      return commaCount > 1 || digitsAfterComma == 3 ? cleaned.replaceAll(',', '') : cleaned.replaceAll(',', '.');
     }
 
     if ('.'.allMatches(cleaned).length > 1) {
@@ -850,15 +654,11 @@ class PayrollService {
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
-  static String currentSalaryDisplay(
-    Map<String, dynamic> data, {
-    String? companyCurrency,
-  }) {
+  static String currentSalaryDisplay(Map<String, dynamic> data, {String? companyCurrency}) {
     final salary = _salaryDisplayOrEmpty(data, companyCurrency: companyCurrency);
     if (salary.isNotEmpty) return salary;
 
-    final currency = _companyCurrencyCode(companyCurrency) ??
-        CurrencyUtils.normalize(data['currency']);
+    final currency = _companyCurrencyCode(companyCurrency) ?? CurrencyUtils.normalize(data['currency']);
     return '${getCurrencySymbol(currency)} 0';
   }
 
@@ -884,11 +684,7 @@ class PayrollService {
     final absolute = isNegative ? -number : number;
 
     if (absolute >= 1e3) {
-      final compact = CurrencyUtils.formatCompactLocale(
-        number.toDouble(),
-        locale,
-        symbol: '',
-      );
+      final compact = CurrencyUtils.formatCompactLocale(number.toDouble(), locale, symbol: '');
       return isNegative ? '($compact)' : compact;
     }
 
@@ -917,9 +713,7 @@ class PayrollService {
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
         (Match match) => '${match[1]},',
       );
-      return parts.length == 1
-          ? formattedInteger
-          : '$formattedInteger.${parts[1]}';
+      return parts.length == 1 ? formattedInteger : '$formattedInteger.${parts[1]}';
     }
   }
 
@@ -936,7 +730,7 @@ class PayrollService {
     return CurrencyUtils.symbolFor(key);
   }
 
-  static String _fmt(num val, String prefix) => '$prefix${formatFullNumber(val)}';
+  static String _formatCurrency(num value, String prefix) => '$prefix${formatFullNumber(value)}';
 
   static double calculateNetFromTotals({
     required String salary,
@@ -948,9 +742,7 @@ class PayrollService {
     double prorationFactor = 1.0,
   }) {
     final enteredSalary = extractSalary(salary);
-    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-        ? enteredSalary / 12
-        : enteredSalary;
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual' ? enteredSalary / 12 : enteredSalary;
 
     final overtimeVal = extractSalary(overtimeAmount);
     final absentVal = extractSalary(absentDeduction);
@@ -971,9 +763,7 @@ class PayrollService {
     double prorationFactor = 1.0,
   }) {
     final enteredSalary = extractSalary(salary);
-    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-        ? enteredSalary / 12
-        : enteredSalary;
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual' ? enteredSalary / 12 : enteredSalary;
 
     final availableEarnings = (periodSalary * prorationFactor) +
         extractSalary(overtimeAmount) -
@@ -1018,9 +808,7 @@ class PayrollService {
     double prorationFactor = 1.0,
   }) {
     final rawSalaryVal = extractSalary(salary);
-    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-        ? rawSalaryVal / 12
-        : rawSalaryVal;
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual' ? rawSalaryVal / 12 : rawSalaryVal;
     final totalWorkDaysVal = parseIntSafe(totalWorkDays);
     final absentDays = parseIntSafe(absents);
     final leaveDays = parseIntSafe(leaves);
@@ -1032,9 +820,7 @@ class PayrollService {
 
     final dailyRate = totalWorkDaysVal > 0 ? periodSalary / totalWorkDaysVal : 0.0;
 
-    final calculatedWorkedDays = daysWorked.isEmpty
-        ? totalWorkDaysVal - absentDays - leaveDays
-        : parseIntSafe(daysWorked);
+    final calculatedWorkedDays = daysWorked.isEmpty ? totalWorkDaysVal - absentDays - leaveDays : parseIntSafe(daysWorked);
     final workedDaysVal = calculatedWorkedDays.clamp(0, totalWorkDaysVal).toInt();
 
     final grossSalary = periodSalary * prorationFactor;
@@ -1072,15 +858,15 @@ class PayrollService {
       'leaveDeduction': leaveDeduction,
       'totalDeductions': totalDeductions,
       'netSalary': netSalary,
-      'formattedDailyRate': _fmt(dailyRate, p),
-      'formattedOvertimeRate': _fmt(dailyRate * 1.5, p),
-      'formattedGross': _fmt(grossSalary, p),
-      'formattedOvertime': _fmt(overtimePay, p),
-      'formattedAbsentDeduct': absentDeduction > 0 ? '-${_fmt(absentDeduction, p)}' : _fmt(0.0, p),
-      'formattedLeaveDeduct': leaveDeduction > 0 ? '-${_fmt(leaveDeduction, p)}' : _fmt(0.0, p),
-      'formattedTotalDeductions': totalDeductions > 0 ? '-${_fmt(totalDeductions, p)}' : _fmt(0.0, p),
-      'formattedNetSalary': _fmt(netSalary, p),
-      'formattedNet': _fmt(netSalary, p),
+      'formattedDailyRate': _formatCurrency(dailyRate, p),
+      'formattedOvertimeRate': _formatCurrency(dailyRate * 1.5, p),
+      'formattedGross': _formatCurrency(grossSalary, p),
+      'formattedOvertime': _formatCurrency(overtimePay, p),
+      'formattedAbsentDeduct': absentDeduction > 0 ? '-${_formatCurrency(absentDeduction, p)}' : _formatCurrency(0.0, p),
+      'formattedLeaveDeduct': leaveDeduction > 0 ? '-${_formatCurrency(leaveDeduction, p)}' : _formatCurrency(0.0, p),
+      'formattedTotalDeductions': totalDeductions > 0 ? '-${_formatCurrency(totalDeductions, p)}' : _formatCurrency(0.0, p),
+      'formattedNetSalary': _formatCurrency(netSalary, p),
+      'formattedNet': _formatCurrency(netSalary, p),
     };
   }
 }

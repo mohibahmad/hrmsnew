@@ -2674,7 +2674,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         Expanded(
                           child: _buildInputField(
                             'worker_father_husband_name'.tr(),
-                            'enter_your_name'.tr(),
+                            'hint_enter_father_name'.tr(),
                             controller: fatherNameController,
                           ),
                         ),
@@ -4284,7 +4284,7 @@ class DocumentationSection extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: hasFile ? null : onTap,
       child: Container(
         height: 280,
         width: double.infinity,

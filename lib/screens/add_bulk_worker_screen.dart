@@ -80,6 +80,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Set<String> _cachedEmails = {};
   Set<String> _cachedNationalIds = {};
+  bool _identityCacheLoaded = false;
   List<String> _missingColumns = [];
   List<String> _uploadedMediaUrls = [];
 
@@ -97,6 +98,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     _authSubscription = _authService.authStateChanges.listen((_) {
       _clearIdentityCache();
     });
+    // Warm the duplicate-check cache while the user picks a CSV so the parse
+    // step never stalls on a full workers download.
+    _loadExistingIdentitySets().ignore();
   }
 
   @override
@@ -110,6 +114,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   void _clearIdentityCache() {
     _cachedEmails = {};
     _cachedNationalIds = {};
+    _identityCacheLoaded = false;
   }
 
   bool get hasUnsavedChanges => _hasUnsavedChanges;
@@ -209,7 +214,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Future<({Set<String> emails, Set<String> nationalIds})>
   _loadExistingIdentitySets() async {
-    if (_cachedEmails.isNotEmpty || _cachedNationalIds.isNotEmpty) {
+    // Cache once per screen session (even when empty) so Save All never
+    // re-downloads the whole workers collection to check duplicates.
+    if (_identityCacheLoaded) {
       return (emails: _cachedEmails, nationalIds: _cachedNationalIds);
     }
 
@@ -237,6 +244,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     _cachedEmails = emails;
     _cachedNationalIds = nationalIds;
+    _identityCacheLoaded = true;
 
     return (emails: emails, nationalIds: nationalIds);
   }
@@ -555,35 +563,44 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   Future<void> _saveBulkWorkers() async {
     if (_isSaving) return;
 
-    final revalidated = await _revalidateAllWorkers();
-    if (!revalidated || !mounted) return;
-
-    if (_validWorkers.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'no_valid_workers_found_in_csv'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    final workersWithErrors = _validWorkers.where(hasWorkerErrors).toList();
-    var workersReadyToSave = _workersReadyToSave;
-
-    if (workersReadyToSave.isEmpty) {
-      _showNoValidWorkersMessage(workersWithErrors);
-      return;
-    }
-
-    final errorCounts = _countErrorTypes(workersWithErrors);
-
     setState(() => _isSaving = true);
+    _showBulkProgressDialog();
+    var progressDialogOpen = true;
+
+    void dismissProgressDialog() {
+      if (!progressDialogOpen) return;
+      progressDialogOpen = false;
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    _uploadedMediaUrls = [];
-    _showBulkProgressDialog();
 
     try {
+      final revalidated = await _revalidateAllWorkers();
+      if (!revalidated || !mounted) return;
+
+      if (_validWorkers.isEmpty) {
+        dismissProgressDialog();
+        FlashySnackBar.show(
+          context,
+          message: 'no_valid_workers_found_in_csv'.tr(),
+          isError: true,
+        );
+        return;
+      }
+
+      final workersWithErrors = _validWorkers.where(hasWorkerErrors).toList();
+      var workersReadyToSave = _workersReadyToSave;
+
+      if (workersReadyToSave.isEmpty) {
+        dismissProgressDialog();
+        _showNoValidWorkersMessage(workersWithErrors);
+        return;
+      }
+
+      final errorCounts = _countErrorTypes(workersWithErrors);
+      _uploadedMediaUrls = [];
+
       final saveResult = await _performSave(
         isGuest: isGuest,
         workersReadyToSave: workersReadyToSave,
@@ -592,7 +609,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       _clearIdentityCache();
       if (!mounted) return;
 
-      Navigator.of(context, rootNavigator: true).pop();
+      dismissProgressDialog();
 
       _showSaveResultSnackBar(
         saveResult: saveResult,
@@ -620,14 +637,12 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         }
       });
 
-      if (!isGuest) {
-        _workersSubscription?.cancel();
-        _workersSubscription = _firestore.workersStream.listen((_) {
-          if (mounted) setState(() {});
-        });
-      } else {
+      if (isGuest) {
         DummyData.loadFromPrefs();
       }
+      // The workers list re-subscribes to its own stream when this screen
+      // closes, so re-listening here would only trigger a redundant full
+      // collection download right after saving.
 
       if (!keepInvalidWorkers) {
         widget.onBack?.call();
@@ -647,8 +662,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       }
 
       _uploadedMediaUrls = [];
-
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      dismissProgressDialog();
 
       if (mounted) {
         FlashySnackBar.show(
@@ -774,25 +788,46 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     final acceptedWorkers = <Map<String, dynamic>>[];
     int guestSkippedDuplicates = 0;
 
-    for (final worker in workersReadyToSave) {
-      final duplicateField = WorkerIdentity.duplicateField(worker, [
-        ...existingWorkers,
-        ...acceptedWorkers,
-      ]);
+    // Set-based duplicate detection keeps this O(n) instead of O(n²) for
+    // large imports (a fresh combined list was rebuilt and scanned per row).
+    final knownEmails = <String>{};
+    final knownNationalIds = <String>{};
+    for (final w in existingWorkers) {
+      final e = WorkerIdentity.normalizeEmail(w['email']);
+      if (e.isNotEmpty) knownEmails.add(e);
+      final n = WorkerIdentity.normalizeNationalId(w['nationalId']);
+      if (n.isNotEmpty) knownNationalIds.add(n);
+    }
 
-      if (duplicateField != null) {
+    for (final worker in workersReadyToSave) {
+      final email = WorkerIdentity.normalizeEmail(worker['email']);
+      final nationalId = WorkerIdentity.normalizeNationalId(worker['nationalId']);
+
+      final isDuplicate = (email.isNotEmpty && knownEmails.contains(email)) ||
+          (nationalId.isNotEmpty && knownNationalIds.contains(nationalId));
+
+      if (isDuplicate) {
         guestSkippedDuplicates++;
         continue;
       }
+      if (email.isNotEmpty) knownEmails.add(email);
+      if (nationalId.isNotEmpty) knownNationalIds.add(nationalId);
       acceptedWorkers.add(worker);
     }
 
-    for (int i = 0; i < acceptedWorkers.length; i++) {
-      final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
-      DummyData.workers.insert(0, {...acceptedWorkers[i], 'id': newId});
-    }
+    // Build the merged list once instead of O(n) `insert(0)` shifts.
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
+    final newWorkers = <Map<String, dynamic>>[
+      for (var i = 0; i < acceptedWorkers.length; i++)
+        {...acceptedWorkers[i], 'id': 'dummy_${nowMicros}_$i'},
+    ];
+    DummyData.workers
+      ..clear()
+      ..addAll([...newWorkers.reversed, ...existingWorkers]);
 
-    await DummyData.saveToPrefs();
+    // Only workers changed during bulk import — skip re-serializing the
+    // other demo collections.
+    await DummyData.saveWorkersToPrefs();
 
     return _SaveResult(
       importedCount: acceptedWorkers.length,
@@ -809,7 +844,11 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       uploadedMediaByRowId: _uploadedMediaByRowId,
     );
 
-    final bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
+    final bulkResult = await _firestore.addBulkWorkers(
+      workersReadyToSave,
+      existingEmails: _cachedEmails,
+      existingNationalIds: _cachedNationalIds,
+    );
 
     if (bulkResult.skippedClientRowIds.isNotEmpty &&
         _uploadedMediaByRowId.isNotEmpty) {
@@ -933,16 +972,16 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Padding(
-            padding: EdgeInsets.all(32),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 24),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 24),
                 Text(
-                  '',
-                  style: TextStyle(
+                  'saving_bulk_workers'.tr(),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
@@ -2431,6 +2470,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
       'part-time',
       'part time',
       'contract',
+      'freelance',
       'intern',
     };
 
@@ -2443,6 +2483,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
       'full-time' || 'full time' => 'Full-Time',
       'part-time' || 'part time' => 'Part-Time',
       'contract' => 'Contract',
+      'freelance' => 'Freelance',
       'intern' => 'Intern',
       _ => val,
     };
