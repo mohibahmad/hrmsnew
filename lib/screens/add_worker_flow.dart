@@ -1,103 +1,39 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'dart:convert';
+
+import 'package:archive/archive.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart' show compute;
-import 'package:image/image.dart' as img;
-import 'package:pdfx/pdfx.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:archive/archive.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/custom_dropdown_field.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:file_picker/file_picker.dart';
-import '../utils/validators.dart';
-import '../utils/currency_utils.dart';
-import '../utils/leave_balance_helper.dart';
-import '../services/upload_service.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
+import 'package:pdfx/pdfx.dart';
+import 'package:shimmer/shimmer.dart';
+
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
+import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../services/time_off_service.dart';
-import '../utils/ui_utils.dart';
-import '../utils/date_time_utils.dart';
-import '../utils/worker_identity.dart';
-import '../utils/localization_helper.dart';
-import '../utils/rate_us_helper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../services/upload_service.dart';
+import '../utils/helpers.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/utils.dart';
+import '../widgets/clickable_gesture_detector.dart';
+import '../widgets/custom_dropdown_field.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 
-const List<String> _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _localizedMonth(int month) {
-  switch (month) {
-    case 1:
-      return 'month_january'.tr();
-    case 2:
-      return 'month_february'.tr();
-    case 3:
-      return 'month_march'.tr();
-    case 4:
-      return 'month_april'.tr();
-    case 5:
-      return 'month_may'.tr();
-    case 6:
-      return 'month_june'.tr();
-    case 7:
-      return 'month_july'.tr();
-    case 8:
-      return 'month_august'.tr();
-    case 9:
-      return 'month_september'.tr();
-    case 10:
-      return 'month_october'.tr();
-    case 11:
-      return 'month_november'.tr();
-    case 12:
-      return 'month_december'.tr();
-    default:
-      return '';
-  }
-}
-
-Uint8List _compressImageBytesSync(
-  Uint8List bytes, {
-  int maxWidth = 1200,
-  int quality = 80,
-}) {
-  img.Image? image = img.decodeImage(bytes);
-  if (image == null) return bytes;
-  if (image.width > maxWidth) {
-    image = img.copyResize(image, width: maxWidth);
-  }
-  return Uint8List.fromList(img.encodeJpg(image, quality: quality));
-}
-
-List<Uint8List> _compressImagesTask(List<Uint8List> images) {
-  return [for (final bytes in images) _compressImageBytesSync(bytes)];
-}
+final List<String> _months = LocalizationHelper.englishMonthNames.sublist(1);
 
 class AddNewWorkerFlow extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -196,155 +132,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
 
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
-    final result = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'UnsavedChangesDialog',
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curve = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutBack,
-        );
-        return BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: 12 * animation.value,
-            sigmaY: 12 * animation.value,
-          ),
-          child: FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: curve,
-              child: Dialog(
-                backgroundColor: Colors.transparent,
-                child: Container(
-                  width: 380,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF000000).withValues(alpha: 0.15),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFEE2E2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.warning_rounded,
-                            color: Color(0xFFEF4444),
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'discard_changes'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'unsaved_changes_message'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w400,
-                          fontFamily: 'SF Pro Display',
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, false),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF000000),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, true),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'discard'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    return result ?? false;
+    return UnsavedChangesDialog.show(context);
   }
 
   bool _initialized = false;
@@ -449,7 +237,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         widget.workerToEdit!['id_front']?.toString(),
       ]);
       if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
-        _frontIdName = _cleanFileName(_existingFrontIdUrl!);
+        _frontIdName = cleanUploadedDocumentFileName(_existingFrontIdUrl!);
       }
 
       _existingBackIdUrl = firstNonEmpty([
@@ -460,7 +248,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         widget.workerToEdit!['id_back']?.toString(),
       ]);
       if (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty) {
-        _backIdName = _cleanFileName(_existingBackIdUrl!);
+        _backIdName = cleanUploadedDocumentFileName(_existingBackIdUrl!);
       }
 
       _existingCvUrl = widget.workerToEdit!['cv']?.toString();
@@ -472,7 +260,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
               widget.workerToEdit!['cv_file_name']?.toString(),
               widget.workerToEdit!['cvName']?.toString(),
             ]) ??
-            _cleanFileName(_existingCvUrl!);
+            cleanUploadedDocumentFileName(_existingCvUrl!);
       }
       _joiningDate = _workerDateText(widget.workerToEdit!['joiningDate']);
       _selectedJoiningDate = AppDateUtils.dateFromValue(
@@ -640,25 +428,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     return memoryBytes;
   }
 
-  String _mimeTypeForFileName(String fileName) {
-    final extension = fileName.contains('.')
-        ? fileName.split('.').last.toLowerCase()
-        : '';
-
-    return switch (extension) {
-      'pdf' => 'application/pdf',
-      'doc' => 'application/msword',
-      'docx' =>
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'png' => 'image/png',
-      'gif' => 'image/gif',
-      'bmp' => 'image/bmp',
-      'webp' => 'image/webp',
-      'jpg' || 'jpeg' => 'image/jpeg',
-      _ => 'application/octet-stream',
-    };
-  }
-
   String _filePickerErrorMessage(Object error) {
     final message = error.toString().toLowerCase();
     if (message.contains('permission') ||
@@ -704,7 +473,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     for (var index = 0; index < specs.length; index++) {
       final spec = specs[index];
       if (spec.compressImages &&
-          _mimeTypeForFileName(resolvedNames[index]).startsWith('image/')) {
+          mimeTypeForExtension(resolvedNames[index]).startsWith('image/')) {
         compressIndices.add(index);
       }
     }
@@ -719,7 +488,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     var compressedIndex = 0;
     for (var index = 0; index < specs.length; index++) {
       final spec = specs[index];
-      final mimeType = _mimeTypeForFileName(resolvedNames[index]);
+      final mimeType = mimeTypeForExtension(resolvedNames[index]);
       final isImage = spec.compressImages && mimeType.startsWith('image/');
       files.add(
         isImage
@@ -764,13 +533,13 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     if (parts.length == 3) {
       final day = int.tryParse(parts[1]);
       final year = int.tryParse(parts[2]);
-      final englishMonthIndex = _months.indexWhere(
+      final englishMonthIndex = LocalizationHelper.englishMonthNames.indexWhere(
         (month) => month.toLowerCase() == parts[0].toLowerCase(),
       );
       final localizedMonthIndex = List<int>.generate(12, (index) => index + 1)
           .indexWhere(
             (month) =>
-                _localizedMonth(month).toLowerCase() == parts[0].toLowerCase(),
+                LocalizationHelper.localizedMonth(month).toLowerCase() == parts[0].toLowerCase(),
           );
       final monthIndex = englishMonthIndex >= 0
           ? englishMonthIndex
@@ -1178,7 +947,9 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         normalizeEducation((edit['education'] ?? 'Bachelor').toString())) {
       return true;
     }
-    if (CurrencyUtils.amountText(_salaryAmountController.text.replaceAll(',', '')) !=
+    if (CurrencyUtils.amountText(
+          _salaryAmountController.text.replaceAll(',', ''),
+        ) !=
         CurrencyUtils.amountText(edit['salaryAmount'])) {
       return true;
     }
@@ -1241,14 +1012,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   }
 
   Future<List<Uint8List>> _compressImagesBatch(List<Uint8List> images) {
-    return compute(_compressImagesTask, images);
+    return compute(compressImagesTask, images);
   }
 
   Future<void> _saveWorker() async {
     if (_isSaving) return;
-
-    debugPrint('DOB RAW: "${_dobController.text}"');
-    debugPrint('JOINING RAW: "${_joiningDate ?? ''}"');
 
     final name = Validators.titleCase(_nameController.text);
     final phone = _phoneController.text.trim();
@@ -1710,7 +1478,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         'idBack': backIdUrl,
         'cv': cvUrl,
         if (cvUrl != null && cvUrl.trim().isNotEmpty)
-          'cvFileName': _cvName ?? _cleanFileName(cvUrl),
+          'cvFileName': _cvName ?? cleanUploadedDocumentFileName(cvUrl),
         'payroll_initialized': true,
       };
 
@@ -2054,30 +1822,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     setState(() => _activeTabIndex = 2);
   }
 
-  String _cleanFileName(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final path = uri.path;
-      final oIndex = path.indexOf('/o/');
-      String rawName;
-      if (oIndex != -1) {
-        final encodedPath = path.substring(oIndex + 3);
-        final decoded = Uri.decodeComponent(encodedPath);
-        rawName = decoded.split('/').last;
-      } else {
-        rawName = path.split('/').last;
-      }
-
-      rawName = rawName.replaceFirst(RegExp(r'^\d+_\d+_'), '');
-      return rawName;
-    } catch (_) {
-      final name = url.split('/').last.split('?').first;
-      final decoded = Uri.decodeComponent(name);
-
-      return decoded.replaceFirst(RegExp(r'^\d+_\d+_'), '');
-    }
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -2177,7 +1921,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                             widget.workerToEdit != null
                                 ? 'update_worker_details'.tr()
                                 : 'fill_worker_details'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.black,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -2259,11 +2003,13 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                     Container(
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
-                            color: Color(0xFF000000).withValues(alpha: 0.02),
+                            color: const Color(
+                              0xFF000000,
+                            ).withValues(alpha: 0.02),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -2276,12 +2022,16 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                           ),
                           VerticalDivider(
                             width: 1,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                            color: const Color(
+                              0xFFE0E0E0,
+                            ).withValues(alpha: 0.5),
                           ),
                           Expanded(child: _buildTopTab('experience'.tr(), 1)),
                           VerticalDivider(
                             width: 1,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                            color: const Color(
+                              0xFFE0E0E0,
+                            ).withValues(alpha: 0.5),
                           ),
                           Expanded(
                             child: _buildTopTab('documentation'.tr(), 2),
@@ -2581,21 +2331,18 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   }
 
   Widget _buildTopTab(String title, int index) {
-    bool isActive = _activeTabIndex == index;
-    BorderRadiusGeometry? borderRadius;
-    if (isActive) {
-      if (index == 0) {
-        borderRadius = const BorderRadius.only(
-          topLeft: Radius.circular(6),
-          bottomLeft: Radius.circular(6),
-        );
-      } else if (index == 2) {
-        borderRadius = const BorderRadius.only(
-          topRight: Radius.circular(6),
-          bottomRight: Radius.circular(6),
-        );
-      }
-    }
+    final bool isActive = _activeTabIndex == index;
+    final borderRadius = switch ((isActive, index)) {
+      (true, 0) => const BorderRadius.only(
+        topLeft: Radius.circular(6),
+        bottomLeft: Radius.circular(6),
+      ),
+      (true, 2) => const BorderRadius.only(
+        topRight: Radius.circular(6),
+        bottomRight: Radius.circular(6),
+      ),
+      _ => null,
+    };
     return Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -2858,7 +2605,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           children: [
             Text(
               'personal_information'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -3068,7 +2815,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                 children: [
                   Text(
                     'worker_profile'.tr(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -3102,7 +2849,7 @@ class WorkerDetailFormSection extends StatelessWidget {
 
                   Text(
                     'relationship_status'.tr(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -3157,7 +2904,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           )
         else
           Image(
-            image: getProfileImageProvider(existingProfileImageUrl),
+            image: resolveImageProvider(existingProfileImageUrl),
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) =>
                 _buildUploadPlaceholder(),
@@ -3376,7 +3123,7 @@ class WorkerDetailFormSection extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           'upload_profile'.tr(),
-          style: TextStyle(
+          style: const TextStyle(
             color: Color(0xFF000000),
             fontWeight: FontWeight.w700,
             fontSize: 14,
@@ -3566,7 +3313,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           children: [
             Text(
               'job_experience_info'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -3778,7 +3525,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 children: [
                   Text(
                     'joining_date_set'.tr(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -3789,11 +3536,13 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
+                      color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF000000).withValues(alpha: 0.04),
+                          color: const Color(
+                            0xFF000000,
+                          ).withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3942,7 +3691,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                         );
                                         return;
                                       }
-                                      final monthName = _localizedMonth(
+                                      final monthName = LocalizationHelper.localizedMonth(
                                         selected.month,
                                       );
                                       final formatted =
@@ -3990,7 +3739,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                           decoration: BoxDecoration(
                                             color: isSelected
                                                 ? selectedBg
-                                                : Color(0xFFFFFFFF),
+                                                : const Color(0xFFFFFFFF),
                                             border: isSelected
                                                 ? null
                                                 : Border.all(
@@ -4019,7 +3768,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: isSelected
-                                                  ? Color(0xFFFFFFFF)
+                                                  ? const Color(0xFFFFFFFF)
                                                   : dayColor,
                                               fontWeight: isSelected
                                                   ? FontWeight.bold
@@ -4049,7 +3798,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
 
         Text(
           'salary_section'.tr(),
-          style: TextStyle(
+          style: const TextStyle(
             color: Color(0xFF000000),
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -4216,7 +3965,7 @@ class DocumentationSection extends StatelessWidget {
           children: [
             Text(
               'personal_documentation'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -4276,7 +4025,7 @@ class DocumentationSection extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'id_card_label'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'SF Pro Display',
@@ -4374,7 +4123,7 @@ class DocumentationSection extends StatelessWidget {
                                   onTap: onUploadBackTap,
                                   child: Text(
                                     'upload_back_side'.tr(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
@@ -4450,7 +4199,7 @@ class DocumentationSection extends StatelessWidget {
                       children: [
                         Text(
                           'upload_cv_label'.tr(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'SF Pro Display',
@@ -4892,7 +4641,7 @@ Widget _buildInputField(
         height: isTextArea ? 90 : 48,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Color(0xFFFFFFFF),
+          color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(6),
         ),
         alignment: isTextArea ? Alignment.topLeft : Alignment.center,
@@ -4919,7 +4668,7 @@ Widget _buildInputField(
                   ),
                   if (isAmount) ...[
                     LengthLimitingTextInputFormatter(18),
-                    _ThousandsSeparatorInputFormatter(),
+                    const ThousandsSeparatorInputFormatter(),
                   ],
                   if (isContact) LengthLimitingTextInputFormatter(20),
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
@@ -4992,9 +4741,9 @@ Widget _buildCustomRadio({
   required bool isSelected,
   required VoidCallback onTap,
 }) {
-  final selectedColor = Color(0xFF0247C4);
-  final borderColor = isSelected ? selectedColor : Color(0xFF000000);
-  final textColor = isSelected ? selectedColor : Color(0xFF000000);
+  const selectedColor = Color(0xFF0247C4);
+  final borderColor = isSelected ? selectedColor : const Color(0xFF000000);
+  final textColor = isSelected ? selectedColor : const Color(0xFF000000);
 
   return GestureDetector(
     onTap: onTap,
@@ -5014,7 +4763,7 @@ Widget _buildCustomRadio({
                   child: Container(
                     width: 10,
                     height: 10,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: selectedColor,
                     ),
@@ -5107,7 +4856,7 @@ class _DocPreviewState extends State<DocPreview> {
           if (url.contains(',')) {
             bytes = base64Decode(url.split(',').last);
           }
-        } else if (url.startsWith('http://') || url.startsWith('https://')) {
+        } else if (isHttpUrl(url)) {
           final client = io.HttpClient()
             ..connectionTimeout = const Duration(seconds: 15);
           try {
@@ -5500,54 +5249,3 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
   }
 }
 
-ImageProvider getProfileImageProvider(String? url) {
-  if (url == null || url.isEmpty) {
-    return const AssetImage('assets/profileimage.png');
-  }
-  if (url.startsWith('data:image/')) {
-    final base64Content = url.split(',').last;
-    return MemoryImage(base64Decode(base64Content));
-  }
-  if (url.startsWith('http')) {
-    return CachedNetworkImageProvider(url);
-  }
-  return AssetImage(url);
-}
-
-class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) return newValue;
-
-    String cleanText = newValue.text.replaceAll(',', '');
-    final parts = cleanText.split('.');
-    if (parts.length > 2) return oldValue;
-    if (parts.length == 2 && parts[1].length > 2) return oldValue;
-
-    final rawInteger = parts[0];
-    if (rawInteger.length > 12) return oldValue;
-
-    String formattedInteger = '';
-    if (rawInteger.isNotEmpty) {
-      final parsed = int.tryParse(rawInteger);
-      if (parsed == null) return oldValue;
-      formattedInteger = NumberFormat('#,##0', 'en_US').format(parsed);
-    }
-
-    String formatted = formattedInteger;
-    if (parts.length > 1) {
-      formatted += '.${parts[1]}';
-    }
-
-    int charsFromEnd = newValue.text.length - newValue.selection.end;
-    int selectionIndex = (formatted.length - charsFromEnd).clamp(0, formatted.length);
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: selectionIndex),
-    );
-  }
-}

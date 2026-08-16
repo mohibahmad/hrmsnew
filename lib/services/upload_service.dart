@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../utils/helpers.dart';
 
 import 'error_reporter.dart';
 
@@ -148,7 +149,7 @@ class UploadService {
             (responseMimeType == null ||
                     responseMimeType.isEmpty ||
                     responseMimeType == 'application/octet-stream'
-                ? _mimeTypeFromFileName(safeName, fallbackMimeType)
+                ? mimeTypeForExtension(safeName, fallback: fallbackMimeType)
                 : responseMimeType),
         fileName: safeName,
         bytes: downloadedData,
@@ -175,16 +176,7 @@ class UploadService {
     if (total == 0) return [];
 
     var completed = 0;
-    final placeholder = UploadFile(
-      folder: '',
-      fileName: '',
-      bytes: Uint8List(0),
-      mimeType: 'application/octet-stream',
-    );
-    final results = List<UploadResult>.filled(
-      total,
-      UploadResult.cancelled(file: placeholder),
-    );
+    final results = List<UploadResult?>.filled(total, null);
 
     Future<void> uploadSingle(int index) async {
       final file = files[index];
@@ -226,7 +218,10 @@ class UploadService {
     }
 
     await Future.wait(List.generate(poolSize, (_) => worker()));
-    return results;
+    for (var i = 0; i < total; i++) {
+      results[i] ??= UploadResult.cancelled(file: files[i]);
+    }
+    return results.cast<UploadResult>();
   }
 
   static Future<String> _uploadToStorage(
@@ -465,29 +460,7 @@ class UploadService {
     final normalized = value.split(';').first.trim().toLowerCase();
     if (normalized.contains('/')) return normalized;
 
-    return _mimeTypeFromFileName(fileName, 'application/octet-stream');
-  }
-
-  static String _mimeTypeFromFileName(String fileName, String fallback) {
-    final extension = fileName.contains('.')
-        ? fileName.split('.').last.toLowerCase()
-        : '';
-
-    return switch (extension) {
-      'pdf' => 'application/pdf',
-      'doc' => 'application/msword',
-      'docx' =>
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'png' => 'image/png',
-      'gif' => 'image/gif',
-      'bmp' => 'image/bmp',
-      'webp' => 'image/webp',
-      'jpg' || 'jpeg' => 'image/jpeg',
-      _ =>
-        fallback.trim().isEmpty
-            ? 'application/octet-stream'
-            : fallback.trim().toLowerCase(),
-    };
+    return mimeTypeForExtension(fileName);
   }
 
   static String? _mimeTypeFromBytes(Uint8List bytes) {

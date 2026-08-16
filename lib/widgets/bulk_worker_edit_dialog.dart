@@ -2,10 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../utils/currency_utils.dart';
-import '../utils/localization_helper.dart';
-import '../utils/bulk_worker_validator.dart';
-import '../utils/ui_utils.dart';
+import '../utils/utils.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
 
 String fieldHint(String fieldKey) {
   const hintKeys = <String, String>{
@@ -194,10 +193,10 @@ void showCupertinoDatePickerDialog({
                           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                           child: Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 CupertinoIcons.calendar,
                                 size: 20,
-                                color: const Color(0xFF0247C4),
+                                color: Color(0xFF0247C4),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -425,10 +424,10 @@ Widget buildCurrencyDropdown({
                     : CurrencyUtils.isSupported(currentCode)
                     ? LocalizationHelper.localizeCurrency(currentCode)
                     : currentCode,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   fontFamily: 'SF Pro Display',
-                  color: const Color(0xFF9CA3AF),
+                  color: Color(0xFF9CA3AF),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

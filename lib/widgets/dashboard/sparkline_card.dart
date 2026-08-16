@@ -59,7 +59,7 @@ class SparklineCard extends StatelessWidget {
     final bool isEmpty = rawValue <= 0 || points.isEmpty;
     return Card(
       elevation: 0,
-      color: Color(0xFFFFFFFF),
+      color: const Color(0xFFFFFFFF),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: !isEmpty
@@ -223,9 +223,9 @@ class SparklineCard extends StatelessWidget {
                                         ),
                                       );
                                     }
-                                    return LineTooltipItem(
+                                    return const LineTooltipItem(
                                       '',
-                                      const TextStyle(
+                                      TextStyle(
                                         color: Colors.transparent,
                                         fontSize: 0,
                                       ),
@@ -234,8 +234,8 @@ class SparklineCard extends StatelessWidget {
                                 },
                               ),
                             ),
-                            gridData: FlGridData(show: false),
-                            titlesData: FlTitlesData(show: false),
+                            gridData: const FlGridData(show: false),
+                            titlesData: const FlTitlesData(show: false),
                             borderData: FlBorderData(show: false),
                             lineBarsData: [
                               LineChartBarData(
@@ -246,7 +246,7 @@ class SparklineCard extends StatelessWidget {
                                 color: lineColor.withValues(alpha: 0.06),
                                 barWidth: 1.2,
                                 isStrokeCapRound: false,
-                                dotData: FlDotData(show: false),
+                                dotData: const FlDotData(show: false),
                               ),
                               LineChartBarData(
                                 spots: spots
@@ -293,7 +293,7 @@ class SparklineCard extends StatelessWidget {
                                               0xFF8DA9F1,
                                             ).withValues(alpha: 0.0),
                                     ],
-                                    stops: [0.0, 0.3, 0.8],
+                                    stops: const [0.0, 0.3, 0.8],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
                                   ),

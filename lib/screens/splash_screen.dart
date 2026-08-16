@@ -1,16 +1,18 @@
 import 'dart:async';
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import 'login_screen.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -19,23 +21,14 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-  late AuthService _authService;
-  late FirestoreService _firestoreService;
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  late final AuthService _authService;
+  late final FirestoreService _firestoreService;
   bool _navigationScheduled = false;
 
   @override
   void initState() {
     super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _animationController.forward();
   }
 
   @override
@@ -48,64 +41,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _authService = ref.read(authServiceProvider);
     _firestoreService = ref.read(firestoreServiceProvider);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navigateWhenReady();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _navigateWhenReady());
   }
 
   Future<void> _navigateWhenReady() async {
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-    bool sessionLocked;
-    try {
-      sessionLocked = await PreferencesService.isSessionLocked().timeout(
-        const Duration(seconds: 3),
-      );
-    } catch (e, st) {
-      ErrorReporter.report(e, st, context: 'splashSessionLocked');
-      sessionLocked = true;
-    }
-
-    bool isGuest;
-    try {
-      isGuest = await PreferencesService.isGuest().timeout(
-        const Duration(seconds: 3),
-      );
-    } catch (e, st) {
-      ErrorReporter.report(e, st, context: 'splashGuestStatus');
-      isGuest = false;
-    }
-
-    User? user;
-    try {
-      user = await _authService.authStateChanges.first.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => _authService.currentUser,
-      );
-    } on TimeoutException catch (e, st) {
-      ErrorReporter.report(e, st, context: 'splashAuthTimeout');
-      user = _authService.currentUser;
-    } catch (e, st) {
-      ErrorReporter.report(e, st, context: 'splashAuthState');
-      user = null;
-    }
+    final sessionLocked = await _getSessionLocked();
+    final isGuest = await _getIsGuest();
+    var user = await _getUser();
 
     if (!isGuest && user != null && !user.isAnonymous) {
-      try {
-        final profile = await _firestoreService.getUserProfileOrThrow().timeout(
-          const Duration(seconds: 8),
-        );
-        final isDeleted = profile?['isDeleted'] == true;
-        if (isDeleted) {
-          await _authService.signOut();
-          user = null;
-        } else if (profile == null) {
-          await _authService.signOut();
-          user = null;
-        }
-      } catch (e, st) {
-        ErrorReporter.report(e, st, context: 'splashProfileValidation');
-      }
+      user = await _validateUserProfile(user);
     }
 
     await minimumSplash;
@@ -125,7 +72,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 begin: const Offset(0, 0.08),
                 end: Offset.zero,
               ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
               );
 
           final fadeAnimation = CurvedAnimation(
@@ -135,7 +85,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
           return FadeTransition(
             opacity: fadeAnimation,
-            child: SlideTransition(position: slideAnimation, child: child),
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
           );
         },
         transitionDuration: const Duration(milliseconds: 600),
@@ -143,10 +96,60 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<bool> _getSessionLocked() async {
+    try {
+      return await PreferencesService.isSessionLocked().timeout(
+        const Duration(seconds: 3),
+      );
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashSessionLocked');
+      return true;
+    }
+  }
+
+  Future<bool> _getIsGuest() async {
+    try {
+      return await PreferencesService.isGuest().timeout(
+        const Duration(seconds: 3),
+      );
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashGuestStatus');
+      return false;
+    }
+  }
+
+  Future<User?> _getUser() async {
+    try {
+      return await _authService.authStateChanges.first.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => _authService.currentUser,
+      );
+    } on TimeoutException catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashAuthTimeout');
+      return _authService.currentUser;
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashAuthState');
+      return null;
+    }
+  }
+
+  Future<User?> _validateUserProfile(User user) async {
+    try {
+      final profile = await _firestoreService.getUserProfileOrThrow().timeout(
+        const Duration(seconds: 8),
+      );
+
+      final isDeleted = profile?['isDeleted'] == true;
+      if (isDeleted || profile == null) {
+        await _authService.signOut();
+        return null;
+      }
+
+      return user;
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashProfileValidation');
+      return user;
+    }
   }
 
   @override
@@ -156,10 +159,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/splashscreenbg.png', fit: BoxFit.cover),
+          Image.asset(
+            'assets/splashscreenbg.png',
+            fit: BoxFit.cover,
+          ),
           Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -179,7 +188,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         fontSize: 38,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'SF Pro Display',
-                        height: 1.0,
+                        height: 1,
                         letterSpacing: 0,
                       ),
                     ),

@@ -1,29 +1,27 @@
 import 'dart:async' show StreamSubscription, TimeoutException, Timer;
 import 'dart:ui';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:hrms/utils/utils.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
+
+import '../providers.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
 import '../services/dummy_data.dart';
-import '../services/payroll_service.dart';
+import '../services/firestore_service.dart';
 import '../services/invoice_service.dart';
-import '../utils/file_utils.dart';
-import '../utils/ui_utils.dart';
-import '../utils/dialog_utils.dart';
-import '../utils/guest_restriction.dart';
-import '../utils/currency_utils.dart';
-import '../utils/company_profile_helper.dart';
-import '../utils/date_time_utils.dart';
+import '../services/payroll_service.dart';
+import '../services/preferences_service.dart';
+import '../widgets/amount_text.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
-import '../widgets/amount_text.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
 
 Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
   return InvoiceService.generatePayrollInvoice(
@@ -32,7 +30,6 @@ Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
     position: args['position'] as String,
     payPeriod: args['payPeriod'] as String,
     totalWorkDays: args['totalWorkDays'] as String,
-    daysWorked: args['daysWorked'] as String,
     absents: args['absents'] as String,
     leaves: args['leaves'] as String,
     paidLeaves: args['paidLeaves'] as String? ?? '',
@@ -86,11 +83,44 @@ class AddPayrollScreen extends ConsumerStatefulWidget {
 }
 
 class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
+
   static const Color _primaryBlue = Color(0xFF0A44C2);
   static const Color _darkBlue = Color(0xFF082C7C);
   static const Color _textDark = Color(0xFF111827);
   static const Color _textGrey = Color(0xFF000000);
   static const Color _borderLight = Color(0xFFE5E7EB);
+
+  static const Color _disabledFill = Color(0xFFF9FAFB);
+  static const Color _disabledText = Color(0xFF9CA3AF);
+  static const Color _netFill = Color(0xFFEDF2FA);
+  static const Color _netBorder = Color(0xFFD2E3FC);
+  static const Color _breakdownBg = Color(0xFFF9FAFB);
+  static const Color _cancelRed = Color(0xFFE53935);
+  static const Color _saveBlue = Color(0xFF0B50C3);
+  static const Color _bannerEnd = Color(0xFF1E5EE0);
+
+  static const EdgeInsets _inputContentPadding = EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 16,
+  );
+  static const EdgeInsets _appBarPadding = EdgeInsets.symmetric(horizontal: 40);
+  static const EdgeInsets _scrollPadding = EdgeInsets.all(32);
+  static const EdgeInsets _cardPadding = EdgeInsets.all(32);
+  static const EdgeInsets _bannerPadding = EdgeInsets.all(24);
+  static const EdgeInsets _breakdownPadding = EdgeInsets.all(16);
+
+  static const InputBorder _readOnlyEnabledBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    borderSide: BorderSide(color: _borderLight),
+  );
+  static const InputBorder _editableEnabledBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    borderSide: BorderSide(color: _borderLight),
+  );
+  static const InputBorder _netEnabledBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    borderSide: BorderSide(color: _netBorder),
+  );
 
   late AuthService _authService;
   late FirestoreService _firestore;
@@ -108,44 +138,32 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   final _netCtrl = TextEditingController(text: r'$ 0');
 
   String _calculatedNet = '';
-  Map<String, dynamic> _calcResult = {};
+  Map<String, dynamic> _calcResult = const {};
   bool _isSaving = false;
   bool _isCancellingPayroll = false;
   bool _isAttendanceLoading = true;
   bool _attendanceVerified = false;
   Object? _attendanceLoadError;
   bool _showNotifications = false;
+
   StreamSubscription? _attendanceSub;
   Timer? _attendanceRefreshDebounce;
   List<Map<String, dynamic>>? _liveAttendanceRecords;
+
   int _paidLeaves = 0;
   int _unpaidLeaves = 0;
 
   double get _prorationFactor => 1.0;
+
   String _savedValuesFingerprint = '';
   bool _hasUnsavedChanges = false;
 
-  String get _name => (widget.workerData['name'] ?? '').toString();
-
-  String get _email => (widget.workerData['email'] ?? '').toString();
-
-  String get _workerId =>
-      (widget.workerData['workerId'] ?? widget.workerData['id'] ?? '')
-          .toString();
-
-  String get _position => (widget.workerData['position'] ?? '').toString();
-
-  String get _phone =>
-      (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '')
-          .toString();
-
-  String get _profileImage =>
-      (widget.workerData['profileImage'] ?? '').toString();
-
-  String get _salaryStr => PayrollService.currentSalaryDisplay(
-    widget.workerData,
-    companyCurrency: _currencyCode,
-  );
+  late final String _name;
+  late final String _email;
+  late final String _position;
+  late final String _phone;
+  late final String _profileImage;
+  late final String _workerId;
 
   String get _currencyCode {
     final companyCurr = PreferencesService.cachedCompanyCurrency;
@@ -155,8 +173,35 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     return CurrencyUtils.normalize(widget.workerData['currency']);
   }
 
+  String get _salaryStr => PayrollService.currentSalaryDisplay(
+    widget.workerData,
+    companyCurrency: _currencyCode,
+  );
+
   DateTime get _payrollMonth =>
       DateTime(widget.payrollMonth.year, widget.payrollMonth.month, 1);
+
+  bool get _isPaidRecord =>
+      widget.workerData['hasPayrollRecord'] == true &&
+      widget.workerData['isPaid'] == true;
+
+  bool get _canEditInputs => !widget.readOnly;
+
+  bool get _hasAbsences => (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _name = (widget.workerData['name'] ?? '').toString();
+    _email = (widget.workerData['email'] ?? '').toString();
+    _position = (widget.workerData['position'] ?? '').toString();
+    _phone = (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '')
+        .toString();
+    _profileImage = (widget.workerData['profileImage'] ?? '').toString();
+    _workerId = (widget.workerData['workerId'] ?? widget.workerData['id'] ?? '')
+        .toString();
+  }
 
   @override
   void didChangeDependencies() {
@@ -175,7 +220,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             )
             .toList();
         _scheduleAttendanceRefresh();
-      }, onError: (_, _) {});
+      }, onError: (_, __) {});
     }
 
     _salaryCtrl.text = AmountText.formatFull(
@@ -192,8 +237,10 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _leavesCtrl.text = (attendanceCounts['leaves'] ?? 0).toString();
 
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
-    final isCancelledPayroll = widget.workerData['hasPayrollRecord'] == true &&
+    final isCancelledPayroll =
+        widget.workerData['hasPayrollRecord'] == true &&
         widget.workerData['isPaid'] != true;
+
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
       _overtimeAmountCtrl.text = isCancelledPayroll
@@ -202,8 +249,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       _absentDeductionCtrl.text = isCancelledPayroll
           ? ''
           : (widget.workerData['hasPayrollRecord'] == true
-              ? _editableAmountValue(widget.workerData['absentDeduction'])
-              : '');
+                ? _editableAmountValue(widget.workerData['absentDeduction'])
+                : '');
       _leaveDeductionCtrl.text = isCancelledPayroll
           ? ''
           : _editableAmountValue(widget.workerData['leaveDeduction']);
@@ -246,7 +293,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   void _recalc() {
     if (_workDaysCtrl.text.trim().isEmpty) {
       setState(() {
-        _calcResult = {};
+        _calcResult = const {};
         _calculatedNet = '';
         _netCtrl.text = r'$ 0';
       });
@@ -283,6 +330,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         result['netSalary'] = (result['netSalary'] as double? ?? 0) + autoCalc;
         result['totalDeductions'] =
             (result['totalDeductions'] as double? ?? 0) - autoCalc;
+
         final cur = PayrollService.getCurrencyPrefix(_salaryStr);
         final pfx = cur.isNotEmpty ? '$cur ' : '';
         final netVal = result['netSalary'] as double? ?? 0;
@@ -321,22 +369,14 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   void _handleEditableValueChanged() {
     _recalc();
     if (widget.workerData['hasPayrollRecord'] != true ||
-        _savedValuesFingerprint.isEmpty) {
+        _savedValuesFingerprint.isEmpty)
       return;
-    }
+
     final changed = _editableValuesFingerprint() != _savedValuesFingerprint;
     if (changed != _hasUnsavedChanges && mounted) {
       setState(() => _hasUnsavedChanges = changed);
     }
   }
-
-  bool get _isPaidRecord =>
-      widget.workerData['hasPayrollRecord'] == true &&
-      widget.workerData['isPaid'] == true;
-
-  bool get _canEditInputs => !widget.readOnly;
-
-  bool get _hasAbsences => (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
 
   void _normalizeAbsentDeduction({required int absentDays}) {
     if (absentDays <= 0) {
@@ -349,7 +389,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final requested = PayrollService.extractSalary(_absentDeductionCtrl.text);
     if (requested <= 0) return;
 
-    final leaveOnlyCalculation = PayrollService.calculatePayroll(
+    final leaveOnlyCalc = PayrollService.calculatePayroll(
       salary: _salaryStr,
       totalWorkDays: _workDaysCtrl.text,
       absents: '0',
@@ -359,16 +399,17 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
       prorationFactor: _prorationFactor,
     );
+
     final capped = PayrollService.cappedAbsentDeduction(
       hasAbsences: true,
       requestedDeduction: requested,
       salary: _salaryStr,
       overtimeAmount: _overtimeAmountCtrl.text,
-      leaveDeduction: (leaveOnlyCalculation['leaveDeduction'] as num? ?? 0)
-          .toString(),
+      leaveDeduction: (leaveOnlyCalc['leaveDeduction'] as num? ?? 0).toString(),
       salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
       prorationFactor: _prorationFactor,
     );
+
     if (capped == requested) return;
 
     final text = capped % 1 == 0
@@ -382,13 +423,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   (DateTime, DateTime) get _currentPayPeriod {
     if (_isPaidRecord) {
-      final savedStart = widget.workerData['payPeriodStart'];
-      final savedEnd = widget.workerData['payPeriodEnd'];
-      final start = AppDateUtils.dateFromValue(savedStart);
-      final end = AppDateUtils.dateFromValue(savedEnd);
-      if (start != null && end != null) {
-        return (start, end);
-      }
+      final start = AppDateUtils.dateFromValue(
+        widget.workerData['payPeriodStart'],
+      );
+      final end = AppDateUtils.dateFromValue(widget.workerData['payPeriodEnd']);
+      if (start != null && end != null) return (start, end);
     }
     return (
       widget.payPeriodStart ?? PayrollService.payPeriodStart(_payrollMonth),
@@ -404,6 +443,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }
       return;
     }
+
     if (_isPaidRecord) {
       if (!mounted) return;
       setState(() {
@@ -415,60 +455,20 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       _captureSavedValues();
       return;
     }
+
     if (widget.workerData['hasPayrollRecord'] == true &&
         _savedValuesFingerprint.isEmpty) {
       _captureSavedValues();
     }
-    final periodRange = _currentPayPeriod;
-    try {
-      final futures = <Future<Map<String, int>>>[
-        _firestore
-            .getWorkerMonthlyAttendance(
-              _email,
-              workerId: _workerId,
-              month: _payrollMonth,
-              startDate: periodRange.$1,
-              endDate: periodRange.$2,
-              preFetchedRecords: _liveAttendanceRecords,
-            )
-            .timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                throw TimeoutException(
-                  'Attendance request timed out. Please check your connection and retry.',
-                );
-              },
-            ),
-      ];
-      final allResults = await Future.wait(futures);
-      final results = <String, int>{
-        'absents': 0,
-        'paidLeaves': 0,
-        'unpaidLeaves': 0,
-        'leaves': 0,
-      };
-      for (final r in allResults) {
-        results['absents'] = (results['absents'] ?? 0) + (r['absents'] ?? 0);
-        results['paidLeaves'] =
-            (results['paidLeaves'] ?? 0) + (r['paidLeaves'] ?? 0);
-        results['unpaidLeaves'] =
-            (results['unpaidLeaves'] ?? 0) + (r['unpaidLeaves'] ?? 0);
-        results['leaves'] = (results['leaves'] ?? 0) + (r['leaves'] ?? 0);
-      }
 
-      final workingDays = await _firestore
-          .getMonthlyWorkingDays(
-            month: _payrollMonth,
-            startDate: periodRange.$1,
-            endDate: periodRange.$2,
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException('working_days_timeout'.tr());
-            },
-          );
+    final (periodStart, periodEnd) = _currentPayPeriod;
+
+    try {
+      final results = await _fetchAttendanceCounts(periodStart, periodEnd);
+      final workingDays = await _fetchWorkingDays(periodStart, periodEnd);
+
       if (!mounted) return;
+
       setState(() {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
         _paidLeaves = results['paidLeaves'] ?? 0;
@@ -482,9 +482,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             workingDays > 0) {
           _workDaysCtrl.text = workingDays.toString();
         }
+
         _attendanceVerified = true;
         _attendanceLoadError = null;
       });
+
       _recalc();
       _handleEditableValueChanged();
     } on TimeoutException catch (e) {
@@ -517,6 +519,48 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     }
   }
 
+  Future<Map<String, int>> _fetchAttendanceCounts(
+    DateTime periodStart,
+    DateTime periodEnd,
+  ) async {
+    final raw = await _firestore
+        .getWorkerMonthlyAttendance(
+          _email,
+          workerId: _workerId,
+          month: _payrollMonth,
+          startDate: periodStart,
+          endDate: periodEnd,
+          preFetchedRecords: _liveAttendanceRecords,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException(
+            'Attendance request timed out. '
+            'Please check your connection and retry.',
+          ),
+        );
+
+    return {
+      'absents': raw['absents'] ?? 0,
+      'paidLeaves': raw['paidLeaves'] ?? 0,
+      'unpaidLeaves': raw['unpaidLeaves'] ?? 0,
+      'leaves': raw['leaves'] ?? 0,
+    };
+  }
+
+  Future<int> _fetchWorkingDays(DateTime periodStart, DateTime periodEnd) {
+    return _firestore
+        .getMonthlyWorkingDays(
+          month: _payrollMonth,
+          startDate: periodStart,
+          endDate: periodEnd,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('working_days_timeout'.tr()),
+        );
+  }
+
   Future<void> _handleSave() async {
     if (_isAttendanceLoading) {
       FlashySnackBar.show(
@@ -539,6 +583,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       );
       return;
     }
+
     final workDaysText = _workDaysCtrl.text.trim();
     final absentsText = _absentsCtrl.text.trim();
     final leavesText = _leavesCtrl.text.trim();
@@ -570,6 +615,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         return;
       }
     }
+
     final parsedWorkDays = int.tryParse(workDaysText) ?? 0;
     if (parsedWorkDays <= 0) {
       FlashySnackBar.show(
@@ -579,6 +625,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       );
       return;
     }
+
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final now = DateTime.now();
     final payrollIdentity = _workerId.trim().isNotEmpty
@@ -639,69 +686,12 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
     try {
       if (isGuest) {
-        final guestPayroll =
-            (await PreferencesService.getGuestPayroll()) ??
-            <Map<String, dynamic>>[];
-        final idx = guestPayroll.indexWhere((p) {
-          return (p['payrollKey'] ?? '').toString() == payrollKey;
-        });
-        if (idx != -1) {
-          guestPayroll[idx] = {...guestPayroll[idx], ...record};
-        } else {
-          guestPayroll.add(record);
-        }
-        await PreferencesService.setGuestPayroll(guestPayroll);
-
-        final expenseRecord = <String, dynamic>{
-          'name': _name,
-          'date': paidAt,
-          'category': 'Salary',
-          'amount': netAmount,
-          'description': 'Salary payment for $_name',
-          'payrollKey': payrollKey,
-        };
-        final existingExpenseIndex = DummyData.expenses.indexWhere(
-          (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
-        );
-        if (netAmount > 0) {
-          if (existingExpenseIndex == -1) {
-            final id =
-                'dummy_e${DateTime.now().microsecondsSinceEpoch}'
-                '_${record.hashCode.abs()}';
-            DummyData.expenses.insert(0, {...expenseRecord, 'id': id});
-          } else {
-            DummyData.expenses[existingExpenseIndex] = {
-              ...DummyData.expenses[existingExpenseIndex],
-              ...expenseRecord,
-            };
-          }
-        } else if (existingExpenseIndex != -1) {
-          DummyData.expenses.removeAt(existingExpenseIndex);
-        }
-        await DummyData.saveToPrefs();
-        if (mounted) setState(() {});
+        await _saveGuestPayroll(record, payrollKey, netAmount, paidAt);
       } else {
-        final hasExisting = widget.workerData['hasPayrollRecord'] == true;
-        final existingId = widget.workerData['id']?.toString() ?? '';
-        final expenseRecord = <String, dynamic>{
-          'name': _name,
-          'date': paidAt,
-          'category': 'Salary',
-          'amount': netAmount,
-          'description': 'Salary payment for $_name',
-          'payrollKey': payrollKey,
-        };
-        await _firestore.savePayrollAndExpenseBatch(
-          record: record,
-          payrollKey: payrollKey,
-          netAmount: netAmount,
-          expenseRecord: expenseRecord,
-          existingPayrollId: hasExisting ? existingId : null,
-        );
+        await _saveFirestorePayroll(record, payrollKey, netAmount, paidAt);
       }
 
       if (!mounted) return;
-
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
     } catch (_) {
       if (mounted) {
@@ -710,8 +700,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
           message: 'failed_to_save_record'.tr(),
           isError: true,
         );
+        setState(() => _isSaving = false);
       }
-      if (mounted) setState(() => _isSaving = false);
       return;
     }
 
@@ -726,62 +716,117 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         );
       }
     }
-    if (mounted) setState(() => _isSaving = false);
+
     if (mounted) {
+      setState(() => _isSaving = false);
       widget.onBack?.call();
     }
+  }
+
+  Future<void> _saveGuestPayroll(
+    Map<String, dynamic> record,
+    String payrollKey,
+    double netAmount,
+    dynamic paidAt,
+  ) async {
+    final guestPayroll =
+        (await PreferencesService.getGuestPayroll()) ??
+        <Map<String, dynamic>>[];
+    final idx = guestPayroll.indexWhere(
+      (p) => (p['payrollKey'] ?? '').toString() == payrollKey,
+    );
+
+    if (idx != -1) {
+      guestPayroll[idx] = {...guestPayroll[idx], ...record};
+    } else {
+      guestPayroll.add(record);
+    }
+
+    await PreferencesService.setGuestPayroll(guestPayroll);
+
+    final expenseRecord = <String, dynamic>{
+      'name': _name,
+      'date': paidAt,
+      'category': 'Salary',
+      'amount': netAmount,
+      'description': 'Salary payment for $_name',
+      'payrollKey': payrollKey,
+    };
+
+    final existingExpenseIdx = DummyData.expenses.indexWhere(
+      (e) => (e['payrollKey'] ?? '').toString() == payrollKey,
+    );
+
+    if (netAmount > 0) {
+      if (existingExpenseIdx == -1) {
+        final id =
+            'dummy_e${DateTime.now().microsecondsSinceEpoch}'
+            '_${record.hashCode.abs()}';
+        DummyData.expenses.insert(0, {...expenseRecord, 'id': id});
+      } else {
+        DummyData.expenses[existingExpenseIdx] = {
+          ...DummyData.expenses[existingExpenseIdx],
+          ...expenseRecord,
+        };
+      }
+    } else if (existingExpenseIdx != -1) {
+      DummyData.expenses.removeAt(existingExpenseIdx);
+    }
+
+    await DummyData.saveToPrefs();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _saveFirestorePayroll(
+    Map<String, dynamic> record,
+    String payrollKey,
+    double netAmount,
+    dynamic paidAt,
+  ) async {
+    final hasExisting = widget.workerData['hasPayrollRecord'] == true;
+    final existingId = widget.workerData['id']?.toString() ?? '';
+
+    await _firestore.savePayrollAndExpenseBatch(
+      record: record,
+      payrollKey: payrollKey,
+      netAmount: netAmount,
+      expenseRecord: {
+        'name': _name,
+        'date': paidAt,
+        'category': 'Salary',
+        'amount': netAmount,
+        'description': 'Salary payment for $_name',
+        'payrollKey': payrollKey,
+      },
+      existingPayrollId: hasExisting ? existingId : null,
+    );
   }
 
   Future<void> _handleCancelPayroll() async {
     if (_isSaving ||
         _isCancellingPayroll ||
-        widget.workerData['hasPayrollRecord'] != true) {
+        widget.workerData['hasPayrollRecord'] != true)
       return;
-    }
+
     final payrollId = (widget.workerData['id'] ?? '').toString().trim();
     final payrollKey = (widget.workerData['payrollKey'] ?? '')
         .toString()
         .trim();
+
     setState(() => _isCancellingPayroll = true);
+
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
       if (isGuest) {
-        final guestPayroll =
-            (await PreferencesService.getGuestPayroll()) ??
-            <Map<String, dynamic>>[];
-        final idx = guestPayroll.indexWhere((p) {
-          return (p['payrollKey'] ?? '').toString() == payrollKey ||
-              (p['id'] ?? '').toString() == payrollId;
-        });
-        if (idx != -1) {
-          final cancelledAt = DateTime.now();
-          guestPayroll[idx] = {
-            ...guestPayroll[idx],
-            'status': 'Unpaid',
-            'isPaid': false,
-            'paid': false,
-            'paymentStatus': 'unpaid',
-            'cancelledAt': cancelledAt,
-            'lastModified': cancelledAt,
-          }..remove('paidAt');
-          guestPayroll[idx].remove('paidOn');
-          guestPayroll[idx].remove('paymentDate');
-          await PreferencesService.setGuestPayroll(guestPayroll);
-        }
-        final expenseIndex = DummyData.expenses.indexWhere(
-          (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
-        );
-        if (expenseIndex != -1) {
-          DummyData.expenses.removeAt(expenseIndex);
-        }
-        await DummyData.saveToPrefs();
-        if (mounted) setState(() {});
+        await _cancelGuestPayroll(payrollId, payrollKey);
       } else {
         await _firestore.cancelPayrollRecord(
           payrollId: payrollId,
           payrollKey: payrollKey,
         );
       }
+
       if (!mounted) return;
       FlashySnackBar.show(
         context,
@@ -801,25 +846,63 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     }
   }
 
+  Future<void> _cancelGuestPayroll(String payrollId, String payrollKey) async {
+    final guestPayroll =
+        (await PreferencesService.getGuestPayroll()) ??
+        <Map<String, dynamic>>[];
+    final idx = guestPayroll.indexWhere((p) {
+      return (p['payrollKey'] ?? '').toString() == payrollKey ||
+          (p['id'] ?? '').toString() == payrollId;
+    });
+
+    if (idx != -1) {
+      final cancelledAt = DateTime.now();
+      guestPayroll[idx] =
+          {
+              ...guestPayroll[idx],
+              'status': 'Unpaid',
+              'isPaid': false,
+              'paid': false,
+              'paymentStatus': 'unpaid',
+              'cancelledAt': cancelledAt,
+              'lastModified': cancelledAt,
+            }
+            ..remove('paidAt')
+            ..remove('paidOn')
+            ..remove('paymentDate');
+
+      await PreferencesService.setGuestPayroll(guestPayroll);
+    }
+
+    final expenseIdx = DummyData.expenses.indexWhere(
+      (e) => (e['payrollKey'] ?? '').toString() == payrollKey,
+    );
+    if (expenseIdx != -1) DummyData.expenses.removeAt(expenseIdx);
+
+    await DummyData.saveToPrefs();
+    if (mounted) setState(() {});
+  }
+
   String _editableAmountValue(dynamic value) {
     final text = (value ?? '').toString().trim();
     return PayrollService.extractSalary(text) == 0 ? '' : text;
   }
 
   Future<void> _generateAndShowInvoice() async {
-    if (_calcResult.isEmpty) {
-      return;
-    }
+    if (_calcResult.isEmpty) return;
 
     final cr = _calcResult;
     final (periodStart, periodEnd) = _currentPayPeriod;
+
     final payPeriod = PayrollService.formatPayPeriodRange(
       periodStart,
       periodEnd,
       locale: context.locale.toString(),
     );
+
+    final safeName = _name.replaceAll(' ', '_');
     final fileName =
-        'payroll_${_name.replaceAll(' ', '_')}'
+        'payroll_$safeName'
         '_${PayrollService.periodDateKey(periodStart)}'
         '_${PayrollService.periodDateKey(periodEnd)}.pdf';
 
@@ -836,7 +919,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       'position': _position,
       'payPeriod': payPeriod,
       'totalWorkDays': _workDaysCtrl.text.trim(),
-      'daysWorked': (cr['workedDays'] ?? 0).toString(),
       'absents': _absentsCtrl.text.trim(),
       'leaves': _leavesCtrl.text.trim(),
       'paidLeaves': _paidLeaves.toString(),
@@ -915,168 +997,22 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                       color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
-                          color: const Color(
-                            0xFF0F172A,
-                          ).withValues(alpha: 0.18),
+                          color: Color(0x2E0F172A),
                           blurRadius: 30,
-                          offset: const Offset(0, 14),
+                          offset: Offset(0, 14),
                         ),
                       ],
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            border: Border(
-                              bottom: BorderSide(color: Color(0xFFE5E7EB)),
-                            ),
-                          ),
-                          child: SizedBox(
-                            height: 40,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Text(
-                                  'invoice_preview'.tr(),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'SF Pro Display',
-                                    color: Color(0xFF111827),
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Tooltip(
-                                    message: 'close'.tr(),
-                                    child: IconButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      padding: EdgeInsets.zero,
-                                      constraints:
-                                          const BoxConstraints.tightFor(
-                                            width: 40,
-                                            height: 40,
-                                          ),
-                                      icon: const Icon(
-                                        Icons.close_rounded,
-                                        size: 24,
-                                        color: Color(0xFF475569),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF0247C4,
-                                          ),
-                                          foregroundColor: Colors.white,
-                                          disabledBackgroundColor: const Color(
-                                            0xFF0247C4,
-                                          ).withValues(alpha: 0.55),
-                                          elevation: 0,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              9,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: isSharing
-                                            ? null
-                                            : () async {
-                                                setDialogState(
-                                                  () => isSharing = true,
-                                                );
-                                                try {
-                                                  final saved =
-                                                      await InvoiceService.shareInvoice(
-                                                        pdfBytes,
-                                                        fileName,
-                                                      );
-                                                  if (saved && ctx.mounted) {
-                                                    FlashySnackBar.show(
-                                                      ctx,
-                                                      message:
-                                                          'file_saved_and_opened'
-                                                              .tr(
-                                                                namedArgs: {
-                                                                  'file':
-                                                                      fileName,
-                                                                },
-                                                              ),
-                                                    );
-                                                  }
-                                                } catch (_) {
-                                                  if (ctx.mounted) {
-                                                    FlashySnackBar.show(
-                                                      ctx,
-                                                      message:
-                                                          'unexpected_error'
-                                                              .tr(),
-                                                      isError: true,
-                                                    );
-                                                  }
-                                                } finally {
-                                                  if (ctx.mounted) {
-                                                    setDialogState(
-                                                      () => isSharing = false,
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                        icon: isSharing
-                                            ? const SizedBox(
-                                                width: 23,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Colors.white,
-                                                    ),
-                                              )
-                                            : SvgPicture.asset(
-                                                'assets/share1.svg',
-                                                width: 16,
-                                                height: 16,
-                                                colorFilter:
-                                                    const ColorFilter.mode(
-                                                      Colors.white,
-                                                      BlendMode.srcIn,
-                                                    ),
-                                              ),
-                                        label: Text(
-                                          'share'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        _buildInvoiceDialogHeader(
+                          ctx: ctx,
+                          isSharing: isSharing,
+                          pdfBytes: pdfBytes,
+                          fileName: fileName,
+                          setDialogState: setDialogState,
                         ),
                         Expanded(
                           child: Padding(
@@ -1089,13 +1025,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                                 border: Border.all(
                                   color: const Color(0xFFDDE3EA),
                                 ),
-                                boxShadow: [
+                                boxShadow: const [
                                   BoxShadow(
-                                    color: const Color(
-                                      0xFF0F172A,
-                                    ).withValues(alpha: 0.06),
+                                    color: Color(0x0F0F172A),
                                     blurRadius: 12,
-                                    offset: const Offset(0, 4),
+                                    offset: Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -1122,28 +1056,159 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     }
   }
 
-  void _toggleNotifications() {
-    setState(() => _showNotifications = !_showNotifications);
+  Widget _buildInvoiceDialogHeader({
+    required BuildContext ctx,
+    required bool isSharing,
+    required Uint8List pdfBytes,
+    required String fileName,
+    required StateSetter setDialogState,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: SizedBox(
+        height: 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              'invoice_preview'.tr(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+                color: Color(0xFF111827),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Tooltip(
+                message: 'close'.tr(),
+                child: IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 24,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(
+                    0xFF0247C4,
+                  ).withValues(alpha: 0.55),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                onPressed: isSharing
+                    ? null
+                    : () async {
+                        setDialogState(() => isSharing = true);
+                        try {
+                          final saved = await InvoiceService.shareInvoice(
+                            pdfBytes,
+                            fileName,
+                          );
+                          if (saved && ctx.mounted) {
+                            FlashySnackBar.show(
+                              ctx,
+                              message: 'file_saved_and_opened'.tr(
+                                namedArgs: {'file': fileName},
+                              ),
+                            );
+                          }
+                        } catch (_) {
+                          if (ctx.mounted) {
+                            FlashySnackBar.show(
+                              ctx,
+                              message: 'unexpected_error'.tr(),
+                              isError: true,
+                            );
+                          }
+                        } finally {
+                          if (ctx.mounted) {
+                            setDialogState(() => isSharing = false);
+                          }
+                        }
+                      },
+                icon: isSharing
+                    ? const SizedBox(
+                        width: 23,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : SvgPicture.asset(
+                        'assets/share1.svg',
+                        width: 16,
+                        height: 16,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                label: Text(
+                  'share'.tr(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _onNotificationTap(String type) {
-    setState(() => _showNotifications = false);
-  }
+  void _toggleNotifications() =>
+      setState(() => _showNotifications = !_showNotifications);
+
+  void _onNotificationTap(String type) =>
+      setState(() => _showNotifications = false);
 
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
+
     final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'UnsavedChangesDialog',
       barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
       transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, animation, _, __) {
         final curve = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutBack,
         );
+
         return BackdropFilter(
           filter: ImageFilter.blur(
             sigmaX: 12 * animation.value,
@@ -1153,133 +1218,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             opacity: animation,
             child: ScaleTransition(
               scale: curve,
-              child: Dialog(
-                backgroundColor: Colors.transparent,
-                child: Container(
-                  width: 380,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF000000).withValues(alpha: 0.15),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFEE2E2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.warning_rounded,
-                            color: Color(0xFFEF4444),
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'discard_changes'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'unsaved_changes_message'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w400,
-                          fontFamily: 'SF Pro Display',
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, false),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF000000),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, true),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'discard'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: _UnsavedChangesDialog(ctx: ctx),
             ),
           ),
         );
       },
     );
+
     return result ?? false;
   }
 
@@ -1287,7 +1232,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
+      onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) {
@@ -1304,7 +1249,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   _buildAppBar(),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(32),
+                      padding: _scrollPadding,
                       child: Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1200),
@@ -1327,7 +1272,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               ),
             ),
           ),
-
           if (_showNotifications) ...[
             Positioned.fill(
               child: GestureDetector(
@@ -1348,7 +1292,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   Widget _buildAppBar() {
     return Container(
       height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: _appBarPadding,
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
@@ -1367,7 +1311,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
           ),
           Text(
             'workforce'.tr(),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: _textDark,
@@ -1395,9 +1339,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'payroll_data'.tr(),
-          style: const TextStyle(
+        const Text(
+          '',
+          style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: _textDark,
@@ -1405,49 +1349,22 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         ),
         Row(
           children: [
-            if (showEditButtons && showCancelButton) ...[
-              OutlinedButton(
-                onPressed: _isSaving || _isCancellingPayroll
-                    ? null
-                    : () async {
-                        final confirmed = await DeleteDialog.show(
-                          context: context,
-                          title: 'cancel_payroll'.tr(),
-                          content: 'cancel_payroll_confirm'.tr(
-                            namedArgs: {'name': _name},
-                          ),
-                          confirmButtonText: 'cancel_payroll',
-                        );
-                        if (confirmed) _handleCancelPayroll();
-                      },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE53935),
-                  side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 18,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: _isCancellingPayroll
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFE53935),
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        'cancel_payroll'.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+            if (showEditButtons && showCancelButton)
+              _cancelPayrollButton(
+                onPressed: () async {
+                  final confirmed = await DeleteDialog.show(
+                    context: context,
+                    title: 'cancel_payroll'.tr(),
+                    content: 'cancel_payroll_confirm'.tr(
+                      namedArgs: {'name': _name},
+                    ),
+                    confirmButtonText: 'cancel_payroll',
+                  );
+                  if (confirmed) _handleCancelPayroll();
+                },
               ),
-            ],
-            if (showCancelButton && widget.readOnly) ...[
-              OutlinedButton(
+            if (showCancelButton && widget.readOnly)
+              _cancelPayrollButton(
                 onPressed: () async {
                   final isGuest =
                       _authService.currentUser?.isAnonymous ?? false;
@@ -1465,32 +1382,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   );
                   if (confirmed) _handleCancelPayroll();
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE53935),
-                  side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 18,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: _isCancellingPayroll
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFE53935),
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        'cancel_payroll'.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
               ),
-            ],
             if (showSaveButton) ...[
               if (hasRecord) const SizedBox(width: 10),
               ElevatedButton(
@@ -1506,7 +1398,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                         _handleSave();
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B50C3),
+                  backgroundColor: _saveBlue,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
@@ -1542,6 +1434,31 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     );
   }
 
+  Widget _cancelPayrollButton({required VoidCallback onPressed}) {
+    return OutlinedButton(
+      onPressed: _isSaving || _isCancellingPayroll ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _cancelRed,
+        side: const BorderSide(color: _cancelRed, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: _isCancellingPayroll
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                color: _cancelRed,
+                strokeWidth: 2,
+              ),
+            )
+          : Text(
+              'cancel_payroll'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+    );
+  }
+
   Widget _buildEmployeeBanner() {
     final (firstDay, lastDay) = _currentPayPeriod;
     final period = PayrollService.formatPayPeriodRange(
@@ -1552,11 +1469,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [_primaryBlue, Color(0xFF1E5EE0)],
+      padding: _bannerPadding,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        gradient: LinearGradient(
+          colors: [_primaryBlue, _bannerEnd],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -1564,19 +1481,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              WorkerAvatar(
-                imageUrl: _profileImage,
-                name: _name,
-                size: 80,
-                shape: BoxShape.circle,
-              ),
-            ],
+          WorkerAvatar(
+            imageUrl: _profileImage,
+            name: _name,
+            size: 80,
+            shape: BoxShape.circle,
           ),
           const SizedBox(width: 24),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1615,7 +1526,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               ],
             ),
           ),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -1648,7 +1558,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final cr = _calcResult;
 
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: _cardPadding,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1672,7 +1582,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             ],
           ),
           const SizedBox(height: 32),
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1708,7 +1617,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             ],
           ),
           const SizedBox(height: 24),
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1736,13 +1644,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             ],
           ),
           const SizedBox(height: 32),
-
           if (cr.isNotEmpty) ...[
             _buildCalcBreakdown(cr),
             const SizedBox(height: 16),
           ],
-
-          Divider(color: _borderLight, thickness: 1),
+          const Divider(color: _borderLight, thickness: 1),
           const SizedBox(height: 24),
         ],
       ),
@@ -1759,6 +1665,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     String? helperText,
   }) {
     final isDaysInput = !readOnly && !isCurrency;
+    final currencySymbol = isCurrency
+        ? CurrencyUtils.symbolFor(_currencyCode)
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1798,9 +1707,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                       widthFactor: 1,
                       heightFactor: 1,
                       child: Text(
-                        CurrencyUtils.symbolFor(_currencyCode),
+                        currencySymbol ?? '',
                         style: TextStyle(
-                          color: readOnly ? const Color(0xFF9CA3AF) : _textDark,
+                          color: readOnly ? _disabledText : _textDark,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1812,33 +1721,29 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                 ? const BoxConstraints(minWidth: 0, minHeight: 0)
                 : null,
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: _borderLight),
-            ),
+            hintStyle: const TextStyle(color: _disabledText),
+            contentPadding: _inputContentPadding,
+            enabledBorder: readOnly
+                ? _readOnlyEnabledBorder
+                : _editableEnabledBorder,
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
               borderSide: BorderSide(color: focusedBorderColor ?? _borderLight),
             ),
             hoverColor: Colors.transparent,
             filled: readOnly,
-            fillColor: readOnly ? const Color(0xFFF9FAFB) : null,
+            fillColor: readOnly ? _disabledFill : null,
           ),
           style: TextStyle(
             fontSize: 16,
-            color: readOnly ? const Color(0xFF9CA3AF) : _textDark,
+            color: readOnly ? _disabledText : _textDark,
           ),
         ),
         if (helperText != null && helperText.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             helperText,
-            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
           ),
         ],
       ],
@@ -1868,21 +1773,12 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               color: _darkBlue,
               fontWeight: FontWeight.w600,
             ),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
-              ),
+            decoration: const InputDecoration(
+              contentPadding: _inputContentPadding,
+              enabledBorder: _netEnabledBorder,
+              focusedBorder: _netEnabledBorder,
               filled: true,
-              fillColor: const Color(0xFFEDF2FA),
+              fillColor: _netFill,
             ),
           ),
         ),
@@ -1894,9 +1790,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     String fmt(String key) => (cr[key] as String?) ?? '';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: _breakdownPadding,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: _breakdownBg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _borderLight),
       ),
@@ -1961,6 +1857,136 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _UnsavedChangesDialog extends StatelessWidget {
+  final BuildContext ctx;
+
+  const _UnsavedChangesDialog({required this.ctx});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 380,
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x260F172A),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.warning_rounded,
+                  color: Color(0xFFEF4444),
+                  size: 36,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'discard_changes'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'unsaved_changes_message'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w400,
+                fontFamily: 'SF Pro Display',
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, false),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'cancel'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF000000),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, true),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33EF4444),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'discard'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

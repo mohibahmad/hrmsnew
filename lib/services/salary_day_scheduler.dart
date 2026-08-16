@@ -9,8 +9,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import 'package:file_picker/file_picker.dart';
-import '../utils/file_utils.dart';
-import '../utils/localization_helper.dart';
+import '../utils/utils.dart';
 import 'dart:io';
 import 'firestore_service.dart';
 import 'payroll_service.dart';
@@ -18,11 +17,9 @@ import 'preferences_service.dart';
 import 'dummy_data.dart';
 import 'invoice_service.dart';
 import 'error_reporter.dart';
-import '../utils/currency_utils.dart';
-import '../utils/ui_utils.dart';
-import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
-import '../utils/date_time_utils.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
 
 Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
   final archive = Archive();
@@ -320,7 +317,6 @@ class PayrollRunner {
     final effectivePeriodEnd =
         payPeriodEnd ?? PayrollService.payPeriodEnd(effectivePayrollMonth);
 
-    // ── Parallel fetch: company profile + payroll snapshot + working days ──
     Map<String, dynamic>? companyProfile;
     List<Map<String, dynamic>> existingPayroll = const [];
     List<Map<String, dynamic>>? preFetchedAttendance;
@@ -355,10 +351,6 @@ class PayrollRunner {
                 endDate: effectivePeriodEnd,
               )
               .then((v) => {'_days': v}),
-          // Use the same live collection snapshot as Add Payroll. Filtering
-          // the Firestore query by month can miss legacy records whose saved
-          // attendance date is not a Timestamp, even though the attendance
-          // screen and Add Payroll can already see those records.
           firestoreService.attendanceStream.first
               .timeout(const Duration(seconds: 20))
               .then(
@@ -471,7 +463,6 @@ class PayrollRunner {
 
     if (workers.isEmpty) return null;
 
-    // ── Attendance fetch — all workers concurrently (max 15 at a time) ──
     late final List<Map<String, dynamic>> attendanceResults;
 
     if (isGuest) {
@@ -626,27 +617,16 @@ class PayrollRunner {
       );
 
       double absentDeductionTotal = 0;
-      late double leaveDeductionTotal;
+      double leaveDeductionTotal = 0;
       String netSalary;
       double rawNetVal = 0;
 
       try {
-        final enteredSalary = PayrollService.extractSalary(salaryStr);
-        final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-            ? enteredSalary / 12
-            : enteredSalary;
-        final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
-        leaveDeductionTotal = dailyRate * unpaidLeaves;
-
-        // Absence attendance enables the editable deduction field, but HR is
-        // responsible for choosing the amount. Never infer it from daily rate
-        // or carry it forward from a previous payroll period.
-        absentDeductionTotal = 0;
         rawNetVal = PayrollService.calculateNetFromTotals(
           salary: salaryStr,
           overtimeAmount: overtimeAmount,
           absentDeduction: '0',
-          leaveDeduction: leaveDeductionTotal.toString(),
+          leaveDeduction: '0',
           customDeduction: prevCustomDeduction.toString(),
           salaryType: salaryType,
           prorationFactor: prorationFactor,
@@ -1182,14 +1162,9 @@ class PayrollRunner {
             : enteredSalary;
         final workDays = int.tryParse(r.totalWorkDays) ?? 30;
         final absentsInt = r.absents;
-        final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
 
-        final payableDays =
-            (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
-                .clamp(0, workDays)
-                .toDouble();
         final grossSalary = rawSalary * r.prorationFactor;
         final absentDeductionTotal = PayrollService.extractSalary(
           r.absentDeduction,
@@ -1213,7 +1188,6 @@ class PayrollRunner {
           position: r.position,
           payPeriod: periodDisplay,
           totalWorkDays: r.totalWorkDays,
-          daysWorked: _formatDayCount(payableDays),
           absents: _formatDayCount(absentEquivalent),
           leaves: r.leaves.toString(),
           paidLeaves: r.paidLeaves.toString(),
@@ -1251,7 +1225,6 @@ class PayrollRunner {
             ? sanitizedName
             : 'worker_${index + 1}';
         return <String, Object>{
-          // Keep every invoice unique even when workers share the same name.
           'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
           'bytes': pdfBytes,
         };
@@ -1275,7 +1248,6 @@ class PayrollRunner {
       }
       if (invoiceFiles.isEmpty) return;
 
-      // ZIP compression is CPU-heavy; keep it off the desktop UI isolate.
       final zipData = await compute(_encodePayrollInvoiceZip, invoiceFiles);
       final fileName = 'payroll_invoices_$payPeriod.zip';
 
@@ -1288,8 +1260,6 @@ class PayrollRunner {
       );
 
       if (result != null) {
-        // file_picker writes the supplied bytes on desktop. Verify the result
-        // before reporting success and repair an incomplete write if needed.
         final savedZip = File(result);
         final exists = await savedZip.exists();
         final savedLength = exists ? await savedZip.length() : 0;
@@ -2213,7 +2183,7 @@ class PayrollRunner {
                                                           children: [
                                                             Text(
                                                               'net_salary'.tr(),
-                                                              style: TextStyle(
+                                                              style: const TextStyle(
                                                                 fontSize: 10,
                                                                 fontWeight:
                                                                     FontWeight
@@ -2323,7 +2293,7 @@ class PayrollRunner {
                                         children: [
                                           Text(
                                             'total_disbursement'.tr(),
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w600,
                                               color: Color(0xFF6B7280),
@@ -3169,7 +3139,7 @@ class PayrollRunner {
             ),
             child: Text(
               'apply'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'SF Pro Display',
@@ -3297,7 +3267,7 @@ class PayrollRunner {
     }
 
     Widget image;
-    if (value.startsWith('http://') || value.startsWith('https://')) {
+    if (isHttpUrl(value)) {
       image = Image.network(
         value,
         width: size,

@@ -9,7 +9,7 @@ import '../providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
-import '../utils/dialog_utils.dart';
+import '../utils/ui_helpers.dart';
 
 class NotificationSidebar extends ConsumerStatefulWidget {
   final VoidCallback onClose;
@@ -95,7 +95,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
 
   @override
   void dispose() {
-    _controller.reverse();
     _notifSub?.cancel();
     _controller.dispose();
     super.dispose();
@@ -368,7 +367,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
 
   @override
   Widget build(BuildContext context) {
-    final double headerHeight = 94;
+    const double headerHeight = 94;
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(
@@ -376,7 +375,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
         child: Align(
           alignment: Alignment.topRight,
           child: Padding(
-            padding: EdgeInsets.only(top: headerHeight),
+            padding: const EdgeInsets.only(top: headerHeight),
             child: GestureDetector(
               onTap: () {},
               child: Container(
@@ -490,9 +489,11 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                           DummyData.notifications.clear();
                           await DummyData.saveToPrefs();
                         }
-                        setState(() {
-                          _notifications.clear();
-                        });
+                        if (mounted) {
+                          setState(() {
+                            _notifications.clear();
+                          });
+                        }
                       }
                     },
                     child: Container(
@@ -511,18 +512,18 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.clear_all,
                             size: 16,
-                            color: const Color(0xFF0247C4),
+                            color: Color(0xFF0247C4),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'clear_all'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF0247C4),
+                              color: Color(0xFF0247C4),
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -696,7 +697,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                               ),
                               child: Text(
                                 'notif_welcome'.tr(),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFFFFFFFF),

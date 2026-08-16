@@ -1,3 +1,6 @@
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -8,21 +11,13 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
-import '../utils/premium_gate.dart';
+import '../utils/utils.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../widgets/unsaved_changes_dialog.dart';
-import '../utils/dialog_utils.dart';
 import '../widgets/notification_bell.dart';
-import '../utils/file_utils.dart';
-import '../utils/localization_helper.dart';
-import '../utils/guest_restriction.dart';
-import '../utils/ui_utils.dart';
-import '../utils/currency_utils.dart';
-import '../utils/company_profile_helper.dart';
 import '../widgets/amount_text.dart';
 import '../services/worker_profile_service.dart';
-import '../utils/date_time_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 
@@ -46,6 +41,35 @@ String? _workerDateText(dynamic value) {
   return date != null ? AppDateUtils.formatDate(date) : value.toString();
 }
 
+const _kFontFamily = 'SF Pro Display';
+
+const _kWhite = AppColors.white;
+const _kBlack = AppColors.black;
+const _kPrimaryBlue = AppColors.primaryBlue;
+const _kDarkBlue = AppColors.primaryBlueDark;
+const _kActionBtnBlue = AppColors.actionBlue;
+const _kButtonColor = AppColors.buttonBlue;
+const _kFilterSelected = AppColors.filterSelected;
+const _kRowBg = AppColors.bgGrey;
+const _kBorder = AppColors.borderLight;
+const _kDivider = AppColors.divider;
+const _kMenuBg = Color(0xFFFBFBFC);
+const _kMenuBorder = AppColors.borderMenu;
+const _kSearchIcon = Color(0xFFBDBDBD);
+
+const _kHeaderTextStyle = TextStyle(
+  fontWeight: FontWeight.bold,
+  fontSize: 16,
+  fontFamily: _kFontFamily,
+  color: Colors.black,
+);
+
+const _kCellTextStyle = TextStyle(
+  fontWeight: FontWeight.w500,
+  fontSize: 15,
+  fontFamily: _kFontFamily,
+);
+
 class WorkersScreen extends ConsumerStatefulWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
@@ -66,6 +90,7 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
   bool _isAddingWorker = false;
   bool _isAddingBulkWorker = false;
   Map<String, dynamic>? _workerToEdit;
+
   final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey =
       GlobalKey<AddBulkWorkerScreenState>();
 
@@ -88,6 +113,7 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
 
   Future<bool> confirmDiscardChanges() async {
     if (!hasUnsavedChanges) return true;
+
     if (_isAddingWorker) {
       final shouldDiscard = await UnsavedChangesDialog.show(context);
       if (shouldDiscard) {
@@ -98,15 +124,15 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
       }
       return shouldDiscard;
     }
+
     if (_isAddingBulkWorker) {
       final shouldDiscard = await confirmDiscardBulkChanges();
       if (shouldDiscard) {
-        setState(() {
-          _isAddingBulkWorker = false;
-        });
+        setState(() => _isAddingBulkWorker = false);
       }
       return shouldDiscard;
     }
+
     return true;
   }
 
@@ -114,9 +140,7 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
     if (!_isAddingBulkWorker) return;
     if (_bulkWorkerKey.currentState?.hasUnsavedChanges == true) return;
     if (!mounted) return;
-    setState(() {
-      _isAddingBulkWorker = false;
-    });
+    setState(() => _isAddingBulkWorker = false);
   }
 
   @override
@@ -131,39 +155,37 @@ class WorkersScreenState extends ConsumerState<WorkersScreen> {
           });
         },
       );
-    } else if (_isAddingBulkWorker) {
+    }
+
+    if (_isAddingBulkWorker) {
       return AddBulkWorkerScreen(
         key: _bulkWorkerKey,
         onBack: () {
-          setState(() {
-            _isAddingBulkWorker = false;
-          });
+          setState(() => _isAddingBulkWorker = false);
         },
-      );
-    } else {
-      return DashboardWorkerList(
-        onAddWorker: () {
-          setState(() {
-            _isAddingWorker = true;
-            _workerToEdit = null;
-          });
-        },
-        onAddBulkWorker: () {
-          setState(() {
-            _isAddingBulkWorker = true;
-          });
-        },
-        onEditWorker: (worker) {
-          setState(() {
-            _isAddingWorker = true;
-            _workerToEdit = worker;
-          });
-        },
-        onLogout: widget.onLogout,
-        onProfileTap: widget.onProfileTap,
-        onNotificationTap: widget.onNotificationTap,
       );
     }
+
+    return DashboardWorkerList(
+      onAddWorker: () {
+        setState(() {
+          _isAddingWorker = true;
+          _workerToEdit = null;
+        });
+      },
+      onAddBulkWorker: () {
+        setState(() => _isAddingBulkWorker = true);
+      },
+      onEditWorker: (worker) {
+        setState(() {
+          _isAddingWorker = true;
+          _workerToEdit = worker;
+        });
+      },
+      onLogout: widget.onLogout,
+      onProfileTap: widget.onProfileTap,
+      onNotificationTap: widget.onNotificationTap,
+    );
   }
 }
 
@@ -191,20 +213,27 @@ class DashboardWorkerList extends ConsumerStatefulWidget {
 }
 
 class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
-  final Color actionBtnBlue = const Color(0xFF0E53C5);
-  final Color buttonColor = const Color(0xFF0C51C1);
-  final Color textDark = const Color(0xFF000000);
-  final _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
   String _searchQuery = '';
   String _selectedFilter = 'All';
-  List<Map<String, dynamic>> _allWorkers = [];
+  List<Map<String, dynamic>> _allWorkers = <Map<String, dynamic>>[];
   bool _isLoading = true;
   String? _loadErrorMessage;
   bool _isOpeningAddFlow = false;
   final Set<String> _deletingWorkerIds = <String>{};
+
   StreamSubscription? _workersSub;
   late AuthService _authService;
   late FirestoreService _firestore;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
+    _loadWorkers();
+  }
 
   @override
   void dispose() {
@@ -213,75 +242,71 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
-    _allWorkers = [];
-    _isLoading = true;
-    _loadWorkers();
-  }
-
   void _loadWorkers() {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
     if (isGuest) {
+      final guestWorkers = DummyData.workers.asMap().entries.map((entry) {
+        final w = Map<String, dynamic>.from(entry.value);
+        w['profileImage'] = entry.key.isEven
+            ? 'assets/boy.png'
+            : 'assets/imageplaceholder.png';
+        w['type1'] = w['workType'] ?? '';
+        w['type2'] = w['attendanceType'] ?? '';
+        return w;
+      }).toList();
+
       setState(() {
-        _allWorkers = DummyData.workers
-            .map((w) => Map<String, dynamic>.from(w))
-            .toList();
-
-        for (int i = 0; i < _allWorkers.length; i++) {
-          _allWorkers[i]['profileImage'] = i.isEven
-              ? 'assets/boy.png'
-              : 'assets/imageplaceholder.png';
-
-          _allWorkers[i]['type1'] = _allWorkers[i]['workType'] ?? '';
-          _allWorkers[i]['type2'] = _allWorkers[i]['attendanceType'] ?? '';
-        }
+        _allWorkers = guestWorkers;
         _isLoading = false;
       });
-    } else {
-      _workersSub = _firestore.workersStream.listen(
-        (snapshot) {
-          if (!mounted) return;
-          setState(() {
-            final sortedList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .where((w) => w['isDeleted'] != true && w['status'] != 'Terminated')
-                .toList();
-            sortedList.sort((a, b) {
-              final aDate = _workerDateTime(a['updatedAt'] ?? a['createdAt']);
-              final bDate = _workerDateTime(b['updatedAt'] ?? b['createdAt']);
-              if (aDate == null && bDate == null) {
-                return (a['name'] ?? '').toString().toLowerCase().compareTo(
-                  (b['name'] ?? '').toString().toLowerCase(),
-                );
-              }
-              if (aDate == null) return 1;
-              if (bDate == null) return -1;
-              final dateOrder = bDate.compareTo(aDate);
-              if (dateOrder != 0) return dateOrder;
-              return (a['name'] ?? '').toString().toLowerCase().compareTo(
-                (b['name'] ?? '').toString().toLowerCase(),
-              );
-            });
-            _allWorkers = sortedList;
-            _loadErrorMessage = null;
-            _isLoading = false;
-          });
-        },
-        onError: (e) {
-          if (!mounted) return;
-          setState(() {
-            _loadErrorMessage = 'failed_to_load_worker_data'.tr(
-              namedArgs: {'error': e.toString()},
-            );
-            _isLoading = false;
-          });
-        },
-      );
+      return;
     }
+
+    _workersSub = _firestore.workersStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        final sortedList = snapshot.docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .where((w) => w['isDeleted'] != true && w['status'] != 'Terminated')
+            .toList();
+
+        sortedList.sort((a, b) {
+          final aDate = _workerDateTime(a['updatedAt'] ?? a['createdAt']);
+          final bDate = _workerDateTime(b['updatedAt'] ?? b['createdAt']);
+
+          if (aDate == null && bDate == null) {
+            return (a['name'] ?? '').toString().toLowerCase().compareTo(
+              (b['name'] ?? '').toString().toLowerCase(),
+            );
+          }
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          final dateOrder = bDate.compareTo(aDate);
+          if (dateOrder != 0) return dateOrder;
+
+          return (a['name'] ?? '').toString().toLowerCase().compareTo(
+            (b['name'] ?? '').toString().toLowerCase(),
+          );
+        });
+
+        setState(() {
+          _allWorkers = sortedList;
+          _loadErrorMessage = null;
+          _isLoading = false;
+        });
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() {
+          _loadErrorMessage = 'failed_to_load_worker_data'.tr(
+            namedArgs: {'error': e.toString()},
+          );
+          _isLoading = false;
+        });
+      },
+    );
   }
 
   bool _matchesFilter(String position, String filter) {
@@ -290,15 +315,13 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
+    final query = _searchQuery.trim().toLowerCase();
+
     final list = _allWorkers.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
-      final query = _searchQuery.trim().toLowerCase();
-
-      final matchesSearch = name.contains(query) || position.contains(query);
-      final matchesFilter = _matchesFilter(position, _selectedFilter);
-
-      return matchesSearch && matchesFilter;
+      return (name.contains(query) || position.contains(query)) &&
+          _matchesFilter(position, _selectedFilter);
     }).toList();
 
     list.sort((a, b) {
@@ -313,6 +336,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   Future<void> _deleteWorker(Map<String, dynamic> worker) async {
     final normalizedId = (worker['id'] ?? '').toString().trim();
     final workerName = (worker['name'] ?? '').toString().trim();
+
     if (normalizedId.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -321,6 +345,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       );
       return;
     }
+
     if (_deletingWorkerIds.contains(normalizedId)) return;
 
     final confirmed = await DeleteDialog.show(
@@ -332,6 +357,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
     _deletingWorkerIds.add(normalizedId);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
     try {
       if (isGuest) {
         DummyData.workers.removeWhere(
@@ -339,9 +365,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         );
         await DummyData.saveToPrefs();
         if (mounted) {
-          setState(() {
-            _allWorkers = DummyData.workers;
-          });
+          setState(() => _allWorkers = DummyData.workers);
         }
       } else {
         await _firestore.deleteWorker(normalizedId);
@@ -353,14 +377,12 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           });
         }
       }
+
       if (mounted) {
         final successMsg = workerName.isNotEmpty
             ? '$workerName ${'has_been_removed_successfully'.tr()}'
             : 'worker_deleted_successfully'.tr();
-        FlashySnackBar.show(
-          context,
-          message: successMsg,
-        );
+        FlashySnackBar.show(context, message: successMsg);
       }
     } catch (e) {
       if (mounted) {
@@ -375,11 +397,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     }
   }
 
-
-
   Future<void> _openAuthenticatedAddFlow({required bool bulk}) async {
     if (_isOpeningAddFlow) return;
     _isOpeningAddFlow = true;
+
     try {
       var isPremium = await PreferencesService.isPremium();
       if (!mounted) return;
@@ -410,6 +431,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     const defaultPositions = LocalizationHelper.defaultJobPositions;
     final actualPositions = <String>{};
     final positionNormalizer = <String, String>{};
+
     for (final w in _allWorkers) {
       final pos = (w['position'] ?? '').toString().trim();
       if (pos.isNotEmpty) {
@@ -420,32 +442,25 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         }
       }
     }
-    final sortedPositions = actualPositions.toList()..sort();
 
+    final sortedPositions = actualPositions.toList()..sort();
     final positionsToShow = <String>[...sortedPositions];
+
     for (final position in defaultPositions) {
       final alreadyIncluded = positionsToShow.any(
         (item) =>
             item.toLowerCase().contains(position.toLowerCase()) ||
             position.toLowerCase().contains(item.toLowerCase()),
       );
-      if (!alreadyIncluded) {
-        positionsToShow.add(position);
-      }
+      if (!alreadyIncluded) positionsToShow.add(position);
     }
 
-    final filters = <Map<String, String>>[
-      {'key': 'All', 'label': 'all_filter'.tr()},
-      ...positionsToShow.map(
-        (p) => {'key': p, 'label': LocalizationHelper.localizePosition(p)},
-      ),
-    ];
     return Container(
       width: double.infinity,
       height: 46,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
+      decoration: const BoxDecoration(
+        color: _kWhite,
+        borderRadius: BorderRadius.all(Radius.circular(6)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -453,8 +468,9 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            for (int i = 0; i < filters.length; i++)
-              _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
+            _buildFilterTab('All', 'all_filter'.tr()),
+            for (final p in positionsToShow)
+              _buildFilterTab(p, LocalizationHelper.localizePosition(p)),
           ],
         ),
       ),
@@ -463,16 +479,21 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredWorkers;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final dynamicHeight = (screenHeight - 279).clamp(495.0, 1200.0);
+    final hasProfileTap =
+        widget.onProfileTap != null && widget.onLogout != null;
+
     return Column(
       children: [
+
         Container(
           height: 94,
           padding: const EdgeInsets.symmetric(horizontal: 40),
           decoration: const BoxDecoration(
-            color: Color(0xFFFFFFFF),
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-            ),
+            color: _kWhite,
+            border: Border(bottom: BorderSide(color: _kBorder, width: 1)),
           ),
           child: Row(
             children: [
@@ -482,37 +503,34 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                 children: [
                   Text(
                     'worker_management'.tr(),
-                    style: TextStyle(
-                      color: textDark,
+                    style: const TextStyle(
+                      color: _kBlack,
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'SF Pro Display',
+                      fontFamily: _kFontFamily,
                     ),
                   ),
                   Text(
                     'complete_required_fields_worker'.tr(),
-                    style: TextStyle(
-                      color: textDark,
+                    style: const TextStyle(
+                      color: _kBlack,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
+                      fontFamily: _kFontFamily,
                     ),
                   ),
                 ],
               ),
               const Spacer(),
-              if (widget.onProfileTap != null && widget.onLogout != null) ...[
-                NotificationBell(onTap: widget.onNotificationTap),
-                const SizedBox(width: 20),
+              NotificationBell(onTap: widget.onNotificationTap),
+              SizedBox(width: hasProfileTap ? 20 : 24),
+              if (hasProfileTap)
                 GestureDetector(
                   onTap: widget.onProfileTap,
                   child: const UserAvatar(),
-                ),
-              ] else ...[
-                NotificationBell(onTap: widget.onNotificationTap),
-                const SizedBox(width: 24),
+                )
+              else
                 const UserAvatar(),
-              ],
             ],
           ),
         ),
@@ -526,6 +544,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
                 Row(
                   children: [
                     Expanded(
@@ -533,9 +552,9 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                         height: 48,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Color(0xFFFFFFFF),
+                          color: _kWhite,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFEEEEEE)),
+                          border: Border.all(color: _kBorder),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -545,7 +564,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                               width: 24,
                               height: 24,
                               colorFilter: const ColorFilter.mode(
-                                Color(0xFFBDBDBD),
+                                _kSearchIcon,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -554,16 +573,14 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                               child: TextField(
                                 controller: _searchController,
                                 onChanged: (val) {
-                                  setState(() {
-                                    _searchQuery = val;
-                                  });
+                                  setState(() => _searchQuery = val);
                                 },
                                 decoration: InputDecoration(
                                   hintText: 'search_workers_name_position'.tr(),
                                   hintStyle: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 14,
-                                    fontFamily: 'SF Pro Display',
+                                    fontFamily: _kFontFamily,
                                   ),
                                   border: InputBorder.none,
                                   isDense: true,
@@ -574,9 +591,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                               GestureDetector(
                                 onTap: () {
                                   _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                  });
+                                  setState(() => _searchQuery = '');
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 8),
@@ -636,10 +651,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                 else if (_loadErrorMessage != null)
                   SizedBox(
                     width: double.infinity,
-                    height: (MediaQuery.of(context).size.height - 320).clamp(
-                      300.0,
-                      900.0,
-                    ),
+                    height: (screenHeight - 320).clamp(300.0, 900.0),
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -650,57 +662,47 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                             color: Color(0xFFEF4444),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
+                            fontFamily: _kFontFamily,
                           ),
                         ),
                       ),
                     ),
                   )
-                else if (_filteredWorkers.isEmpty)
-                  Builder(
-                    builder: (context) {
-                      final double dynamicHeight =
-                          (MediaQuery.of(context).size.height - 279).clamp(
-                            495.0,
-                            1200.0,
-                          );
-                      return Container(
-                        width: double.infinity,
-                        height: dynamicHeight,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(6),
+                else if (filtered.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: dynamicHeight,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _kWhite,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/placeholder_workers.svg',
+                          width: 120,
+                          height: 100,
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SvgPicture.asset(
-                              'assets/placeholder_workers.svg',
-                              width: 120,
-                              height: 100,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _allWorkers.isEmpty
-                                  ? 'add_workers_found'.tr()
-                                  : 'no_workers_found'.tr(),
-                              style: const TextStyle(
-                                color: Color(0xFF0247C4),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 16),
+                        Text(
+                          _allWorkers.isEmpty
+                              ? 'add_workers_found'.tr()
+                              : 'no_workers_found'.tr(),
+                          style: const TextStyle(
+                            color: _kPrimaryBlue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: _kFontFamily,
+                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   )
                 else
-                  _buildTable(),
+                  _buildTable(filtered, dynamicHeight),
               ],
             ),
           ),
@@ -709,97 +711,37 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     );
   }
 
-  Widget _buildTable() {
-    final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
-      495.0,
-      1200.0,
-    );
-
+  Widget _buildTable(List<Map<String, dynamic>> workers, double tableHeight) {
     return Container(
       height: tableHeight,
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         children: [
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'worker_name'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        fontFamily: 'SF Pro Display',
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'work_type'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        fontFamily: 'SF Pro Display',
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'position'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        fontFamily: 'SF Pro Display',
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'attendance_type'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      fontFamily: 'SF Pro Display',
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
+                _tableHeader('worker_name'.tr(), flex: 3),
+                _tableHeader('work_type'.tr(), flex: 2),
+                _tableHeader('position'.tr(), flex: 2),
+                _tableHeader('attendance_type'.tr(), flex: 2),
                 const SizedBox(width: 48),
               ],
             ),
           ),
-          Container(height: 1, color: const Color(0xFFF7F8FC)),
+          const SizedBox(height: 1, child: ColoredBox(color: _kDivider)),
 
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _filteredWorkers.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return _buildListItem(_filteredWorkers[index], index);
-              },
+              itemCount: workers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, index) => _buildListItem(workers[index]),
             ),
           ),
         ],
@@ -807,7 +749,17 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     );
   }
 
-  Widget _buildListItem(Map<String, dynamic> worker, int index) {
+  Widget _tableHeader(String label, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 16),
+        child: Text(label, style: _kHeaderTextStyle),
+      ),
+    );
+  }
+
+  Widget _buildListItem(Map<String, dynamic> worker) {
     final name = (worker['name'] ?? '').toString();
     final email = (worker['email'] ?? '').toString();
     final type1 = (worker['type1'] ?? '').toString();
@@ -818,18 +770,41 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     final localizedType1 = LocalizationHelper.localizeType1(type1);
     final localizedType2 = LocalizationHelper.localizeType2(type2);
 
+    void handleMenuAction(String value) {
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
+      if (isGuest) {
+        showGuestRestrictionDialog(context);
+        return;
+      }
+
+      switch (value) {
+        case 'preview':
+          showDialog(
+            context: context,
+            barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+            builder: (_) => WorkerProfilePreviewDialog(worker: worker),
+          );
+        case 'edit':
+          widget.onEditWorker?.call(worker);
+        case 'delete':
+          _deleteWorker(worker);
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FA),
+        color: _kRowBg,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
+
           Expanded(
             flex: 3,
             child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
+              padding: const EdgeInsets.only(right: 24),
               child: Row(
                 children: [
                   WorkerAvatar(imageUrl: profileImage, name: name, size: 40),
@@ -845,7 +820,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
-                            fontFamily: 'SF Pro Display',
+                            fontFamily: _kFontFamily,
                           ),
                         ),
                         Text(
@@ -855,7 +830,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
-                            fontFamily: 'SF Pro Display',
+                            fontFamily: _kFontFamily,
                           ),
                         ),
                       ],
@@ -865,35 +840,29 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
               ),
             ),
           ),
+
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
+              padding: const EdgeInsets.only(right: 24),
               child: Text(
                 localizedType1,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 15,
-                  fontFamily: 'SF Pro Display',
-                ),
+                style: _kCellTextStyle,
               ),
             ),
           ),
+
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
+              padding: const EdgeInsets.only(right: 24),
               child: Text(
                 LocalizationHelper.localizePosition(position),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 15,
-                  fontFamily: 'SF Pro Display',
-                ),
+                style: _kCellTextStyle,
               ),
             ),
           ),
@@ -904,13 +873,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
               localizedType2,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
+              style: _kCellTextStyle,
             ),
           ),
+
           SizedBox(
             width: 48,
             child: PopupMenuButton<String>(
@@ -919,123 +885,51 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
               padding: EdgeInsets.zero,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(6),
-                side: const BorderSide(color: Color(0xFFCBCBCB)),
+                side: const BorderSide(color: _kMenuBorder),
               ),
-              color: const Color(0xFFFBFBFC),
+              color: _kMenuBg,
               elevation: 8,
               offset: const Offset(0, 40),
-              onSelected: (value) {
-                if (value == 'preview') {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
-                    showGuestRestrictionDialog(context);
-                    return;
-                  }
-                  showDialog(
-                    context: context,
-                    barrierColor: const Color(
-                      0xFF0247C4,
-                    ).withValues(alpha: 0.5),
-                    builder: (context) =>
-                        WorkerProfilePreviewDialog(worker: worker),
-                  );
-                } else if (value == 'edit') {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
-                    showGuestRestrictionDialog(context);
-                    return;
-                  }
-                  widget.onEditWorker?.call(worker);
-                } else if (value == 'delete') {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
-                    showGuestRestrictionDialog(context);
-                    return;
-                  }
-                  _deleteWorker(worker);
-                }
-              },
               constraints: const BoxConstraints(maxWidth: 190),
-              itemBuilder: (BuildContext context) => [
+              onSelected: handleMenuAction,
+              itemBuilder: (_) => [
                 PopupMenuItem<String>(
                   value: 'preview',
                   height: 48,
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.remove_red_eye,
-                        size: 16,
-                        color: Color(0xFF000000),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'preview'.tr(),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF000000),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: _MenuItemRow(
+                    icon: const Icon(
+                      Icons.remove_red_eye,
+                      size: 16,
+                      color: _kBlack,
+                    ),
+                    label: 'preview'.tr(),
+                    textColor: _kBlack,
                   ),
                 ),
                 PopupMenuItem<String>(
                   value: 'edit',
                   height: 48,
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 16, color: actionBtnBlue),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'edit_worker'.tr(),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: actionBtnBlue,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: _MenuItemRow(
+                    icon: Icon(Icons.edit, size: 16, color: _kActionBtnBlue),
+                    label: 'edit_worker'.tr(),
+                    textColor: _kActionBtnBlue,
                   ),
                 ),
                 PopupMenuItem<String>(
                   value: 'delete',
                   height: 48,
-                  child: Row(
-                    children: [
-                      SvgPicture.asset(
-                        'assets/delete_icon.svg',
-                        width: 16,
-                        height: 16,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.red,
-                          BlendMode.srcIn,
-                        ),
+                  child: _MenuItemRow(
+                    icon: SvgPicture.asset(
+                      'assets/delete_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.red,
+                        BlendMode.srcIn,
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'delete_worker'.tr(),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                    label: 'delete_worker'.tr(),
+                    textColor: Colors.red,
                   ),
                 ),
               ],
@@ -1054,7 +948,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: Material(
-        color: buttonColor,
+        color: _kButtonColor,
         borderRadius: BorderRadius.circular(6),
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
@@ -1069,10 +963,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                   svgPath,
                   width: 20,
                   height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFFFFFFF),
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: const ColorFilter.mode(_kWhite, BlendMode.srcIn),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1080,10 +971,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
+                    color: _kWhite,
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                 ),
               ],
@@ -1095,16 +986,14 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   }
 
   Widget _buildFilterTab(String filterKey, String displayLabel) {
-    final bool isSelected = _selectedFilter == filterKey;
+    final isSelected = _selectedFilter == filterKey;
     return GestureDetector(
-      onTap: () => setState(() {
-        _selectedFilter = filterKey;
-      }),
+      onTap: () => setState(() => _selectedFilter = filterKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0D4CB6) : Colors.transparent,
+          color: isSelected ? _kFilterSelected : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -1115,10 +1004,44 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
-            fontFamily: 'SF Pro Display',
+            fontFamily: _kFontFamily,
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MenuItemRow extends StatelessWidget {
+  final Widget icon;
+  final String label;
+  final Color textColor;
+
+  const _MenuItemRow({
+    required this.icon,
+    required this.label,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        icon,
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              fontFamily: _kFontFamily,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1135,12 +1058,14 @@ class WorkerProfilePreviewDialog extends ConsumerStatefulWidget {
 
 class _WorkerProfilePreviewDialogState
     extends ConsumerState<WorkerProfilePreviewDialog> {
-  bool _isSharing = false;
-  final Color primaryBlue = const Color(0xFF0953D4);
-  final Color iconLightBlue = const Color(0xFFE5EEFC);
-  final Color cardBorderGrey = const Color(0xFFE8E8E8);
+  static const Color _primaryBlue = Color(0xFF0953D4);
+  static const Color _iconLightBlue = Color(0xFFE5EEFC);
+  static const Color _cardBorderGrey = Color(0xFFE8E8E8);
 
-  String _v(Map<String, dynamic> w, String key) => (w[key] ?? '').toString();
+  bool _isSharing = false;
+
+  String _v(String key) => (widget.worker[key] ?? '').toString();
+
   String _na(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
   String _localizedGender(String value) {
@@ -1168,16 +1093,28 @@ class _WorkerProfilePreviewDialogState
     }
   }
 
+  String _capitalizeWords(String text) {
+    return text
+        .split(' ')
+        .map((w) {
+          if (w.isEmpty) return '';
+          return '${w[0].toUpperCase()}${w.substring(1)}';
+        })
+        .join(' ');
+  }
+
   Future<void> _handlePdfExport({required bool isShare}) async {
     if (_isSharing) return;
     setState(() => _isSharing = true);
+
     try {
       final worker = widget.worker;
-      final name = _v(worker, 'name');
-      final email = _v(worker, 'email');
+      final name = _v('name');
+      final email = _v('email');
       final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
       final profileImage = _safeOptionalString(worker['profileImage']);
-      final salaryAmount = _v(worker, 'salaryAmount');
+      final salaryAmount = _v('salaryAmount');
+
       Map<String, dynamic> companyProfile = const {};
       try {
         companyProfile =
@@ -1194,7 +1131,9 @@ class _WorkerProfilePreviewDialogState
         }
         return;
       }
+
       if (!mounted) return;
+
       final companyCurr =
           companyProfile['currency']?.toString().trim() ??
           PreferencesService.cachedCompanyCurrency;
@@ -1210,6 +1149,7 @@ class _WorkerProfilePreviewDialogState
               locale: context.locale.toString(),
             )
           : '';
+
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '')
             .toString(),
@@ -1222,34 +1162,24 @@ class _WorkerProfilePreviewDialogState
         name: name,
         email: email,
         phone: phone,
-        fatherHusbandName: _na(_v(worker, 'fatherName')),
-        position: _v(worker, 'position')
-            .split(' ')
-            .map(
-              (w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}',
-            )
-            .join(' '),
-        nationalId: _na(_v(worker, 'nationalId')),
-        attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
-        workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
+        fatherHusbandName: _na(_v('fatherName')),
+        position: _capitalizeWords(_v('position')),
+        nationalId: _na(_v('nationalId')),
+        attendanceType: LocalizationHelper.localizeType2(_v('type2')),
+        workType: LocalizationHelper.localizeType1(_v('type1')),
         experienceLevel: _na(
-          LocalizationHelper.localizeExperience(_v(worker, 'experienceLevel')),
+          LocalizationHelper.localizeExperience(_v('experienceLevel')),
         ),
-        gender: _na(_localizedGender(_v(worker, 'gender'))),
+        gender: _na(_localizedGender(_v('gender'))),
         joiningDate: _na(_workerDateText(worker['joiningDate']) ?? ''),
         salary: salary,
-        education: _na(
-          LocalizationHelper.localizeEducation(_v(worker, 'education')),
-        ),
-        salaryType: _na(
-          LocalizationHelper.localizeSalaryType(_v(worker, 'salaryType')),
-        ),
-        religion: _na(_v(worker, 'religion')),
+        education: _na(LocalizationHelper.localizeEducation(_v('education'))),
+        religion: _na(_v('religion')),
         dateOfBirth: _na(_workerDateText(worker['dob']) ?? ''),
         relationshipStatus: _na(
-          _localizedRelationshipStatus(_v(worker, 'relationshipStatus')),
+          _localizedRelationshipStatus(_v('relationshipStatus')),
         ),
-        address: _na(_v(worker, 'address')),
+        address: _na(_v('address')),
         profileImageUrl: profileImage,
         generatedOnText:
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
@@ -1259,8 +1189,8 @@ class _WorkerProfilePreviewDialogState
             .toString(),
       ).timeout(const Duration(seconds: 30));
 
-      final safeName = name
-          .trim()
+      final rawName = name.trim();
+      final safeName = rawName
           .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')
           .replaceAll(RegExp(r'_+'), '_')
           .replaceAll(RegExp(r'^_+|_+$'), '');
@@ -1309,11 +1239,11 @@ class _WorkerProfilePreviewDialogState
   @override
   Widget build(BuildContext context) {
     final worker = widget.worker;
-    final name = _v(worker, 'name');
-    final email = _v(worker, 'email');
+    final name = _v('name');
+    final email = _v('email');
     final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
-    final salaryAmount = _v(worker, 'salaryAmount');
+    final salaryAmount = _v('salaryAmount');
     final companyCurr = PreferencesService.cachedCompanyCurrency;
     final currSymbol = CurrencyUtils.symbolFor(companyCurr);
     final rawSalaryStr = salaryAmount.trim();
@@ -1337,11 +1267,11 @@ class _WorkerProfilePreviewDialogState
           height: 660,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Color(0xFFFFFFFF),
+            color: _kWhite,
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF000000).withValues(alpha: 0.15),
+                color: _kBlack.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1349,13 +1279,15 @@ class _WorkerProfilePreviewDialogState
           ),
           child: Column(
             children: [
+
               Container(
-                decoration: const BoxDecoration(color: Color(0xFF0247C4)),
+                decoration: const BoxDecoration(color: _kPrimaryBlue),
                 child: Column(
                   children: [
+
                     Container(
                       height: 44,
-                      decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                      decoration: const BoxDecoration(color: _kDarkBlue),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Stack(
                         alignment: Alignment.center,
@@ -1363,10 +1295,10 @@ class _WorkerProfilePreviewDialogState
                           Text(
                             'worker_profile_preview'.tr(),
                             style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
+                              color: _kWhite,
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
+                              fontFamily: _kFontFamily,
                             ),
                           ),
                           Align(
@@ -1376,7 +1308,7 @@ class _WorkerProfilePreviewDialogState
                               child: IconButton(
                                 icon: const Icon(
                                   Icons.close,
-                                  color: Color(0xFFFFFFFF),
+                                  color: _kWhite,
                                   size: 24,
                                 ),
                                 onPressed: () => Navigator.of(context).pop(),
@@ -1386,7 +1318,7 @@ class _WorkerProfilePreviewDialogState
                             ),
                           ),
                           Align(
-                            alignment: Alignment(1.0, 0),
+                            alignment: const Alignment(1.0, 0),
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: IconButton(
@@ -1422,6 +1354,7 @@ class _WorkerProfilePreviewDialogState
                         ],
                       ),
                     ),
+
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                       child: Row(
@@ -1433,10 +1366,7 @@ class _WorkerProfilePreviewDialogState
                               imageUrl: profileImage,
                               name: name,
                               size: 130,
-                              border: Border.all(
-                                color: const Color(0xFFFFFFFF),
-                                width: 2,
-                              ),
+                              border: Border.all(color: _kWhite, width: 2),
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -1450,10 +1380,10 @@ class _WorkerProfilePreviewDialogState
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                   style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
+                                    color: _kWhite,
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
+                                    fontFamily: _kFontFamily,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -1475,10 +1405,10 @@ class _WorkerProfilePreviewDialogState
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
+                                          color: _kWhite,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
+                                          fontFamily: _kFontFamily,
                                         ),
                                       ),
                                     ),
@@ -1504,10 +1434,10 @@ class _WorkerProfilePreviewDialogState
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
+                                          color: _kWhite,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
+                                          fontFamily: _kFontFamily,
                                         ),
                                       ),
                                     ),
@@ -1522,6 +1452,7 @@ class _WorkerProfilePreviewDialogState
                   ],
                 ),
               ),
+
               Expanded(
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -1532,33 +1463,31 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.person,
                           'father_husband_name'.tr(),
-                          _na(_v(worker, 'fatherName')),
+                          _na(_v('fatherName')),
                         ),
                         _buildInfoCard(
                           Icons.business_center,
                           'position'.tr(),
-                          LocalizationHelper.localizePosition(
-                            _v(worker, 'position'),
-                          ),
+                          LocalizationHelper.localizePosition(_v('position')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.badge,
                           'national_id'.tr(),
-                          _na(_v(worker, 'nationalId')),
+                          _na(_v('nationalId')),
                         ),
                         _buildInfoCard(
                           Icons.location_on,
                           'attendance_type'.tr(),
-                          LocalizationHelper.localizeType2(_v(worker, 'type2')),
+                          LocalizationHelper.localizeType2(_v('type2')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.schedule,
                           'work_type'.tr(),
-                          LocalizationHelper.localizeType1(_v(worker, 'type1')),
+                          LocalizationHelper.localizeType1(_v('type1')),
                           assetImage: 'assets/worktype.png',
                         ),
                         _buildInfoCard(
@@ -1566,7 +1495,7 @@ class _WorkerProfilePreviewDialogState
                           'experience_level'.tr(),
                           _na(
                             LocalizationHelper.localizeExperience(
-                              _v(worker, 'experienceLevel'),
+                              _v('experienceLevel'),
                             ),
                           ),
                           assetImage: 'assets/experiencelevel.png',
@@ -1576,7 +1505,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(_localizedGender(_v(worker, 'gender'))),
+                          _na(_localizedGender(_v('gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
@@ -1596,7 +1525,7 @@ class _WorkerProfilePreviewDialogState
                           'education_title'.tr(),
                           _na(
                             LocalizationHelper.localizeEducation(
-                              _v(worker, 'education'),
+                              _v('education'),
                             ),
                           ),
                         ),
@@ -1605,7 +1534,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.art_track,
                           'religion_title'.tr(),
-                          _na(_v(worker, 'religion')),
+                          _na(_v('religion')),
                           assetImage: 'assets/religion.png',
                         ),
                         _buildInfoCard(
@@ -1620,14 +1549,14 @@ class _WorkerProfilePreviewDialogState
                           'relationship_status'.tr(),
                           _na(
                             _localizedRelationshipStatus(
-                              _v(worker, 'relationshipStatus'),
+                              _v('relationshipStatus'),
                             ),
                           ),
                         ),
                         _buildInfoCard(
                           Icons.home,
                           'address'.tr(),
-                          _na(_v(worker, 'address')),
+                          _na(_v('address')),
                         ),
                       ),
                     ],
@@ -1660,13 +1589,36 @@ class _WorkerProfilePreviewDialogState
     String value, {
     String? assetImage,
   }) {
+    Widget iconWidget;
+    if (assetImage != null) {
+      if (assetImage.endsWith('.svg')) {
+        iconWidget = SvgPicture.asset(
+          assetImage,
+          width: 20,
+          height: 20,
+          colorFilter: const ColorFilter.mode(_primaryBlue, BlendMode.srcIn),
+        );
+      } else {
+        iconWidget = Image.asset(
+          assetImage,
+          width: 20,
+          height: 20,
+          fit: BoxFit.contain,
+          color: _primaryBlue,
+          colorBlendMode: BlendMode.srcIn,
+        );
+      }
+    } else {
+      iconWidget = Icon(icon, color: _primaryBlue, size: 20);
+    }
+
     return Container(
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: cardBorderGrey, width: 1.2),
+        border: Border.all(color: _cardBorderGrey, width: 1.2),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1675,31 +1627,10 @@ class _WorkerProfilePreviewDialogState
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: iconLightBlue,
+              color: _iconLightBlue,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Center(
-              child: assetImage != null
-                  ? assetImage.endsWith('.svg')
-                        ? SvgPicture.asset(
-                            assetImage,
-                            width: 20,
-                            height: 20,
-                            colorFilter: ColorFilter.mode(
-                              primaryBlue,
-                              BlendMode.srcIn,
-                            ),
-                          )
-                        : Image.asset(
-                            assetImage,
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.contain,
-                            color: primaryBlue,
-                            colorBlendMode: BlendMode.srcIn,
-                          )
-                  : Icon(icon, color: primaryBlue, size: 20),
-            ),
+            child: Center(child: iconWidget),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1713,7 +1644,7 @@ class _WorkerProfilePreviewDialogState
                     fontSize: 13,
                     color: Colors.black,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1723,9 +1654,9 @@ class _WorkerProfilePreviewDialogState
                   value,
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF000000),
+                    color: _kBlack,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

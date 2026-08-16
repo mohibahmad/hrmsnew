@@ -1,39 +1,69 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:async';
-import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:flutter/services.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image/image.dart' as img;
+
+import '../providers.dart';
 import '../services/auth_service.dart';
+import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import '../services/error_reporter.dart';
 import '../services/upload_service.dart';
-import '../utils/currency_utils.dart';
-import '../utils/dialog_utils.dart';
-import '../utils/localization_helper.dart';
-import '../utils/ui_utils.dart';
-import '../utils/guest_restriction.dart';
-import '../utils/validators.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../utils/utils.dart';
+import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
-import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+
+const int _maxProfileImageBytes = 10 * 1024 * 1024;
+const int _maxCompanyStampBytes = 5 * 1024 * 1024;
+const int _maxStampSide = 700;
+
+const _kFontFamily = 'SF Pro Display';
+const _kWhite = AppColors.white;
+const _kBlack = AppColors.black;
+const _kPrimaryBlue = AppColors.primaryBlue;
+const _kDarkBlue = AppColors.primaryBlueDark;
+const _kActionBlue = AppColors.linkBlue;
+const _kGreyText = AppColors.textMuted;
+const _kGrey6B = AppColors.textDarkGrey;
+const _kBorderLight = AppColors.borderSubtle;
+const _kBgGrey = AppColors.disabledBg;
+const _kFormBg = AppColors.formBg;
+const _kLightBlueBg = AppColors.primaryBlueLight;
+const _kStampBorder = AppColors.stampBorder;
+const _kRedDelete = AppColors.dangerRed;
+
+const _kInputHintStyle = TextStyle(
+  color: _kGreyText,
+  fontSize: 15,
+  fontFamily: _kFontFamily,
+);
+
+const _kLabelStyle = TextStyle(
+  fontWeight: FontWeight.w600,
+  fontSize: 15,
+  color: Colors.black,
+  fontFamily: _kFontFamily,
+);
 
 Uint8List? _compressImageBytes(Uint8List rawBytes) {
   try {
     final decoded = img.decodeImage(rawBytes);
     if (decoded == null) return null;
-
-    final resized = img.copyResize(decoded, width: 500);
-
-    return Uint8List.fromList(img.encodeJpg(resized, quality: 80));
+    return Uint8List.fromList(
+      img.encodeJpg(img.copyResize(decoded, width: 500), quality: 80),
+    );
   } catch (_) {
     return null;
   }
@@ -44,16 +74,15 @@ Uint8List? _compressStampBytes(Uint8List rawBytes) {
     final decoded = img.decodeImage(rawBytes);
     if (decoded == null) return null;
 
-    const int maxStampSide = 700;
     final longestSide = decoded.width > decoded.height
         ? decoded.width
         : decoded.height;
-    final resized = longestSide <= maxStampSide
+    final resized = longestSide <= _maxStampSide
         ? decoded
         : img.copyResize(
             decoded,
-            width: decoded.width >= decoded.height ? maxStampSide : null,
-            height: decoded.height > decoded.width ? maxStampSide : null,
+            width: decoded.width >= decoded.height ? _maxStampSide : null,
+            height: decoded.height > decoded.width ? _maxStampSide : null,
           );
 
     final isPng = _companyStampFormat(rawBytes) == 'png';
@@ -64,9 +93,6 @@ Uint8List? _compressStampBytes(Uint8List rawBytes) {
     return null;
   }
 }
-
-const int _maxProfileImageBytes = 10 * 1024 * 1024;
-const int _maxCompanyStampBytes = 5 * 1024 * 1024;
 
 String? _companyStampFormat(Uint8List bytes) {
   if (bytes.lengthInBytes >= 8 &&
@@ -115,7 +141,7 @@ class ProfileInlineHeader extends StatelessWidget {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 28),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
         boxShadow: [
           BoxShadow(
@@ -128,14 +154,14 @@ class ProfileInlineHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(width: 3),
+          const SizedBox(width: 3),
           Text(
             'my_info'.tr(),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
+              color: _kBlack,
+              fontFamily: _kFontFamily,
             ),
           ),
           const Spacer(),
@@ -150,6 +176,7 @@ class ProfileInlineHeader extends StatelessWidget {
 
 class ProfileBody extends ConsumerStatefulWidget {
   final bool isActive;
+
   const ProfileBody({super.key, this.isActive = true});
 
   @override
@@ -164,17 +191,25 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   late final TextEditingController _contact1Controller;
   late final TextEditingController _contact2Controller;
   late final TextEditingController _addressController;
-  late AuthService _authService;
-  late FirestoreService _firestore;
+
+  late final AuthService _authService;
+  late final FirestoreService _firestore;
+
   bool _isLoading = true;
   bool _isEditing = false;
   bool _initialized = false;
   int _profileLoadToken = 0;
+
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
+
   String? _profilePicUrl;
   String? _companyStampUrl;
+  Uint8List? _newProfileImageBytes;
+  String? _newProfileImagePath;
   Uint8List? _newCompanyStampBytes;
   bool _clearCompanyStamp = false;
+
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
   @override
   void initState() {
@@ -193,11 +228,12 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     super.didChangeDependencies();
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (_initialized && !isGuest) return;
+
+    if (_initialized && !_isGuest) return;
     _initialized = true;
     _loadProfile();
-    if (!isGuest) {
+
+    if (!_isGuest) {
       _profileSub = _firestore.userProfileStream.listen(
         (profile) {
           if (!mounted || _isEditing) return;
@@ -238,10 +274,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     super.dispose();
   }
 
-  String _profileText(dynamic value, {String fallback = ''}) {
-    if (value == null) return fallback;
-    return value.toString();
-  }
+  String _profileText(dynamic value, {String fallback = ''}) =>
+      value?.toString() ?? fallback;
 
   String? _profileImageText(dynamic value) {
     final text = _profileText(value).trim();
@@ -250,6 +284,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 
   void _applyAuthenticatedProfile(Map<String, dynamic>? profile) {
     if (!mounted) return;
+
     if (profile == null) {
       setState(() {
         _profilePicUrl = null;
@@ -264,6 +299,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     final normalizedCurrency = CurrencyUtils.normalize(profile['currency']);
     final profileImage = _profileImageText(profile['profilePic']);
     final companyStamp = _profileImageText(profile['companyStampUrl']);
+
     setState(() {
       _businessNameController.text = _profileText(profile['businessName']);
       _companyIdController.text = _profileText(
@@ -283,49 +319,25 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       _clearCompanyStamp = false;
       AuthService.profilePicNotifier.value = profileImage;
       AuthService.companyStampNotifier.value = companyStamp;
-      PreferencesService.setCompanyCurrency(
-        normalizedCurrency,
-      ).catchError((_) {});
       _isLoading = false;
     });
+
+    PreferencesService.setCompanyCurrency(
+      normalizedCurrency,
+    ).catchError((_) {});
   }
 
   Future<void> _loadProfile() async {
     final loadToken = ++_profileLoadToken;
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      final guestData = await PreferencesService.getGuestProfileData();
-      if (mounted) {
-        setState(() {
-          _businessNameController.text =
-              guestData?['businessName'] ?? 'ABC Corporation';
-          _companyIdController.text = (guestData?['companyId'] ?? '')
-              .toUpperCase();
-          _emailController.text = guestData?['email'] ?? 'guest_email'.tr();
-          _currencyController.text = CurrencyUtils.normalize(
-            guestData?['currency'],
-          );
-          _contact1Controller.text =
-              guestData?['contact1'] ?? 'guest_contact_1'.tr();
-          _contact2Controller.text =
-              guestData?['contact2'] ?? 'guest_contact_2'.tr();
-          _addressController.text =
-              guestData?['address'] ?? 'guest_address'.tr();
-          _profilePicUrl =
-              guestData?['profilePic'] ?? AuthService.profilePicNotifier.value;
-          _companyStampUrl = guestData?['companyStampUrl'];
-          AuthService.profilePicNotifier.value = _profilePicUrl;
-          AuthService.companyStampNotifier.value = _companyStampUrl;
-          _isLoading = false;
-        });
-      }
+
+    if (_isGuest) {
+      await _loadGuestProfile();
       return;
     }
 
     try {
       final profile = await _firestore.getUserProfile();
       if (!mounted || loadToken != _profileLoadToken) return;
-
       _applyAuthenticatedProfile(profile);
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'LoadProfile');
@@ -341,12 +353,33 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     }
   }
 
-  Uint8List? _newProfileImageBytes;
-  String? _newProfileImagePath;
+  Future<void> _loadGuestProfile() async {
+    final guestData = await PreferencesService.getGuestProfileData();
+    if (!mounted) return;
+    setState(() {
+      _businessNameController.text =
+          guestData?['businessName'] ?? 'ABC Corporation';
+      _companyIdController.text = (guestData?['companyId'] ?? '').toUpperCase();
+      _emailController.text = guestData?['email'] ?? 'guest_email'.tr();
+      _currencyController.text = CurrencyUtils.normalize(
+        guestData?['currency'],
+      );
+      _contact1Controller.text =
+          guestData?['contact1'] ?? 'guest_contact_1'.tr();
+      _contact2Controller.text =
+          guestData?['contact2'] ?? 'guest_contact_2'.tr();
+      _addressController.text = guestData?['address'] ?? 'guest_address'.tr();
+      _profilePicUrl =
+          guestData?['profilePic'] ?? AuthService.profilePicNotifier.value;
+      _companyStampUrl = guestData?['companyStampUrl'];
+      AuthService.profilePicNotifier.value = _profilePicUrl;
+      AuthService.companyStampNotifier.value = _companyStampUrl;
+      _isLoading = false;
+    });
+  }
 
   Future<void> _pickProfilePic() async {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuest) {
       FlashySnackBar.show(
         context,
         message: 'guest_action_not_allowed'.tr(),
@@ -354,18 +387,16 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       );
       return;
     }
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.image,
-      );
 
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
       if (result == null || !mounted) return;
 
       final file = result.files.single;
       final fileBytes = await file.readAsBytes();
-      final fileSize = fileBytes.length;
       final filePath = file.path?.trim();
-      if (fileSize > _maxProfileImageBytes) {
+
+      if (fileBytes.length > _maxProfileImageBytes) {
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -374,6 +405,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         );
         return;
       }
+
       if (fileBytes.isEmpty && (filePath == null || filePath.isEmpty)) {
         if (!mounted) return;
         FlashySnackBar.show(
@@ -406,8 +438,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   }
 
   Future<void> _pickCompanyStamp() async {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuest) {
       FlashySnackBar.show(
         context,
         message: 'guest_action_not_allowed'.tr(),
@@ -417,23 +448,24 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     }
 
     try {
-      final file = await FilePicker.pickFile(
+      final file = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['png', 'jpg', 'jpeg'],
       );
       if (file == null || !mounted) return;
 
-      final filePath = file.path?.trim();
-      final Uint8List bytes;
+      final pickedFile = file.files.first;
+      final filePath = pickedFile.path?.trim();
+      Uint8List bytes;
+
       if (filePath != null && filePath.isNotEmpty) {
         final selectedFile = File(filePath);
-        final size = await selectedFile.length();
-        if (size > _maxCompanyStampBytes) {
+        if (await selectedFile.length() > _maxCompanyStampBytes) {
           throw const FileSystemException('Company stamp is larger than 5 MB.');
         }
         bytes = await selectedFile.readAsBytes();
       } else {
-        bytes = await file.readAsBytes();
+        bytes = await pickedFile.readAsBytes();
       }
 
       if (bytes.isEmpty) {
@@ -457,10 +489,11 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SelectCompanyStamp');
       if (mounted) {
+        final isFileTooLarge =
+            error is FileSystemException && error.message.contains('5 MB');
         FlashySnackBar.show(
           context,
-          message:
-              error is FileSystemException && error.message.contains('5 MB')
+          message: isFileTooLarge
               ? 'file_too_large'.tr(namedArgs: {'size': '5MB'})
               : 'company_stamp_invalid'.tr(),
           isError: true,
@@ -478,104 +511,104 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     return null;
   }
 
-  Future<bool> _saveProfile() async {
+  bool _validateProfileFields() {
     final businessName = _businessNameController.text.trim();
     final companyId = _companyIdController.text.trim().toUpperCase();
     final email = _emailController.text.trim().toLowerCase();
     final contact1 = _contact1Controller.text.trim();
-    final contact2 = _contact2Controller.text.trim();
     final address = _addressController.text.trim();
+    final normalizedCurrency = CurrencyUtils.normalize(
+      _currencyController.text,
+    );
 
     if (businessName.isEmpty &&
         companyId.isEmpty &&
         email.isEmpty &&
         contact1.isEmpty &&
         address.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'please_enter_field'.tr(),
-          isError: true,
-        );
-      }
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_field'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (businessName.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'please_enter_company_name'.tr(),
-          isError: true,
-        );
-      }
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_company_name'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (companyId.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'field_is_required'.tr(
-            namedArgs: {'field': 'company_id_no'.tr()},
-          ),
-          isError: true,
-        );
-      }
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'company_id_no'.tr()},
+        ),
+        isError: true,
+      );
       return false;
     }
 
     final companyIdError = Validators.companyId(companyId);
     if (companyIdError != null) {
-      if (mounted) {
-        FlashySnackBar.show(context, message: companyIdError, isError: true);
-      }
+      FlashySnackBar.show(context, message: companyIdError, isError: true);
       return false;
     }
 
     final emailError = _profileEmailError(email);
     if (emailError != null) {
-      if (mounted) {
-        FlashySnackBar.show(context, message: emailError, isError: true);
-      }
+      FlashySnackBar.show(context, message: emailError, isError: true);
       return false;
     }
 
     if (contact1.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'please_enter_contact_number'.tr(),
-          isError: true,
-        );
-      }
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_contact_number'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (address.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'please_enter_address'.tr(),
-          isError: true,
-        );
-      }
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_address'.tr(),
+        isError: true,
+      );
       return false;
     }
 
+    if (!CurrencyUtils.isSupported(normalizedCurrency)) {
+      FlashySnackBar.show(
+        context,
+        message: 'invalid_currency_value'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> _saveProfile() async {
+    if (!mounted) return false;
+    if (!_validateProfileFields()) return false;
+
+    final businessName = _businessNameController.text.trim();
+    final companyId = _companyIdController.text.trim().toUpperCase();
+    final email = _emailController.text.trim().toLowerCase();
+    final contact1 = _contact1Controller.text.trim();
+    final contact2 = _contact2Controller.text.trim();
+    final address = _addressController.text.trim();
     final normalizedCurrency = CurrencyUtils.normalize(
       _currencyController.text,
     );
-    if (!CurrencyUtils.isSupported(normalizedCurrency)) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'invalid_currency_value'.tr(),
-          isError: true,
-        );
-      }
-      return false;
-    }
 
     _businessNameController.text = businessName;
     _companyIdController.text = companyId;
@@ -598,326 +631,25 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     var errorAlreadyShown = false;
 
     try {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-      String? downloadUrl;
-      String? stampDownloadUrl;
-      String? cachedLocalPicPath;
-      String? cachedLocalStampPath;
-
-      if (!isGuest) {
-        final hasNewProfileImage =
-            _newProfileImageBytes != null || _newProfileImagePath != null;
-        final hasNewStamp = _newCompanyStampBytes != null;
-
-        Uint8List? profileUploadBytes;
-        String? profileCacheName;
-        Uint8List? stampUploadBytes;
-        String? stampFormat;
-        String? stampCacheName;
-
-        if (hasNewProfileImage) {
-          Uint8List? rawBytes = _newProfileImageBytes;
-          if (rawBytes == null && _newProfileImagePath != null) {
-            final imageFile = File(_newProfileImagePath!);
-            final imageLength = await imageFile.length();
-            if (imageLength > _maxProfileImageBytes) {
-              throw const FileSystemException(
-                'Profile image is larger than 10 MB.',
-              );
-            }
-            rawBytes = await imageFile.readAsBytes();
-          }
-
-          if (rawBytes == null || rawBytes.isEmpty) {
-            throw const FileSystemException('Unable to read image bytes.');
-          }
-          if (rawBytes.length > _maxProfileImageBytes) {
-            throw const FileSystemException(
-              'Profile image is larger than 10 MB.',
-            );
-          }
-
-          final compressedBytes = await compute(_compressImageBytes, rawBytes);
-          if (compressedBytes == null || compressedBytes.isEmpty) {
-            throw const FormatException('Unsupported profile image format.');
-          }
-          profileUploadBytes = compressedBytes;
-          profileCacheName =
-              'company_logo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        }
-
-        if (hasNewStamp) {
-          final rawStampBytes = _newCompanyStampBytes!;
-          final detectedFormat = _companyStampFormat(rawStampBytes);
-          if (detectedFormat == null || rawStampBytes.isEmpty) {
-            throw const FormatException('Unsupported company stamp format.');
-          }
-          final compressedStamp = await compute(
-            _compressStampBytes,
-            rawStampBytes,
-          );
-          if (compressedStamp == null || compressedStamp.isEmpty) {
-            throw const FormatException('Unsupported company stamp format.');
-          }
-          stampUploadBytes = compressedStamp;
-          stampFormat = detectedFormat;
-          stampCacheName =
-              'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$detectedFormat';
-        }
-
-        final uploadTasks = <Future<void>>[];
-
-        if (profileUploadBytes != null) {
-          uploadTasks.add(() async {
-            try {
-              final fileName =
-                  'profile_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-              uploadedRef = FirebaseStorage.instance
-                  .ref()
-                  .child('profile_pics')
-                  .child(fileName);
-              await uploadedRef!.putData(
-                profileUploadBytes!,
-                SettableMetadata(contentType: 'image/jpeg'),
-              );
-              downloadUrl = await uploadedRef!.getDownloadURL();
-              cachedLocalPicPath = await PreferencesService.persistImageLocally(
-                bytes: profileUploadBytes,
-                fileName: profileCacheName!,
-              );
-            } catch (error, stackTrace) {
-              ErrorReporter.report(
-                error,
-                stackTrace,
-                context: 'UploadProfileImage',
-              );
-              final failedRef = uploadedRef;
-              if (failedRef != null) {
-                try {
-                  await failedRef.delete();
-                } catch (_) {}
-              }
-              if (mounted) {
-                final isUnsupportedFormat =
-                    error is FormatException &&
-                    (error.message).toLowerCase().contains('unsupported');
-                FlashySnackBar.show(
-                  context,
-                  message: isUnsupportedFormat
-                      ? 'profile_image_format_unsupported'.tr()
-                      : 'profile_image_upload_failed_detail'.tr(
-                          namedArgs: {'error': error.toString()},
-                        ),
-                  isError: true,
-                );
-              }
-              errorAlreadyShown = true;
-              rethrow;
-            }
-          }());
-        }
-
-        if (stampUploadBytes != null) {
-          uploadTasks.add(() async {
-            final stampFileName =
-                'company_stamp_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.$stampFormat';
-            uploadedStampRef = FirebaseStorage.instance
-                .ref()
-                .child('profile_pics')
-                .child(stampFileName);
-            await uploadedStampRef!.putData(
-              stampUploadBytes!,
-              SettableMetadata(
-                contentType: stampFormat == 'png' ? 'image/png' : 'image/jpeg',
-              ),
-            );
-            stampDownloadUrl = await uploadedStampRef!.getDownloadURL();
-            cachedLocalStampPath = await PreferencesService.persistImageLocally(
-              bytes: stampUploadBytes,
-              fileName: stampCacheName!,
-            );
-          }());
-        }
-
-        await Future.wait(uploadTasks);
-        await _firestore.updateUserProfile({
-          'businessName': businessName,
-          'companyId': companyId,
-          'email': email,
-          'currency': normalizedCurrency,
-          'contact1': contact1,
-          'contact2': contact2,
-          'address': address,
-          'profilePic': ?downloadUrl,
-          if (stampDownloadUrl != null)
-            'companyStampUrl': stampDownloadUrl
-          else if (_clearCompanyStamp)
-            'companyStampUrl': '',
-        });
-        profileSaved = true;
-
-        PreferencesService.setCompanyCurrency(
-          normalizedCurrency,
-        ).catchError((_) {});
-
-        if (downloadUrl != null) {
-          _profilePicUrl = downloadUrl;
-          AuthService.profilePicNotifier.value = downloadUrl;
-          _newProfileImageBytes = null;
-          _newProfileImagePath = null;
-
-          _authService.currentUser?.updatePhotoURL(downloadUrl).catchError((
-            error,
-            stackTrace,
-          ) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'UpdateAuthProfileImage',
-            );
-          });
-          PreferencesService.setProfilePicUrl(
-            cachedLocalPicPath?.isNotEmpty == true
-                ? cachedLocalPicPath
-                : downloadUrl,
-          ).catchError((error, stackTrace) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'CacheProfileImage',
-            );
-          });
-          final localProfilePicPath = cachedLocalPicPath;
-          if (localProfilePicPath != null && localProfilePicPath.isNotEmpty) {
-            PreferencesService.setProfilePicLocalPath(
-              localProfilePicPath,
-            ).catchError((_) {});
-          }
-        }
-        if (stampDownloadUrl != null || _clearCompanyStamp) {
-          _companyStampUrl = stampDownloadUrl;
-          AuthService.companyStampNotifier.value = stampDownloadUrl;
-          if (stampDownloadUrl != null) {
-            PreferencesService.setCompanyStampUrl(
-              cachedLocalStampPath?.isNotEmpty == true
-                  ? cachedLocalStampPath
-                  : stampDownloadUrl,
-            ).catchError((_) {});
-          } else {
-            PreferencesService.setCompanyStampUrl(null).catchError((_) {});
-          }
-          _newCompanyStampBytes = null;
-          _clearCompanyStamp = false;
-        }
-
-        if (downloadUrl != null &&
-            oldProfilePicUrl != null &&
-            oldProfilePicUrl.isNotEmpty &&
-            oldProfilePicUrl != downloadUrl) {
-          UploadService.deleteByUrl(oldProfilePicUrl).catchError((
-            error,
-            stackTrace,
-          ) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'CleanupOldProfilePic',
-            );
-          });
-        }
-        if ((stampDownloadUrl != null || wasClearingCompanyStamp) &&
-            oldCompanyStampUrl != null &&
-            oldCompanyStampUrl.isNotEmpty &&
-            oldCompanyStampUrl != stampDownloadUrl) {
-          UploadService.deleteByUrl(oldCompanyStampUrl).catchError((
-            error,
-            stackTrace,
-          ) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'CleanupOldCompanyStamp',
-            );
-          });
-        }
+      if (_isGuest) {
+        await _saveGuestProfile(normalizedCurrency);
       } else {
-        if (_newProfileImageBytes != null) {
-          final localPath = await PreferencesService.persistImageLocally(
-            bytes: _newProfileImageBytes!,
-            fileName: 'company_logo.png',
-          );
-          downloadUrl =
-              localPath ??
-              'data:image/png;base64,${base64Encode(_newProfileImageBytes!)}';
-        } else if (_newProfileImagePath != null) {
-          Uint8List? pickedBytes;
-          try {
-            pickedBytes = await File(_newProfileImagePath!).readAsBytes();
-          } catch (_) {}
-          if (pickedBytes != null && pickedBytes.isNotEmpty) {
-            downloadUrl =
-                await PreferencesService.persistImageLocally(
-                  bytes: pickedBytes,
-                  fileName: 'company_logo.png',
-                ) ??
-                _newProfileImagePath;
-          } else {
-            downloadUrl = _newProfileImagePath;
-          }
-        }
-
-        if (downloadUrl != null) {
-          _profilePicUrl = downloadUrl;
-          AuthService.profilePicNotifier.value = downloadUrl;
-          try {
-            await PreferencesService.setProfilePicUrl(downloadUrl);
-          } catch (_) {}
-          _newProfileImageBytes = null;
-          _newProfileImagePath = null;
-        }
-
-        if (_newCompanyStampBytes != null) {
-          final stampFormat =
-              _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
-          final localPath = await PreferencesService.persistImageLocally(
-            bytes: _newCompanyStampBytes!,
-            fileName: 'company_stamp.$stampFormat',
-          );
-          _companyStampUrl =
-              localPath ??
-              'data:image/$stampFormat;base64,${base64Encode(_newCompanyStampBytes!)}';
-          AuthService.companyStampNotifier.value = _companyStampUrl;
-          try {
-            await PreferencesService.setCompanyStampUrl(_companyStampUrl);
-          } catch (_) {}
-          _newCompanyStampBytes = null;
-        } else if (_clearCompanyStamp) {
-          _companyStampUrl = null;
-          AuthService.companyStampNotifier.value = null;
-          try {
-            await PreferencesService.setCompanyStampUrl(null);
-          } catch (_) {}
-          _clearCompanyStamp = false;
-        }
-
-        final existingGuest =
-            await PreferencesService.getGuestProfileData() ?? {};
-        await PreferencesService.setGuestProfileData({
-          ...existingGuest,
-          'businessName': _businessNameController.text,
-          'companyId': _companyIdController.text,
-          'email': _emailController.text,
-          'currency': normalizedCurrency,
-          'contact1': _contact1Controller.text,
-          'contact2': _contact2Controller.text,
-          'address': _addressController.text,
-          if (_profilePicUrl != null && _profilePicUrl!.isNotEmpty)
-            'profilePic': _profilePicUrl!,
-          if (_companyStampUrl != null && _companyStampUrl!.isNotEmpty)
-            'companyStampUrl': _companyStampUrl!
-          else
-            'companyStampUrl': '',
-        });
+        await _saveFirestoreProfile(
+          businessName: businessName,
+          companyId: companyId,
+          email: email,
+          normalizedCurrency: normalizedCurrency,
+          contact1: contact1,
+          contact2: contact2,
+          address: address,
+          uploadedRef: (ref) => uploadedRef = ref,
+          uploadedStampRef: (ref) => uploadedStampRef = ref,
+          onError: () => errorAlreadyShown = true,
+          oldProfilePicUrl: oldProfilePicUrl,
+          oldCompanyStampUrl: oldCompanyStampUrl,
+          wasClearingCompanyStamp: wasClearingCompanyStamp,
+        );
+        profileSaved = true;
       }
 
       if (mounted) {
@@ -927,20 +659,16 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return true;
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SaveProfile');
+
       if (!profileSaved) {
-        final failedRef = uploadedRef;
-        if (failedRef != null) {
-          try {
-            await failedRef.delete();
-          } catch (_) {}
-        }
-        final failedStampRef = uploadedStampRef;
-        if (failedStampRef != null) {
-          try {
-            await failedStampRef.delete();
-          } catch (_) {}
-        }
+        try {
+          await uploadedRef?.delete();
+        } catch (_) {}
+        try {
+          await uploadedStampRef?.delete();
+        } catch (_) {}
       }
+
       if (mounted) {
         setState(() => _isLoading = false);
         if (!errorAlreadyShown) {
@@ -957,11 +685,379 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     }
   }
 
+  Future<void> _saveGuestProfile(String normalizedCurrency) async {
+    String? downloadUrl;
+
+    if (_newProfileImageBytes != null) {
+      final localPath = await PreferencesService.persistImageLocally(
+        bytes: _newProfileImageBytes!,
+        fileName: 'company_logo.png',
+      );
+      downloadUrl =
+          localPath ??
+          'data:image/png;base64,${base64Encode(_newProfileImageBytes!)}';
+    } else if (_newProfileImagePath != null) {
+      Uint8List? pickedBytes;
+      try {
+        pickedBytes = await File(_newProfileImagePath!).readAsBytes();
+      } catch (_) {}
+
+      if (pickedBytes != null && pickedBytes.isNotEmpty) {
+        downloadUrl =
+            await PreferencesService.persistImageLocally(
+              bytes: pickedBytes,
+              fileName: 'company_logo.png',
+            ) ??
+            _newProfileImagePath;
+      } else {
+        downloadUrl = _newProfileImagePath;
+      }
+    }
+
+    if (downloadUrl != null) {
+      _profilePicUrl = downloadUrl;
+      AuthService.profilePicNotifier.value = downloadUrl;
+      try {
+        await PreferencesService.setProfilePicUrl(downloadUrl);
+      } catch (_) {}
+      _newProfileImageBytes = null;
+      _newProfileImagePath = null;
+    }
+
+    if (_newCompanyStampBytes != null) {
+      final stampFormat = _companyStampFormat(_newCompanyStampBytes!) ?? 'png';
+      final localPath = await PreferencesService.persistImageLocally(
+        bytes: _newCompanyStampBytes!,
+        fileName: 'company_stamp.$stampFormat',
+      );
+      _companyStampUrl =
+          localPath ??
+          'data:image/$stampFormat;base64,${base64Encode(_newCompanyStampBytes!)}';
+      AuthService.companyStampNotifier.value = _companyStampUrl;
+      try {
+        await PreferencesService.setCompanyStampUrl(_companyStampUrl);
+      } catch (_) {}
+      _newCompanyStampBytes = null;
+    } else if (_clearCompanyStamp) {
+      _companyStampUrl = null;
+      AuthService.companyStampNotifier.value = null;
+      try {
+        await PreferencesService.setCompanyStampUrl(null);
+      } catch (_) {}
+      _clearCompanyStamp = false;
+    }
+
+    final existing =
+        await PreferencesService.getGuestProfileData() ??
+        const <String, String>{};
+
+    final updatedProfile = <String, String>{
+      ...existing,
+      'businessName': _businessNameController.text,
+      'companyId': _companyIdController.text,
+      'email': _emailController.text,
+      'currency': normalizedCurrency,
+      'contact1': _contact1Controller.text,
+      'contact2': _contact2Controller.text,
+      'address': _addressController.text,
+    };
+
+    if (_profilePicUrl != null && _profilePicUrl!.isNotEmpty) {
+      updatedProfile['profilePic'] = _profilePicUrl!;
+    }
+
+    updatedProfile['companyStampUrl'] =
+        (_companyStampUrl != null && _companyStampUrl!.isNotEmpty)
+        ? _companyStampUrl!
+        : '';
+
+    await PreferencesService.setGuestProfileData(updatedProfile);
+  }
+
+  Future<void> _saveFirestoreProfile({
+    required String businessName,
+    required String companyId,
+    required String email,
+    required String normalizedCurrency,
+    required String contact1,
+    required String contact2,
+    required String address,
+    required void Function(Reference?) uploadedRef,
+    required void Function(Reference?) uploadedStampRef,
+    required VoidCallback onError,
+    required String? oldProfilePicUrl,
+    required String? oldCompanyStampUrl,
+    required bool wasClearingCompanyStamp,
+  }) async {
+    String? downloadUrl;
+    String? stampDownloadUrl;
+    String? cachedLocalPicPath;
+    String? cachedLocalStampPath;
+
+    final hasNewProfileImage =
+        _newProfileImageBytes != null || _newProfileImagePath != null;
+    final hasNewStamp = _newCompanyStampBytes != null;
+
+    final uploadTasks = <Future<void>>[];
+
+    if (hasNewProfileImage) {
+      uploadTasks.add(
+        _uploadProfileImage(
+          onUrl: (url) => downloadUrl = url,
+          onCachedPath: (path) => cachedLocalPicPath = path,
+          onRef: uploadedRef,
+          onError: onError,
+        ),
+      );
+    }
+
+    if (hasNewStamp) {
+      uploadTasks.add(
+        _uploadCompanyStamp(
+          onUrl: (url) => stampDownloadUrl = url,
+          onCachedPath: (path) => cachedLocalStampPath = path,
+          onRef: uploadedStampRef,
+        ),
+      );
+    }
+
+    if (uploadTasks.isNotEmpty) {
+      await Future.wait(uploadTasks);
+    }
+
+    final profileUpdate = <String, dynamic>{
+      'businessName': businessName,
+      'companyId': companyId,
+      'email': email,
+      'currency': normalizedCurrency,
+      'contact1': contact1,
+      'contact2': contact2,
+      'address': address,
+    };
+
+    if (downloadUrl != null) {
+      profileUpdate['profilePic'] = downloadUrl;
+    }
+
+    if (stampDownloadUrl != null) {
+      profileUpdate['companyStampUrl'] = stampDownloadUrl;
+    } else if (_clearCompanyStamp) {
+      profileUpdate['companyStampUrl'] = '';
+    }
+
+    await _firestore.updateUserProfile(profileUpdate);
+
+    PreferencesService.setCompanyCurrency(
+      normalizedCurrency,
+    ).catchError((_) {});
+
+    _applyUploadResults(
+      downloadUrl,
+      stampDownloadUrl,
+      cachedLocalPicPath,
+      cachedLocalStampPath,
+      oldProfilePicUrl,
+      oldCompanyStampUrl,
+      wasClearingCompanyStamp,
+    );
+  }
+
+  Future<void> _uploadProfileImage({
+    required void Function(String) onUrl,
+    required void Function(String?) onCachedPath,
+    required void Function(Reference?) onRef,
+    required VoidCallback onError,
+  }) async {
+    Uint8List? rawBytes = _newProfileImageBytes;
+
+    if (rawBytes == null && _newProfileImagePath != null) {
+      final imageFile = File(_newProfileImagePath!);
+      if (await imageFile.length() > _maxProfileImageBytes) {
+        throw const FileSystemException('Profile image is larger than 10 MB.');
+      }
+      rawBytes = await imageFile.readAsBytes();
+    }
+
+    if (rawBytes == null || rawBytes.isEmpty) {
+      throw const FileSystemException('Unable to read image bytes.');
+    }
+    if (rawBytes.length > _maxProfileImageBytes) {
+      throw const FileSystemException('Profile image is larger than 10 MB.');
+    }
+
+    final compressedBytes = await compute(_compressImageBytes, rawBytes);
+    if (compressedBytes == null || compressedBytes.isEmpty) {
+      throw const FormatException('Unsupported profile image format.');
+    }
+
+    final uid = _authService.currentUser?.uid ?? 'user';
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final fileName = 'profile_${uid}_$ts.jpg';
+
+    Reference? ref;
+    try {
+      ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_pics')
+          .child(fileName);
+      onRef(ref);
+      await ref.putData(
+        compressedBytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final url = await ref.getDownloadURL();
+      onUrl(url);
+      onCachedPath(
+        await PreferencesService.persistImageLocally(
+          bytes: compressedBytes,
+          fileName: 'company_logo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
+      );
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'UploadProfileImage');
+      try {
+        await ref?.delete();
+      } catch (_) {}
+      if (mounted) {
+        final isUnsupportedFormat =
+            error is FormatException &&
+            error.message.toLowerCase().contains('unsupported');
+        FlashySnackBar.show(
+          context,
+          message: isUnsupportedFormat
+              ? 'profile_image_format_unsupported'.tr()
+              : 'profile_image_upload_failed_detail'.tr(
+                  namedArgs: {'error': error.toString()},
+                ),
+          isError: true,
+        );
+      }
+      onError();
+      rethrow;
+    }
+  }
+
+  Future<void> _uploadCompanyStamp({
+    required void Function(String) onUrl,
+    required void Function(String?) onCachedPath,
+    required void Function(Reference?) onRef,
+  }) async {
+    final rawStampBytes = _newCompanyStampBytes!;
+    final detectedFormat = _companyStampFormat(rawStampBytes);
+
+    if (detectedFormat == null || rawStampBytes.isEmpty) {
+      throw const FormatException('Unsupported company stamp format.');
+    }
+
+    final compressedStamp = await compute(_compressStampBytes, rawStampBytes);
+    if (compressedStamp == null || compressedStamp.isEmpty) {
+      throw const FormatException('Unsupported company stamp format.');
+    }
+
+    final uid = _authService.currentUser?.uid ?? 'user';
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final stampFileName = 'company_stamp_${uid}_$ts.$detectedFormat';
+    final contentType = detectedFormat == 'png' ? 'image/png' : 'image/jpeg';
+
+    final stampRef = FirebaseStorage.instance
+        .ref()
+        .child('profile_pics')
+        .child(stampFileName);
+    onRef(stampRef);
+
+    await stampRef.putData(
+      compressedStamp,
+      SettableMetadata(contentType: contentType),
+    );
+    onUrl(await stampRef.getDownloadURL());
+    onCachedPath(
+      await PreferencesService.persistImageLocally(
+        bytes: compressedStamp,
+        fileName:
+            'company_stamp_${DateTime.now().millisecondsSinceEpoch}.$detectedFormat',
+      ),
+    );
+  }
+
+  void _applyUploadResults(
+    String? downloadUrl,
+    String? stampDownloadUrl,
+    String? cachedLocalPicPath,
+    String? cachedLocalStampPath,
+    String? oldProfilePicUrl,
+    String? oldCompanyStampUrl,
+    bool wasClearingCompanyStamp,
+  ) {
+    if (downloadUrl != null) {
+      _profilePicUrl = downloadUrl;
+      AuthService.profilePicNotifier.value = downloadUrl;
+      _newProfileImageBytes = null;
+      _newProfileImagePath = null;
+
+      _authService.currentUser
+          ?.updatePhotoURL(downloadUrl)
+          .catchError(
+            (e, s) =>
+                ErrorReporter.report(e, s, context: 'UpdateAuthProfileImage'),
+          );
+
+      final effectivePicUrl = cachedLocalPicPath?.isNotEmpty == true
+          ? cachedLocalPicPath
+          : downloadUrl;
+      PreferencesService.setProfilePicUrl(effectivePicUrl).catchError(
+        (e, s) => ErrorReporter.report(e, s, context: 'CacheProfileImage'),
+      );
+
+      if (cachedLocalPicPath != null && cachedLocalPicPath.isNotEmpty) {
+        PreferencesService.setProfilePicLocalPath(
+          cachedLocalPicPath,
+        ).catchError((_) {});
+      }
+    }
+
+    if (stampDownloadUrl != null || _clearCompanyStamp) {
+      _companyStampUrl = stampDownloadUrl;
+      AuthService.companyStampNotifier.value = stampDownloadUrl;
+
+      if (stampDownloadUrl != null) {
+        final effectiveStampUrl = cachedLocalStampPath?.isNotEmpty == true
+            ? cachedLocalStampPath
+            : stampDownloadUrl;
+        PreferencesService.setCompanyStampUrl(
+          effectiveStampUrl,
+        ).catchError((_) {});
+      } else {
+        PreferencesService.setCompanyStampUrl(null).catchError((_) {});
+      }
+
+      _newCompanyStampBytes = null;
+      _clearCompanyStamp = false;
+    }
+
+    if (downloadUrl != null &&
+        oldProfilePicUrl != null &&
+        oldProfilePicUrl.isNotEmpty &&
+        oldProfilePicUrl != downloadUrl) {
+      UploadService.deleteByUrl(oldProfilePicUrl).catchError(
+        (e, s) => ErrorReporter.report(e, s, context: 'CleanupOldProfilePic'),
+      );
+    }
+
+    if ((stampDownloadUrl != null || wasClearingCompanyStamp) &&
+        oldCompanyStampUrl != null &&
+        oldCompanyStampUrl.isNotEmpty &&
+        oldCompanyStampUrl != stampDownloadUrl) {
+      UploadService.deleteByUrl(oldCompanyStampUrl).catchError(
+        (e, s) => ErrorReporter.report(e, s, context: 'CleanupOldCompanyStamp'),
+      );
+    }
+  }
+
   void _showPreviewDialog() {
     showDialog(
       context: context,
-      barrierColor: Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (context) => ProfilePreviewDialog(
+      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+      builder: (_) => ProfilePreviewDialog(
         businessName: _businessNameController.text,
         companyId: _companyIdController.text,
         email: _emailController.text,
@@ -972,9 +1068,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         onSave: _saveProfile,
         onEdit: () {
           Navigator.of(context).pop();
-          if (mounted) {
-            setState(() => _isEditing = true);
-          }
+          if (mounted) setState(() => _isEditing = true);
         },
       ),
     );
@@ -1005,8 +1099,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  foregroundColor: const Color(0xFFFFFFFF),
+                  backgroundColor: _kPrimaryBlue,
+                  foregroundColor: _kWhite,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 36,
                     vertical: 19,
@@ -1027,19 +1121,17 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                       )
                     : Text(
                         'save'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
+                          fontFamily: _kFontFamily,
                         ),
                       ),
               )
             else
               InkWell(
                 onTap: () {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
+                  if (_isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
                   }
@@ -1049,7 +1141,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                 child: Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F0FE),
+                    color: _kLightBlueBg,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: SvgPicture.asset(
@@ -1057,7 +1149,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                     width: 20,
                     height: 20,
                     colorFilter: const ColorFilter.mode(
-                      Color(0xFF155ED5),
+                      _kActionBlue,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -1069,7 +1161,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F5F7),
+            color: _kFormBg,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -1127,78 +1219,73 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     final hasNewPath = _newProfileImagePath != null;
     final hasCustomPic = _profilePicUrl != null && _profilePicUrl!.isNotEmpty;
 
-    Widget buildLoadingIndicator() {
-      return const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
+    Widget fallback() =>
+        const Icon(Icons.business_rounded, size: 40, color: _kPrimaryBlue);
 
-    Widget buildFallbackIcon() {
-      return const Icon(
-        Icons.business_rounded,
-        size: 40,
-        color: Color(0xFF0247C4),
-      );
-    }
+    Widget loading() => const Center(
+      child: SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
 
-    Widget childWidget;
+    Widget child;
+
     if (hasNewBytes) {
-      childWidget = Image.memory(
+      child = Image.memory(
         _newProfileImageBytes!,
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => buildFallbackIcon(),
+        errorBuilder: (_, __, ___) => fallback(),
       );
     } else if (hasNewPath) {
-      childWidget = Image.file(
+      child = Image.file(
         File(_newProfileImagePath!),
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => buildFallbackIcon(),
+        errorBuilder: (_, __, ___) => fallback(),
       );
     } else if (hasCustomPic) {
-      if (_profilePicUrl!.startsWith('http')) {
-        childWidget = CachedNetworkImage(
-          imageUrl: _profilePicUrl!,
+      final url = _profilePicUrl!;
+      if (url.startsWith('http')) {
+        child = CachedNetworkImage(
+          imageUrl: url,
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          placeholder: (_, _) => buildLoadingIndicator(),
-          errorWidget: (_, _, _) => buildFallbackIcon(),
+          placeholder: (_, __) => loading(),
+          errorWidget: (_, __, ___) => fallback(),
         );
-      } else if (_profilePicUrl!.startsWith('data:image')) {
-        final decodedBytes = _decodeProfileDataImage(_profilePicUrl!);
-        childWidget = decodedBytes == null
-            ? buildFallbackIcon()
+      } else if (url.startsWith('data:image')) {
+        final decoded = _decodeProfileDataImage(url);
+        child = decoded == null
+            ? fallback()
             : Image.memory(
-                decodedBytes,
+                decoded,
                 width: 90,
                 height: 90,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => buildFallbackIcon(),
+                errorBuilder: (_, __, ___) => fallback(),
               );
       } else {
-        childWidget = Image.file(
-          File(_profilePicUrl!),
+        child = Image.file(
+          File(url),
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => buildFallbackIcon(),
+          errorBuilder: (_, __, ___) => fallback(),
         );
       }
     } else {
-      childWidget = Image.asset(
+      child = Image.asset(
         'assets/company_profile_placeholder.png',
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => buildFallbackIcon(),
+        errorBuilder: (_, __, ___) => fallback(),
       );
     }
 
@@ -1209,12 +1296,12 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           Container(
             width: 90,
             height: 90,
+            clipBehavior: Clip.antiAlias,
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Center(child: childWidget),
+            child: Center(child: child),
           ),
           if (_isEditing)
             Positioned(
@@ -1224,18 +1311,13 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                 width: 25,
                 height: 28,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF0247C4),
+                  color: _kPrimaryBlue,
                   shape: BoxShape.circle,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: SvgPicture.asset(
-                    'assets/edit_pencil_profile.svg',
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFFFFF),
-                      BlendMode.srcIn,
-                    ),
-                  ),
+                padding: const EdgeInsets.all(6),
+                child: SvgPicture.asset(
+                  'assets/edit_pencil_profile.svg',
+                  colorFilter: const ColorFilter.mode(_kWhite, BlendMode.srcIn),
                 ),
               ),
             ),
@@ -1258,7 +1340,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD8DCE5)),
+        border: Border.all(color: _kStampBorder),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Center(child: _buildCompanyStampPreview()),
@@ -1275,7 +1357,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
             color: Color(0xFF111827),
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
+            fontFamily: _kFontFamily,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -1286,10 +1368,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
               ? 'company_stamp_pdf_note'.tr()
               : 'company_stamp_fallback_note'.tr(),
           style: const TextStyle(
-            color: Color(0xFF6B7280),
+            color: _kGrey6B,
             fontSize: 13,
             height: 1.35,
-            fontFamily: 'SF Pro Display',
+            fontFamily: _kFontFamily,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -1309,8 +1391,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                       : 'upload_company_stamp'.tr(),
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF155ED5),
-                  side: const BorderSide(color: Color(0xFF155ED5)),
+                  foregroundColor: _kActionBlue,
+                  side: const BorderSide(color: _kActionBlue),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -1333,9 +1415,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                             _clearCompanyStamp = true;
                           });
                         },
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFDC2626),
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: _kRedDelete),
                   child: Text('remove'.tr()),
                 ),
             ],
@@ -1347,25 +1427,15 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'company_stamp_signature'.tr(),
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: Colors.black,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
+        Text('company_stamp_signature'.tr(), style: _kLabelStyle),
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _isEditing
-                ? const Color(0xFFFFFFFF)
-                : const Color(0xFFEEEFF2),
+            color: _isEditing ? _kWhite : _kBgGrey,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFFD8DCE5)),
+            border: Border.all(color: _kStampBorder),
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -1390,9 +1460,9 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         Text(
           'company_stamp_format_hint'.tr(),
           style: const TextStyle(
-            color: Color(0xFF6B7280),
+            color: _kGrey6B,
             fontSize: 12,
-            fontFamily: 'SF Pro Display',
+            fontFamily: _kFontFamily,
           ),
         ),
       ],
@@ -1407,7 +1477,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         height: 96,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => const Icon(
+        errorBuilder: (_, __, ___) => const Icon(
           Icons.approval_outlined,
           size: 48,
           color: Color(0xFF0B2A6F),
@@ -1419,29 +1489,33 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return Image.memory(
         _newCompanyStampBytes!,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => fallback(),
+        errorBuilder: (_, __, ___) => fallback(),
       );
     }
+
     if (_clearCompanyStamp ||
         _companyStampUrl == null ||
         _companyStampUrl!.trim().isEmpty) {
       return fallback();
     }
+
     final value = _companyStampUrl!.trim();
+
     if (value.startsWith('http')) {
       return CachedNetworkImage(
         imageUrl: value,
         fit: BoxFit.contain,
-        placeholder: (_, _) => const Center(
+        placeholder: (_, __) => const Center(
           child: SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        errorWidget: (_, _, _) => fallback(),
+        errorWidget: (_, __, ___) => fallback(),
       );
     }
+
     if (value.startsWith('data:image')) {
       final bytes = _decodeProfileDataImage(value);
       return bytes == null
@@ -1449,13 +1523,14 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           : Image.memory(
               bytes,
               fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => fallback(),
+              errorBuilder: (_, __, ___) => fallback(),
             );
     }
+
     return Image.file(
       File(value),
       fit: BoxFit.contain,
-      errorBuilder: (_, _, _) => fallback(),
+      errorBuilder: (_, __, ___) => fallback(),
     );
   }
 
@@ -1482,54 +1557,57 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     bool isContact = false,
     bool isAddress = false,
   }) {
-    final Color bgColor = readOnly
-        ? const Color(0xFFEEEFF2)
-        : const Color(0xFFFFFFFF);
-    final Color textColor = readOnly
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF000000);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final hintText = isGuest
-        ? isEmailField
-              ? 'hint_enter_email'.tr()
-              : isCompanyId
-              ? 'hint_enter_company_id'.tr()
-              : isBusinessName
-              ? 'hint_enter_business_name'.tr()
-              : isContact
-              ? 'hint_enter_phone'.tr()
-              : isAddress
-              ? 'hint_enter_address'.tr()
-              : ''
-        : isEmailField
-        ? 'hint_enter_email'.tr()
-        : isCompanyId
-        ? 'company_id_no'.tr()
-        : isBusinessName
-        ? 'company_name'.tr()
-        : isContact
-        ? 'hint_enter_phone'.tr()
-        : isAddress
-        ? 'hint_enter_address'.tr()
-        : '';
+    final bgColor = readOnly ? _kBgGrey : _kWhite;
+    final textColor = readOnly ? _kGreyText : _kBlack;
+
+    final String hintText;
+    if (isEmailField) {
+      hintText = 'hint_enter_email'.tr();
+    } else if (isCompanyId) {
+      hintText = _isGuest ? 'hint_enter_company_id'.tr() : 'company_id_no'.tr();
+    } else if (isBusinessName) {
+      hintText = _isGuest
+          ? 'hint_enter_business_name'.tr()
+          : 'company_name'.tr();
+    } else if (isContact) {
+      hintText = 'hint_enter_phone'.tr();
+    } else if (isAddress) {
+      hintText = 'hint_enter_address'.tr();
+    } else {
+      hintText = '';
+    }
+
+    final List<TextInputFormatter>? formatters;
+    if (isBusinessName) {
+      formatters = [LengthLimitingTextInputFormatter(30)];
+    } else if (isAddress) {
+      formatters = [LengthLimitingTextInputFormatter(100)];
+    } else if (isContact) {
+      formatters = [
+        LengthLimitingTextInputFormatter(15),
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]')),
+      ];
+    } else if (isCompanyId) {
+      formatters = [
+        LengthLimitingTextInputFormatter(15),
+        TextInputFormatter.withFunction(
+          (oldValue, newValue) =>
+              newValue.copyWith(text: newValue.text.toUpperCase()),
+        ),
+        FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9-]')),
+      ];
+    } else {
+      formatters = null;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: Colors.black,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ],
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _kLabelStyle,
         ),
         const SizedBox(height: 10),
         Container(
@@ -1537,9 +1615,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(6),
-            border: readOnly
-                ? Border.all(color: const Color(0xFFE5E7EB))
-                : null,
+            border: readOnly ? Border.all(color: _kBorderLight) : null,
           ),
           child: Row(
             children: [
@@ -1558,48 +1634,19 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                       : TextCapitalization.none,
                   autocorrect: !isEmailField && !isCompanyId,
                   enableSuggestions: !isEmailField && !isCompanyId,
-                  inputFormatters:
-                      isCompanyId || isContact || isBusinessName || isAddress
-                      ? [
-                          LengthLimitingTextInputFormatter(
-                            isBusinessName
-                                ? 30
-                                : isAddress
-                                ? 100
-                                : 15,
-                          ),
-                          if (isContact)
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9+\-\s()]'),
-                            ),
-                          if (isCompanyId) ...[
-                            TextInputFormatter.withFunction(
-                              (oldValue, newValue) => newValue.copyWith(
-                                text: newValue.text.toUpperCase(),
-                              ),
-                            ),
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Z0-9-]'),
-                            ),
-                          ],
-                        ]
-                      : null,
+                  inputFormatters: formatters,
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     hintText: hintText,
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF9CA3AF),
-                      fontSize: 15,
-                      fontFamily: 'SF Pro Display',
-                    ),
+                    hintStyle: _kInputHintStyle,
                     counterText: '',
                   ),
                   style: TextStyle(
                     fontSize: 15,
                     color: textColor,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                 ),
               ),
@@ -1632,18 +1679,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'currency'.tr(),
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: Colors.black,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
+        Text('currency'.tr(), style: _kLabelStyle),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
@@ -1660,25 +1699,25 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black,
-                fontFamily: 'SF Pro Display',
+                fontFamily: _kFontFamily,
               ),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _currencyController.text = newValue;
-                  });
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _currencyController.text = val);
                 }
               },
-              items: currencies.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(
-                    LocalizationHelper.localizeCurrency(value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
+              items: currencies
+                  .map(
+                    (value) => DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        LocalizationHelper.localizeCurrency(value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         ),
@@ -1711,8 +1750,8 @@ class ProfilePreviewDialog extends StatelessWidget {
     this.onEdit,
   });
 
-  static const Color primaryBlue = Color(0xFF0B51C1);
-  static const Color lightBlueBg = Color(0xFFE8F0FE);
+  static const Color _primaryBlue = Color(0xFF0B51C1);
+  static const Color _lightBlueBg = Color(0xFFE8F0FE);
 
   @override
   Widget build(BuildContext context) {
@@ -1722,14 +1761,13 @@ class ProfilePreviewDialog extends StatelessWidget {
       child: Center(
         child: Container(
           width: 480,
-          constraints: const BoxConstraints(),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Color(0xFFFFFFFF),
+            color: _kWhite,
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: Color(0xFF000000).withValues(alpha: 0.15),
+                color: _kBlack.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1738,8 +1776,9 @@ class ProfilePreviewDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+
               Container(
-                color: const Color(0xFF004FDE),
+                color: _kDarkBlue,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 4,
@@ -1749,40 +1788,34 @@ class ProfilePreviewDialog extends StatelessWidget {
                   children: [
                     Text(
                       'profile_preview'.tr(),
-                      style: TextStyle(
-                        color: Color(0xFFFFFFFF),
+                      style: const TextStyle(
+                        color: _kWhite,
                         fontSize: 20,
-                        fontFamily: 'SF Pro Display',
+                        fontFamily: _kFontFamily,
                       ),
                     ),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: Color(0xFFFFFFFF),
-                          size: 26,
-                        ),
+                        icon: const Icon(Icons.close, color: _kWhite, size: 26),
                         onPressed: () => Navigator.of(context).pop(),
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(4),
                       ),
                     ),
                     Align(
-                      alignment: Alignment(1.0, 0),
+                      alignment: const Alignment(1.0, 0),
                       child: IconButton(
                         icon: SvgPicture.asset(
                           'assets/edit_icon.svg',
                           height: 20,
                           width: 20,
                           colorFilter: const ColorFilter.mode(
-                            Color(0xFFFFFFFF),
+                            _kWhite,
                             BlendMode.srcIn,
                           ),
                         ),
-                        onPressed: () {
-                          onEdit?.call();
-                        },
+                        onPressed: onEdit,
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(4),
                       ),
@@ -1801,29 +1834,24 @@ class ProfilePreviewDialog extends StatelessWidget {
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
+                        color: _kWhite,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Color(0xFFFFFFFF), width: 2),
+                        border: Border.all(color: _kWhite, width: 2),
                       ),
                       child: const ClipOval(child: UserAvatar(radius: 62)),
                     ),
                     const SizedBox(width: 24),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            businessName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        businessName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _kWhite,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: _kFontFamily,
+                        ),
                       ),
                     ),
                   ],
@@ -1837,7 +1865,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'company_name'.tr(),
                             businessName,
                             'assets/preview_profile.svg',
@@ -1845,7 +1873,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'company_id_no'.tr(),
                             companyId,
                             'assets/company_id.svg',
@@ -1854,11 +1882,10 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-
                     Row(
                       children: [
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'company_email'.tr(),
                             email,
                             'assets/company_email.svg',
@@ -1866,7 +1893,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'currency'.tr(),
                             currency,
                             'assets/currency_preview.svg',
@@ -1875,11 +1902,10 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-
                     Row(
                       children: [
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'contact_no'.tr(),
                             contact1,
                             'assets/phone_preview.svg',
@@ -1887,7 +1913,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: _buildPreviewCard(
+                          child: _previewCard(
                             'address'.tr(),
                             address,
                             'assets/location_preview.svg',
@@ -1905,14 +1931,14 @@ class ProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewCard(String label, String value, String svgPath) {
+  Widget _previewCard(String label, String value, String svgPath) {
     return Container(
       height: 72,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
@@ -1920,13 +1946,16 @@ class ProfilePreviewDialog extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: lightBlueBg,
+              color: _lightBlueBg,
               borderRadius: BorderRadius.circular(6),
             ),
             padding: const EdgeInsets.all(8),
             child: SvgPicture.asset(
               svgPath,
-              colorFilter: const ColorFilter.mode(primaryBlue, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                _primaryBlue,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1941,12 +1970,11 @@ class ProfilePreviewDialog extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
+                      fontFamily: _kFontFamily,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       height: 1.0,
-                      letterSpacing: 0,
-                      color: Color(0xFF000000),
+                      color: _kBlack,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1956,12 +1984,11 @@ class ProfilePreviewDialog extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.0,
-                    letterSpacing: 0,
-                    color: Color(0xFF000000),
+                    color: _kBlack,
                   ),
                 ),
               ],

@@ -1,11 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers.dart';
-import '../../services/auth_service.dart';
-import '../../utils/chart_utils.dart';
+import '../../utils/utils.dart';
 import '../custom_timeframe_dropdown.dart';
 
 const _presentColor = Color(0xFF16B887);
@@ -27,7 +24,6 @@ BarTouchTooltipData buildAttendanceBarTooltipData(NumberFormat numberFmt) {
     fitInsideVertically: true,
     getTooltipItem: (group, groupIndex, rod, rodIndex) {
       final isPresent = rod.color == _presentColor;
-      final color = isPresent ? _presentColor : _absentColor;
       return BarTooltipItem(
         '${isPresent ? 'Present' : 'Absent'}: ${numberFmt.format(rod.toY)}',
         const TextStyle(
@@ -36,18 +32,12 @@ BarTouchTooltipData buildAttendanceBarTooltipData(NumberFormat numberFmt) {
           fontSize: 14,
           fontFamily: 'SF Pro Display',
         ),
-        children: [
-          TextSpan(
-            text: ' ',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-        ],
       );
     },
   );
 }
 
-class AttendanceLineChart extends ConsumerStatefulWidget {
+class AttendanceLineChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
   final List<Map<String, dynamic>> attendanceDocs;
@@ -60,24 +50,10 @@ class AttendanceLineChart extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AttendanceLineChart> createState() =>
-      _AttendanceLineChartState();
-}
-
-class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
-  late AuthService _authService;
-
-  @override
-  void initState() {
-    super.initState();
-    _authService = ref.read(authServiceProvider);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final dedupedDocs = latestAttendanceRecordPerWorker(
-      widget.attendanceDocs,
-      period: widget.period,
+      attendanceDocs,
+      period: period,
     );
     final presentAttendanceDocs = attendanceRecordsForStatus(
       dedupedDocs,
@@ -90,15 +66,13 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
     final locale = context.locale.toString();
 
     final presentChartData = getChartData(
-      widget.period,
+      period,
       presentAttendanceDocs,
-      _authService.currentUser?.isAnonymous ?? false,
       locale,
     );
     final absentChartData = getChartData(
-      widget.period,
+      period,
       absentAttendanceDocs,
-      false,
       locale,
     );
     return Card(
@@ -107,13 +81,13 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: widget.isEmpty
+        child: isEmpty
             ? _buildEmptyState()
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    CustomTimeframeDropdown.localizePeriod(widget.period),
+                    CustomTimeframeDropdown.localizePeriod(period),
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -165,7 +139,7 @@ class _AttendanceLineChartState extends ConsumerState<AttendanceLineChart> {
     final labelStep = _labelStepFor(presentChartData.labels.length);
 
     return TweenAnimationBuilder<double>(
-      key: ValueKey(widget.period),
+      key: ValueKey(period),
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 750),
       curve: Curves.easeOutQuart,

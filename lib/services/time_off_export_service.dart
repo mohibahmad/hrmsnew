@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import '../utils/helpers.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
@@ -7,8 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../utils/date_time_utils.dart';
-import '../utils/file_utils.dart';
+import '../utils/utils.dart';
 import 'time_off_service.dart';
 import 'invoice_service.dart';
 
@@ -47,7 +47,6 @@ class TimeOffExportService {
     if (value == null) return '""';
     var text = value.toString().trim();
     if (text.isEmpty) return '""';
-    // Neutralize formula injection in spreadsheets (Excel / Google Sheets / Calc)
     if (text.startsWith('=') ||
         text.startsWith('+') ||
         text.startsWith('-') ||
@@ -69,14 +68,14 @@ class TimeOffExportService {
 
     for (final record in activeRecords) {
       final name = (record['workerName'] ?? record['name'] ?? record['email'] ?? '').toString();
-      final type = (record['leaveType'] ?? record['type'] ?? record['action'] ?? 'Leave').toString();
+      final type = TimeOffService.leaveType(record);
       final from = _formatDate(record['startDate'] ?? record['date']);
       final to = _formatDate(
         record['endDate'] ?? record['startDate'] ?? record['date'],
       );
       final days = _extractDays(record);
       final statusRaw = (record['status'] ?? '').toString().trim();
-      final status = statusRaw.isEmpty ? 'Pending' : statusRaw;
+      final status = statusRaw.isEmpty ? 'Approved' : statusRaw;
       final reason = (record['notes'] ?? record['reason'] ?? record['description'] ?? '').toString();
 
       buffer.writeln(
@@ -102,9 +101,9 @@ class TimeOffExportService {
       bytes: bytes,
     );
 
-    if (result == null || result.trim().isEmpty) return false;
+    if (result == null || result.toString().trim().isEmpty) return false;
 
-    var outputPath = result.trim();
+    var outputPath = result.toString().trim();
     if (!outputPath.toLowerCase().endsWith('.csv')) {
       outputPath = '$outputPath.csv';
     }
@@ -222,8 +221,7 @@ class TimeOffExportService {
               data: activeRecords.map((r) {
                 final name = (r['workerName'] ?? r['name'] ?? r['email'] ?? '')
                     .toString();
-                final type = (r['leaveType'] ?? r['type'] ?? 'Leave')
-                    .toString();
+                final type = TimeOffService.leaveType(r);
                 final from = _formatDate(r['startDate'] ?? r['date']);
                 final to = _formatDate(
                   r['endDate'] ?? r['startDate'] ?? r['date'],
@@ -267,41 +265,4 @@ class TimeOffExportService {
     return pdf.save();
   }
 
-  static Future<bool> exportPdf({
-    required List<Map<String, dynamic>> records,
-    required String periodLabel,
-    required String leaveTypeFilter,
-    String companyName = 'HRMS',
-    String? companyStampImageUrl,
-    Uint8List? companyStampBytes,
-    String fileName = 'time_off_records.pdf',
-  }) async {
-    final pdfBytes = await generatePdfReport(
-      records: records,
-      periodLabel: periodLabel,
-      leaveTypeFilter: leaveTypeFilter,
-      companyName: companyName,
-      companyStampImageUrl: companyStampImageUrl,
-      companyStampBytes: companyStampBytes,
-    );
-
-    final result = await FilePicker.saveFile(
-      dialogTitle: _l('export_time_off_records', 'Export Time Off Records'),
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      bytes: pdfBytes,
-    );
-
-    if (result == null || result.trim().isEmpty) return false;
-
-    var outputPath = result.trim();
-    if (!outputPath.toLowerCase().endsWith('.pdf')) {
-      outputPath = '$outputPath.pdf';
-    }
-
-    await File(outputPath).writeAsBytes(pdfBytes, flush: true);
-    await FileOpener.open(outputPath);
-    return true;
-  }
 }

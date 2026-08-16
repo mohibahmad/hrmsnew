@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../utils/localization_helper.dart';
+import '../../utils/helpers.dart';
 
 class HolidayCard extends StatelessWidget {
   final String day;
@@ -20,23 +20,8 @@ class HolidayCard extends StatelessWidget {
     this.isActive = false,
   });
 
-  static const List<String> _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   static String _localizeMonth(String month, String locale) {
-    final index = _monthNames.indexOf(month) + 1;
+    final index = LocalizationHelper.englishMonthNames.indexOf(month);
     if (index < 1) return month;
     try {
       return DateFormat('MMM', locale).format(DateTime(2000, index));
@@ -45,40 +30,22 @@ class HolidayCard extends StatelessWidget {
     }
   }
 
-  static String _localizeDayOfWeek(String day) {
-    switch (day) {
-      case 'Monday':
-        return 'weekday_monday'.tr();
-      case 'Tuesday':
-        return 'weekday_tuesday'.tr();
-      case 'Wednesday':
-        return 'weekday_wednesday'.tr();
-      case 'Thursday':
-        return 'weekday_thursday'.tr();
-      case 'Friday':
-        return 'weekday_friday'.tr();
-      case 'Saturday':
-        return 'weekday_saturday'.tr();
-      case 'Sunday':
-        return 'weekday_sunday'.tr();
-      default:
-        return day;
-    }
-  }
+  static String _localizeDayOfWeek(String day) =>
+      LocalizationHelper.localizeWeekday(day);
 
   @override
   Widget build(BuildContext context) {
-    final Color activeLeftBg = const Color(0xFFFF5F65);
-    final Color activeRightBg = const Color(0xFFFF000A);
-    final Color activeTextColor = Color(0xFFFFFFFF);
-    final Color activeSubTextColor = Color(0xFFFFFFFF).withValues(alpha: 0.9);
-    final Color activeBadgeBg = const Color(0xFFFF5F65);
+    const Color activeLeftBg = Color(0xFFFF5F65);
+    const Color activeRightBg = Color(0xFFFF000A);
+    const Color activeTextColor = Color(0xFFFFFFFF);
+    final Color activeSubTextColor = const Color(0xFFFFFFFF).withValues(alpha: 0.9);
+    const Color activeBadgeBg = Color(0xFFFF5F65);
 
-    final Color inactiveLeftBg = const Color(0xFFE2E4E4);
-    final Color inactiveRightBg = const Color(0xFFF1F1F1);
-    final Color inactiveTextColor = Color(0xFF000000);
-    final Color inactiveSubTextColor = Colors.black;
-    final Color inactiveBadgeBg = const Color(0xFF4C84E0);
+    const Color inactiveLeftBg = Color(0xFFE2E4E4);
+    const Color inactiveRightBg = Color(0xFFF1F1F1);
+    const Color inactiveTextColor = Color(0xFF000000);
+    const Color inactiveSubTextColor = Colors.black;
+    const Color inactiveBadgeBg = Color(0xFF4C84E0);
 
     Color leftBg = isActive ? activeLeftBg : inactiveLeftBg;
     Color rightBg = isActive ? activeRightBg : inactiveRightBg;
@@ -86,8 +53,6 @@ class HolidayCard extends StatelessWidget {
     Color subTextColor = isActive ? activeSubTextColor : inactiveSubTextColor;
     Color badgeBg = isActive ? activeBadgeBg : inactiveBadgeBg;
 
-    // Removes any 4-digit year wrapped in parentheses (e.g. "(2026)") so it
-    // does not show after the holiday name and does not break localization.
     String cleanHolidayName(String name) => name.replaceAll(
       RegExp(r'[\s-]*\(\d{4}\)'),
       '',
@@ -176,8 +141,7 @@ class HolidayCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,

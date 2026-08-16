@@ -1,3 +1,4 @@
+
 import 'package:flutter/foundation.dart';
 
 typedef ErrorBackendHandler = void Function(
@@ -32,17 +33,15 @@ class ErrorRecord {
 }
 
 class ErrorReporter {
+
   ErrorReporter._();
 
   static final List<ErrorRecord> _recordedErrors = [];
+
   static ErrorBackendHandler? _backendHandler;
 
   static List<ErrorRecord> get recordedErrors =>
       List.unmodifiable(_recordedErrors);
-
-  static void registerBackendHandler(ErrorBackendHandler handler) {
-    _backendHandler = handler;
-  }
 
   static void report(
     Object error,
@@ -51,6 +50,7 @@ class ErrorReporter {
     bool fatal = false,
   }) {
     try {
+
       final record = ErrorRecord(
         error: error,
         stackTrace: stack,
@@ -59,22 +59,27 @@ class ErrorReporter {
       );
 
       _recordedErrors.add(record);
+
       if (_recordedErrors.length > 100) {
         _recordedErrors.removeAt(0);
       }
 
       final label = context == null ? 'Error' : 'Error [$context]';
+
       if (kDebugMode) {
         debugPrint('⚠️ [ErrorReporter] $label: $error');
         if (stack != null) {
           debugPrintStack(stackTrace: stack, label: label);
         }
-      } else {
+      }
+
+      else {
         debugPrint('[PROD-ERROR] [$label] (fatal=$fatal) $error');
       }
 
       _forwardToBackend(error, stack, context: context, fatal: fatal);
     } catch (e, s) {
+
       debugPrint('ErrorReporter failure: $e\n$s');
     }
   }
@@ -86,6 +91,7 @@ class ErrorReporter {
     bool fatal = false,
   }) {
     try {
+
       _backendHandler?.call(error, stack, context: context, fatal: fatal);
     } catch (e) {
       debugPrint('Failed to forward error to backend handler: $e');

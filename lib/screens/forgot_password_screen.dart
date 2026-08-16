@@ -3,24 +3,24 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../utils/ui_helpers.dart';
 
+import '../providers.dart';
 import '../services/auth_service.dart';
-import '../shared/auth_widgets.dart';
-import '../utils/ui_utils.dart';
+import '../shared/app_constants.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() =>
-      _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  late AuthService _authService;
+
+  late final AuthService _authService;
 
   bool _isLoading = false;
   bool _submitted = false;
@@ -49,7 +49,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
 
     final email = _emailController.text.trim().toLowerCase();
-
     setState(() => _isLoading = true);
 
     try {
@@ -61,50 +60,31 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         _submitted = false;
       });
 
-      if (wasEmailSent) {
-        _showMessage('password_reset_link'.tr(), isError: false);
-      }
+      if (wasEmailSent) _showMessage('password_reset_link'.tr(), isError: false);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
 
       switch (e.code) {
         case 'user-not-found':
-          setState(() {
-            _emailSent = true;
-            _submitted = false;
-          });
-          if (wasEmailSent) {
-            _showMessage('password_reset_link'.tr(), isError: false);
-          }
-          break;
+          setState(() { _emailSent = true; _submitted = false; });
+          if (wasEmailSent) _showMessage('password_reset_link'.tr(), isError: false);
         case 'invalid-email':
           _showMessage('invalid_email_address_short'.tr(), isError: true);
-          break;
         case 'too-many-requests':
           _showMessage('too_many_requests'.tr(), isError: true);
-          break;
-        case 'network-request-failed':
-        case 'network-error':
-        case 'unavailable':
+        case 'network-request-failed' || 'network-error' || 'unavailable':
           _showMessage('network_error'.tr(), isError: true);
-          break;
         case 'user-disabled':
           _showMessage('user_disabled'.tr(), isError: true);
-          break;
         case 'operation-not-allowed':
           _showMessage('operation_not_allowed'.tr(), isError: true);
-          break;
         default:
           _showMessage('password_reset_failed'.tr(), isError: true);
       }
     } catch (_) {
-      if (mounted) {
-        _showMessage('unexpected_error'.tr(), isError: true);
-      }
+      if (mounted) _showMessage('unexpected_error'.tr(), isError: true);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -115,24 +95,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: Colors.grey.shade400,
-        fontSize: 14,
-        fontFamily: 'SF Pro Display',
-      ),
+      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade300)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5)),
       filled: true,
       fillColor: Colors.white,
     );
@@ -141,22 +108,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Widget _buildFieldLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-          fontFamily: 'SF Pro Display',
-        ),
-      ),
+      child: Text(text,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87, fontFamily: 'SF Pro Display')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 800;
+    final isDesktop = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -165,209 +124,119 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         children: [
           Row(
             children: [
-              if (isDesktop)
-                Expanded(
-                  flex: 11,
-                  child: Container(
-                    color: const Color(0xFF165CDB),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final panelWidth = constraints.maxWidth.clamp(
-                          0.0,
-                          880.0,
-                        );
-                        final scale = (panelWidth / 880.0).clamp(0.4, 1.0);
-                        final mockupWidth = panelWidth + (520 * scale) - 90;
-                        return Stack(
-                          clipBehavior: Clip.hardEdge,
-                          children: [
-                            Positioned(
-                              top: 50,
-                              left: 100,
-                              right: 40,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'welcome_to_hrms'.tr(),
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      fontSize: 58,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFFFFFFFF),
-                                      fontFamily: 'SF Pro',
-                                      height: 1,
-                                      letterSpacing: 2,
-                                    ),
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'welcome_banner_subtitle'.tr(),
-                                    maxLines: 2,
-                                    style: const TextStyle(
-                                      fontSize: 23,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFFFFFFFF),
-                                      fontFamily: 'SF Pro',
-                                      height: 1.2,
-                                      letterSpacing: 1.6,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Positioned(
-                              top: 380 * scale,
-                              left: -520 * scale,
-                              child: Transform.rotate(
-                                angle: -0.18,
-                                child: Container(
-                                  width: mockupWidth,
-                                  height: 800 * scale,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(28),
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: const Color(0xFF000000),
-                                        width: 20 * scale,
-                                      ),
-                                      right: BorderSide(
-                                        color: const Color(0xFF000000),
-                                        width: 20 * scale,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: const Color(0xFF000000),
-                                        width: 20 * scale,
-                                      ),
-                                    ),
-                                    boxShadow: [
-                                      const BoxShadow(
-                                        color: Colors.white,
-                                        blurRadius: 0,
-                                        spreadRadius: 3,
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        blurRadius: 30,
-                                        offset: const Offset(10, 9),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.asset(
-                                      'assets/dashboard_mockup.png',
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.topLeft,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
+              if (isDesktop) Expanded(flex: 11, child: _buildDesktopPanel()),
+              Expanded(flex: 9, child: _buildFormPanel()),
+            ],
+          ),
+          Positioned(top: 40, right: 40, child: _buildLanguageButton()),
+        ],
+      ),
+    );
+  }
 
-              Expanded(
-                flex: 9,
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 0,
-                    ),
-                    child: Transform.translate(
-                      offset: const Offset(0, -16),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Center(
-                              child: Image.asset(
-                                'assets/app_icon.png',
-                                height: 120,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(height: 50),
-                            Text(
-                              'reset_password'.tr(),
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                                fontFamily: 'SF Pro Display',
-                                letterSpacing: -0.5,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _emailSent
-                                  ? 'forgot_password_subtitle_reset'.tr()
-                                  : 'forgot_password_link_subtitle'.tr(),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade800,
-                                fontFamily: 'SF Pro Display',
-                                height: 1.0,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            if (_emailSent)
-                              _buildEmailSentContent()
-                            else
-                              _buildEmailForm(),
-                          ],
-                        ),
+  Widget _buildDesktopPanel() {
+    return Container(
+      color: const Color(0xFF165CDB),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final panelWidth = constraints.maxWidth.clamp(0.0, 880.0);
+          final scale = (panelWidth / 880.0).clamp(0.4, 1.0);
+          final mockupWidth = panelWidth + (520 * scale) - 90;
+
+          return Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned(
+                top: 50, left: 100, right: 40,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('welcome_to_hrms'.tr(), maxLines: 1,
+                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1, letterSpacing: 2)),
+                    const SizedBox(height: 10),
+                    Text('welcome_banner_subtitle'.tr(), maxLines: 2,
+                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.6)),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 380 * scale,
+                left: -520 * scale,
+                child: Transform.rotate(
+                  angle: -0.18,
+                  child: Container(
+                    width: mockupWidth,
+                    height: 800 * scale,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border(
+                        left: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
+                        right: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
+                        bottom: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
                       ),
+                      boxShadow: [
+                        const BoxShadow(color: Colors.white, blurRadius: 0, spreadRadius: 3),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(10, 9)),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset('assets/dashboard_mockup.png', fit: BoxFit.cover, alignment: Alignment.topLeft),
                     ),
                   ),
                 ),
               ),
             ],
-          ),
+          );
+        },
+      ),
+    );
+  }
 
-          Positioned(
-            top: 40,
-            right: 40,
-            child: GestureDetector(
-              onTap: () => showLanguageModal(context),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+  Widget _buildFormPanel() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
+        child: Transform.translate(
+          offset: const Offset(0, -16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(child: Image.asset('assets/app_icon.png', height: 120, fit: BoxFit.contain)),
+                const SizedBox(height: 50),
+                Text('reset_password'.tr(),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black, fontFamily: 'SF Pro Display', letterSpacing: -0.5, height: 1.2)),
+                const SizedBox(height: 4),
+                Text(
+                  _emailSent ? 'forgot_password_subtitle_reset'.tr() : 'forgot_password_link_subtitle'.tr(),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade800, fontFamily: 'SF Pro Display', height: 1.0),
                 ),
-                child: Center(
-                  child: Image.asset(
-                    'assets/langauge_icon.png',
-                    width: 24,
-                    height: 24,
-                    color: const Color(0xFF0044C9),
-                  ),
-                ),
-              ),
+                const SizedBox(height: 20),
+                _emailSent ? _buildEmailSentContent() : _buildEmailForm(),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageButton() {
+    return GestureDetector(
+      onTap: () => showLanguageModal(context),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Center(child: Image.asset('assets/langauge_icon.png', width: 24, height: 24, color: const Color(0xFF0044C9))),
       ),
     );
   }
@@ -378,9 +247,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       children: [
         Form(
           key: _formKey,
-          autovalidateMode: _submitted
-              ? AutovalidateMode.onUserInteraction
-              : AutovalidateMode.disabled,
+          autovalidateMode: _submitted ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -394,20 +261,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 autocorrect: false,
                 enableSuggestions: false,
                 onFieldSubmitted: (_) => _sendResetEmail(),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontFamily: 'SF Pro Display',
-                ),
+                style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
                 decoration: _buildInputDecoration('email_hint'.tr()),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'email_required'.tr();
-                  }
-                  if (!RegExp(
-                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                  ).hasMatch(value.trim())) {
-                    return 'email_invalid'.tr();
-                  }
+                  if (value == null || value.trim().isEmpty) return 'email_required'.tr();
+                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) return 'email_invalid'.tr();
                   return null;
                 },
               ),
@@ -415,70 +273,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _sendResetEmail,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0044C9),
-              foregroundColor: const Color(0xFFFFFFFF),
-              disabledBackgroundColor: const Color(
-                0xFF0044C9,
-              ).withValues(alpha: 0.6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              elevation: 0,
-            ),
-            child: _isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFFFFFFFF),
-                      ),
-                    ),
-                  )
-                : Text(
-                    'send_reset_link'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFFFFF),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-          ),
-        ),
+        _buildPrimaryButton(label: 'send_reset_link'.tr(), onPressed: _sendResetEmail),
         const SizedBox(height: 18),
-        Center(
-          child: RichText(
-            text: TextSpan(
-              text: '',
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-              children: [
-                TextSpan(
-                  text: 'back'.tr(),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-        ),
+        Center(child: _buildTapText(label: 'back'.tr(), onTap: () => Navigator.of(context).pop())),
         const SizedBox(height: 20),
       ],
     );
@@ -497,37 +294,20 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
           child: Row(
             children: [
-              const Icon(
-                Icons.mark_email_unread_rounded,
-                color: Color(0xFF0284C7),
-                size: 28,
-              ),
+              const Icon(Icons.mark_email_unread_rounded, color: Color(0xFF0284C7), size: 28),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'password_reset_email_sent'.tr(
-                        namedArgs: {'email': _emailController.text.trim()},
-                      ),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                        fontFamily: 'SF Pro Display',
-                      ),
+                      'password_reset_email_sent'.tr(namedArgs: {'email': _emailController.text.trim()}),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), fontFamily: 'SF Pro Display'),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'check_email_reset_link'.tr(
-                        namedArgs: {'email': _emailController.text.trim()},
-                      ),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF475569),
-                        fontFamily: 'SF Pro Display',
-                      ),
+                      'check_email_reset_link'.tr(namedArgs: {'email': _emailController.text.trim()}),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontFamily: 'SF Pro Display'),
                     ),
                   ],
                 ),
@@ -536,58 +316,51 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0044C9),
-              foregroundColor: const Color(0xFFFFFFFF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              'back_to_login'.tr(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFFFFFFF),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-        ),
+        _buildPrimaryButton(label: 'back_to_login'.tr(), onPressed: () => Navigator.of(context).pop(true)),
         const SizedBox(height: 18),
-        Center(
-          child: RichText(
-            text: TextSpan(
-              text: '',
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-              children: [
-                TextSpan(
-                  text: 'resend_email'.tr(),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = _isLoading ? null : _sendResetEmail,
-                ),
-              ],
-            ),
-          ),
-        ),
+        Center(child: _buildTapText(label: 'resend_email'.tr(), onTap: _isLoading ? null : _sendResetEmail)),
         const SizedBox(height: 20),
       ],
+    );
+  }
+
+  Widget _buildPrimaryButton({required String label, required VoidCallback? onPressed}) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0044C9),
+          foregroundColor: const Color(0xFFFFFFFF),
+          disabledBackgroundColor: const Color(0xFF0044C9).withValues(alpha: 0.6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF))),
+              )
+            : Text(label,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display')),
+      ),
+    );
+  }
+
+  Widget _buildTapText({required String label, VoidCallback? onTap}) {
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+        children: [
+          TextSpan(
+            text: label,
+            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+            recognizer: TapGestureRecognizer()..onTap = onTap,
+          ),
+        ],
+      ),
     );
   }
 }

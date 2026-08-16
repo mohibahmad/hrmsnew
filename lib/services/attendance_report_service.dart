@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'attendance_service.dart';
 import 'time_off_service.dart';
-import '../utils/date_time_utils.dart';
+import '../utils/utils.dart';
 
 class AttendanceDateRange {
   final DateTime start;
@@ -17,11 +17,13 @@ class AttendanceDateRange {
 
   bool contains(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
+
     if (discreteDates != null && discreteDates!.isNotEmpty) {
       return discreteDates!.any(
         (d) => d.year == day.year && d.month == day.month && d.day == day.day,
       );
     }
+
     final startDay = DateTime(start.year, start.month, start.day);
     final endDay = DateTime(end.year, end.month, end.day);
     return !day.isBefore(startDay) && !day.isAfter(endDay);
@@ -40,20 +42,21 @@ class WorkerAttendanceSnapshot {
           : records.length;
 
   int get presents =>
-      records.where((d) => _normalizedStatus(d) == 'present').length;
+      records.where((d) => normalizedAttendanceStatus(d) == 'present').length;
+
   int get absents =>
-      records.where((d) => _normalizedStatus(d) == 'absent').length;
+      records.where((d) => normalizedAttendanceStatus(d) == 'absent').length;
+
   int get leaves =>
-      records.where((d) => _normalizedStatus(d) == 'leave').length;
+      records.where((d) => normalizedAttendanceStatus(d) == 'leave').length;
+
   double get percentage =>
       totalWorkingDays == 0 ? 0 : (presents / totalWorkingDays) * 100;
 
-  static String _normalizedStatus(Map<String, dynamic> record) {
-    return (record['status'] ?? '').toString().trim().toLowerCase();
-  }
 }
 
 class AttendanceReportService {
+
   AttendanceReportService._();
 
   static AttendanceDateRange rangeForPeriod(
@@ -62,6 +65,7 @@ class AttendanceReportService {
   }) {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+
     final normalizedPeriod = switch (period.trim()) {
       'Weekly' || 'This Week' => 'Week',
       'Monthly' || 'This Month' => 'Month',
@@ -106,20 +110,12 @@ class AttendanceReportService {
 
   static String csvTextDate(DateTime? date) {
     if (date == null) return '';
+
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
+
     return '\t${date.day.toString().padLeft(2, '0')}-'
         '${months[date.month - 1]}-${date.year}';
   }
@@ -169,6 +165,7 @@ class AttendanceReportService {
 
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
+
       if (date == null || date.isAfter(today) || !range.contains(date)) {
         continue;
       }
@@ -188,6 +185,7 @@ class AttendanceReportService {
     for (final leave in timeOffRecords) {
       if (!TimeOffService.isActiveRecord(leave)) continue;
       if (!_belongsLeaveToWorker(leave, worker)) continue;
+
       for (final date in TimeOffService.selectedDatesForRecord(leave)) {
         final key = _dateKey(date);
         leaveIndex[key] ??= leave;
@@ -202,6 +200,7 @@ class AttendanceReportService {
         leaveDate.month,
         leaveDate.day,
       );
+
       final key = _dateKey(normalizedLeaveDate);
       final existing = recordsByDay[key] ?? const <String, dynamic>{};
       final leave = leaveIndex[key];
@@ -213,16 +212,8 @@ class AttendanceReportService {
         'name': worker['name'] ?? existing['name'] ?? 'Worker',
         'email': worker['email'] ?? existing['email'] ?? '',
         'role': worker['position'] ?? worker['role'] ?? existing['role'] ?? '',
-        'workType':
-            worker['type1'] ??
-            worker['workType'] ??
-            existing['workType'] ??
-            'Full Time',
-        'attendanceType':
-            worker['type2'] ??
-            worker['attendanceType'] ??
-            existing['attendanceType'] ??
-            'On-Site',
+        'workType': worker['type1'] ?? worker['workType'] ?? existing['workType'] ?? 'Full Time',
+        'attendanceType': worker['type2'] ?? worker['attendanceType'] ?? existing['attendanceType'] ?? 'On-Site',
         'attendanceDate': normalizedLeaveDate,
         'createdAt': normalizedLeaveDate,
         'status': 'Leave',
@@ -241,6 +232,7 @@ class AttendanceReportService {
       if (bDate == null) return -1;
       return bDate.compareTo(aDate);
     });
+
     return records;
   }
 
@@ -248,18 +240,19 @@ class AttendanceReportService {
     Map<String, dynamic> leave,
     Map<String, dynamic> worker,
   ) {
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
-        .toString()
-        .trim();
+
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
     final leaveWorkerId = (leave['workerId'] ?? '').toString().trim();
     if (workerId.isNotEmpty && leaveWorkerId.isNotEmpty) {
       return workerId == leaveWorkerId;
     }
+
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final leaveEmail = (leave['email'] ?? '').toString().trim().toLowerCase();
     if (workerEmail.isNotEmpty && leaveEmail.isNotEmpty) {
       return workerEmail == leaveEmail;
     }
+
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
     final leaveName = (leave['name'] ?? leave['workerName'] ?? '')
         .toString()

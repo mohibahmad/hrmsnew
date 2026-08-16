@@ -1,10 +1,9 @@
+import '../utils/helpers.dart';
+
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../utils/date_time_utils.dart';
-import '../utils/currency_utils.dart';
-import '../utils/validators.dart';
-import '../utils/worker_identity.dart';
+import '../utils/utils.dart';
 import 'auth_service.dart';
 import 'attendance_service.dart';
 import 'dummy_data.dart';
@@ -17,8 +16,8 @@ class BulkWorkerResult {
   final int imported;
   final int skipped;
   final List<String> skipReasons;
-
   final List<String> skippedClientRowIds;
+
   BulkWorkerResult({
     required this.imported,
     required this.skipped,
@@ -30,6 +29,7 @@ class BulkWorkerResult {
 class AttendanceLeaveSyncResult {
   final String attendanceId;
   final String timeOffId;
+
   const AttendanceLeaveSyncResult({
     required this.attendanceId,
     required this.timeOffId,
@@ -37,11 +37,14 @@ class AttendanceLeaveSyncResult {
 }
 
 class FirestoreService {
+
   static bool isTesting = false;
+
   static FirestoreService? _instance;
   static FirestoreService get instance => _instance!;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
   final Set<String> _leaveNormalizationInFlight = <String>{};
   bool _holidaySchemaMigrationInFlight = false;
 
@@ -256,7 +259,7 @@ class FirestoreService {
   }
 
   Future<({DocumentReference reference, bool alreadyExistsForDate})>
-  _attendanceCreateTarget(
+      _attendanceCreateTarget(
     CollectionReference attendanceCollection,
     String workerId,
     DateTime requestedDate,
@@ -467,6 +470,7 @@ class FirestoreService {
     Validators.validateWorker(worker);
     final coll = _workers;
     if (coll == null) throw StateError('No authenticated user');
+
     final existingSnapshot = await coll.get();
     final existingWorkers = existingSnapshot.docs.map(
       (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
@@ -478,11 +482,13 @@ class FirestoreService {
     if (duplicateField != null) {
       throw DuplicateWorkerException(duplicateField);
     }
+
     final canonicalWorker = {
       ...worker,
       ...TimeOffService.canonicalWorkerLeaveFields(worker),
       'payroll_initialized': worker['payroll_initialized'] ?? true,
     };
+
     for (final key in ['dob', 'joiningDate']) {
       final val = canonicalWorker[key];
       if (val is String && val.trim().isNotEmpty) {
@@ -499,10 +505,12 @@ class FirestoreService {
         );
       }
     }
+
     final docRef = await coll.add({
       ..._withNormalizedCurrency(canonicalWorker, isNewDoc: true),
       'createdAt': FieldValue.serverTimestamp(),
     });
+
     final name = (worker['name'] ?? '').toString();
     if (name.isNotEmpty) {
       try {
@@ -538,7 +546,6 @@ class FirestoreService {
       if (n.isNotEmpty) existingNationalIds.add(n);
     }
 
-    final acceptedWorkers = <Map<String, dynamic>>[];
     final validWorkers = <Map<String, dynamic>>[];
     final skipReasons = <String>[];
     final skippedClientRowIds = <String>[];
@@ -576,7 +583,6 @@ class FirestoreService {
         if (email.isNotEmpty) existingEmails.add(email);
         if (nationalId.isNotEmpty) existingNationalIds.add(nationalId);
 
-        acceptedWorkers.add(worker);
         validWorkers.add(worker);
       } catch (e) {
         skipped++;
@@ -670,6 +676,7 @@ class FirestoreService {
     Validators.validateWorker(data);
     final coll = _workers;
     if (coll == null) return;
+
     final existingSnapshot = await coll.get();
     final existingWorkers = existingSnapshot.docs.map(
       (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
@@ -682,6 +689,7 @@ class FirestoreService {
     if (duplicateField != null) {
       throw DuplicateWorkerException(duplicateField);
     }
+
     final currentWorker = existingWorkers.firstWhere(
       (worker) => worker['id']?.toString() == id,
       orElse: () => <String, dynamic>{},
@@ -701,6 +709,7 @@ class FirestoreService {
             normalizedName.isNotEmpty && sameNameWorkers.length == 1,
       );
     }
+
     final workerUpdate = <String, dynamic>{...currentWorker, ...data};
     final timeOffSnapshot = await _timeoff?.get();
     final timeOffRecords =
@@ -713,6 +722,7 @@ class FirestoreService {
       workerWithId,
       timeOffRecords,
     );
+
     for (final type in const [
       'Annual Leave',
       'Sick Leave',
@@ -731,11 +741,13 @@ class FirestoreService {
         );
       }
     }
+
     final remainingBalances =
         TimeOffService.remainingBalancesFromAssignedRecords(
           workerWithId,
           timeOffRecords,
         );
+
     await coll.doc(id).update({
       ..._withNormalizedCurrency(data),
       ...TimeOffService.canonicalWorkerLeaveFields(
@@ -1016,9 +1028,9 @@ class FirestoreService {
             workerWithPolicy,
             remainingBalances:
                 TimeOffService.remainingBalancesFromAssignedRecords(
-                  workerWithPolicy,
-                  policyTimeOffRecords,
-                ),
+              workerWithPolicy,
+              policyTimeOffRecords,
+            ),
           ),
         );
       } else if (policyType == 'Payroll Policy') {
@@ -1219,9 +1231,6 @@ class FirestoreService {
         pData['salary'] ?? pData['salaryAmount'],
       );
 
-      // Net Pay = Base Salary + Overtime - Absence Deduction - Leave Deduction
-      // When expense >= baseSalary the difference is overtime;
-      // when below, the difference is the deduction.
       final double overtime;
       final double absenceDeduction;
       if (netAmount >= baseSalary) {
@@ -1594,9 +1603,6 @@ class FirestoreService {
     batch.set(attendanceRef, {
       ...attendanceRecord,
       if (timeOffRecord != null) 'timeOffId': savedTimeOffId,
-      // Always normalize the record date. Legacy attendance documents may
-      // have no `attendanceDate` (or a string value), which makes monthly
-      // payroll queries miss them after an edit.
       'attendanceDate': Timestamp.fromDate(
         DateTime(now.year, now.month, now.day),
       ),
@@ -2664,10 +2670,6 @@ class FirestoreService {
         'id': workerId,
         'workerId': workerId,
       };
-      // The screen also checks overlaps, but its worker-specific stream can
-      // still be loading when Save is clicked. Always repeat the check here
-      // against the complete Time Off collection so an Attendance-created
-      // leave and a manually assigned Time Off cannot consume the same date.
       if (TimeOffService.hasOverlappingApprovedLeave(
         workerWithId,
         currentTimeOffRecords,

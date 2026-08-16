@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'utils/helpers.dart';
+import 'utils/ui_helpers.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -19,8 +21,6 @@ import 'services/biometric_service.dart';
 import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/preferences_service.dart';
-import 'utils/localization_helper.dart';
-import 'utils/ui_utils.dart';
 import 'widgets/session_timeout_gate.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();

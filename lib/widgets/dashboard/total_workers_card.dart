@@ -29,7 +29,7 @@ class TotalWorkersCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: Color(0xFFFFFFFF),
+      color: const Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -193,7 +193,7 @@ class TotalWorkersCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'no_workers_added_yet'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF9CA3AF),
                         fontFamily: 'SF Pro Display',

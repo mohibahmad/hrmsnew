@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -7,9 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import '../utils/file_utils.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../utils/helpers.dart';
 
 const int _maxPdfImageDimension = 400;
 
@@ -32,7 +31,6 @@ class WorkerProfileService {
     required String joiningDate,
     required String salary,
     required String education,
-    required String salaryType,
     required String religion,
     required String dateOfBirth,
     required String relationshipStatus,
@@ -79,7 +77,6 @@ class WorkerProfileService {
         joiningDate: joiningDate,
         salary: salary,
         education: education,
-        salaryType: salaryType,
         religion: religion,
         dateOfBirth: dateOfBirth,
         relationshipStatus: relationshipStatus,
@@ -146,7 +143,6 @@ class WorkerProfileService {
       'religion_title': _localized('religion_title', 'Religion'),
       'education_title': _localized('education_title', 'Education'),
       'relationship_status': _localized('relationship_status', 'Relationship'),
-      'salary_type': _localized('salary_type', 'Salary Type'),
       'address': _localized('address', 'Address'),
       'salary': _localized('salary', 'Salary'),
       'field': _localized('field', 'Field'),
@@ -182,12 +178,11 @@ class WorkerProfileService {
     if (bytes == null ||
         bytes.isEmpty ||
         bytes.lengthInBytes > _maxProfileImageBytes) {
-      _imageCache[value] = null;
       return null;
     }
-    final result = _isSupportedImageBytes(bytes) ? bytes : null;
-    _imageCache[value] = result;
-    return result;
+    if (!_isSupportedImageBytes(bytes)) return null;
+    _imageCache[value] = bytes;
+    return bytes;
   }
 
   static Uint8List? _decodeDataImage(String value) {
@@ -489,7 +484,6 @@ class _PdfArgs {
   final String joiningDate;
   final String salary;
   final String education;
-  final String salaryType;
   final String religion;
   final String dateOfBirth;
   final String relationshipStatus;
@@ -516,7 +510,6 @@ class _PdfArgs {
     required this.joiningDate,
     required this.salary,
     required this.education,
-    required this.salaryType,
     required this.religion,
     required this.dateOfBirth,
     required this.relationshipStatus,
@@ -548,7 +541,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
   );
 
   final navy = PdfColor.fromHex('#162036');
-  final black = PdfColors.black;
+  const black = PdfColors.black;
   final lightGrey = PdfColor.fromHex('#F3F4F6');
   final border = PdfColor.fromHex('#D1D5DB');
 

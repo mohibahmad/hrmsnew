@@ -1,23 +1,22 @@
 import 'dart:async';
-import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
-import 'package:flutter/services.dart';
-import 'package:easy_localization/easy_localization.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/ui_utils.dart';
-import '../utils/dialog_utils.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../providers.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import '../utils/rate_us_helper.dart';
+import '../utils/utils.dart';
+import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/notification_bell.dart';
-import '../utils/guest_restriction.dart';
-import '../utils/localization_helper.dart';
-import '../utils/date_time_utils.dart';
 
 class HolidaysScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -44,27 +43,121 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     DateTime.thursday,
     DateTime.friday,
   };
+
   bool _isLoading = false;
   StreamSubscription? _holidaysSub;
-  late AuthService _authService;
-  late FirestoreService _firestore;
+
+  late final AuthService _authService;
+  late final FirestoreService _firestore;
+
   bool _initialized = false;
   final Set<String> _updatingHolidayIds = <String>{};
 
-  static const List<String> _calendarMonths = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
+  static final List<String> _calendarMonths =
+      LocalizationHelper.englishMonthNames.sublist(1);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
+
+    if (_isGuest) {
+      _loadGuestData();
+    } else {
+      _loadFirestoreData();
+    }
+  }
+
+  @override
+  void dispose() {
+    _holidaysSub?.cancel();
+    super.dispose();
+  }
+
+  void _loadGuestData() {
+    _holidaysByMonth = _guestHolidayGroups();
+    PreferencesService.getCompanyWorkingDays().then((days) {
+      if (mounted) setState(() => _companyWorkingDays = days);
+    });
+  }
+
+  void _loadFirestoreData() {
+    _isLoading = true;
+    _holidaysSub = _firestore.holidaysStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        final tempMap = <String, List<HolidayItem>>{};
+        var workingDays = _companyWorkingDays;
+
+        final sortedDocs = snapshot.docs.toList()
+          ..sort((a, b) {
+            final aTime = (a.data() as Map<String, dynamic>)['createdAt'];
+            final bTime = (b.data() as Map<String, dynamic>)['createdAt'];
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return -1;
+            if (bTime == null) return 1;
+            if (aTime is Timestamp && bTime is Timestamp) return bTime.compareTo(aTime);
+            return 0;
+          });
+
+        for (final doc in sortedDocs) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          if (data['type'] == 'company_work_days') {
+            final rawDays = data['workingDays'];
+            if (rawDays is Iterable) {
+              final savedDays = <int>{};
+              for (final value in rawDays) {
+                final day = _intValue(value);
+                if (day != null && day >= DateTime.monday && day <= DateTime.sunday) {
+                  savedDays.add(day);
+                }
+              }
+              if (savedDays.isNotEmpty) workingDays = savedDays;
+            }
+            continue;
+          }
+
+          final storedDate = AppDateUtils.holidayRecordDate(data);
+          final month = storedDate != null
+              ? _calendarMonths[storedDate.month - 1]
+              : _canonicalMonth(data['month']);
+          final day = storedDate?.day ?? _intValue(data['day']);
+          final name = (data['name'] ?? '').toString().trim();
+          final year = storedDate?.year ?? _intValue(data['year']);
+
+          if (month == null || day == null || name.isEmpty) continue;
+
+          final monthNumber = _calendarMonths.indexOf(month) + 1;
+          final maxDay = DateTime(year ?? 2024, monthNumber + 1, 0).day;
+          if (day < 1 || day > maxDay) continue;
+
+          tempMap.putIfAbsent(month, () => []).add(HolidayItem(
+            day, name, data['isEnabled'] != false,
+            id: doc.id,
+            month: month,
+            year: year,
+            isRecurring: data['isRecurring'] == true,
+          ));
+        }
+
+        setState(() {
+          _holidaysByMonth = tempMap;
+          _companyWorkingDays = workingDays;
+          _isLoading = false;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
+  }
 
   int? _intValue(dynamic value) {
     if (value is int) return value;
@@ -75,18 +168,16 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   String? _canonicalMonth(dynamic value) {
     final raw = (value ?? '').toString().trim().replaceAll('.', '');
     if (raw.isEmpty) return null;
+
     final monthNumber = int.tryParse(raw);
     if (monthNumber != null && monthNumber >= 1 && monthNumber <= 12) {
       return _calendarMonths[monthNumber - 1];
     }
+
     final normalized = raw.toLowerCase();
-    for (var index = 0; index < _calendarMonths.length; index++) {
-      final month = _calendarMonths[index];
-      final lowerMonth = month.toLowerCase();
-      if (lowerMonth == normalized ||
-          lowerMonth.substring(0, 3) == normalized) {
-        return month;
-      }
+    for (final month in _calendarMonths) {
+      final lower = month.toLowerCase();
+      if (lower == normalized || lower.substring(0, 3) == normalized) return month;
     }
     return null;
   }
@@ -99,39 +190,30 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
   Map<String, List<HolidayItem>> _guestHolidayGroups() {
     final result = <String, List<HolidayItem>>{};
+
     for (final entry in DummyData.holidays.entries) {
       for (final holiday in entry.value) {
         final storedDate = _storedHolidayDate(holiday['date']);
-        final month =
-            _canonicalMonth(holiday['month']) ??
-            (storedDate == null
-                ? _canonicalMonth(entry.key)
-                : _calendarMonths[storedDate.month - 1]);
+        final month = _canonicalMonth(holiday['month']) ??
+            (storedDate == null ? _canonicalMonth(entry.key) : _calendarMonths[storedDate.month - 1]);
         final day = _intValue(holiday['day']) ?? storedDate?.day;
         final name = (holiday['name'] ?? '').toString().trim();
         final entryYear = int.tryParse(entry.key);
-        final year =
-            _intValue(holiday['year']) ?? storedDate?.year ?? entryYear;
+        final year = _intValue(holiday['year']) ?? storedDate?.year ?? entryYear;
+
         if (month == null || day == null || name.isEmpty) continue;
 
         final monthNumber = _calendarMonths.indexOf(month) + 1;
-        final validationYear = year ?? DateTime.now().year;
-        if (day < 1 || day > DateTime(validationYear, monthNumber + 1, 0).day) {
-          continue;
-        }
-        result
-            .putIfAbsent(month, () => <HolidayItem>[])
-            .add(
-              HolidayItem(
-                day,
-                name,
-                holiday['isEnabled'] != false,
-                month: month,
-                year: year,
-                isRecurring: holiday['isRecurring'] == true,
-                storageKey: entry.key,
-              ),
-            );
+        final maxDay = DateTime(year ?? DateTime.now().year, monthNumber + 1, 0).day;
+        if (day < 1 || day > maxDay) continue;
+
+        result.putIfAbsent(month, () => []).add(HolidayItem(
+          day, name, holiday['isEnabled'] != false,
+          month: month,
+          year: year,
+          isRecurring: holiday['isRecurring'] == true,
+          storageKey: entry.key,
+        ));
       }
     }
     return result;
@@ -140,8 +222,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   bool _matchesGuestHoliday(Map<String, dynamic> holiday, HolidayItem item) {
     final storedDate = _storedHolidayDate(holiday['date']);
     final day = _intValue(holiday['day']) ?? storedDate?.day;
-    return day == item.day &&
-        (holiday['name'] ?? '').toString().trim() == item.name;
+    return day == item.day && (holiday['name'] ?? '').toString().trim() == item.name;
   }
 
   bool _isDuplicateHoliday({
@@ -154,328 +235,110 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     HolidayItem? excludingItem,
   }) {
     final normalizedName = name.trim().toLowerCase();
-    final holidays = _holidaysByMonth[month] ?? const <HolidayItem>[];
-    for (final holiday in holidays) {
+    for (final holiday in _holidaysByMonth[month] ?? <HolidayItem>[]) {
       if (excludingId != null && holiday.id == excludingId) continue;
       if (excludingItem != null && identical(holiday, excludingItem)) continue;
       if (holiday.day != day) continue;
       if (holiday.name.trim().toLowerCase() != normalizedName) continue;
+
       final existingRecurring = holiday.isRecurring || holiday.year == null;
       if (isRecurring || existingRecurring || holiday.year == year) return true;
     }
     return false;
   }
 
-  @override
-  void dispose() {
-    _holidaysSub?.cancel();
-    super.dispose();
-  }
+  String _weekdayLabel(int day) => (LocalizationHelper.weekdayKeys[day] ?? '').tr();
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_initialized) return;
-    _initialized = true;
-
-    _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      _holidaysByMonth = _guestHolidayGroups();
-      PreferencesService.getCompanyWorkingDays().then((days) {
-        if (mounted) setState(() => _companyWorkingDays = days);
-      });
-    } else {
-      _isLoading = true;
-      _holidaysSub = _firestore.holidaysStream.listen(
-        (snapshot) {
-          if (mounted) {
-            final tempMap = <String, List<HolidayItem>>{};
-            final sortedDocs = snapshot.docs.toList();
-            sortedDocs.sort((a, b) {
-              final aData = a.data() as Map<String, dynamic>;
-              final bData = b.data() as Map<String, dynamic>;
-              final aTime = aData['createdAt'];
-              final bTime = bData['createdAt'];
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return -1;
-              if (bTime == null) return 1;
-              if (aTime is Timestamp && bTime is Timestamp) {
-                return bTime.compareTo(aTime);
-              }
-              return 0;
-            });
-            var workingDays = _companyWorkingDays;
-            for (final doc in sortedDocs) {
-              final data = doc.data() as Map<String, dynamic>;
-              if (data['type'] == 'company_work_days') {
-                final savedDays = <int>{};
-                final rawDays = data['workingDays'];
-                if (rawDays is Iterable) {
-                  for (final value in rawDays) {
-                    final day = _intValue(value);
-                    if (day != null &&
-                        day >= DateTime.monday &&
-                        day <= DateTime.sunday) {
-                      savedDays.add(day);
-                    }
-                  }
-                }
-                if (savedDays.isNotEmpty) workingDays = savedDays;
-                continue;
-              }
-              final storedDate = AppDateUtils.holidayRecordDate(data);
-              final month = storedDate != null
-                  ? _calendarMonths[storedDate.month - 1]
-                  : _canonicalMonth(data['month']);
-              final day = storedDate?.day ?? _intValue(data['day']);
-              final name = (data['name'] ?? '').toString().trim();
-              final year = storedDate?.year ?? _intValue(data['year']);
-              final isRecurring = data['isRecurring'] == true;
-              final isEnabled = data['isEnabled'] != false;
-              final id = doc.id;
-
-              if (month == null || day == null || name.isEmpty) continue;
-              final monthNumber = _calendarMonths.indexOf(month) + 1;
-              final validationYear = year ?? 2024;
-              final maxDay = DateTime(validationYear, monthNumber + 1, 0).day;
-              if (day < 1 || day > maxDay) continue;
-
-              tempMap.putIfAbsent(month, () => <HolidayItem>[]);
-              tempMap[month]!.add(
-                HolidayItem(
-                  day,
-                  name,
-                  isEnabled,
-                  id: id,
-                  month: month,
-                  year: year,
-                  isRecurring: isRecurring,
-                ),
-              );
-            }
-            setState(() {
-              _holidaysByMonth = tempMap;
-              _companyWorkingDays = workingDays;
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-      );
-    }
-  }
-
-  static const Map<int, String> _weekdayKeys = {
-    DateTime.monday: 'weekday_monday',
-    DateTime.tuesday: 'weekday_tuesday',
-    DateTime.wednesday: 'weekday_wednesday',
-    DateTime.thursday: 'weekday_thursday',
-    DateTime.friday: 'weekday_friday',
-    DateTime.saturday: 'weekday_saturday',
-    DateTime.sunday: 'weekday_sunday',
-  };
-
-  String _weekdayLabel(int day) => (_weekdayKeys[day] ?? '').tr();
-
-  Widget _buildWorkDaysSectionTitle({
-    required IconData icon,
-    required String title,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 19),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-      ],
-    );
+  String _localizeMonth(String month) {
+    final canonical = _canonicalMonth(month) ?? month;
+    final index = LocalizationHelper.englishMonthNames.indexOf(canonical);
+    return index > 0 ? LocalizationHelper.localizedMonth(index) : canonical;
   }
 
   Future<void> _showCompanyWorkDaysModal() async {
     final selectedDays = Set<int>.from(_companyWorkingDays);
     var isSaving = false;
+
     await showDialog<void>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final offDays = _weekdayKeys.keys
-              .where((day) => !selectedDays.contains(day))
-              .toList();
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (_, setModalState) {
+          final offDays = LocalizationHelper.weekdayKeys.keys.where((d) => !selectedDays.contains(d)).toList();
+
           return AlertDialog(
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            title: Text(
-              'company_work_days'.tr(),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            title: Text('company_work_days'.tr(),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
             content: SizedBox(
               width: 520,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'company_work_days_help'.tr(),
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 14,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
+                  Text('company_work_days_help'.tr(),
+                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14, fontFamily: 'SF Pro Display')),
                   const SizedBox(height: 20),
-                  _buildWorkDaysSectionTitle(
-                    icon: Icons.business_center_rounded,
-                    title: 'working_days'.tr(),
-                    color: const Color(0xFF0247C4),
-                  ),
+                  _buildWorkDaysSectionTitle(icon: Icons.business_center_rounded, title: 'working_days'.tr(), color: const Color(0xFF0247C4)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _weekdayKeys.keys.map((day) {
+                    children: LocalizationHelper.weekdayKeys.keys.map((day) {
                       final selected = selectedDays.contains(day);
                       return FilterChip(
                         selected: selected,
                         showCheckmark: true,
                         selectedColor: const Color(0xFFDCE8FF),
                         checkmarkColor: const Color(0xFF0247C4),
-                        side: BorderSide(
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : const Color(0xFFCBD5E1),
-                        ),
+                        side: BorderSide(color: selected ? const Color(0xFF0247C4) : const Color(0xFFCBD5E1)),
                         label: Text(_weekdayLabel(day)),
-                        onSelected: (value) {
-                          setModalState(() {
-                            if (value) {
-                              selectedDays.add(day);
-                            } else {
-                              selectedDays.remove(day);
-                            }
-                          });
-                        },
+                        onSelected: (value) => setModalState(() => value ? selectedDays.add(day) : selectedDays.remove(day)),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  _buildWorkDaysSectionTitle(
-                    icon: Icons.weekend_rounded,
-                    title: 'company_off_days'.tr(),
-                    color: const Color(0xFFD81B1F),
-                  ),
+                  _buildWorkDaysSectionTitle(icon: Icons.weekend_rounded, title: 'company_off_days'.tr(), color: const Color(0xFFD81B1F)),
                   const SizedBox(height: 8),
                   Text(
-                    offDays.isEmpty
-                        ? 'none'.tr()
-                        : offDays.map(_weekdayLabel).join(', '),
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                    offDays.isEmpty ? 'none'.tr() : offDays.map(_weekdayLabel).join(', '),
+                    style: const TextStyle(color: Color(0xFF64748B), fontFamily: 'SF Pro Display'),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: isSaving
-                    ? null
-                    : () => Navigator.of(dialogContext).pop(),
-                child: Text('cancel'.tr()),
-              ),
+              TextButton(onPressed: isSaving ? null : () => Navigator.of(dialogCtx).pop(), child: Text('cancel'.tr())),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  foregroundColor: Colors.white,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0247C4), foregroundColor: Colors.white),
                 onPressed: isSaving
                     ? null
                     : () async {
                         setModalState(() => isSaving = true);
                         if (selectedDays.isEmpty) {
                           setModalState(() => isSaving = false);
-                          FlashySnackBar.show(
-                            context,
-                            message: 'select_at_least_one_work_day'.tr(),
-                            isError: true,
-                          );
+                          FlashySnackBar.show(context, message: 'select_at_least_one_work_day'.tr(), isError: true);
                           return;
                         }
                         try {
-                          final isGuest =
-                              _authService.currentUser?.isAnonymous ?? false;
-                          if (isGuest) {
-                            await PreferencesService.setCompanyWorkingDays(
-                              selectedDays,
-                            );
+                          if (_isGuest) {
+                            await PreferencesService.setCompanyWorkingDays(selectedDays);
                           } else {
-                            await _firestore.setCompanyWorkingDays(
-                              selectedDays,
-                            );
+                            await _firestore.setCompanyWorkingDays(selectedDays);
                           }
-                          if (!mounted || !dialogContext.mounted) return;
-                          setState(() {
-                            _companyWorkingDays = Set<int>.from(selectedDays);
-                          });
-                          Navigator.of(dialogContext).pop();
-                          FlashySnackBar.show(
-                            this.context,
-                            message: 'company_work_days_saved'.tr(),
-                          );
+                          if (!mounted || !dialogCtx.mounted) return;
+                          setState(() => _companyWorkingDays = Set<int>.from(selectedDays));
+                          Navigator.of(dialogCtx).pop();
+                          FlashySnackBar.show(context, message: 'company_work_days_saved'.tr());
                         } catch (_) {
                           if (!context.mounted) return;
                           setModalState(() => isSaving = false);
-                          FlashySnackBar.show(
-                            context,
-                            message: 'failed_to_save_record'.tr(),
-                            isError: true,
-                          );
+                          FlashySnackBar.show(context, message: 'failed_to_save_record'.tr(), isError: true);
                         }
                       },
                 child: isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : Text('save'.tr()),
               ),
             ],
@@ -485,323 +348,355 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     );
   }
 
+  Widget _buildHolidayDialog({
+    required BuildContext parentContext,
+    required String dialogTitle,
+    required TextEditingController nameController,
+    required int selectedDay,
+    required DateTime calendarDate,
+    required bool isSaving,
+    required ValueChanged<int> onDaySelected,
+    required ValueChanged<DateTime> onMonthChanged,
+    required VoidCallback onSave,
+    required VoidCallback onClose,
+  }) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      backgroundColor: const Color(0xFFFFFFFF),
+      elevation: 10,
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                  onPressed: isSaving ? null : onClose,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                Text(dialogTitle,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0247C4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: const Size(0, 32),
+                  ),
+                  onPressed: isSaving ? null : onSave,
+                  child: isSaving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('save'.tr(),
+                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text('holiday_name'.tr(),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+            const SizedBox(height: 6),
+            Container(
+              height: 38,
+              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.centerLeft,
+              child: TextField(
+                controller: nameController,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                decoration: InputDecoration.collapsed(
+                  hintText: 'enter_holiday_name'.tr(),
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+                ),
+                style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildModalCalendar(calendarDate, selectedDay, onDaySelected, onMonthChanged),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddHolidayModal(BuildContext parentContext) {
-    final holidayNameController = TextEditingController();
-    int? selectedDay = DateTime.now().day;
+    final nameController = TextEditingController();
+    int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
     var isSaving = false;
+
     showDialog(
       context: parentContext,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
+      builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
-            String selectedMonthName = months[calendarDate.month - 1];
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              backgroundColor: Color(0xFFFFFFFF),
-              elevation: 10,
-              child: Container(
-                width: 400,
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        Text(
-                          'add_holiday'.tr(),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () async {
-                                  setModalState(() => isSaving = true);
-                                  if (selectedDay == null &&
-                                      holidayNameController.text
-                                          .trim()
-                                          .isEmpty) {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_fill_all_fields'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  if (selectedDay == null) {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'select_date'.tr(),
-                                      isError: true,
-                                    );
-                                    return;
-                                  }
-                                  final holidayName = holidayNameController.text
-                                      .trim();
-                                  if (holidayName.isNotEmpty) {
-                                    final dateObj = DateTime(
-                                      calendarDate.year,
-                                      calendarDate.month,
-                                      selectedDay!,
-                                    );
-                                    final isGuest =
-                                        _authService.currentUser?.isAnonymous ??
-                                        false;
-                                    final existingInMonth =
-                                        _holidaysByMonth[selectedMonthName] ??
-                                        [];
-                                    final alreadyExists = isGuest
-                                        ? existingInMonth.any(
-                                            (h) =>
-                                                h.day == selectedDay &&
-                                                h.name ==
-                                                    holidayNameController.text
-                                                        .trim(),
-                                          )
-                                        : _isDuplicateHoliday(
-                                            name: holidayName,
-                                            month: selectedMonthName,
-                                            day: selectedDay!,
-                                            year: calendarDate.year,
-                                            isRecurring: false,
-                                          );
-                                    if (alreadyExists) {
-                                      setModalState(() => isSaving = false);
-                                      if (!context.mounted) return;
-                                      FlashySnackBar.show(
-                                        context,
-                                        message: 'holiday_already_exists'.tr(),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
+          builder: (ctx, setModalState) {
+            final selectedMonthName = _calendarMonths[calendarDate.month - 1];
 
-                                    final holidayMap = {
-                                      'date': dateObj,
-                                      'name': holidayName,
-                                      'isEnabled': true,
-                                      'isCustom': true,
-                                      'year': calendarDate.year,
-                                      'isRecurring': false,
-                                    };
-                                    try {
-                                      if (isGuest) {
-                                        setState(() {
-                                          if (!_holidaysByMonth.containsKey(
-                                            selectedMonthName,
-                                          )) {
-                                            _holidaysByMonth[selectedMonthName] =
-                                                [];
-                                          }
-                                          final newItem = HolidayItem(
-                                            selectedDay!,
-                                            holidayName,
-                                            true,
-                                            month: selectedMonthName,
-                                            year: calendarDate.year,
-                                          );
-                                          _holidaysByMonth[selectedMonthName]!
-                                              .insert(0, newItem);
-                                          if (!DummyData.holidays.containsKey(
-                                            selectedMonthName,
-                                          )) {
-                                            DummyData
-                                                    .holidays[selectedMonthName] =
-                                                [];
-                                          }
-                                          DummyData.holidays[selectedMonthName]!
-                                              .insert(0, {
-                                                'date':
-                                                    '${selectedDay.toString().padLeft(2, '0')}/'
-                                                    '${calendarDate.month.toString().padLeft(2, '0')}/'
-                                                    '${calendarDate.year}',
-                                                'name': holidayName,
-                                                'isEnabled': true,
-                                                'isRecurring': false,
-                                              });
-                                          DummyData.saveToPrefs();
-                                        });
-                                      } else {
-                                        await _firestore.addHoliday(holidayMap);
-                                      }
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      setModalState(() => isSaving = false);
-                                      FlashySnackBar.show(
-                                        context,
-                                        message: 'failed_to_add_holiday'.tr(
-                                          namedArgs: {'error': e.toString()},
-                                        ),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    if (!context.mounted) return;
-                                    Navigator.of(context).pop();
-                                    if (parentContext.mounted) {
-                                      FlashySnackBar.show(
-                                        parentContext,
-                                        message: 'successfully_added_holiday'
-                                            .tr(
-                                              namedArgs: {'name': holidayName},
-                                            ),
-                                      );
-                                      tryShowFirstMilestoneRateUs('holiday');
-                                    }
-                                  } else {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_holiday_name'.tr(),
-                                      isError: true,
-                                    );
-                                  }
-                                },
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'save'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
+            Future<void> onSave() async {
+              setModalState(() => isSaving = true);
 
-                    Text(
-                      'holiday_name'.tr(),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 38,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      alignment: Alignment.centerLeft,
-                      child: TextField(
-                        controller: holidayNameController,
-                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                        decoration: InputDecoration.collapsed(
-                          hintText: 'enter_holiday_name'.tr(),
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+              final holidayName = nameController.text.trim();
 
-                    _buildModalCalendar(
-                      calendarDate,
-                      selectedDay,
-                      (day) {
-                        setModalState(() {
-                          selectedDay = day;
-                        });
-                      },
-                      (newDate) {
-                        setModalState(() {
-                          calendarDate = newDate;
-                          int daysInNewMonth = DateTime(
-                            newDate.year,
-                            newDate.month + 1,
-                            0,
-                          ).day;
-                          if (selectedDay! > daysInNewMonth) {
-                            selectedDay = daysInNewMonth;
-                          }
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              if (selectedDay == 0 && holidayName.isEmpty) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'please_fill_all_fields'.tr(), isError: true);
+                return;
+              }
+
+              if (holidayName.isEmpty) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'please_enter_holiday_name'.tr(), isError: true);
+                return;
+              }
+
+              final alreadyExists = _isGuest
+                  ? (_holidaysByMonth[selectedMonthName] ?? []).any((h) => h.day == selectedDay && h.name == holidayName)
+                  : _isDuplicateHoliday(name: holidayName, month: selectedMonthName, day: selectedDay, year: calendarDate.year, isRecurring: false);
+
+              if (alreadyExists) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'holiday_already_exists'.tr(), isError: true);
+                return;
+              }
+
+              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+              final holidayMap = {
+                'date': dateObj,
+                'name': holidayName,
+                'isEnabled': true,
+                'isCustom': true,
+                'year': calendarDate.year,
+                'isRecurring': false,
+              };
+
+              try {
+                if (_isGuest) {
+                  setState(() {
+                    _holidaysByMonth.putIfAbsent(selectedMonthName, () => []).insert(0, HolidayItem(
+                      selectedDay, holidayName, true,
+                      month: selectedMonthName, year: calendarDate.year,
+                    ));
+                    DummyData.holidays.putIfAbsent(selectedMonthName, () => []).insert(0, {
+                      'date': '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}',
+                      'name': holidayName,
+                      'isEnabled': true,
+                      'isRecurring': false,
+                    });
+                    DummyData.saveToPrefs();
+                  });
+                } else {
+                  await _firestore.addHoliday(holidayMap);
+                }
+              } catch (e) {
+                if (!ctx.mounted) return;
+                setModalState(() => isSaving = false);
+                FlashySnackBar.show(ctx, message: 'failed_to_add_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                return;
+              }
+
+              if (!ctx.mounted) return;
+              Navigator.of(ctx).pop();
+              if (parentContext.mounted) {
+                FlashySnackBar.show(parentContext, message: 'successfully_added_holiday'.tr(namedArgs: {'name': holidayName}));
+                tryShowFirstMilestoneRateUs('holiday');
+              }
+            }
+
+            return _buildHolidayDialog(
+              parentContext: parentContext,
+              dialogTitle: 'add_holiday'.tr(),
+              nameController: nameController,
+              selectedDay: selectedDay,
+              calendarDate: calendarDate,
+              isSaving: isSaving,
+              onDaySelected: (day) => setModalState(() => selectedDay = day),
+              onMonthChanged: (newDate) {
+                setModalState(() {
+                  calendarDate = newDate;
+                  final maxDay = DateTime(newDate.year, newDate.month + 1, 0).day;
+                  if (selectedDay > maxDay) selectedDay = maxDay;
+                });
+              },
+              onSave: onSave,
+              onClose: () => Navigator.of(ctx).pop(),
             );
           },
         );
       },
-    ).whenComplete(holidayNameController.dispose);
+    ).whenComplete(nameController.dispose);
+  }
+
+  void _editHoliday(HolidayItem item) {
+    final nameController = TextEditingController(text: item.name);
+    int monthIndex = _calendarMonths.indexOf(item.month);
+    if (monthIndex < 0) monthIndex = DateTime.now().month - 1;
+
+    final selectedYear = item.year ?? DateTime.now().year;
+    final maxDay = DateTime(selectedYear, monthIndex + 2, 0).day;
+    int selectedDay = item.day.clamp(1, maxDay);
+    DateTime calendarDate = DateTime(selectedYear, monthIndex + 1, selectedDay);
+    var isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final selectedMonthName = _calendarMonths[calendarDate.month - 1];
+
+            Future<void> onSave() async {
+              setModalState(() => isSaving = true);
+
+              final holidayName = nameController.text.trim();
+              if (holidayName.isEmpty) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'please_enter_holiday_name'.tr(), isError: true);
+                return;
+              }
+
+              if (!_isGuest && _isDuplicateHoliday(
+                name: holidayName, month: selectedMonthName,
+                day: selectedDay, year: calendarDate.year,
+                isRecurring: item.isRecurring, excludingId: item.id, excludingItem: item,
+              )) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'holiday_already_exists'.tr(), isError: true);
+                return;
+              }
+
+              final holidayId = item.id?.trim() ?? '';
+              if (!_isGuest && holidayId.isEmpty) {
+                setModalState(() => isSaving = false);
+                if (!ctx.mounted) return;
+                FlashySnackBar.show(ctx, message: 'unexpected_error'.tr(), isError: true);
+                return;
+              }
+
+              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+
+              try {
+                if (_isGuest) {
+                  setState(() {
+                    final storageKey = item.storageKey ?? item.month;
+                    final oldList = DummyData.holidays[storageKey];
+                    Map<String, dynamic>? updatedHoliday;
+
+                    if (oldList != null) {
+                      final idx = oldList.indexWhere((h) => _matchesGuestHoliday(h, item));
+                      if (idx != -1) {
+                        updatedHoliday = Map<String, dynamic>.from(oldList[idx]);
+                        oldList.removeAt(idx);
+                        if (oldList.isEmpty) DummyData.holidays.remove(storageKey);
+                      }
+                    }
+
+                    updatedHoliday ??= {'isEnabled': item.isEnabled};
+                    updatedHoliday['name'] = holidayName;
+                    updatedHoliday['isRecurring'] = item.isRecurring;
+                    updatedHoliday['date'] =
+                        '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
+
+                    DummyData.holidays.putIfAbsent(selectedMonthName, () => []).insert(0, updatedHoliday);
+                    DummyData.saveToPrefs();
+                    _holidaysByMonth = _guestHolidayGroups();
+                  });
+                } else {
+                  await _firestore.updateHoliday(holidayId, {
+                    'name': holidayName,
+                    'date': dateObj,
+                    'isRecurring': item.isRecurring,
+                  });
+                }
+              } catch (e) {
+                if (!ctx.mounted) return;
+                setModalState(() => isSaving = false);
+                FlashySnackBar.show(ctx, message: 'failed_to_update_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                return;
+              }
+
+              if (!ctx.mounted) return;
+              Navigator.of(ctx).pop();
+              if (mounted) FlashySnackBar.show(context, message: 'holiday_updated'.tr());
+            }
+
+            return _buildHolidayDialog(
+              parentContext: context,
+              dialogTitle: 'edit_holiday'.tr(),
+              nameController: nameController,
+              selectedDay: selectedDay,
+              calendarDate: calendarDate,
+              isSaving: isSaving,
+              onDaySelected: (day) => setModalState(() => selectedDay = day),
+              onMonthChanged: (newDate) {
+                setModalState(() {
+                  calendarDate = newDate;
+                  final maxDay = DateTime(newDate.year, newDate.month + 1, 0).day;
+                  if (selectedDay > maxDay) selectedDay = maxDay;
+                });
+              },
+              onSave: onSave,
+              onClose: () => Navigator.of(ctx).pop(),
+            );
+          },
+        );
+      },
+    ).whenComplete(nameController.dispose);
+  }
+
+  Future<void> _deleteHoliday(HolidayItem item) async {
+    final confirmed = await DeleteDialog.show(
+      context: context,
+      title: 'delete_holiday'.tr(),
+      content: 'delete_holiday_desc'.tr(),
+    );
+    if (!confirmed) return;
+
+    if (_isGuest) {
+      setState(() {
+        final monthList = _holidaysByMonth[item.month];
+        if (monthList != null) {
+          monthList.removeWhere((h) => h.day == item.day && h.name == item.name);
+          if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
+        }
+      });
+
+      final storageKey = item.storageKey ?? item.month;
+      final dummyList = DummyData.holidays[storageKey];
+      if (dummyList != null) {
+        dummyList.removeWhere((h) => _matchesGuestHoliday(h, item));
+        if (dummyList.isEmpty) DummyData.holidays.remove(storageKey);
+      }
+
+      await DummyData.saveToPrefs();
+      if (mounted) FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      return;
+    }
+
+    final holidayId = item.id?.trim() ?? '';
+    if (holidayId.isEmpty) {
+      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+      return;
+    }
+
+    try {
+      await _firestore.deleteHoliday(holidayId);
+      if (mounted) FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+    } catch (_) {
+      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+    }
   }
 
   Widget _buildModalCalendar(
@@ -810,8 +705,10 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    String monthYearStr =
+    final monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
+    final now = DateTime.now();
+    final isAtStart = calendarDate.year == now.year && calendarDate.month == now.month;
 
     return Column(
       children: [
@@ -819,43 +716,16 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap:
-                  (calendarDate.year == DateTime.now().year &&
-                      calendarDate.month == DateTime.now().month)
-                  ? null
-                  : () {
-                      onMonthChanged(
-                        DateTime(calendarDate.year, calendarDate.month - 1, 1),
-                      );
-                    },
+              onTap: isAtStart ? null : () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1)),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(
-                  Icons.chevron_left,
-                  size: 20,
-                  color:
-                      (calendarDate.year == DateTime.now().year &&
-                          calendarDate.month == DateTime.now().month)
-                      ? Colors.grey.shade300
-                      : Colors.black,
-                ),
+                child: Icon(Icons.chevron_left, size: 20, color: isAtStart ? Colors.grey.shade300 : Colors.black),
               ),
             ),
-            Text(
-              monthYearStr,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            Text(monthYearStr,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black, fontFamily: 'SF Pro Display')),
             GestureDetector(
-              onTap: () {
-                onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
-                );
-              },
+              onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
@@ -865,21 +735,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
         ),
         const SizedBox(height: 10),
         Row(
-          children: [
-            _buildWeekday('weekday_sun'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_fri'.tr(), const Color(0xFF0247C4)),
-            const SizedBox(width: 8),
-            _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
-          ],
+          children: ['weekday_sun', 'weekday_mon', 'weekday_tue', 'weekday_wed', 'weekday_thu', 'weekday_fri', 'weekday_sat']
+              .map((key) => _buildWeekday(key.tr(), const Color(0xFF0247C4)))
+              .expand((w) => [w, const SizedBox(width: 8)])
+              .toList()
+            ..removeLast(),
         ),
         const SizedBox(height: 12),
         _buildDaysGrid(calendarDate, selectedDay, onDaySelected),
@@ -888,81 +748,44 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   }
 
   Widget _buildWeekday(String day, Color color) {
-    String shortDay = day;
-    if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
-
+    final shortDay = day.length > 3 ? day.substring(0, 3) : day;
     return Expanded(
       child: Container(
         height: 18,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          shortDay.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFFFFFFFF),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+        child: Text(shortDay.toUpperCase(),
+            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, fontFamily: 'SF Pro Display')),
       ),
     );
   }
 
-  Widget _buildDaysGrid(
-    DateTime calendarDate,
-    int? selectedDay,
-    ValueChanged<int> onDaySelected,
-  ) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    List<Widget> rows = [];
-    int daysInMonth = DateTime(
-      calendarDate.year,
-      calendarDate.month + 1,
-      0,
-    ).day;
-    int firstWeekday = DateTime(
-      calendarDate.year,
-      calendarDate.month,
-      1,
-    ).weekday;
-    int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+  Widget _buildDaysGrid(DateTime calendarDate, int? selectedDay, ValueChanged<int> onDaySelected) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    final startOffset = firstWeekday == 7 ? 0 : firstWeekday;
 
+    final rows = <Widget>[];
     int currentDay = 1;
 
     for (int i = 0; i < 6; i++) {
-      List<Widget> rowChildren = [];
+      final rowChildren = <Widget>[];
       for (int j = 0; j < 7; j++) {
-        int index = i * 7 + j;
+        final index = i * 7 + j;
         if (index < startOffset) {
           rowChildren.add(_buildDayCell('', false, null, null));
         } else if (currentDay <= daysInMonth) {
-          final int tapDay = currentDay;
-          final bool isSelected =
-              selectedDay != null && (currentDay == selectedDay);
-          final cellDate = DateTime(
-            calendarDate.year,
-            calendarDate.month,
-            currentDay,
-          );
-          final isPast = cellDate.isBefore(today);
-          rowChildren.add(
-            _buildDayCell(
-              '$currentDay',
-              isSelected,
-              isPast
-                  ? null
-                  : () {
-                      onDaySelected(tapDay);
-                    },
-              cellDate,
-            ),
-          );
+          final day = currentDay;
+          final cellDate = DateTime(calendarDate.year, calendarDate.month, day);
+          final isPast = cellDate.isBefore(todayDate);
+          rowChildren.add(_buildDayCell(
+            '$day',
+            selectedDay != null && day == selectedDay,
+            isPast ? null : () => onDaySelected(day),
+            cellDate,
+          ));
           currentDay++;
         } else {
           rowChildren.add(_buildDayCell('', false, null, null));
@@ -973,23 +796,16 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       if (currentDay > daysInMonth && i >= 4) break;
       if (i < 5) rows.add(const SizedBox(height: 8));
     }
+
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(
-    String day,
-    bool isSelected,
-    VoidCallback? onTap,
-    DateTime? date,
-  ) {
-    if (day.isEmpty) {
-      return const Expanded(
-        child: AspectRatio(aspectRatio: 1, child: SizedBox()),
-      );
-    }
+  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
+    if (day.isEmpty) return const Expanded(child: AspectRatio(aspectRatio: 1, child: SizedBox()));
+
     final isPast = onTap == null && date != null;
-    final dayColor = isPast ? Colors.grey.shade400 : Colors.black;
-    final selectedBg = const Color(0xFF0247C4);
+    const selectedBg = Color(0xFF0247C4);
+
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -1000,22 +816,18 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             decoration: BoxDecoration(
               color: isSelected ? selectedBg : Colors.transparent,
               border: Border.all(
-                color: isSelected
-                    ? selectedBg
-                    : (isPast ? Colors.grey.shade200 : Colors.grey.shade300),
+                color: isSelected ? selectedBg : (isPast ? Colors.grey.shade200 : Colors.grey.shade300),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(
-              day,
-              style: TextStyle(
-                color: isSelected ? Color(0xFFFFFFFF) : dayColor,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            child: Text(day,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFFFFFFFF) : (isPast ? Colors.grey.shade400 : Colors.black),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                )),
           ),
         ),
       ),
@@ -1028,27 +840,24 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          _buildHeader(context),
+          _buildHeader(),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTopActionRow(context),
+                  _buildTopActionRow(),
                   const SizedBox(height: 16),
                   _buildCompanyWorkDaysSummary(),
                   const SizedBox(height: 24),
-                  _buildHolidayListHeader(context),
+                  _buildHolidayListHeader(),
                   const SizedBox(height: 16),
                   _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(40.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : (_holidaysByMonth.values.every((l) => l.isEmpty)
-                            ? _buildEmptyState()
-                            : _buildFilledState()),
+                      ? const Padding(padding: EdgeInsets.all(40.0), child: Center(child: CircularProgressIndicator()))
+                      : _holidaysByMonth.values.every((l) => l.isEmpty)
+                          ? _buildEmptyState()
+                          : _buildFilledState(),
                 ],
               ),
             ),
@@ -1058,7 +867,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
     return Container(
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1072,31 +881,21 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'workforce'.tr(),
-                style: TextStyle(
-                  color: Color(0xFF000000),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              SizedBox(height: 4),
+              Text('workforce'.tr(),
+                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+              const SizedBox(height: 4),
             ],
           ),
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
-          ),
+          GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
         ],
       ),
     );
   }
 
-  Widget _buildTopActionRow(BuildContext context) {
+  Widget _buildTopActionRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1105,36 +904,18 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'work_schedule'.tr(),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text('work_schedule'.tr(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
               const SizedBox(height: 4),
-              Text(
-                'company_work_days_help'.tr(),
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 13,
-                  height: 1.3,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text('company_work_days_help'.tr(),
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3, fontFamily: 'SF Pro Display')),
             ],
           ),
         ),
         const SizedBox(width: 16),
         ElevatedButton.icon(
           onPressed: () {
-            final isGuest = _authService.currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              showGuestRestrictionDialog(context);
-              return;
-            }
+            if (_isGuest) { showGuestRestrictionDialog(context); return; }
             _showCompanyWorkDaysModal();
           },
           style: ElevatedButton.styleFrom(
@@ -1142,56 +923,29 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             foregroundColor: const Color(0xFFFFFFFF),
             minimumSize: const Size(32, 50),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
             elevation: 0,
           ),
-          icon: const Icon(
-            Icons.edit_calendar_rounded,
-            size: 22,
-            color: Color(0xFFFFFFFF),
-          ),
-          label: Text(
-            'set_workdays'.tr(),
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
+          icon: const Icon(Icons.edit_calendar_rounded, size: 22, color: Color(0xFFFFFFFF)),
+          label: Text('set_workdays'.tr(),
+              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
         ),
       ],
     );
   }
 
-  Widget _buildHolidayListHeader(BuildContext context) {
+  Widget _buildHolidayListHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Flexible(
-          child: Text(
-            'holiday_list'.tr(),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
+        Flexible(child: Text('holiday_list'.tr(),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display'))),
         const SizedBox(width: 16),
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: ElevatedButton.icon(
-            onPressed: () async {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                if (!mounted) return;
-                showGuestRestrictionDialog(context);
-                return;
-              }
+            onPressed: () {
+              if (_isGuest) { if (!mounted) return; showGuestRestrictionDialog(context); return; }
               if (!mounted) return;
               _showAddHolidayModal(context);
             },
@@ -1199,29 +953,13 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               backgroundColor: const Color(0xFF0247C4),
               minimumSize: const Size(32, 50),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               elevation: 0,
             ),
-            icon: SvgPicture.asset(
-              'assets/holidays_icon.svg',
-              width: 22,
-              height: 22,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFFFFFFF),
-                BlendMode.srcIn,
-              ),
-            ),
-            label: Text(
-              'add_holiday'.tr(),
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            icon: SvgPicture.asset('assets/holidays_icon.svg', width: 22, height: 22,
+                colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
+            label: Text('add_holiday'.tr(),
+                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
           ),
         ),
       ],
@@ -1229,14 +967,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   }
 
   Widget _buildCompanyWorkDaysSummary() {
-    final workingDays = _weekdayKeys.keys
-        .where(_companyWorkingDays.contains)
-        .map(_weekdayLabel)
-        .join(', ');
-    final offDays = _weekdayKeys.keys
-        .where((day) => !_companyWorkingDays.contains(day))
-        .map(_weekdayLabel)
-        .join(', ');
+    final workingDays = LocalizationHelper.weekdayKeys.keys.where(_companyWorkingDays.contains).map(_weekdayLabel).join(', ');
+    final offDays = LocalizationHelper.weekdayKeys.keys.where((d) => !_companyWorkingDays.contains(d)).map(_weekdayLabel).join(', ');
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -1247,43 +980,21 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildDaySummary(
-              Icons.business_center_rounded,
-              'working_days'.tr(),
-              workingDays,
-              const Color(0xFF0247C4),
-            ),
-          ),
+          Expanded(child: _buildDaySummary(Icons.business_center_rounded, 'working_days'.tr(), workingDays, const Color(0xFF0247C4))),
           const SizedBox(width: 24),
-          Expanded(
-            child: _buildDaySummary(
-              Icons.weekend_rounded,
-              'company_off_days'.tr(),
-              offDays.isEmpty ? 'none'.tr() : offDays,
-              const Color(0xFFD81B1F),
-            ),
-          ),
+          Expanded(child: _buildDaySummary(Icons.weekend_rounded, 'company_off_days'.tr(), offDays.isEmpty ? 'none'.tr() : offDays, const Color(0xFFD81B1F))),
         ],
       ),
     );
   }
 
-  Widget _buildDaySummary(
-    IconData icon,
-    String title,
-    String days,
-    Color color,
-  ) {
+  Widget _buildDaySummary(IconData icon, String title, String days, Color color) {
     return Row(
       children: [
         Container(
           width: 38,
           height: 38,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(9),
-          ),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(9)),
           child: Icon(icon, color: color, size: 21),
         ),
         const SizedBox(width: 12),
@@ -1291,27 +1002,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text(title, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
               const SizedBox(height: 2),
-              Text(
-                days,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF334155),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text(days, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
             ],
           ),
         ),
@@ -1319,497 +1014,98 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     );
   }
 
-  Widget _buildFilledState() {
-    final months =
-        _holidaysByMonth.keys
-            .where((m) => _holidaysByMonth[m]!.isNotEmpty)
-            .toList()
-          ..sort((a, b) {
-            final aIndex = _calendarMonths.indexOf(a);
-            final bIndex = _calendarMonths.indexOf(b);
-            if (aIndex == -1 && bIndex == -1) return a.compareTo(b);
-            if (aIndex == -1) return 1;
-            if (bIndex == -1) return -1;
-            return aIndex.compareTo(bIndex);
-          });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: months.map((month) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 24.0),
-          child: _buildMonthGroup(month, _holidaysByMonth[month]!),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildMonthGroup(String month, List<HolidayItem> holidays) {
-    final sortedHolidays = List<HolidayItem>.from(holidays)
-      ..sort((a, b) {
-        final yearCompare = (a.year ?? 0).compareTo(b.year ?? 0);
-        if (yearCompare != 0) return yearCompare;
-        final dayCompare = a.day.compareTo(b.day);
-        if (dayCompare != 0) return dayCompare;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildWorkDaysSectionTitle({required IconData icon, required String title, required Color color}) {
+    return Row(
       children: [
-        Text(
-          _localizeMonth(month),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF000000),
-            fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
-          ),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: color, size: 19),
         ),
-        const SizedBox(height: 12),
-        ...sortedHolidays.map((holiday) => _buildListItem(holiday)),
+        const SizedBox(width: 10),
+        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
       ],
     );
   }
 
-  Future<void> _deleteHoliday(HolidayItem item) async {
-    final confirmed = await DeleteDialog.show(
-      context: context,
-      title: 'delete_holiday'.tr(),
-      content: 'delete_holiday_desc'.tr(),
-    );
-    if (!confirmed) return;
-
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      setState(() {
-        final monthList = _holidaysByMonth[item.month];
-        if (monthList != null) {
-          monthList.removeWhere(
-            (h) => h.day == item.day && h.name == item.name,
-          );
-          if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
-        }
+  Widget _buildFilledState() {
+    final months = _holidaysByMonth.keys
+        .where((m) => _holidaysByMonth[m]!.isNotEmpty)
+        .toList()
+      ..sort((a, b) {
+        final aIdx = _calendarMonths.indexOf(a);
+        final bIdx = _calendarMonths.indexOf(b);
+        if (aIdx == -1 && bIdx == -1) return a.compareTo(b);
+        if (aIdx == -1) return 1;
+        if (bIdx == -1) return -1;
+        return aIdx.compareTo(bIdx);
       });
-      final storageKey = item.storageKey ?? item.month;
-      final dummyMonthList = DummyData.holidays[storageKey];
-      if (dummyMonthList != null) {
-        dummyMonthList.removeWhere((h) => _matchesGuestHoliday(h, item));
-        if (dummyMonthList.isEmpty) DummyData.holidays.remove(storageKey);
-      }
-      await DummyData.saveToPrefs();
-      if (mounted) {
-        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
-      }
-      return;
-    }
 
-    final holidayId = item.id?.trim() ?? '';
-    if (holidayId.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'unexpected_error'.tr(),
-          isError: true,
-        );
-      }
-      return;
-    }
-
-    try {
-      await _firestore.deleteHoliday(holidayId);
-      if (mounted) {
-        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
-      }
-    } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'unexpected_error'.tr(),
-          isError: true,
-        );
-      }
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: months.map((month) => Padding(
+        padding: const EdgeInsets.only(bottom: 24.0),
+        child: _buildMonthGroup(month, _holidaysByMonth[month]!),
+      )).toList(),
+    );
   }
 
-  void _editHoliday(HolidayItem item) {
-    final holidayNameController = TextEditingController(text: item.name);
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    int monthIndex = months.indexOf(item.month);
-    if (monthIndex < 0) monthIndex = DateTime.now().month - 1;
-    final selectedYear = item.year ?? DateTime.now().year;
-    final maxDay = DateTime(selectedYear, monthIndex + 2, 0).day;
-    int selectedDay = item.day.clamp(1, maxDay).toInt();
-    DateTime calendarDate = DateTime(selectedYear, monthIndex + 1, selectedDay);
+  Widget _buildMonthGroup(String month, List<HolidayItem> holidays) {
+    final sorted = List<HolidayItem>.from(holidays)
+      ..sort((a, b) {
+        final yearCmp = (a.year ?? 0).compareTo(b.year ?? 0);
+        if (yearCmp != 0) return yearCmp;
+        final dayCmp = a.day.compareTo(b.day);
+        if (dayCmp != 0) return dayCmp;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
 
-    var isSaving = false;
-    showDialog(
-      context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            String selectedMonthName = months[calendarDate.month - 1];
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              backgroundColor: Color(0xFFFFFFFF),
-              elevation: 10,
-              child: Container(
-                width: 400,
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        Text(
-                          'edit_holiday'.tr(),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          onPressed: isSaving
-                              ? null
-                              : () async {
-                                  setModalState(() => isSaving = true);
-                                  final holidayName = holidayNameController.text
-                                      .trim();
-                                  if (holidayName.isNotEmpty) {
-                                    final isGuest =
-                                        _authService.currentUser?.isAnonymous ??
-                                        false;
-                                    final duplicate =
-                                        !isGuest &&
-                                        _isDuplicateHoliday(
-                                          name: holidayName,
-                                          month: selectedMonthName,
-                                          day: selectedDay,
-                                          year: calendarDate.year,
-                                          isRecurring: item.isRecurring,
-                                          excludingId: item.id,
-                                          excludingItem: item,
-                                        );
-                                    if (duplicate) {
-                                      setModalState(() => isSaving = false);
-                                      if (!context.mounted) return;
-                                      FlashySnackBar.show(
-                                        context,
-                                        message: 'holiday_already_exists'.tr(),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    final holidayId = item.id?.trim() ?? '';
-                                    if (!isGuest && holidayId.isEmpty) {
-                                      setModalState(() => isSaving = false);
-                                      if (!context.mounted) return;
-                                      FlashySnackBar.show(
-                                        context,
-                                        message: 'unexpected_error'.tr(),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    final dateObj = DateTime(
-                                      calendarDate.year,
-                                      calendarDate.month,
-                                      selectedDay,
-                                    );
-                                    try {
-                                      if (isGuest) {
-                                        setState(() {
-                                          final storageKey =
-                                              item.storageKey ?? item.month;
-                                          final oldMonthList =
-                                              DummyData.holidays[storageKey];
-
-                                          Map<String, dynamic>? updatedHoliday;
-
-                                          if (oldMonthList != null) {
-                                            final index = oldMonthList
-                                                .indexWhere(
-                                                  (h) => _matchesGuestHoliday(
-                                                    h,
-                                                    item,
-                                                  ),
-                                                );
-
-                                            if (index != -1) {
-                                              updatedHoliday =
-                                                  Map<String, dynamic>.from(
-                                                    oldMonthList[index],
-                                                  );
-                                              oldMonthList.removeAt(index);
-
-                                              if (oldMonthList.isEmpty) {
-                                                DummyData.holidays.remove(
-                                                  storageKey,
-                                                );
-                                              }
-                                            }
-                                          }
-
-                                          updatedHoliday ??= {
-                                            'isEnabled': item.isEnabled,
-                                          };
-
-                                          updatedHoliday['name'] =
-                                              holidayNameController.text.trim();
-                                          updatedHoliday['isRecurring'] =
-                                              item.isRecurring;
-                                          updatedHoliday['date'] =
-                                              '${selectedDay.toString().padLeft(2, '0')}/'
-                                              '${calendarDate.month.toString().padLeft(2, '0')}/'
-                                              '${calendarDate.year}';
-
-                                          DummyData.holidays.putIfAbsent(
-                                            selectedMonthName,
-                                            () => [],
-                                          );
-                                          DummyData.holidays[selectedMonthName]!
-                                              .insert(0, updatedHoliday);
-
-                                          DummyData.saveToPrefs();
-
-                                          _holidaysByMonth =
-                                              _guestHolidayGroups();
-                                        });
-                                      } else {
-                                        await _firestore
-                                            .updateHoliday(holidayId, {
-                                              'name': holidayName,
-                                              'date': dateObj,
-                                              'isRecurring': item.isRecurring,
-                                            });
-                                      }
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      setModalState(() => isSaving = false);
-                                      FlashySnackBar.show(
-                                        context,
-                                        message: 'failed_to_update_holiday'.tr(
-                                          namedArgs: {'error': e.toString()},
-                                        ),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    if (!context.mounted) return;
-                                    Navigator.of(context).pop();
-                                    if (mounted) {
-                                      FlashySnackBar.show(
-                                        this.context,
-                                        message: 'holiday_updated'.tr(),
-                                      );
-                                    }
-                                  } else {
-                                    setModalState(() => isSaving = false);
-                                    if (!context.mounted) return;
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'please_enter_holiday_name'.tr(),
-                                      isError: true,
-                                    );
-                                  }
-                                },
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'save'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    Text(
-                      'holiday_name'.tr(),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 38,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      alignment: Alignment.centerLeft,
-                      child: TextField(
-                        controller: holidayNameController,
-                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                        decoration: InputDecoration.collapsed(
-                          hintText: 'enter_holiday_name'.tr(),
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildModalCalendar(
-                      calendarDate,
-                      selectedDay,
-                      (day) {
-                        setModalState(() {
-                          selectedDay = day;
-                        });
-                      },
-                      (newDate) {
-                        setModalState(() {
-                          calendarDate = newDate;
-                          int daysInNewMonth = DateTime(
-                            newDate.year,
-                            newDate.month + 1,
-                            0,
-                          ).day;
-                          if (selectedDay > daysInNewMonth) {
-                            selectedDay = daysInNewMonth;
-                          }
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ).whenComplete(holidayNameController.dispose);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_localizeMonth(month),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+        const SizedBox(height: 12),
+        ...sorted.map(_buildListItem),
+      ],
+    );
   }
 
   Widget _buildListItem(HolidayItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '${item.day}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
+            child: Text('${item.day}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               '${LocalizationHelper.localizeHolidayName(item.name)}${item.isRecurring ? ' (Every Year)' : ''}',
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
           ),
           const SizedBox(width: 16),
-
           GestureDetector(
             onTap: () async {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
               final value = !item.isEnabled;
-              if (isGuest) {
-                setState(() {
-                  item.isEnabled = value;
-                });
-                final monthList =
-                    DummyData.holidays[item.storageKey ?? item.month];
+              if (_isGuest) {
+                setState(() => item.isEnabled = value);
+                final monthList = DummyData.holidays[item.storageKey ?? item.month];
                 if (monthList != null) {
-                  for (var h in monthList) {
-                    if (_matchesGuestHoliday(h, item)) {
-                      h['isEnabled'] = value;
-                      break;
-                    }
+                  for (final h in monthList) {
+                    if (_matchesGuestHoliday(h, item)) { h['isEnabled'] = value; break; }
                   }
                 }
                 DummyData.saveToPrefs();
@@ -1817,42 +1113,22 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               }
 
               final holidayId = item.id?.trim() ?? '';
-              if (holidayId.isEmpty ||
-                  _updatingHolidayIds.contains(holidayId)) {
-                if (holidayId.isEmpty && mounted) {
-                  FlashySnackBar.show(
-                    context,
-                    message: 'unexpected_error'.tr(),
-                    isError: true,
-                  );
-                }
+              if (holidayId.isEmpty || _updatingHolidayIds.contains(holidayId)) {
+                if (holidayId.isEmpty && mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
                 return;
               }
 
-              setState(() {
-                _updatingHolidayIds.add(holidayId);
-                item.isEnabled = value;
-              });
+              setState(() { _updatingHolidayIds.add(holidayId); item.isEnabled = value; });
               try {
                 await _firestore.updateHoliday(holidayId, {'isEnabled': value});
               } catch (e) {
                 if (mounted) {
-                  setState(() {
-                    item.isEnabled = !value;
-                  });
-                  FlashySnackBar.show(
-                    context,
-                    message: 'error_updating_holiday'.tr(
-                      namedArgs: {'error': e.toString()},
-                    ),
-                    isError: true,
-                  );
+                  setState(() => item.isEnabled = !value);
+                  FlashySnackBar.show(context, message: 'error_updating_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
                 }
               } finally {
                 if (mounted) {
-                  setState(() {
-                    _updatingHolidayIds.remove(holidayId);
-                  });
+                  setState(() => _updatingHolidayIds.remove(holidayId));
                 } else {
                   _updatingHolidayIds.remove(holidayId);
                 }
@@ -1865,16 +1141,12 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               height: 28,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                color: item.isEnabled
-                    ? const Color(0xFF0247C4)
-                    : const Color(0xFFD1D5DB),
+                color: item.isEnabled ? const Color(0xFF0247C4) : const Color(0xFFD1D5DB),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                alignment: item.isEnabled
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
+                alignment: item.isEnabled ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
                   width: 22,
                   height: 22,
@@ -1882,13 +1154,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4, offset: const Offset(0, 2))],
                   ),
                 ),
               ),
@@ -1897,90 +1163,30 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           const SizedBox(width: 8),
           PopupMenuButton<String>(
             tooltip: '',
-            icon: const Icon(
-              Icons.more_vert,
-              color: Color.fromARGB(255, 0, 0, 0),
-              size: 20,
-            ),
+            icon: const Icon(Icons.more_vert, color: Color(0xFF000000), size: 20),
             offset: const Offset(0, 40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-              side: const BorderSide(color: Color(0xFFCBCBCB)),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFCBCBCB))),
             color: const Color(0xFFFBFBFC),
             elevation: 4,
             onSelected: (value) {
+              if (_isGuest) { showGuestRestrictionDialog(context); return; }
               if (value == 'edit') {
-                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  showGuestRestrictionDialog(context);
-                  return;
-                }
                 _editHoliday(item);
               } else if (value == 'delete') {
-                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  showGuestRestrictionDialog(context);
-                  return;
-                }
                 _deleteHoliday(item);
               }
             },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'edit',
-                height: 36,
-                child: Row(
-                  children: [
-                    SvgPicture.asset(
-                      'assets/edit_icon.svg',
-                      width: 16,
-                      height: 16,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF0247C4),
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'edit'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFF0247C4),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'delete',
-                height: 36,
-                child: Row(
-                  children: [
-                    SvgPicture.asset(
-                      'assets/delete_icon.svg',
-                      width: 16,
-                      height: 16,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.red,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'delete'.tr(),
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'edit', height: 36, child: Row(children: [
+                SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
+                const SizedBox(width: 8),
+                Text('edit'.tr(), style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+              ])),
+              PopupMenuItem(value: 'delete', height: 36, child: Row(children: [
+                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn)),
+                const SizedBox(width: 8),
+                Text('delete'.tr(), style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+              ])),
             ],
           ),
         ],
@@ -1989,77 +1195,26 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   }
 
   Widget _buildEmptyState() {
-    final double containerHeight = (MediaQuery.of(context).size.height - 329)
-        .clamp(440.0, 1200.0);
+    final containerHeight = (MediaQuery.of(context).size.height - 329).clamp(440.0, 1200.0);
     return Container(
       width: double.infinity,
       height: containerHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            'assets/placeholder_workers.svg',
-            width: 120,
-            height: 100,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFCBCBCB),
-              BlendMode.srcIn,
-            ),
-          ),
+          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
+              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'no_holidays_found'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            child: Text('no_holidays_found'.tr(), textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), fontFamily: 'SF Pro Display')),
           ),
         ],
       ),
     );
-  }
-
-  String _localizeMonth(String month) {
-    switch (_canonicalMonth(month) ?? month) {
-      case 'January':
-        return 'month_january'.tr();
-      case 'February':
-        return 'month_february'.tr();
-      case 'March':
-        return 'month_march'.tr();
-      case 'April':
-        return 'month_april'.tr();
-      case 'May':
-        return 'month_may'.tr();
-      case 'June':
-        return 'month_june'.tr();
-      case 'July':
-        return 'month_july'.tr();
-      case 'August':
-        return 'month_august'.tr();
-      case 'September':
-        return 'month_september'.tr();
-      case 'October':
-        return 'month_october'.tr();
-      case 'November':
-        return 'month_november'.tr();
-      case 'December':
-        return 'month_december'.tr();
-      default:
-        return month;
-    }
   }
 }
 

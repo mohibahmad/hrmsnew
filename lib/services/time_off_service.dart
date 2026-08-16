@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/date_time_utils.dart';
+import '../utils/utils.dart';
 
 class DuplicateTimeOffDateException implements Exception {
   const DuplicateTimeOffDateException();
@@ -229,17 +229,6 @@ class TimeOffService {
     );
   }
 
-  static bool hasFutureUnusedLeaves(
-    Map<String, dynamic> record, {
-    DateTime? referenceDate,
-  }) {
-    if (!isActiveRecord(record)) return false;
-    final dates = selectedDatesForRecord(record);
-    final now = referenceDate ?? DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    return dates.any((date) => !date.isBefore(today));
-  }
-
   static Set<String> activeLeaveAssignmentKeysForDate(
     List<Map<String, dynamic>> records,
     DateTime date,
@@ -368,9 +357,6 @@ class TimeOffService {
     return null;
   }
 
-  /// Combines explicit Time Off records and Attendance leave records into a single
-  /// unified list of leave records so both Attendance and Time Off modules share
-  /// the exact same source of truth for leave dates.
   static List<Map<String, dynamic>> combineTimeOffAndAttendanceRecords({
     required List<Map<String, dynamic>> timeOffRecords,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -512,39 +498,6 @@ class TimeOffService {
     return usedDates.length;
   }
 
-  static int leaveDaysUsedForWorker(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> timeOffRecords, {
-    String? excludingRecordId,
-  }) {
-    if (timeOffRecords.isEmpty) return 0;
-
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    final usedDates = <DateTime>{};
-
-    for (final record in timeOffRecords) {
-      if (!isActiveRecord(record)) continue;
-      if (excludingRecordId != null &&
-          record['id']?.toString() == excludingRecordId) {
-        continue;
-      }
-      if (!_belongsToWorker(
-        record,
-        workerId: workerId,
-        workerEmail: workerEmail,
-        workerName: workerName,
-      )) {
-        continue;
-      }
-      usedDates.addAll(selectedDatesForRecord(record));
-    }
-    return usedDates.length;
-  }
-
   static Map<String, int> paidDaysUsedForWorkerByType(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
@@ -560,11 +513,6 @@ class TimeOffService {
     };
   }
 
-  /// Active assigned dates are the source of truth for entitlement usage.
-  /// A worker can consume a calendar date only once, even if legacy/racing
-  /// writes created both an Attendance leave and a Time Off record for it.
-  /// Explicit Time Off assignments win over Attendance-generated records so
-  /// the HR-selected leave type remains the source of truth.
   static Map<String, Set<DateTime>> assignedLeaveDatesForWorkerByType(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
@@ -657,53 +605,6 @@ class TimeOffService {
     };
   }
 
-  static Map<String, dynamic>? recordForWorkerLeaveType(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> timeOffRecords,
-    String type, {
-    DateTime? referenceDate,
-  }) {
-    final normalizedType = normalizeLeaveType(type);
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    final matches = timeOffRecords
-        .where((record) {
-          return isActiveRecord(record) &&
-              normalizeLeaveType(leaveType(record)) == normalizedType &&
-              _belongsToWorker(
-                record,
-                workerId: workerId,
-                workerEmail: workerEmail,
-                workerName: workerName,
-              );
-        })
-        .map(Map<String, dynamic>.from)
-        .toList();
-
-    if (matches.isEmpty) return null;
-
-    DateTime recordDate(Map<String, dynamic> record) {
-      final dates = selectedDatesForRecord(record);
-      if (dates.isNotEmpty) return dates.last;
-      for (final key in ['updatedAt', 'createdAt', 'startDate', 'endDate']) {
-        final parsed = parseDate(record[key]);
-        if (parsed != null) return parsed;
-      }
-      return DateTime.fromMillisecondsSinceEpoch(0);
-    }
-
-    matches.sort((a, b) {
-      final aEditable = isEditableRecord(a, referenceDate: referenceDate);
-      final bEditable = isEditableRecord(b, referenceDate: referenceDate);
-      if (aEditable != bEditable) return aEditable ? -1 : 1;
-      return recordDate(b).compareTo(recordDate(a));
-    });
-    return matches.first;
-  }
-
   static int configuredPaidLeaveAllowance(Map<String, dynamic> worker) {
     final rawAnnual = worker['annualLeaves'];
     final annual = rawAnnual is num
@@ -735,20 +636,6 @@ class TimeOffService {
       excludingRecordId: excludingRecordId,
     );
     return (total - used).clamp(0, total).toInt();
-  }
-
-  static int getLeaveBalance(Map<String, dynamic> worker, String type) {
-    final fieldName = switch (normalizeLeaveType(type)) {
-      'Annual Leave' => 'annualLeave',
-      'Sick Leave' => 'sickLeave',
-      'Casual Leave' => 'casualLeave',
-      'Medical Leave' => 'medicalLeave',
-      _ => '',
-    };
-    if (fieldName.isEmpty) return 0;
-    final balances =
-        canonicalWorkerLeaveFields(worker)['leaveBalances'] as Map<String, int>;
-    return balances[fieldName] ?? 0;
   }
 
   static int availableBalanceForEditingRecord(
@@ -793,10 +680,10 @@ class TimeOffService {
     final normType = normalizeLeaveType(type);
     switch (normType) {
       case 'Annual Leave':
-        if (worker.containsKey('annualLeaves')) {
-          return int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        }
-        return configuredPaidLeaveAllowance(worker);
+        return int.tryParse(
+              worker['annualLeaves']?.toString() ?? '0',
+            ) ??
+            0;
       case 'Sick Leave':
         return int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
       case 'Casual Leave':

@@ -1,27 +1,28 @@
+
 import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
 enum BiometricAuthResult {
   success,
-
   cancelled,
-
   failed,
-
   lockedOut,
-
   permanentlyLockedOut,
-
   notAvailable,
   error,
 }
 
 class BiometricService {
+
   static final LocalAuthentication _auth = LocalAuthentication();
 
   static Future<bool> isSupported() async {
     try {
-      return await _auth.isDeviceSupported() && await _auth.canCheckBiometrics;
+
+      final isDeviceSupported = await _auth.isDeviceSupported();
+      final canCheckBiometrics = await _auth.canCheckBiometrics;
+
+      return isDeviceSupported && canCheckBiometrics;
     } catch (e) {
       debugPrint('Biometric support check failed: $e');
       return false;
@@ -30,8 +31,12 @@ class BiometricService {
 
   static Future<bool> isAvailable() async {
     try {
+
       if (!await isSupported()) return false;
-      return (await _auth.getAvailableBiometrics()).isNotEmpty;
+
+      final biometrics = await _auth.getAvailableBiometrics();
+
+      return biometrics.isNotEmpty;
     } catch (e) {
       debugPrint('Biometric availability check failed: $e');
       return false;
@@ -53,43 +58,42 @@ class BiometricService {
     bool persistAcrossBackgrounding = true,
   }) async {
     try {
+
       final authenticated = await _auth.authenticate(
         localizedReason: localizedReason,
         biometricOnly: biometricOnly,
         persistAcrossBackgrounding: persistAcrossBackgrounding,
       );
 
-      if (authenticated) return BiometricAuthResult.success;
+      if (authenticated) {
+        return BiometricAuthResult.success;
+      }
       return BiometricAuthResult.cancelled;
     } on LocalAuthException catch (e) {
-      debugPrint(
-        'Biometric authentication error: ${e.code} - ${e.description}',
-      );
+
+      debugPrint('Biometric authentication error: ${e.code} - ${e.description}');
 
       final code = e.code.name.toLowerCase();
 
-      if (code == 'lockedout' ||
-          code == 'auth_locked_out' ||
-          code == 'too_many_attempts') {
-        return BiometricAuthResult.lockedOut;
-      }
-      if (code == 'permanentlylockedout' ||
-          code == 'auth_permanently_locked_out') {
-        return BiometricAuthResult.permanentlyLockedOut;
-      }
-
-      if (code == 'notavailable' ||
-          code == 'biometrynotavailable' ||
-          code == 'biometry_not_available' ||
-          code == 'notenrolled' ||
-          code == 'biometrynotenrolled' ||
-          code == 'biometry_not_enrolled' ||
-          code == 'passcodenotset' ||
-          code == 'passcode_not_set') {
-        return BiometricAuthResult.notAvailable;
-      }
-
-      return BiometricAuthResult.failed;
+      return switch (code) {
+        'lockedout' ||
+        'auth_locked_out' ||
+        'too_many_attempts' =>
+          BiometricAuthResult.lockedOut,
+        'permanentlylockedout' ||
+        'auth_permanently_locked_out' =>
+          BiometricAuthResult.permanentlyLockedOut,
+        'notavailable' ||
+        'biometrynotavailable' ||
+        'biometry_not_available' ||
+        'notenrolled' ||
+        'biometrynotenrolled' ||
+        'biometry_not_enrolled' ||
+        'passcodenotset' ||
+        'passcode_not_set' =>
+          BiometricAuthResult.notAvailable,
+        _ => BiometricAuthResult.failed,
+      };
     } catch (e) {
       debugPrint('Biometric authentication error: $e');
       return BiometricAuthResult.error;
@@ -97,18 +101,23 @@ class BiometricService {
   }
 
   static Future<String> getBiometricName() async {
+
     final types = await getAvailableBiometrics();
+
     if (types.contains(BiometricType.face)) {
       return 'Face ID';
-    } else if (types.contains(BiometricType.fingerprint)) {
-      if (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.macOS) {
-        return 'Touch ID';
-      }
-      return 'Fingerprint';
-    } else if (types.contains(BiometricType.iris)) {
+    }
+
+    if (types.contains(BiometricType.fingerprint)) {
+      final isApple = defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS;
+      return isApple ? 'Touch ID' : 'Fingerprint';
+    }
+
+    if (types.contains(BiometricType.iris)) {
       return 'Iris';
     }
+
     return 'Biometric';
   }
 }

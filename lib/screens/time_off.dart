@@ -1,44 +1,60 @@
 import 'dart:async';
-import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:easy_localization/easy_localization.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hrms/utils/utils.dart';
+
 import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/error_reporter.dart';
-import '../services/dummy_data.dart';
-import '../services/time_off_service.dart';
-import '../utils/file_utils.dart';
-import '../widgets/notification_bell.dart';
-
-import 'assign_time_off.dart';
-import '../utils/guest_restriction.dart';
-import '../utils/localization_helper.dart';
-import '../utils/ui_utils.dart';
 import '../services/attendance_report_service.dart';
+import '../services/auth_service.dart';
+import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
+import '../services/firestore_service.dart';
 import '../services/time_off_export_service.dart';
-import '../utils/date_time_utils.dart';
+import '../services/time_off_service.dart';
+import '../widgets/clickable_gesture_detector.dart';
+import '../widgets/notification_bell.dart';
+import 'assign_time_off.dart';
 
-class Worker {
-  final String name;
-  final String email;
-  final String position;
-  final String contact;
-  final String action;
-  final bool isMaleAvatar;
+const _kBlue = Color(0xFF0247C4);
+const _kDarkBlue = Color(0xFF004FDE);
+const _kActionBlue = Color(0xFF0D4CC6);
+const _kWhite = Color(0xFFFFFFFF);
+const _kBlack = Color(0xFF000000);
+const _kBg = Color(0xFFF8FAFC);
+const _kRowBg = Color(0xFFF6F8FA);
+const _kBorder = Color(0xFFEEEEEE);
+const _kDivider = Color(0xFFF7F8FC);
+const _kCardBorder = Color(0xFFE8E8E8);
+const _kGrey666 = Color(0xFF666666);
+const _kGreen = Color(0xFF27AE60);
+const _kRed = Color(0xFFDC2626);
+const _kLightBlue = Color(0xFFE5EEFC);
+const _kGrey333 = Color(0xFF333333);
+const _kPlaceholder = Color(0xFFCBCBCB);
 
-  Worker(
-    this.name,
-    this.email,
-    this.position,
-    this.contact,
-    this.action,
-    this.isMaleAvatar,
-  );
-}
+const _kFontFamily = 'SF Pro Display';
+
+const _kHeaderStyle = TextStyle(
+  fontWeight: FontWeight.bold,
+  fontSize: 16,
+  color: _kBlack,
+  fontFamily: _kFontFamily,
+);
+
+const _kWhiteText16w500 = TextStyle(
+  color: _kWhite,
+  fontSize: 16,
+  fontWeight: FontWeight.w500,
+  fontFamily: _kFontFamily,
+);
+
+const _kInactiveStatuses = {'inactive', 'terminated', 'deleted', 'archived'};
 
 class TimeOffScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -59,13 +75,221 @@ class TimeOffScreen extends ConsumerStatefulWidget {
 }
 
 class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
-  final _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
   String _searchQuery = '';
   String _selectedTab = 'All';
   String _recordsPeriodFilter = 'All Time';
+  String _recordsLeaveTypeFilter = 'All';
   DateTimeRange? _customDateRange;
   Set<DateTime>? _customSelectedDates;
-  String _recordsLeaveTypeFilter = 'All';
+
+  List<Map<String, dynamic>> _rawTimeoffDocs = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _timeoffDocs = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _workersList = <Map<String, dynamic>>[];
+
+  bool _isLoading = true;
+  bool _isExportingCsv = false;
+  bool _workersLoaded = false;
+  bool _timeoffLoaded = false;
+  bool _workersLoadFailed = false;
+  bool _timeoffLoadFailed = false;
+  bool _isAssigningTimeOff = false;
+
+  Map<String, dynamic>? _workerForTimeOff;
+
+  StreamSubscription? _timeoffSub;
+  StreamSubscription? _workersSub;
+
+  late final AuthService _authService;
+  late final FirestoreService _firestore;
+  late final bool _isGuestMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = ref.read(authServiceProvider);
+    _firestore = ref.read(firestoreServiceProvider);
+    _isGuestMode = _authService.currentUser?.isAnonymous ?? false;
+
+    if (_isGuestMode) {
+      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+      _rawTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+      _workersLoaded = true;
+      _timeoffLoaded = true;
+      _combineTimeOff();
+    } else {
+      _initStreams();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timeoffSub?.cancel();
+    _workersSub?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _initStreams() {
+    _workersSub = _firestore.workersStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        setState(() {
+          _workersList = snapshot.docs
+              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .toList();
+          _workersLoaded = true;
+          _workersLoadFailed = false;
+          _combineTimeOff();
+        });
+      },
+      onError: (Object error, StackTrace st) {
+        ErrorReporter.report(error, st, context: 'timeOffWorkersStream');
+        if (!mounted) return;
+        setState(() {
+          _workersList = <Map<String, dynamic>>[];
+          _workersLoaded = true;
+          _workersLoadFailed = true;
+          _combineTimeOff();
+        });
+      },
+    );
+
+    _timeoffSub = _firestore.timeoffStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        setState(() {
+          final docs = snapshot.docs
+              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .toList();
+
+          docs.sort((a, b) {
+            final aTime = a['createdAt'];
+            final bTime = b['createdAt'];
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            if (aTime is Timestamp && bTime is Timestamp) {
+              return bTime.compareTo(aTime);
+            }
+            return 0;
+          });
+
+          _rawTimeoffDocs = docs;
+          _timeoffLoaded = true;
+          _timeoffLoadFailed = false;
+          _combineTimeOff();
+        });
+      },
+      onError: (Object error, StackTrace st) {
+        ErrorReporter.report(error, st, context: 'timeOffRecordsStream');
+        if (!mounted) return;
+        setState(() {
+          _rawTimeoffDocs = <Map<String, dynamic>>[];
+          _timeoffLoaded = true;
+          _timeoffLoadFailed = true;
+          _combineTimeOff();
+        });
+      },
+    );
+  }
+
+  String _l(String key, String fallback, {Map<String, String>? namedArgs}) {
+    final translated = key.tr(namedArgs: namedArgs).trim();
+    return (translated.isEmpty || translated == key) ? fallback : translated;
+  }
+
+  String _nv(dynamic value) => (value ?? '').toString().trim().toLowerCase();
+
+  String _localizedLeaveType(String type) {
+    return switch (TimeOffService.normalizeLeaveType(type)) {
+      'Annual Leave' => 'annual_leave'.tr(),
+      'Sick Leave' => 'sick_leave_type'.tr(),
+      'Casual Leave' => 'casual_leave_type'.tr(),
+      'Medical Leave' => 'medical_leave_type'.tr(),
+      _ => type,
+    };
+  }
+
+  bool _isAttendanceManaged(Map<String, dynamic> record) =>
+      _nv(record['source']) == 'attendance';
+
+  String _firstNonEmpty(Iterable<dynamic> values) {
+    for (final v in values) {
+      final s = (v ?? '').toString().trim();
+      if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
+    }
+    return '';
+  }
+
+  bool _hasUniqueWorkerName(String name) {
+    if (name.isEmpty) return false;
+    var count = 0;
+    for (final w in _workersList) {
+      if (_nv(w['name']) == name && ++count > 1) return false;
+    }
+    return count == 1;
+  }
+
+  int _remainingPaidLeave(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> records,
+  ) {
+    final total = TimeOffService.configuredPaidLeaveAllowance(worker);
+    final used = TimeOffService.paidDaysUsedForWorker(worker, records);
+    return (total - used).clamp(0, total).toInt();
+  }
+
+  Map<String, dynamic> _docForNewLeave(Map<String, dynamic> doc) {
+    return {...doc}
+      ..remove('action')
+      ..remove('type')
+      ..remove('selectedDates')
+      ..remove('startDate')
+      ..remove('endDate')
+      ..remove('notes')
+      ..remove('status')
+      ..remove('requestedDays');
+  }
+
+  bool _canAssignTimeOff(Map<String, dynamic> worker) {
+    final status = _nv(
+      worker['employmentStatus'] ??
+          worker['workerStatus'] ??
+          worker['status'] ??
+          'Active',
+    );
+    return !_kInactiveStatuses.contains(status);
+  }
+
+  int _compareRows(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final aHas = (a['action'] ?? '').toString().isNotEmpty;
+    final bHas = (b['action'] ?? '').toString().isNotEmpty;
+    if (aHas != bHas) return aHas ? -1 : 1;
+
+    final aStart = TimeOffService.parseDate(a['startDate']);
+    final bStart = TimeOffService.parseDate(b['startDate']);
+    if (aStart != null && bStart != null) {
+      final cmp = bStart.compareTo(aStart);
+      if (cmp != 0) return cmp;
+    } else if (aStart != null) {
+      return -1;
+    } else if (bStart != null) {
+      return 1;
+    }
+
+    final byName = _nv(a['name']).compareTo(_nv(b['name']));
+    if (byName != 0) return byName;
+
+    return (a['id'] ?? '').toString().compareTo((b['id'] ?? '').toString());
+  }
+
+  bool _matchesFilter(String position, String filter) =>
+      filter == 'All' || position.toLowerCase().contains(filter.toLowerCase());
+
+  bool get _isDropdownFilterActive =>
+      _recordsPeriodFilter != 'All Time' || _recordsLeaveTypeFilter != 'All';
 
   List<Map<String, dynamic>> get _filteredTimeOffRecords {
     final query = _searchQuery.trim().toLowerCase();
@@ -84,9 +308,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       }
 
       if (_recordsLeaveTypeFilter != 'All') {
-        final rawType = (record['leaveType'] ?? record['type'] ?? '')
-            .toString();
-        final normType = TimeOffService.normalizeLeaveType(rawType);
+        final normType = TimeOffService.leaveType(record);
         final normSelected = TimeOffService.normalizeLeaveType(
           _recordsLeaveTypeFilter,
         );
@@ -96,341 +318,214 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       final recordDates = TimeOffService.selectedDatesForRecord(record);
 
       if (_recordsPeriodFilter == 'Custom Range') {
-        if (_customSelectedDates != null && _customSelectedDates!.isNotEmpty) {
-          if (recordDates.isEmpty) {
-            final fallbackDate = AppDateUtils.dateFromValue(
-              record['startDate'] ?? record['date'],
-            );
-            if (fallbackDate == null) return true;
-            final recordDay = DateTime(
-              fallbackDate.year,
-              fallbackDate.month,
-              fallbackDate.day,
-            );
-            final hasMatch = _customSelectedDates!.any(
-              (sel) =>
-                  sel.year == recordDay.year &&
-                  sel.month == recordDay.month &&
-                  sel.day == recordDay.day,
-            );
-            if (!hasMatch) return false;
-          } else {
-            final hasMatch = recordDates.any((d) {
-              final day = DateTime(d.year, d.month, d.day);
-              return _customSelectedDates!.any(
-                (sel) =>
-                    sel.year == day.year &&
-                    sel.month == day.month &&
-                    sel.day == day.day,
-              );
-            });
-            if (!hasMatch) return false;
-          }
-        } else if (_customDateRange != null) {
-          final start = DateTime(
-            _customDateRange!.start.year,
-            _customDateRange!.start.month,
-            _customDateRange!.start.day,
-          );
-          final end = DateTime(
-            _customDateRange!.end.year,
-            _customDateRange!.end.month,
-            _customDateRange!.end.day,
-            23,
-            59,
-            59,
-          );
-          if (recordDates.isEmpty) {
-            final fallbackDate = AppDateUtils.dateFromValue(
-              record['startDate'] ?? record['date'],
-            );
-            if (fallbackDate == null) return true;
-            final recordDay = DateTime(
-              fallbackDate.year,
-              fallbackDate.month,
-              fallbackDate.day,
-            );
-            if (recordDay.isBefore(start) || recordDay.isAfter(end))
-              return false;
-          } else {
-            final hasMatch = recordDates.any((d) {
-              final day = DateTime(d.year, d.month, d.day);
-              return !day.isBefore(start) && !day.isAfter(end);
-            });
-            if (!hasMatch) return false;
-          }
-        }
+        if (!_matchesCustomRange(record, recordDates)) return false;
       } else if (_recordsPeriodFilter != 'All Time') {
-        final range = AttendanceReportService.rangeForPeriod(
-          _recordsPeriodFilter,
-        );
-        if (recordDates.isEmpty) {
-          final fallbackDate = AppDateUtils.dateFromValue(
-            record['startDate'] ?? record['date'],
-          );
-          if (fallbackDate != null) {
-            final recordDay = DateTime(
-              fallbackDate.year,
-              fallbackDate.month,
-              fallbackDate.day,
-            );
-            if (!range.contains(recordDay)) return false;
-          }
-        } else {
-          final hasMatch = recordDates.any((d) {
-            final day = DateTime(d.year, d.month, d.day);
-            return range.contains(day);
-          });
-          if (!hasMatch) return false;
-        }
+        if (!_matchesPeriodRange(record, recordDates)) return false;
       }
 
       return true;
     }).toList();
   }
 
-  List<Map<String, dynamic>> _rawTimeoffDocs = [];
-  List<Map<String, dynamic>> _timeoffDocs = [];
-  List<Map<String, dynamic>> _workersList = [];
-  bool _isLoading = true;
-  bool _isExportingCsv = false;
-  bool _workersLoaded = false;
-  bool _timeoffLoaded = false;
-  bool _workersLoadFailed = false;
-  bool _timeoffLoadFailed = false;
-
-  StreamSubscription? _timeoffSub;
-  StreamSubscription? _workersSub;
-
-  bool _isAssigningTimeOff = false;
-  Map<String, dynamic>? _workerForTimeOff;
-  late AuthService _authService;
-  late FirestoreService _firestore;
-  late bool _isGuestMode;
-
-  @override
-  void dispose() {
-    _timeoffSub?.cancel();
-    _workersSub?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  String _l(String key, String fallback, {Map<String, String>? namedArgs}) {
-    final translated = key.tr(namedArgs: namedArgs).trim();
-    return translated.isEmpty || translated == key ? fallback : translated;
-  }
-
-  String _normalizedValue(dynamic value) =>
-      (value ?? '').toString().trim().toLowerCase();
-
-  String _localizedLeaveType(String type) {
-    return switch (TimeOffService.normalizeLeaveType(type)) {
-      'Annual Leave' => 'annual_leave'.tr(),
-      'Sick Leave' => 'sick_leave_type'.tr(),
-      'Casual Leave' => 'casual_leave_type'.tr(),
-      'Medical Leave' => 'medical_leave_type'.tr(),
-      _ => type,
-    };
-  }
-
-  bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
-    return (record['source'] ?? '').toString().trim().toLowerCase() ==
-        'attendance';
-  }
-
-  String _firstNonEmptyValue(Iterable<dynamic> values) {
-    for (final value in values) {
-      final normalized = (value ?? '').toString().trim();
-      if (normalized.isNotEmpty && normalized.toLowerCase() != 'null') {
-        return normalized;
-      }
-    }
-    return '';
-  }
-
-  bool _hasUniqueWorkerName(String normalizedName) {
-    if (normalizedName.isEmpty) return false;
-    var matches = 0;
-    for (final worker in _workersList) {
-      if (_normalizedValue(worker['name']) == normalizedName) {
-        matches++;
-        if (matches > 1) return false;
-      }
-    }
-    return matches == 1;
-  }
-
-  int _remainingPaidLeaveForWorker(
-    Map<String, dynamic> worker,
-    List<Map<String, dynamic>> workerRecords,
+  bool _matchesCustomRange(
+    Map<String, dynamic> record,
+    List<DateTime> recordDates,
   ) {
-    final total = TimeOffService.configuredPaidLeaveAllowance(worker);
-    final used = TimeOffService.paidDaysUsedForWorker(worker, workerRecords);
-    return (total - used).clamp(0, total).toInt();
+    if (_customSelectedDates != null && _customSelectedDates!.isNotEmpty) {
+      return _matchesSelectedDates(record, recordDates, _customSelectedDates!);
+    }
+    if (_customDateRange != null) {
+      return _matchesDateRange(record, recordDates, _customDateRange!);
+    }
+    return true;
   }
 
-  Map<String, dynamic> _docForNewLeave(Map<String, dynamic> doc) {
-    return {...doc}
-      ..remove('action')
-      ..remove('type')
-      ..remove('selectedDates')
-      ..remove('startDate')
-      ..remove('endDate')
-      ..remove('notes')
-      ..remove('status')
-      ..remove('requestedDays');
-  }
-
-  bool _canAssignTimeOff(Map<String, dynamic> worker) {
-    final status =
-        (worker['employmentStatus'] ??
-                worker['workerStatus'] ??
-                worker['status'] ??
-                'Active')
-            .toString()
-            .trim()
-            .toLowerCase();
-    return !const {
-      'inactive',
-      'terminated',
-      'deleted',
-      'archived',
-    }.contains(status);
-  }
-
-  int _compareTimeOffRows(
-    Map<String, dynamic> first,
-    Map<String, dynamic> second,
+  bool _matchesSelectedDates(
+    Map<String, dynamic> record,
+    List<DateTime> recordDates,
+    Set<DateTime> selected,
   ) {
-    final firstHasRecord = (first['action'] ?? '').toString().isNotEmpty;
-    final secondHasRecord = (second['action'] ?? '').toString().isNotEmpty;
-    if (firstHasRecord != secondHasRecord) {
-      return firstHasRecord ? -1 : 1;
+    bool datesMatch(DateTime d) {
+      final day = DateTime(d.year, d.month, d.day);
+      return selected.any(
+        (s) => s.year == day.year && s.month == day.month && s.day == day.day,
+      );
     }
 
-    final firstStart = TimeOffService.parseDate(first['startDate']);
-    final secondStart = TimeOffService.parseDate(second['startDate']);
-    if (firstStart != null && secondStart != null) {
-      final byStartDate = secondStart.compareTo(firstStart);
-      if (byStartDate != 0) return byStartDate;
-    } else if (firstStart != null) {
-      return -1;
-    } else if (secondStart != null) {
-      return 1;
+    if (recordDates.isEmpty) {
+      final fallback = AppDateUtils.dateFromValue(
+        record['startDate'] ?? record['date'],
+      );
+      if (fallback == null) return true;
+      return datesMatch(fallback);
     }
 
-    final byName = _normalizedValue(
-      first['name'],
-    ).compareTo(_normalizedValue(second['name']));
-    if (byName != 0) return byName;
+    return recordDates.any(datesMatch);
+  }
 
-    return (first['id'] ?? '').toString().compareTo(
-      (second['id'] ?? '').toString(),
+  bool _matchesDateRange(
+    Map<String, dynamic> record,
+    List<DateTime> recordDates,
+    DateTimeRange range,
+  ) {
+    final start = DateTime(
+      range.start.year,
+      range.start.month,
+      range.start.day,
+    );
+    final end = DateTime(
+      range.end.year,
+      range.end.month,
+      range.end.day,
+      23,
+      59,
+      59,
+    );
+
+    bool inRange(DateTime d) {
+      final day = DateTime(d.year, d.month, d.day);
+      return !day.isBefore(start) && !day.isAfter(end);
+    }
+
+    if (recordDates.isEmpty) {
+      final fallback = AppDateUtils.dateFromValue(
+        record['startDate'] ?? record['date'],
+      );
+      if (fallback == null) return true;
+      return inRange(fallback);
+    }
+
+    return recordDates.any(inRange);
+  }
+
+  bool _matchesPeriodRange(
+    Map<String, dynamic> record,
+    List<DateTime> recordDates,
+  ) {
+    final range = AttendanceReportService.rangeForPeriod(_recordsPeriodFilter);
+
+    if (recordDates.isEmpty) {
+      final fallback = AppDateUtils.dateFromValue(
+        record['startDate'] ?? record['date'],
+      );
+      if (fallback == null) return true;
+      return range.contains(
+        DateTime(fallback.year, fallback.month, fallback.day),
+      );
+    }
+
+    return recordDates.any(
+      (d) => range.contains(DateTime(d.year, d.month, d.day)),
     );
   }
 
-  void _combineGuestTimeOff() {
-    if (_workersList.isEmpty) {
-      _timeoffDocs = [];
-      _isLoading = false;
-      return;
-    }
+  List<Map<String, dynamic>> get _filteredWorkers {
+    final query = _searchQuery.toLowerCase();
 
-    final combined = <Map<String, dynamic>>[];
-    for (final worker in _workersList) {
-      final workerId = (worker['id'] ?? '').toString().trim();
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
-      final matchingRecords = _rawTimeoffDocs.where((record) {
-        if (!TimeOffService.isActiveRecord(record)) return false;
-        if (_isAttendanceManagedTimeOff(record)) return false;
-        final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-        final tEmail = (record['email'] ?? '').toString().trim().toLowerCase();
-        final tName = (record['name'] ?? record['workerName'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return (workerId.isNotEmpty &&
-                recordWorkerId.isNotEmpty &&
-                workerId == recordWorkerId) ||
-            (recordWorkerId.isEmpty && email.isNotEmpty && tEmail == email) ||
-            (email.isEmpty && name.isNotEmpty && tName == name);
-      }).toList();
+    final filtered = _timeoffDocs.where((doc) {
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final position = (doc['position'] ?? '').toString().toLowerCase();
 
-      final balanceRecords = _rawTimeoffDocs.where((record) {
-        if (!TimeOffService.isActiveRecord(record)) return false;
-        final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-        final tEmail = (record['email'] ?? '').toString().trim().toLowerCase();
-        final tName = (record['name'] ?? record['workerName'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return (workerId.isNotEmpty &&
-                recordWorkerId.isNotEmpty &&
-                workerId == recordWorkerId) ||
-            (recordWorkerId.isEmpty && email.isNotEmpty && tEmail == email) ||
-            (email.isEmpty && name.isNotEmpty && tName == name);
-      }).toList();
-      final remaining = TimeOffService.remainingPaidLeave(
-        worker,
-        balanceRecords,
-      );
+      if (!name.contains(query) && !position.contains(query)) return false;
+      return _matchesFilter(position, _selectedTab);
+    }).toList();
 
-      if (matchingRecords.isEmpty) {
-        combined.add({
-          ...worker,
-          'action': '',
-          'startDate': '',
-          'endDate': '',
-          'requestedDays': 0,
-          'annualLeaves': worker['annualLeaves'],
-          'availableAnnualLeaves': worker['availableAnnualLeaves'],
-          'remainingLeaves': remaining.toString(),
-        });
-        continue;
-      }
+    filtered.sort(
+      _isGuestMode
+          ? (a, b) {
+              final aAction = (a['action'] ?? '').toString();
+              final bAction = (b['action'] ?? '').toString();
+              if (aAction.isNotEmpty && bAction.isEmpty) return -1;
+              if (aAction.isEmpty && bAction.isNotEmpty) return 1;
+              return 0;
+            }
+          : _compareRows,
+    );
 
-      final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
-        ..sort((a, b) {
-          final aStart = TimeOffService.parseDate(a['startDate']);
-          final bStart = TimeOffService.parseDate(b['startDate']);
-          if (aStart == null && bStart == null) return 0;
-          if (aStart == null) return 1;
-          if (bStart == null) return -1;
-          return bStart.compareTo(aStart);
-        });
-      final timeoffRecord = sortedRecords.first;
-      combined.add({
-        ...worker,
-        ...timeoffRecord,
-        'workerId': worker['id'],
-        'action': TimeOffService.leaveType(timeoffRecord),
-        'type': TimeOffService.leaveType(timeoffRecord),
-        'name': worker['name'] ?? timeoffRecord['name'],
-        'email': worker['email'] ?? timeoffRecord['email'],
-        'profileImage': worker['profileImage'] ?? timeoffRecord['profileImage'],
-        'phone': worker['phone'] ?? timeoffRecord['phone'] ?? '',
-        'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
-        'annualLeaves': worker['annualLeaves'],
-        'availableAnnualLeaves': worker['availableAnnualLeaves'],
-        'remainingLeaves': remaining.toString(),
-      });
-    }
-
-    combined.sort((a, b) {
-      final aHasRecord = (a['action'] ?? '').toString().isNotEmpty;
-      final bHasRecord = (b['action'] ?? '').toString().isNotEmpty;
-      if (aHasRecord != bHasRecord) return aHasRecord ? -1 : 1;
-      final aStart = TimeOffService.parseDate(a['startDate']);
-      final bStart = TimeOffService.parseDate(b['startDate']);
-      if (aStart == null || bStart == null) return 0;
-      return bStart.compareTo(aStart);
-    });
-
-    _timeoffDocs = combined;
-    _isLoading = false;
+    return filtered;
   }
+
+  List<Map<String, dynamic>> get _matchingWorkersForDropdownFilters {
+    final filteredWorkers = _filteredWorkers;
+    final filteredRecords = _filteredTimeOffRecords;
+
+    final recordIds = <String>{};
+    final recordEmails = <String>{};
+
+    for (final rec in filteredRecords) {
+      final rId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
+      final rEmail = (rec['workerEmail'] ?? rec['email'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      if (rId.isNotEmpty) recordIds.add(rId);
+      if (rEmail.isNotEmpty) recordEmails.add(rEmail);
+    }
+
+    return filteredWorkers.where((worker) {
+      final wId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+      final wEmail = (worker['email'] ?? worker['workerEmail'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      return (wId.isNotEmpty && recordIds.contains(wId)) ||
+          (wEmail.isNotEmpty && recordEmails.contains(wEmail));
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _displayWorkers => _isDropdownFilterActive
+      ? _matchingWorkersForDropdownFilters
+      : _filteredWorkers;
+
+  String get _activeFilterName {
+    final parts = <String>[];
+
+    if (_recordsLeaveTypeFilter != 'All') {
+      parts.add(_localizedLeaveType(_recordsLeaveTypeFilter));
+    }
+
+    if (_recordsPeriodFilter != 'All Time') {
+      if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+        final s = _customDateRange!.start;
+        final e = _customDateRange!.end;
+        parts.add(
+          s.year == e.year && s.month == e.month && s.day == e.day
+              ? DateFormat('dd MMM').format(s)
+              : '${DateFormat('dd MMM').format(s)} - ${DateFormat('dd MMM').format(e)}',
+        );
+      } else {
+        parts.add(
+          _periodOptions.firstWhere(
+            (o) => o['value'] == _recordsPeriodFilter,
+            orElse: () => {
+              'value': _recordsPeriodFilter,
+              'label': _recordsPeriodFilter,
+            },
+          )['label']!,
+        );
+      }
+    }
+
+    return parts.join(' • ');
+  }
+
+  List<Map<String, String>> get _periodOptions => [
+    {'value': 'All Time', 'label': _l('all_time', 'All Time')},
+    {'value': 'This Month', 'label': _l('this_month', 'This Month')},
+    {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
+    {'value': 'This Year', 'label': _l('this_year', 'This Year')},
+    {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
+  ];
+
+  List<Map<String, String>> get _leaveTypeOptions => [
+    {'value': 'All', 'label': _l('all_filter', 'All')},
+    {'value': 'Sick Leave', 'label': _localizedLeaveType('Sick Leave')},
+    {'value': 'Casual Leave', 'label': _localizedLeaveType('Casual Leave')},
+    {'value': 'Medical Leave', 'label': _localizedLeaveType('Medical Leave')},
+    {'value': 'Annual Leave', 'label': _localizedLeaveType('Annual Leave')},
+  ];
 
   void _combineTimeOff() {
     if (_isGuestMode) {
@@ -443,81 +538,80 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       return;
     }
 
-    if (_workersLoadFailed || _timeoffLoadFailed) {
-      _timeoffDocs = [];
-      _isLoading = false;
-      return;
-    }
-
-    if (_workersList.isEmpty) {
-      _timeoffDocs = [];
+    if (_workersLoadFailed || _timeoffLoadFailed || _workersList.isEmpty) {
+      _timeoffDocs = <Map<String, dynamic>>[];
       _isLoading = false;
       return;
     }
 
     final recordsByWorkerId = <String, List<Map<String, dynamic>>>{};
-    final legacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
-    final allRecordsByWorkerId = <String, List<Map<String, dynamic>>>{};
-    final allLegacyRecordsByEmail = <String, List<Map<String, dynamic>>>{};
+    final legacyByEmail = <String, List<Map<String, dynamic>>>{};
+    final allByWorkerId = <String, List<Map<String, dynamic>>>{};
+    final allLegacyByEmail = <String, List<Map<String, dynamic>>>{};
 
     for (final record in _rawTimeoffDocs) {
       if (!TimeOffService.isActiveRecord(record)) continue;
 
-      final workerId = (record['workerId'] ?? '').toString().trim();
-      final email = _normalizedValue(record['email']);
-      final isAttendanceManaged = _isAttendanceManagedTimeOff(record);
+      final wId = (record['workerId'] ?? '').toString().trim();
+      final email = _nv(record['email']);
+      final isAtt = _isAttendanceManaged(record);
 
-      if (workerId.isNotEmpty) {
-        allRecordsByWorkerId.putIfAbsent(workerId, () => []).add(record);
-        if (!isAttendanceManaged) {
-          recordsByWorkerId.putIfAbsent(workerId, () => []).add(record);
+      if (wId.isNotEmpty) {
+        allByWorkerId
+            .putIfAbsent(wId, () => <Map<String, dynamic>>[])
+            .add(record);
+        if (!isAtt) {
+          recordsByWorkerId
+              .putIfAbsent(wId, () => <Map<String, dynamic>>[])
+              .add(record);
         }
       } else if (email.isNotEmpty) {
-        allLegacyRecordsByEmail.putIfAbsent(email, () => []).add(record);
-        if (!isAttendanceManaged) {
-          legacyRecordsByEmail.putIfAbsent(email, () => []).add(record);
+        allLegacyByEmail
+            .putIfAbsent(email, () => <Map<String, dynamic>>[])
+            .add(record);
+        if (!isAtt) {
+          legacyByEmail
+              .putIfAbsent(email, () => <Map<String, dynamic>>[])
+              .add(record);
         }
       }
     }
 
     final combined = <Map<String, dynamic>>[];
-    for (final worker in _workersList) {
-      final workerId = (worker['id'] ?? '').toString().trim();
-      final email = _normalizedValue(worker['email']);
-      final name = _normalizedValue(worker['name']);
-      final canUseNameFallback = email.isEmpty && _hasUniqueWorkerName(name);
 
-      List<Map<String, dynamic>> matchingRecords;
-      List<Map<String, dynamic>> balanceRecords;
-      if (workerId.isNotEmpty) {
-        matchingRecords = recordsByWorkerId[workerId] ?? const [];
-        balanceRecords = allRecordsByWorkerId[workerId] ?? const [];
+    for (final worker in _workersList) {
+      final wId = (worker['id'] ?? '').toString().trim();
+      final email = _nv(worker['email']);
+      final name = _nv(worker['name']);
+      final canUseName = email.isEmpty && _hasUniqueWorkerName(name);
+
+      List<Map<String, dynamic>> matching;
+      List<Map<String, dynamic>> balance;
+
+      if (wId.isNotEmpty) {
+        matching = recordsByWorkerId[wId] ?? const [];
+        balance = allByWorkerId[wId] ?? const [];
       } else if (email.isNotEmpty) {
-        matchingRecords = legacyRecordsByEmail[email] ?? const [];
-        balanceRecords = allLegacyRecordsByEmail[email] ?? const [];
+        matching = legacyByEmail[email] ?? const [];
+        balance = allLegacyByEmail[email] ?? const [];
       } else {
-        balanceRecords = _rawTimeoffDocs.where((record) {
-          if (!TimeOffService.isActiveRecord(record)) return false;
-          final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-          if (recordWorkerId.isNotEmpty) return false;
-          final recordEmail = _normalizedValue(record['email']);
-          if (recordEmail.isNotEmpty) return false;
-          final recordName = _normalizedValue(
-            record['name'] ?? record['workerName'],
-          );
-          return canUseNameFallback && name.isNotEmpty && recordName == name;
+        balance = _rawTimeoffDocs.where((r) {
+          if (!TimeOffService.isActiveRecord(r)) return false;
+          if ((r['workerId'] ?? '').toString().trim().isNotEmpty) return false;
+          if (_nv(r['email']).isNotEmpty) return false;
+          final rName = _nv(r['name'] ?? r['workerName']);
+          return canUseName && name.isNotEmpty && rName == name;
         }).toList();
-        matchingRecords = balanceRecords
-            .where((record) => !_isAttendanceManagedTimeOff(record))
-            .toList();
+
+        matching = balance.where((r) => !_isAttendanceManaged(r)).toList();
       }
 
-      final remaining = _remainingPaidLeaveForWorker(worker, balanceRecords);
+      final remaining = _remainingPaidLeave(worker, balance);
 
-      if (matchingRecords.isEmpty) {
+      if (matching.isEmpty) {
         combined.add({
           ...worker,
-          'workerId': workerId,
+          'workerId': wId,
           'action': '',
           'startDate': '',
           'endDate': '',
@@ -525,46 +619,45 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           'annualLeaves': worker['annualLeaves'],
           'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
-
           'canAssignTimeOff': _canAssignTimeOff(worker),
         });
         continue;
       }
 
-      final sortedRecords = List<Map<String, dynamic>>.from(matchingRecords)
+      final sorted = List<Map<String, dynamic>>.from(matching)
         ..sort((a, b) {
-          final aStart = TimeOffService.parseDate(a['startDate']);
-          final bStart = TimeOffService.parseDate(b['startDate']);
-          if (aStart == null && bStart == null) return 0;
-          if (aStart == null) return 1;
-          if (bStart == null) return -1;
-          return bStart.compareTo(aStart);
+          final aS = TimeOffService.parseDate(a['startDate']);
+          final bS = TimeOffService.parseDate(b['startDate']);
+          if (aS == null && bS == null) return 0;
+          if (aS == null) return 1;
+          if (bS == null) return -1;
+          return bS.compareTo(aS);
         });
-      final timeoffRecord = sortedRecords.first;
-      final phone = _firstNonEmptyValue([
+
+      final rec = sorted.first;
+      final phone = _firstNonEmpty([
         worker['phone'],
         worker['contact'],
-        timeoffRecord['phone'],
-        timeoffRecord['contact'],
+        rec['phone'],
+        rec['contact'],
       ]);
+
       combined.add({
         ...worker,
-        ...timeoffRecord,
-        'workerId': workerId.isNotEmpty
-            ? workerId
-            : (timeoffRecord['workerId'] ?? '').toString(),
-        'action': TimeOffService.leaveType(timeoffRecord),
-        'type': TimeOffService.leaveType(timeoffRecord),
-        'name': _firstNonEmptyValue([
+        ...rec,
+        'workerId': wId.isNotEmpty ? wId : (rec['workerId'] ?? '').toString(),
+        'action': TimeOffService.leaveType(rec),
+        'type': TimeOffService.leaveType(rec),
+        'name': _firstNonEmpty([
           worker['name'],
-          timeoffRecord['name'],
-          timeoffRecord['workerName'],
+          rec['name'],
+          rec['workerName'],
         ]),
-        'email': _firstNonEmptyValue([worker['email'], timeoffRecord['email']]),
-        'profileImage': _firstNonEmptyValue([
+        'email': _firstNonEmpty([worker['email'], rec['email']]),
+        'profileImage': _firstNonEmpty([
           worker['profileImage'],
-          timeoffRecord['profileImage'],
-          timeoffRecord['workerAvatar'],
+          rec['profileImage'],
+          rec['workerAvatar'],
         ]),
         'phone': phone,
         'contact': phone,
@@ -575,14 +668,115 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       });
     }
 
-    combined.sort(_compareTimeOffRows);
+    combined.sort(_compareRows);
+    _timeoffDocs = combined;
+    _isLoading = false;
+  }
+
+  void _combineGuestTimeOff() {
+    if (_workersList.isEmpty) {
+      _timeoffDocs = <Map<String, dynamic>>[];
+      _isLoading = false;
+      return;
+    }
+
+    final combined = <Map<String, dynamic>>[];
+
+    for (final worker in _workersList) {
+      final wId = (worker['id'] ?? '').toString().trim();
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      bool workerMatches(Map<String, dynamic> r) {
+        final rId = (r['workerId'] ?? '').toString().trim();
+        final rEmail = (r['email'] ?? '').toString().trim().toLowerCase();
+        final rName = (r['name'] ?? r['workerName'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        return (wId.isNotEmpty && rId.isNotEmpty && wId == rId) ||
+            (rId.isEmpty && email.isNotEmpty && rEmail == email) ||
+            (email.isEmpty && name.isNotEmpty && rName == name);
+      }
+
+      final matching = _rawTimeoffDocs
+          .where(
+            (r) =>
+                TimeOffService.isActiveRecord(r) &&
+                !_isAttendanceManaged(r) &&
+                workerMatches(r),
+          )
+          .toList();
+
+      final balanceRecords = _rawTimeoffDocs
+          .where((r) => TimeOffService.isActiveRecord(r) && workerMatches(r))
+          .toList();
+
+      final remaining = TimeOffService.remainingPaidLeave(
+        worker,
+        balanceRecords,
+      );
+
+      if (matching.isEmpty) {
+        combined.add({
+          ...worker,
+          'action': '',
+          'startDate': '',
+          'endDate': '',
+          'requestedDays': 0,
+          'annualLeaves': worker['annualLeaves'],
+          'availableAnnualLeaves': worker['availableAnnualLeaves'],
+          'remainingLeaves': remaining.toString(),
+        });
+        continue;
+      }
+
+      final sorted = List<Map<String, dynamic>>.from(matching)
+        ..sort((a, b) {
+          final aS = TimeOffService.parseDate(a['startDate']);
+          final bS = TimeOffService.parseDate(b['startDate']);
+          if (aS == null && bS == null) return 0;
+          if (aS == null) return 1;
+          if (bS == null) return -1;
+          return bS.compareTo(aS);
+        });
+
+      final rec = sorted.first;
+      combined.add({
+        ...worker,
+        ...rec,
+        'workerId': worker['id'],
+        'action': TimeOffService.leaveType(rec),
+        'type': TimeOffService.leaveType(rec),
+        'name': worker['name'] ?? rec['name'],
+        'email': worker['email'] ?? rec['email'],
+        'profileImage': worker['profileImage'] ?? rec['profileImage'],
+        'phone': worker['phone'] ?? rec['phone'] ?? '',
+        'contact': worker['phone'] ?? rec['contact'] ?? '',
+        'annualLeaves': worker['annualLeaves'],
+        'availableAnnualLeaves': worker['availableAnnualLeaves'],
+        'remainingLeaves': remaining.toString(),
+      });
+    }
+
+    combined.sort((a, b) {
+      final aHas = (a['action'] ?? '').toString().isNotEmpty;
+      final bHas = (b['action'] ?? '').toString().isNotEmpty;
+      if (aHas != bHas) return aHas ? -1 : 1;
+
+      final aS = TimeOffService.parseDate(a['startDate']);
+      final bS = TimeOffService.parseDate(b['startDate']);
+      if (aS == null || bS == null) return 0;
+      return bS.compareTo(aS);
+    });
+
     _timeoffDocs = combined;
     _isLoading = false;
   }
 
   void _refreshGuestData() {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_authService.currentUser?.isAnonymous ?? false) {
       setState(() {
         _isLoading = true;
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
@@ -590,212 +784,42 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         _combineTimeOff();
       });
     } else {
-      setState(() => _combineTimeOff());
+      setState(_combineTimeOff);
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
-    _rawTimeoffDocs = [];
-    _timeoffDocs = [];
-    _workersList = [];
-    _isLoading = true;
-    _isGuestMode = _authService.currentUser?.isAnonymous ?? false;
+  void _navigateToAssign(Map<String, dynamic> doc) {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
 
-    if (!_isGuestMode) {
-      _workersSub = _firestore.workersStream.listen(
-        (snapshot) {
-          if (!mounted) return;
-          setState(() {
-            _workersList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-            _workersLoaded = true;
-            _workersLoadFailed = false;
-            _combineTimeOff();
-          });
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          ErrorReporter.report(
-            error,
-            stackTrace,
-            context: 'timeOffWorkersStream',
-          );
-          if (!mounted) return;
-          setState(() {
-            _workersList = [];
-            _workersLoaded = true;
-            _workersLoadFailed = true;
-            _combineTimeOff();
-          });
-        },
-      );
+    final limitReached = TimeOffService.isWorkerLimitReached(
+      doc,
+      _rawTimeoffDocs,
+    );
+    if (limitReached || doc['canAssignTimeOff'] == false) {
+      _showTimeOffDataDialog(context, doc);
+      return;
+    }
 
-      _timeoffSub = _firestore.timeoffStream.listen(
-        (snapshot) {
-          if (!mounted) return;
-          setState(() {
-            final sortedList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-            sortedList.sort((a, b) {
-              final aTime = a['createdAt'];
-              final bTime = b['createdAt'];
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-              if (aTime is Timestamp && bTime is Timestamp) {
-                return bTime.compareTo(aTime);
-              }
-              return 0;
-            });
-            _rawTimeoffDocs = sortedList;
-            _timeoffLoaded = true;
-            _timeoffLoadFailed = false;
-            _combineTimeOff();
-          });
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          ErrorReporter.report(
-            error,
-            stackTrace,
-            context: 'timeOffRecordsStream',
-          );
-          if (!mounted) return;
-          setState(() {
-            _rawTimeoffDocs = [];
-            _timeoffLoaded = true;
-            _timeoffLoadFailed = true;
-            _combineTimeOff();
-          });
-        },
-      );
+    if (widget.onAssignTimeOff != null) {
+      widget.onAssignTimeOff!(_docForNewLeave(doc));
     } else {
-      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-      _rawTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
-      _workersLoaded = true;
-      _timeoffLoaded = true;
-      _combineTimeOff();
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (_) => AssignTimeOffScreen(
+                onBack: () => Navigator.of(context).pop(),
+                initialWorker: _docForNewLeave(doc),
+              ),
+            ),
+          )
+          .then((_) {
+            if (isGuest) _refreshGuestData();
+          });
     }
-  }
-
-  bool _matchesFilter(String position, String filter) {
-    if (filter == 'All') return true;
-    return position.toLowerCase().contains(filter.toLowerCase());
-  }
-
-  bool get _isDropdownFilterActive {
-    return _recordsPeriodFilter != 'All Time' ||
-        _recordsLeaveTypeFilter != 'All';
-  }
-
-  List<Map<String, dynamic>> get _matchingWorkersForDropdownFilters {
-    final base = _filteredWorkers;
-    if (!_isDropdownFilterActive) return base;
-
-    return base.where((worker) {
-      final workerId = (worker['id'] ?? worker['workerId'] ?? '')
-          .toString()
-          .trim();
-      final workerEmail = (worker['email'] ?? worker['workerEmail'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      return _filteredTimeOffRecords.any((rec) {
-        final recId = (rec['workerId'] ?? rec['id'] ?? '').toString().trim();
-        final recEmail = (rec['workerEmail'] ?? rec['email'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return (workerId.isNotEmpty && recId.isNotEmpty && recId == workerId) ||
-            (workerEmail.isNotEmpty &&
-                recEmail.isNotEmpty &&
-                recEmail == workerEmail);
-      });
-    }).toList();
-  }
-
-  List<Map<String, dynamic>> get _displayWorkers {
-    if (!_isDropdownFilterActive) return _filteredWorkers;
-    return _matchingWorkersForDropdownFilters;
-  }
-
-  String get _activeFilterName {
-    final List<String> parts = [];
-    if (_recordsLeaveTypeFilter != 'All') {
-      parts.add(_localizedLeaveType(_recordsLeaveTypeFilter));
-    }
-    if (_recordsPeriodFilter != 'All Time') {
-      if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
-        final start = _customDateRange!.start;
-        final end = _customDateRange!.end;
-        if (start.year == end.year &&
-            start.month == end.month &&
-            start.day == end.day) {
-          parts.add(DateFormat('dd MMM').format(start));
-        } else {
-          parts.add(
-            '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}',
-          );
-        }
-      } else {
-        final periodOptions = [
-          {'value': 'All Time', 'label': _l('all_time', 'All Time')},
-          {'value': 'This Month', 'label': _l('this_month', 'This Month')},
-          {
-            'value': 'Last 6 Months',
-            'label': _l('last_6_months', 'Last 6 Months'),
-          },
-          {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-          {
-            'value': 'Custom Range',
-            'label': _l('custom_range', 'Custom Range'),
-          },
-        ];
-        final match = periodOptions.firstWhere(
-          (e) => e['value'] == _recordsPeriodFilter,
-          orElse: () => {
-            'value': _recordsPeriodFilter,
-            'label': _recordsPeriodFilter,
-          },
-        );
-        parts.add(match['label']!);
-      }
-    }
-    return parts.join(' • ');
-  }
-
-  List<Map<String, dynamic>> get _filteredWorkers {
-    final filtered = _timeoffDocs.where((doc) {
-      final name = (doc['name'] ?? '').toString().toLowerCase();
-      final position = (doc['position'] ?? '').toString().toLowerCase();
-      final query = _searchQuery.toLowerCase();
-
-      final matchesSearch = name.contains(query) || position.contains(query);
-      if (!matchesSearch) return false;
-
-      final matchesTab = _matchesFilter(position, _selectedTab);
-      if (!matchesTab) return false;
-
-      return true;
-    }).toList();
-
-    if (_isGuestMode) {
-      filtered.sort((a, b) {
-        final actionA = (a['action'] ?? '').toString();
-        final actionB = (b['action'] ?? '').toString();
-        if (actionA.isNotEmpty && actionB.isEmpty) return -1;
-        if (actionA.isEmpty && actionB.isNotEmpty) return 1;
-        return 0;
-      });
-    } else {
-      filtered.sort(_compareTimeOffRows);
-    }
-
-    return filtered;
   }
 
   @override
@@ -818,7 +842,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     final filtered = _displayWorkers;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: _kBg,
       body: Column(
         children: [
           _buildHeader(),
@@ -834,29 +858,29 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
                         'time_off_list'.tr(),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
+                          color: _kBlack,
+                          fontFamily: _kFontFamily,
                         ),
                       ),
                       _buildRecordsFiltersAndExportRow(),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 80),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : (filtered.isEmpty
-                            ? _buildEmptyState()
-                            : _buildDataTable(filtered)),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 80),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (filtered.isEmpty)
+                    _buildEmptyState()
+                  else
+                    _buildDataTable(filtered),
                 ],
               ),
             ),
@@ -871,8 +895,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+        color: _kWhite,
+        border: Border(bottom: BorderSide(color: _kBorder)),
       ),
       child: Row(
         children: [
@@ -882,18 +906,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             children: [
               Text(
                 'workforce'.tr(),
-                style: TextStyle(
-                  color: Color(0xFF000000),
+                style: const TextStyle(
+                  color: _kBlack,
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
+                  fontFamily: _kFontFamily,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
             ],
           ),
           const Spacer(),
-
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
@@ -910,12 +933,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: _kBorder),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SvgPicture.asset(
             'assets/search icon.svg',
@@ -930,17 +952,13 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           Expanded(
             child: TextField(
               controller: _searchController,
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
+              onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'search_workers_name_position'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
-                  fontFamily: 'SF Pro Display',
+                  fontFamily: _kFontFamily,
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -951,9 +969,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             GestureDetector(
               onTap: () {
                 _searchController.clear();
-                setState(() {
-                  _searchQuery = '';
-                });
+                setState(() => _searchQuery = '');
               },
               child: Padding(
                 padding: const EdgeInsets.only(left: 8),
@@ -968,29 +984,24 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   Widget _buildFilterTabs() {
     const defaultPositions = LocalizationHelper.defaultJobPositions;
     final actualPositions = <String>{};
-    final positionNormalizer = <String, String>{};
+    final seen = <String>{};
+
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
       if (pos.isNotEmpty) {
         final key = pos.toLowerCase();
-        if (!positionNormalizer.containsKey(key)) {
-          positionNormalizer[key] = pos;
-          actualPositions.add(pos);
-        }
+        if (seen.add(key)) actualPositions.add(pos);
       }
     }
-    final sortedPositions = actualPositions.toList()..sort();
 
-    final positionsToShow = <String>[...sortedPositions];
-    for (final position in defaultPositions) {
+    final positionsToShow = actualPositions.toList()..sort();
+    for (final p in defaultPositions) {
       final alreadyIncluded = positionsToShow.any(
         (item) =>
-            item.toLowerCase().contains(position.toLowerCase()) ||
-            position.toLowerCase().contains(item.toLowerCase()),
+            item.toLowerCase().contains(p.toLowerCase()) ||
+            p.toLowerCase().contains(item.toLowerCase()),
       );
-      if (!alreadyIncluded) {
-        positionsToShow.add(position);
-      }
+      if (!alreadyIncluded) positionsToShow.add(p);
     }
 
     final allFilters = ['All', ...positionsToShow];
@@ -999,14 +1010,13 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       width: double.infinity,
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (final f in allFilters)
               _buildTabItem(
@@ -1022,18 +1032,14 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   Widget _buildTabItem(String filterKey, String displayLabel) {
-    final bool isSelected = _selectedTab == filterKey;
+    final isSelected = _selectedTab == filterKey;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTab = filterKey;
-        });
-      },
+      onTap: () => setState(() => _selectedTab = filterKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
+          color: isSelected ? _kBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -1041,10 +1047,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           maxLines: 1,
           softWrap: false,
           style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
+            color: isSelected ? _kWhite : _kBlack,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
-            fontFamily: 'SF Pro Display',
+            fontFamily: _kFontFamily,
           ),
         ),
       ),
@@ -1052,14 +1058,14 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> workers) {
-    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
-      440.0,
-      1200.0,
-    );
+    final tableHeight = (MediaQuery.of(context).size.height - 329)
+        .clamp(440.0, 1200.0)
+        .toDouble();
+
     return Container(
       height: tableHeight,
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -1068,306 +1074,21 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'worker_name_header'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'position'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'contact_no'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      'time_off'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
+                _tableHeader('worker_name_header', flex: 3),
+                _tableHeader('position', flex: 2),
+                _tableHeader('contact_no', flex: 2),
+                _tableHeader('time_off', flex: 2, padLeft: 8),
               ],
             ),
           ),
-          Container(height: 1, color: const Color(0xFFF7F8FC)),
-
+          const SizedBox(height: 1, child: ColoredBox(color: _kDivider)),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: workers.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final doc = workers[index];
-                final name = (doc['name'] ?? '').toString();
-                final email = (doc['email'] ?? '').toString();
-                final position = (doc['position'] ?? '').toString();
-                final contact = (doc['contact'] ?? doc['phone'] ?? '')
-                    .toString();
-                final bool isLimitReached = TimeOffService.isWorkerLimitReached(
-                  doc,
-                  _rawTimeoffDocs,
-                );
-
-                final bool canAssign = doc['canAssignTimeOff'] != false;
-                final String displayAction = !canAssign
-                    ? (doc['status'] ??
-                              doc['workerStatus'] ??
-                              doc['employmentStatus'] ??
-                              'Inactive')
-                          .toString()
-                          .toUpperCase()
-                    : (isLimitReached ? 'limit_reached'.tr() : 'assign'.tr());
-                final Color actionColor = !canAssign || isLimitReached
-                    ? const Color(0xFFDC2626)
-                    : const Color(0xFF0D4CC6);
-
-                return GestureDetector(
-                  onTap: () {
-                    final isGuest =
-                        _authService.currentUser?.isAnonymous ?? false;
-                    if (isGuest) {
-                      showGuestRestrictionDialog(context);
-                      return;
-                    }
-                    if (isLimitReached || doc['canAssignTimeOff'] == false) {
-                      _showTimeOffDataDialog(context, doc, index);
-                      return;
-                    }
-                    if (widget.onAssignTimeOff != null) {
-                      widget.onAssignTimeOff!(_docForNewLeave(doc));
-                    } else {
-                      Navigator.of(context)
-                          .push(
-                            MaterialPageRoute(
-                              builder: (context) => AssignTimeOffScreen(
-                                onBack: () => Navigator.of(context).pop(),
-                                initialWorker: _docForNewLeave(doc),
-                              ),
-                            ),
-                          )
-                          .then((_) {
-                            if (!isGuest) return;
-                            _refreshGuestData();
-                          });
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8FA),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 24.0),
-                            child: Row(
-                              children: [
-                                WorkerAvatar(
-                                  imageUrl: doc['profileImage']?.toString(),
-                                  name: name,
-                                  size: 40,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: Color(0xFF000000),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 2,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        email,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 24.0),
-                            child: Text(
-                              LocalizationHelper.localizePosition(position),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
-                            ),
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 24.0),
-                            child: Text(
-                              contact,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 2,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: InkWell(
-                              onTap: () {
-                                final isGuest =
-                                    _authService.currentUser?.isAnonymous ??
-                                    false;
-                                if (isGuest) {
-                                  showGuestRestrictionDialog(context);
-                                  return;
-                                }
-
-                                if (isLimitReached ||
-                                    doc['canAssignTimeOff'] == false) {
-                                  _showTimeOffDataDialog(context, doc, index);
-                                  return;
-                                }
-                                if (widget.onAssignTimeOff != null) {
-                                  widget.onAssignTimeOff!(_docForNewLeave(doc));
-                                } else {
-                                  Navigator.of(context)
-                                      .push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AssignTimeOffScreen(
-                                                onBack: () =>
-                                                    Navigator.of(context).pop(),
-                                                initialWorker: _docForNewLeave(
-                                                  doc,
-                                                ),
-                                              ),
-                                        ),
-                                      )
-                                      .then((_) {
-                                        if (!isGuest) return;
-                                        _refreshGuestData();
-                                      });
-                                }
-                              },
-                              mouseCursor: SystemMouseCursors.click,
-                              borderRadius: BorderRadius.circular(6),
-                              splashColor: const Color(
-                                0xFF0D4CC6,
-                              ).withValues(alpha: 0.15),
-                              highlightColor: const Color(
-                                0xFF0D4CC6,
-                              ).withValues(alpha: 0.05),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        displayAction,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: actionColor,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, index) => _buildWorkerRow(workers[index]),
             ),
           ),
         ],
@@ -1375,44 +1096,452 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
+  Widget _tableHeader(String trKey, {int flex = 1, double padLeft = 0}) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: EdgeInsets.only(right: padLeft == 0 ? 16 : 0, left: padLeft),
+        child: Text(trKey.tr(), style: _kHeaderStyle),
+      ),
+    );
+  }
+
+  Widget _buildWorkerRow(Map<String, dynamic> doc) {
+    final name = (doc['name'] ?? '').toString();
+    final email = (doc['email'] ?? '').toString();
+    final position = (doc['position'] ?? '').toString();
+    final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
+    final limitReached = TimeOffService.isWorkerLimitReached(
+      doc,
+      _rawTimeoffDocs,
+    );
+    final canAssign = doc['canAssignTimeOff'] != false;
+
+    final displayAction = !canAssign
+        ? (doc['status'] ??
+                  doc['workerStatus'] ??
+                  doc['employmentStatus'] ??
+                  'Inactive')
+              .toString()
+              .toUpperCase()
+        : (limitReached ? 'limit_reached'.tr() : 'assign'.tr());
+
+    final actionColor = (!canAssign || limitReached) ? _kRed : _kActionBlue;
+
+    return GestureDetector(
+      onTap: () => _navigateToAssign(doc),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _kRowBg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: Row(
+                  children: [
+                    WorkerAvatar(
+                      imageUrl: doc['profileImage']?.toString(),
+                      name: name,
+                      size: 40,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: _kBlack,
+                              fontFamily: _kFontFamily,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              fontFamily: _kFontFamily,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: Text(
+                  LocalizationHelper.localizePosition(position),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontFamily: _kFontFamily,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: Text(
+                  contact,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontFamily: _kFontFamily,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  onTap: () => _navigateToAssign(doc),
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(6),
+                  splashColor: _kActionBlue.withValues(alpha: 0.15),
+                  highlightColor: _kActionBlue.withValues(alpha: 0.05),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(
+                        displayAction,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: actionColor,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: _kFontFamily,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final height = (MediaQuery.of(context).size.height - 329)
+        .clamp(440.0, 1200.0)
+        .toDouble();
+    final hasFilters = _isDropdownFilterActive;
+    final filterName = _activeFilterName;
+
+    final message = hasFilters
+        ? (filterName.isNotEmpty
+              ? _l(
+                  'no_records_named_filter',
+                  'No time off records found for "$filterName".',
+                  namedArgs: {'name': filterName},
+                )
+              : _l(
+                  'no_records_selected_filter',
+                  'No time off records found for the selected filter.',
+                ))
+        : _l('no_time_off_records', 'No time off record found');
+
+    return Container(
+      width: double.infinity,
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _kWhite,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(_kPlaceholder, BlendMode.srcIn),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _kBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: _kFontFamily,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordsFiltersAndExportRow() {
+    final match = _periodOptions.firstWhere(
+      (e) => e['value'] == _recordsPeriodFilter,
+      orElse: () => {
+        'value': _recordsPeriodFilter,
+        'label': _recordsPeriodFilter,
+      },
+    );
+
+    var periodLabel = match['label']!;
+    if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
+      final s = _customDateRange!.start;
+      final e = _customDateRange!.end;
+
+      if (s.year == e.year && s.month == e.month && s.day == e.day) {
+        periodLabel = DateFormat('dd MMM').format(s);
+      } else if (s.year == e.year) {
+        periodLabel =
+            '${DateFormat('dd MMM').format(s)} - ${DateFormat('dd MMM').format(e)}';
+      } else {
+        periodLabel =
+            '${DateFormat('dd MMM yy').format(s)} - ${DateFormat('dd MMM yy').format(e)}';
+      }
+    }
+
+    final leaveLabel = _recordsLeaveTypeFilter == 'All'
+        ? _l('all_filter', 'All')
+        : _localizedLeaveType(_recordsLeaveTypeFilter);
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _buildFilterPopup<String>(
+          value: _recordsPeriodFilter,
+          label: periodLabel,
+          icon: const Icon(
+            Icons.calendar_month_rounded,
+            size: 20,
+            color: Colors.white,
+          ),
+          options: _periodOptions,
+          onSelected: (val) {
+            if (val == 'Custom Range') {
+              _selectCustomDateRange(context);
+            } else {
+              setState(() {
+                _recordsPeriodFilter = val;
+                _customDateRange = null;
+                _customSelectedDates = null;
+              });
+            }
+          },
+        ),
+        _buildFilterPopup<String>(
+          value: _recordsLeaveTypeFilter,
+          label: leaveLabel,
+          iconWidget: Image.asset(
+            'assets/filter.png',
+            width: 18,
+            height: 18,
+            color: _kWhite,
+          ),
+          options: _leaveTypeOptions,
+          onSelected: (val) => setState(() => _recordsLeaveTypeFilter = val),
+          maxWidth: 150,
+          minWidth: 120,
+        ),
+        InkWell(
+          onTap: _isExportingCsv ? null : _handleExportCsv,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 43,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: _kGreen,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isExportingCsv)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.file_download_outlined,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                const SizedBox(width: 6),
+                Text(_l('export_csv', 'Export CSV'), style: _kWhiteText16w500),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterPopup<T>({
+    required T value,
+    required String label,
+    Widget? icon,
+    Widget? iconWidget,
+    required List<Map<String, String>> options,
+    required ValueChanged<String> onSelected,
+    double minWidth = 140,
+    double maxWidth = 220,
+  }) {
+    final hasLeading = icon != null || iconWidget != null;
+
+    return PopupMenuButton<String>(
+      tooltip: '',
+      constraints: BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
+      onSelected: onSelected,
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      color: _kWhite,
+      elevation: 4,
+      itemBuilder: (_) => options.map((f) {
+        final selected = value.toString() == f['value'];
+
+        return PopupMenuItem<String>(
+          value: f['value']!,
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? _kBlue : Colors.grey.shade300,
+                    width: 2,
+                  ),
+                  color: selected ? _kBlue : Colors.transparent,
+                ),
+                child: selected
+                    ? const Icon(Icons.check, size: 10, color: _kWhite)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  f['label']!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    color: selected ? _kBlue : _kBlack,
+                    fontFamily: _kFontFamily,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+      child: Container(
+        height: 43,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: _kBlue,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) icon,
+            if (iconWidget != null) iconWidget,
+            if (hasLeading) const SizedBox(width: 6),
+            Text(label, style: _kWhiteText16w500),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 20,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showTimeOffDataDialog(
     BuildContext context,
     Map<String, dynamic> data,
-    int index,
   ) async {
-    final String name = (data['name'] ?? '').toString();
-    final String email = (data['email'] ?? '').toString();
-    final String notes = (data['notes'] ?? '').toString();
+    final name = (data['name'] ?? '').toString();
+    final email = (data['email'] ?? '').toString();
+    final notes = (data['notes'] ?? '').toString();
+    final wId = (data['workerId'] ?? data['id'] ?? '').toString().trim();
+    final normEmail = email.trim().toLowerCase();
 
-    final String workerId = (data['workerId'] ?? data['id'] ?? '')
-        .toString()
-        .trim();
-    final normalizedEmail = email.trim().toLowerCase();
     final workerRecords = _rawTimeoffDocs.where((d) {
       if (!TimeOffService.isActiveRecord(d)) return false;
-      final recWorkerId = (d['workerId'] ?? '').toString().trim();
-      final recEmail = (d['email'] ?? '').toString().trim().toLowerCase();
-      if (workerId.isNotEmpty && workerId == recWorkerId) return true;
-      if (normalizedEmail.isNotEmpty && normalizedEmail == recEmail) {
-        return true;
-      }
-      return false;
+
+      final rId = (d['workerId'] ?? '').toString().trim();
+      final rEmail = (d['email'] ?? '').toString().trim().toLowerCase();
+
+      return (wId.isNotEmpty && wId == rId) ||
+          (normEmail.isNotEmpty && normEmail == rEmail);
     }).toList();
 
     final leaveDatesByType = TimeOffService.leaveDatesByTypeForWorker(
       data,
       workerRecords,
     );
-    final totalLeaveDays = leaveDatesByType.values.fold<int>(
+    final totalDays = leaveDatesByType.values.fold<int>(
       0,
-      (total, dates) => total + dates.length,
+      (t, dates) => t + dates.length,
     );
-    final String selectedDays = totalLeaveDays.toString();
+    final selectedDays = totalDays.toString();
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.92 : 460.0;
 
-    final List<Map<String, dynamic>> allDatesWithTypes = [];
+    final allDatesWithTypes = <Map<String, dynamic>>[];
     for (final entry in leaveDatesByType.entries) {
       for (final date in entry.value) {
         allDatesWithTypes.add({'date': date, 'type': entry.key});
@@ -1424,8 +1553,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (context) => Dialog(
+      barrierColor: _kBlue.withValues(alpha: 0.5),
+      builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1435,11 +1564,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             height: 420,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Color(0xFFFFFFFF),
+              color: _kWhite,
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Color(0xFF000000).withValues(alpha: 0.15),
+                  color: _kBlack.withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1447,70 +1576,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             ),
             child: Column(
               children: [
-                Container(
-                  height: 40,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF004FDE),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(6),
-                      topRight: Radius.circular(6),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.close,
-                              color: Color(0xFFFFFFFF),
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Text(
-                          'assign_time_off'.tr(),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop('edit'),
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: SvgPicture.asset(
-                              'assets/edit_icon.svg',
-                              height: 22,
-                              width: 22,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFFFFFFFF),
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildDialogHeader(dialogCtx),
                 _buildWorkerPreviewHeader(
                   name: name,
                   email: email,
@@ -1519,14 +1585,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFFFFFF),
+                      color: _kWhite,
                       border: Border(
-                        left: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
-                        right: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
-                        bottom: BorderSide(
-                          color: Color(0xFFE8E8E8),
-                          width: 1.5,
-                        ),
+                        left: BorderSide(color: _kCardBorder, width: 1.5),
+                        right: BorderSide(color: _kCardBorder, width: 1.5),
+                        bottom: BorderSide(color: _kCardBorder, width: 1.5),
                       ),
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(6),
@@ -1539,7 +1602,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           LayoutBuilder(
-                            builder: (context, constraints) {
+                            builder: (_, constraints) {
                               final cardWidth = (constraints.maxWidth - 12) / 2;
                               return Wrap(
                                 spacing: 12,
@@ -1547,10 +1610,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                 children: [
                                   SizedBox(
                                     width: cardWidth,
-                                    child: _buildTimeOffMetricCard(
+                                    child: _buildMetricCard(
                                       icon: const Icon(
                                         Icons.event_available,
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         size: 20,
                                       ),
                                       title: 'total_leave_days'.tr(),
@@ -1559,10 +1622,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                   ),
                                   SizedBox(
                                     width: cardWidth,
-                                    child: _buildTimeOffMetricCard(
+                                    child: _buildMetricCard(
                                       icon: const Icon(
                                         Icons.calendar_month,
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         size: 20,
                                       ),
                                       title: 'requested_days'.tr(),
@@ -1571,10 +1634,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                   ),
                                   SizedBox(
                                     width: cardWidth,
-                                    child: _buildTimeOffMetricCard(
+                                    child: _buildMetricCard(
                                       icon: const Icon(
                                         Icons.beach_access,
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         size: 20,
                                       ),
                                       title: 'remaining_days'.tr(),
@@ -1584,30 +1647,28 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                   ),
                                   SizedBox(
                                     width: cardWidth,
-                                    child: _buildTimeOffMetricCard(
+                                    child: _buildMetricCard(
                                       icon: const Icon(
                                         Icons.date_range,
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         size: 20,
                                       ),
                                       title: 'selected_dates'.tr(),
-                                      value: _formatSelectedDatesSummary(
+                                      value: _formatDatesSummary(
                                         allDatesWithTypes,
                                       ),
-                                      onTap: () {
-                                        _showSelectedDatesDialog(
-                                          context,
-                                          allDatesWithTypes,
-                                        );
-                                      },
+                                      onTap: () => _showSelectedDatesDialog(
+                                        dialogCtx,
+                                        allDatesWithTypes,
+                                      ),
                                     ),
                                   ),
                                   SizedBox(
                                     width: cardWidth,
-                                    child: _buildTimeOffMetricCard(
+                                    child: _buildMetricCard(
                                       icon: const Icon(
                                         Icons.notes,
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         size: 20,
                                       ),
                                       title: 'notes_label'.tr(),
@@ -1631,38 +1692,93 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
 
     if (result == 'edit' && mounted) {
-      final wId = (data['workerId'] ?? data['id'] ?? '').toString().trim();
-      final wEmail = (data['email'] ?? '').toString().trim().toLowerCase();
-
       final activeRecords = _rawTimeoffDocs.where((r) {
         if (!TimeOffService.isActiveRecord(r)) return false;
         final rId = (r['workerId'] ?? '').toString().trim();
         final rEmail = (r['email'] ?? '').toString().trim().toLowerCase();
         return (wId.isNotEmpty && wId == rId) ||
-            (wEmail.isNotEmpty && wEmail == rEmail);
+            (normEmail.isNotEmpty && normEmail == rEmail);
       }).toList();
 
-      Map<String, dynamic>? latestRecord;
+      Map<String, dynamic>? latest;
       if (activeRecords.isNotEmpty) {
-        latestRecord = activeRecords.reduce((a, b) {
+        latest = activeRecords.reduce((a, b) {
           final aId = (a['id'] ?? '').toString();
           final bId = (b['id'] ?? '').toString();
           return aId.compareTo(bId) >= 0 ? a : b;
         });
       }
 
-      final mergedWorker = <String, dynamic>{...data};
-      if (latestRecord != null) {
-        mergedWorker.addAll(latestRecord);
-      }
-      mergedWorker['_aggregateTimeOffEdit'] = true;
-      mergedWorker['_aggregateDatesByType'] = leaveDatesByType;
+      final merged = <String, dynamic>{...data};
+      if (latest != null) merged.addAll(latest);
 
-      setState(() {
-        _isAssigningTimeOff = true;
-        _workerForTimeOff = mergedWorker;
-      });
+      if (widget.onAssignTimeOff != null) {
+        widget.onAssignTimeOff!(merged);
+      } else {
+        setState(() {
+          _isAssigningTimeOff = true;
+          _workerForTimeOff = merged;
+        });
+      }
     }
+  }
+
+  Widget _buildDialogHeader(BuildContext context) {
+    return Container(
+      height: 40,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: _kDarkBlue,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(6),
+          topRight: Radius.circular(6),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: const MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.close, color: _kWhite, size: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'assign_time_off'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _kWhite,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: _kFontFamily,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop('edit'),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  height: 22,
+                  width: 22,
+                  colorFilter: const ColorFilter.mode(_kWhite, BlendMode.srcIn),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildWorkerPreviewHeader({
@@ -1674,17 +1790,16 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFE8E8E8), width: 1)),
+        color: _kWhite,
+        border: Border(bottom: BorderSide(color: _kCardBorder)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           WorkerAvatar(
             imageUrl: imageUrl,
             name: name,
             size: 60,
-            border: Border.all(color: const Color(0xFF0A51D0), width: 2),
+            border: Border.all(color: Color(0xFF0A51D0), width: 2),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1695,10 +1810,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 Text(
                   name,
                   style: const TextStyle(
-                    color: Color(0xFF333333),
+                    color: _kGrey333,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -1711,7 +1826,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       height: 12,
                       width: 12,
                       colorFilter: const ColorFilter.mode(
-                        Color(0xFF666666),
+                        _kGrey666,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -1720,10 +1835,10 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       child: Text(
                         email,
                         style: const TextStyle(
-                          color: Color(0xFF666666),
+                          color: _kGrey666,
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
-                          fontFamily: 'SF Pro Display',
+                          fontFamily: _kFontFamily,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -1739,28 +1854,27 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
-  Widget _buildTimeOffMetricCard({
+  Widget _buildMetricCard({
     required Widget icon,
     required String title,
     required String value,
     VoidCallback? onTap,
   }) {
-    final cardWidget = Container(
+    final card = Container(
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: _kWhite,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
+        border: Border.all(color: _kCardBorder, width: 1.2),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFFE5EEFC),
+              color: _kLightBlue,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Center(child: icon),
@@ -1777,7 +1891,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     fontSize: 12,
                     color: Colors.black,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -1787,9 +1901,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   value,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF000000),
+                    color: _kBlack,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
@@ -1801,30 +1915,26 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       ),
     );
 
-    if (onTap == null) return cardWidget;
+    if (onTap == null) return card;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(onTap: onTap, child: cardWidget),
+      child: GestureDetector(onTap: onTap, child: card),
     );
   }
 
-  String _formatSelectedDatesSummary(
-    List<Map<String, dynamic>> datesWithTypes,
-  ) {
-    if (datesWithTypes.isEmpty) return 'select_date'.tr();
-    String formatDate(DateTime date) {
-      final day = date.day.toString().padLeft(2, '0');
-      final month = date.month.toString().padLeft(2, '0');
-      return '$day/$month/${date.year}';
-    }
+  String _formatDatesSummary(List<Map<String, dynamic>> dates) {
+    if (dates.isEmpty) return 'select_date'.tr();
 
-    final visibleDates = datesWithTypes
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    final visible = dates
         .take(3)
-        .map((e) => formatDate(e['date'] as DateTime))
+        .map((e) => fmt(e['date'] as DateTime))
         .join(', ');
-    final remaining = datesWithTypes.length - 3;
-    return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
+    final remaining = dates.length - 3;
+    return remaining > 0 ? '$visible +$remaining' : visible;
   }
 
   void _showSelectedDatesDialog(
@@ -1838,18 +1948,18 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       'Casual Leave',
       'Medical Leave',
     ];
-    final assignedDatesByType = <String, Set<DateTime>>{
-      for (final type in typeOrder) type: <DateTime>{},
+
+    final assignedByType = <String, Set<DateTime>>{
+      for (final t in typeOrder) t: <DateTime>{},
     };
+
     for (final item in datesWithTypes) {
       final type = TimeOffService.normalizeLeaveType(
         (item['type'] ?? '').toString(),
       );
       final date = item['date'];
-      if (date is DateTime && assignedDatesByType.containsKey(type)) {
-        assignedDatesByType[type]!.add(
-          DateTime(date.year, date.month, date.day),
-        );
+      if (date is DateTime && assignedByType.containsKey(type)) {
+        assignedByType[type]!.add(DateTime(date.year, date.month, date.day));
       }
     }
 
@@ -1868,7 +1978,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           ),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
+            color: _kWhite,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -1884,7 +1994,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               Container(
                 height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: const BoxDecoration(color: Color(0xFF004FDE)),
+                decoration: const BoxDecoration(color: _kDarkBlue),
                 child: Row(
                   children: [
                     const Icon(
@@ -1902,7 +2012,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           color: Colors.white,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
+                          fontFamily: _kFontFamily,
                         ),
                       ),
                     ),
@@ -1922,12 +2032,14 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                color: const Color(0xFFF8FAFC),
+                color: _kBg,
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: typeOrder.map((type) {
                     final color = LeaveColors.getColor(type);
+                    final count = assignedByType[type]!.length;
+
                     return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -1942,12 +2054,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       ),
                       child: Text(
                         '${_localizedLeaveType(type)}: '
-                        '${assignedDatesByType[type]!.length} ${assignedDatesByType[type]!.length == 1 ? 'day'.tr() : 'days'.tr()}',
+                        '$count ${count == 1 ? 'day'.tr() : 'days'.tr()}',
                         style: TextStyle(
                           color: color,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'SF Pro Display',
+                          fontFamily: _kFontFamily,
                         ),
                       ),
                     );
@@ -1958,43 +2070,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: datesWithTypes.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 40,
-                              horizontal: 24,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 64,
-                                  height: 64,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFF1F5F9),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.event_busy_rounded,
-                                    size: 32,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  'no_dates_selected'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF64748B),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+                      ? _buildNoDatesPlaceholder()
                       : ListView.separated(
                           shrinkWrap: true,
                           padding: const EdgeInsets.symmetric(
@@ -2002,10 +2078,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                             vertical: 4,
                           ),
                           itemCount: datesWithTypes.length,
-                          separatorBuilder: (_, _) => const Divider(
-                            height: 1,
-                            color: Color(0xFFEEEEEE),
-                          ),
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, color: _kBorder),
                           itemBuilder: (context, index) {
                             final item = datesWithTypes[index];
                             final date = item['date'] as DateTime;
@@ -2013,10 +2087,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                             final effectiveType = (type?.isNotEmpty == true)
                                 ? type
                                 : leaveType;
-                            final String displayType = effectiveType == null
+                            final displayType = effectiveType == null
                                 ? ''
                                 : _localizedLeaveType(effectiveType);
-                            final localeName = context.locale.toString();
+                            final locale = context.locale.toString();
+
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               child: Row(
@@ -2025,17 +2100,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                     width: 24,
                                     height: 24,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFE5EEFC),
+                                      color: _kLightBlue,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
                                       '${index + 1}',
                                       style: const TextStyle(
-                                        color: Color(0xFF004FDE),
+                                        color: _kDarkBlue,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 11,
-                                        fontFamily: 'SF Pro Display',
+                                        fontFamily: _kFontFamily,
                                       ),
                                     ),
                                   ),
@@ -2046,25 +2121,21 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          DateFormat.yMMMd(
-                                            localeName,
-                                          ).format(date),
+                                          DateFormat.yMMMd(locale).format(date),
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.black,
-                                            fontFamily: 'SF Pro Display',
+                                            fontFamily: _kFontFamily,
                                           ),
                                         ),
                                         Text(
-                                          DateFormat.EEEE(
-                                            localeName,
-                                          ).format(date),
+                                          DateFormat.EEEE(locale).format(date),
                                           style: const TextStyle(
                                             fontSize: 11,
-                                            color: Color(0xFF666666),
+                                            color: _kGrey666,
                                             fontWeight: FontWeight.w500,
-                                            fontFamily: 'SF Pro Display',
+                                            fontFamily: _kFontFamily,
                                           ),
                                         ),
                                       ],
@@ -2091,7 +2162,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                                           color: LeaveColors.getColor(
                                             effectiveType ?? '',
                                           ),
-                                          fontFamily: 'SF Pro Display',
+                                          fontFamily: _kFontFamily,
                                         ),
                                       ),
                                     ),
@@ -2110,394 +2181,58 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    final double dynamicHeight = (MediaQuery.of(context).size.height - 329)
-        .clamp(440.0, 1200.0);
-    final bool hasActiveFilters = _isDropdownFilterActive;
-    final String filterName = _activeFilterName;
-    final String emptyMessage = hasActiveFilters
-        ? (filterName.isNotEmpty
-              ? _l(
-                  'no_records_named_filter',
-                  'No time off records found for "$filterName".',
-                  namedArgs: {'name': filterName},
-                )
-              : _l(
-                  'no_records_selected_filter',
-                  'No time off records found for the selected filter.',
-                ))
-        : _l('no_time_off_records', 'No time off record found');
-
-    return Container(
-      width: double.infinity,
-      height: dynamicHeight,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            'assets/placeholder_workers.svg',
-            width: 120,
-            height: 100,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFCBCBCB),
-              BlendMode.srcIn,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              emptyMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF0247C4),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
+  Widget _buildNoDatesPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                size: 32,
+                color: Color(0xFF94A3B8),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              'no_dates_selected'.tr(),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+                fontFamily: _kFontFamily,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildRecordsFiltersAndExportRow() {
-    final periodOptions = [
-      {'value': 'All Time', 'label': _l('all_time', 'All Time')},
-      {'value': 'This Month', 'label': _l('this_month', 'This Month')},
-      {'value': 'Last 6 Months', 'label': _l('last_6_months', 'Last 6 Months')},
-      {'value': 'This Year', 'label': _l('this_year', 'This Year')},
-      {'value': 'Custom Range', 'label': _l('custom_range', 'Custom Range')},
-    ];
-
-    final leaveTypeOptions = [
-      {'value': 'All', 'label': _l('all_filter', 'All')},
-      {'value': 'Sick Leave', 'label': _localizedLeaveType('Sick Leave')},
-      {'value': 'Casual Leave', 'label': _localizedLeaveType('Casual Leave')},
-      {'value': 'Medical Leave', 'label': _localizedLeaveType('Medical Leave')},
-      {'value': 'Annual Leave', 'label': _localizedLeaveType('Annual Leave')},
-    ];
-
-    final match = periodOptions.firstWhere(
-      (e) => e['value'] == _recordsPeriodFilter,
-      orElse: () => {
-        'value': _recordsPeriodFilter,
-        'label': _recordsPeriodFilter,
-      },
-    );
-    String periodLabel = match['label']!;
-    if (_recordsPeriodFilter == 'Custom Range' && _customDateRange != null) {
-      final start = _customDateRange!.start;
-      final end = _customDateRange!.end;
-      if (start.year == end.year &&
-          start.month == end.month &&
-          start.day == end.day) {
-        periodLabel = DateFormat('dd MMM').format(start);
-      } else if (start.year == end.year) {
-        periodLabel =
-            '${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM').format(end)}';
-      } else {
-        periodLabel =
-            '${DateFormat('dd MMM yy').format(start)} - ${DateFormat('dd MMM yy').format(end)}';
-      }
-    }
-
-    String leaveTypeLabel = _recordsLeaveTypeFilter == 'All'
-        ? _l('all_filter', 'All')
-        : _localizedLeaveType(_recordsLeaveTypeFilter);
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        PopupMenuButton<String>(
-          tooltip: '',
-          constraints: const BoxConstraints(minWidth: 140, maxWidth: 220),
-          onSelected: (val) {
-            if (val == 'Custom Range') {
-              _selectCustomDateRange(context);
-            } else {
-              setState(() {
-                _recordsPeriodFilter = val;
-                _customDateRange = null;
-                _customSelectedDates = null;
-              });
-            }
-          },
-          offset: const Offset(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-            side: BorderSide(color: Colors.grey.shade200, width: 1),
-          ),
-          color: const Color(0xFFFFFFFF),
-          elevation: 4,
-          itemBuilder: (context) {
-            return periodOptions.map((f) {
-              final bool selected = _recordsPeriodFilter == f['value'];
-              final label = f['label']!;
-              return PopupMenuItem<String>(
-                value: f['value']!,
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                        color: selected
-                            ? const Color(0xFF0247C4)
-                            : Colors.transparent,
-                      ),
-                      child: selected
-                          ? const Icon(
-                              Icons.check,
-                              size: 10,
-                              color: Color(0xFFFFFFFF),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : const Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList();
-          },
-          child: Container(
-            height: 43,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0247C4),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.calendar_month_rounded,
-                  size: 20,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  periodLabel,
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ),
-        ),
-        PopupMenuButton<String>(
-          tooltip: '',
-          constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
-          onSelected: (val) {
-            setState(() {
-              _recordsLeaveTypeFilter = val;
-            });
-          },
-          offset: const Offset(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-            side: BorderSide(color: Colors.grey.shade200, width: 1),
-          ),
-          color: const Color(0xFFFFFFFF),
-          elevation: 4,
-          itemBuilder: (context) {
-            return leaveTypeOptions.map((f) {
-              final bool selected = _recordsLeaveTypeFilter == f['value'];
-              return PopupMenuItem<String>(
-                value: f['value']!,
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                        color: selected
-                            ? const Color(0xFF0247C4)
-                            : Colors.transparent,
-                      ),
-                      child: selected
-                          ? const Icon(
-                              Icons.check,
-                              size: 10,
-                              color: Color(0xFFFFFFFF),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        f['label']!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color: selected
-                              ? const Color(0xFF0247C4)
-                              : const Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList();
-          },
-          child: Container(
-            height: 43,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0247C4),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/filter.png',
-                  width: 18,
-                  height: 18,
-                  color: const Color(0xFFFFFFFF),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  leaveTypeLabel,
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ),
-        ),
-        InkWell(
-          onTap: _isExportingCsv ? null : _handleExportCsv,
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            height: 43,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF27AE60),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_isExportingCsv)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                else
-                  const Icon(
-                    Icons.file_download_outlined,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                const SizedBox(width: 6),
-                Text(
-                  _l('export_csv', 'Export CSV'),
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
   DateTime? _dateAtPosition(Offset position, DateTime monthDate) {
-    const double cellWidth = 48.0;
-    const double cellHeight = 40.0;
-    const double headerHeight = 30.0;
+    const cellWidth = 48.0;
+    const cellHeight = 40.0;
+    const headerHeight = 30.0;
 
-    final column = (position.dx / cellWidth).floor();
+    final col = (position.dx / cellWidth).floor();
     final row = ((position.dy - headerHeight) / cellHeight).floor();
 
-    if (column < 0 || column > 6 || row < 0) return null;
+    if (col < 0 || col > 6 || row < 0) return null;
 
-    final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
+    final first = DateTime(monthDate.year, monthDate.month, 1);
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
-    final startOffset = firstDayOfMonth.weekday % 7;
+    final startOffset = first.weekday % 7;
+    final day = (row * 7) + col - startOffset + 1;
 
-    final day = (row * 7) + column - startOffset + 1;
     if (day < 1 || day > daysInMonth) return null;
     return DateTime(monthDate.year, monthDate.month, day);
   }
@@ -2506,48 +2241,51 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     DateTime calendarDate,
     Set<DateTime> selectedDates,
   ) {
-    final weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    final firstDayOfMonth = DateTime(calendarDate.year, calendarDate.month, 1);
+    const weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    final first = DateTime(calendarDate.year, calendarDate.month, 1);
     final daysInMonth = DateTime(
       calendarDate.year,
       calendarDate.month + 1,
       0,
     ).day;
-    final startOffset = firstDayOfMonth.weekday % 7;
+    final startOffset = first.weekday % 7;
     final totalCells = ((startOffset + daysInMonth) / 7).ceil() * 7;
 
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: weekdays.map((day) {
-            return SizedBox(
-              width: 44,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+          children: weekdays
+              .map(
+                (day) => SizedBox(
+                  width: 44,
                   child: Center(
-                    child: Text(
-                      day,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _kBlue,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Center(
+                        child: Text(
+                          day,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: _kFontFamily,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              )
+              .toList(),
         ),
         const SizedBox(height: 8),
         GridView.builder(
@@ -2558,15 +2296,16 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             mainAxisExtent: 40,
           ),
           itemCount: totalCells,
-          itemBuilder: (context, index) {
-            final dayNumber = index - startOffset + 1;
-            if (dayNumber < 1 || dayNumber > daysInMonth) {
+          itemBuilder: (_, index) {
+            final dayNum = index - startOffset + 1;
+            if (dayNum < 1 || dayNum > daysInMonth) {
               return const SizedBox();
             }
+
             final cellDate = DateTime(
               calendarDate.year,
               calendarDate.month,
-              dayNumber,
+              dayNum,
             );
             final isSelected = selectedDates.any(
               (d) =>
@@ -2578,24 +2317,20 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             return Container(
               margin: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF0247C4)
-                    : const Color(0xFFFAFAFA),
+                color: isSelected ? _kBlue : const Color(0xFFFAFAFA),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFF0247C4)
-                      : const Color(0xFFE2E8F0),
+                  color: isSelected ? _kBlue : const Color(0xFFE2E8F0),
                 ),
               ),
               child: Center(
                 child: Text(
-                  '$dayNumber',
+                  '$dayNum',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     color: isSelected ? Colors.white : Colors.black,
-                    fontFamily: 'SF Pro Display',
+                    fontFamily: _kFontFamily,
                   ),
                 ),
               ),
@@ -2607,41 +2342,41 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   Future<void> _selectCustomDateRange(BuildContext context) async {
-    DateTime calendarDate = DateTime.now();
-    Set<DateTime> selectedDates = {};
-    if (_recordsPeriodFilter == 'Custom Range' &&
-        _customSelectedDates != null &&
-        _customSelectedDates!.isNotEmpty) {
-      selectedDates = Set<DateTime>.from(_customSelectedDates!);
-      calendarDate = _customSelectedDates!.first;
-    } else if (_recordsPeriodFilter == 'Custom Range' &&
-        _customDateRange != null) {
-      for (
-        var d = _customDateRange!.start;
-        !d.isAfter(_customDateRange!.end);
-        d = d.add(const Duration(days: 1))
-      ) {
-        selectedDates.add(DateTime(d.year, d.month, d.day));
+    var calendarDate = DateTime.now();
+    var selectedDates = <DateTime>{};
+
+    if (_recordsPeriodFilter == 'Custom Range') {
+      if (_customSelectedDates != null && _customSelectedDates!.isNotEmpty) {
+        selectedDates = Set<DateTime>.from(_customSelectedDates!);
+        calendarDate = _customSelectedDates!.first;
+      } else if (_customDateRange != null) {
+        for (
+          var d = _customDateRange!.start;
+          !d.isAfter(_customDateRange!.end);
+          d = d.add(const Duration(days: 1))
+        ) {
+          selectedDates.add(DateTime(d.year, d.month, d.day));
+        }
+        calendarDate = _customDateRange!.start;
       }
-      calendarDate = _customDateRange!.start;
     }
 
-    DateTime? dragAnchorDate;
-    Offset? dragStartPosition;
-    bool dragMoved = false;
-    Set<DateTime> selectionBeforeDrag = {};
+    DateTime? dragAnchor;
+    Offset? dragStart;
+    var dragMoved = false;
+    var beforeDrag = <DateTime>{};
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
+      barrierColor: _kBlue.withValues(alpha: 0.5),
+      builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              backgroundColor: const Color(0xFFFFFFFF),
+              backgroundColor: _kWhite,
               elevation: 10,
               child: Container(
                 width: 380,
@@ -2673,8 +2408,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF000000),
-                                fontFamily: 'SF Pro Display',
+                                color: _kBlack,
+                                fontFamily: _kFontFamily,
                               ),
                             ),
                           ),
@@ -2687,14 +2422,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.chevron_left, size: 22),
-                          onPressed: () {
-                            setModalState(() {
-                              calendarDate = DateTime(
-                                calendarDate.year,
-                                calendarDate.month - 1,
-                              );
-                            });
-                          },
+                          onPressed: () => setModalState(() {
+                            calendarDate = DateTime(
+                              calendarDate.year,
+                              calendarDate.month - 1,
+                            );
+                          }),
                         ),
                         Text(
                           DateFormat(
@@ -2703,72 +2436,65 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'SF Pro Display',
+                            fontFamily: _kFontFamily,
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.chevron_right, size: 22),
-                          onPressed: () {
-                            setModalState(() {
-                              calendarDate = DateTime(
-                                calendarDate.year,
-                                calendarDate.month + 1,
-                              );
-                            });
-                          },
+                          onPressed: () => setModalState(() {
+                            calendarDate = DateTime(
+                              calendarDate.year,
+                              calendarDate.month + 1,
+                            );
+                          }),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Listener(
-                      onPointerDown: (event) {
-                        final date = _dateAtPosition(
-                          event.localPosition,
+                      onPointerDown: (e) {
+                        dragAnchor = _dateAtPosition(
+                          e.localPosition,
                           calendarDate,
                         );
-                        dragAnchorDate = date;
-                        dragStartPosition = event.localPosition;
+                        dragStart = e.localPosition;
                         dragMoved = false;
-                        selectionBeforeDrag = Set<DateTime>.from(selectedDates);
+                        beforeDrag = Set<DateTime>.from(selectedDates);
                         setModalState(() {});
                       },
-                      onPointerMove: (event) {
-                        final startPos = dragStartPosition;
-                        if (startPos != null && !dragMoved) {
-                          final dx = (event.localPosition.dx - startPos.dx)
-                              .abs();
-                          final dy = (event.localPosition.dy - startPos.dy)
-                              .abs();
-                          if (dx > 5 || dy > 5) {
-                            dragMoved = true;
-                          }
+                      onPointerMove: (e) {
+                        if (dragStart != null && !dragMoved) {
+                          final dx = (e.localPosition.dx - dragStart!.dx).abs();
+                          final dy = (e.localPosition.dy - dragStart!.dy).abs();
+                          if (dx > 5 || dy > 5) dragMoved = true;
                         }
-                        if (!dragMoved) return;
-                        final anchor = dragAnchorDate;
-                        if (anchor == null) return;
+                        if (!dragMoved || dragAnchor == null) return;
+
                         final current = _dateAtPosition(
-                          event.localPosition,
+                          e.localPosition,
                           calendarDate,
                         );
                         if (current == null) return;
+
                         setModalState(() {
-                          selectedDates.clear();
-                          selectedDates.addAll(selectionBeforeDrag);
-                          final isDragRemoving = selectionBeforeDrag.contains(
-                            anchor,
-                          );
-                          final start = anchor.isBefore(current)
-                              ? anchor
+                          selectedDates
+                            ..clear()
+                            ..addAll(beforeDrag);
+
+                          final removing = beforeDrag.contains(dragAnchor);
+                          final start = dragAnchor!.isBefore(current)
+                              ? dragAnchor!
                               : current;
-                          final end = anchor.isAfter(current)
-                              ? anchor
+                          final end = dragAnchor!.isAfter(current)
+                              ? dragAnchor!
                               : current;
+
                           for (
                             var d = start;
                             !d.isAfter(end);
                             d = d.add(const Duration(days: 1))
                           ) {
-                            if (isDragRemoving) {
+                            if (removing) {
                               selectedDates.remove(d);
                             } else {
                               selectedDates.add(d);
@@ -2776,17 +2502,18 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                           }
                         });
                       },
-                      onPointerUp: (event) {
-                        if (!dragMoved && dragAnchorDate != null) {
-                          final date = dragAnchorDate!;
+                      onPointerUp: (_) {
+                        if (!dragMoved && dragAnchor != null) {
+                          final date = dragAnchor!;
                           setModalState(() {
-                            final isAlreadySelected = selectedDates.any(
+                            final exists = selectedDates.any(
                               (d) =>
                                   d.year == date.year &&
                                   d.month == date.month &&
                                   d.day == date.day,
                             );
-                            if (isAlreadySelected) {
+
+                            if (exists) {
                               selectedDates.removeWhere(
                                 (d) =>
                                     d.year == date.year &&
@@ -2798,10 +2525,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                             }
                           });
                         }
-                        dragAnchorDate = null;
-                        dragStartPosition = null;
+
+                        dragAnchor = null;
+                        dragStart = null;
                         dragMoved = false;
-                        selectionBeforeDrag = {};
+                        beforeDrag = <DateTime>{};
                         setModalState(() {});
                       },
                       child: _buildCalendarGrid(calendarDate, selectedDates),
@@ -2813,7 +2541,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: selectedDates.isEmpty
                               ? const Color(0xFFE2E8F0)
-                              : const Color(0xFF0247C4),
+                              : _kBlue,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
@@ -2827,16 +2555,15 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         onPressed: selectedDates.isEmpty
                             ? null
                             : () {
-                                final sortedDates = selectedDates.toList()
-                                  ..sort();
-                                Navigator.of(context).pop(sortedDates);
+                                final sorted = selectedDates.toList()..sort();
+                                Navigator.of(context).pop(sorted);
                               },
                         child: Text(
                           _l('apply', 'Apply'),
                           style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
+                            fontFamily: _kFontFamily,
                           ),
                         ),
                       ),
@@ -2861,6 +2588,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   Future<void> _handleExportCsv() async {
     if (_isExportingCsv) return;
+
     final records = _filteredTimeOffRecords;
     if (records.isEmpty) {
       FlashySnackBar.show(
@@ -2870,26 +2598,32 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       );
       return;
     }
+
     setState(() => _isExportingCsv = true);
     try {
       await _exportTimeOffCsv(records);
     } finally {
-      if (mounted) setState(() => _isExportingCsv = false);
+      if (mounted) {
+        setState(() => _isExportingCsv = false);
+      }
     }
   }
 
   Future<void> _exportTimeOffCsv(List<Map<String, dynamic>> records) async {
     final periodLabel =
         _recordsPeriodFilter == 'Custom Range' && _customDateRange != null
-        ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - ${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
+        ? '${DateFormat('dd MMM yyyy').format(_customDateRange!.start)} - '
+              '${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
         : _recordsPeriodFilter;
 
     final fileName =
         'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.csv';
+
     final success = await TimeOffExportService.exportCsv(
       records: records,
       fileName: fileName,
     );
+
     if (success && mounted) {
       FlashySnackBar.show(
         context,

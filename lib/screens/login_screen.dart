@@ -14,13 +14,13 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
-import '../utils/biometric_enrollment.dart';
-import '../utils/localization_helper.dart';
-import '../utils/ui_utils.dart';
+import '../utils/utils.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
 
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
-import '../shared/auth_widgets.dart';
+import '../shared/app_constants.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -677,7 +677,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         behavior: HitTestBehavior.opaque,
         child: Text(
           'forget_password'.tr(),
-          style: TextStyle(
+          style: const TextStyle(
             color: Color(0xFFFF0000),
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -750,7 +750,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (_googleEnabled)
         buildSocialButton(
-          context: context,
           text: 'continue_with_google'.tr(),
           icon: SvgPicture.asset(
             'assets/google_icon.svg',
@@ -765,7 +764,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (_googleEnabled) const SizedBox(height: 12),
 
       buildSocialButton(
-        context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.asset(
           'assets/guest_icon.svg',
@@ -868,7 +866,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 10),
+                                  const SizedBox(height: 10),
                                   Text(
                                     'welcome_banner_subtitle'.tr(),
                                     maxLines: 2,

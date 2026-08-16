@@ -87,14 +87,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
+                  border: Border.all(color: const Color(0xFFFFFFFF), width: 1.2),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
                     fit: BoxFit.cover,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFFFFFFFF).withValues(alpha: 0.4),
+                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -116,7 +116,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           const SizedBox(width: 10),
                           Text(
                             'upgrade_pro'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -140,10 +140,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           height: 50,
                           padding: const EdgeInsets.only(left: 16, right: 52),
                           decoration: BoxDecoration(
-                            color: Color(0xFF000000),
+                            color: const Color(0xFF000000),
                             borderRadius: BorderRadius.circular(25),
                             border: Border.all(
-                              color: Color(0xFFFFFFFF),
+                              color: const Color(0xFFFFFFFF),
                               width: 1.2,
                             ),
                           ),
@@ -154,7 +154,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               Text(
                                 'get_to_pro'.tr(),
                                 maxLines: 1,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -166,7 +166,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               Text(
                                 'subscribe_now'.tr(),
                                 maxLines: 1,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -258,7 +258,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'back_to_login_sidebar'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -285,7 +285,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
-              color: Color(0xFFFFFFFF).withValues(alpha: 0.36),
+              color: const Color(0xFFFFFFFF).withValues(alpha: 0.36),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -359,13 +359,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/workforce_icon_sldiebar.svg',
               height: 22,
               width: 22,
-              colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'sidebar_workforce'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -418,14 +418,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     iconSource.toString(),
                     height: 20,
                     width: 20,
-                    colorFilter: ColorFilter.mode(const Color(0xFFFFFFFF), BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
                   ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  color: Color(0xFFFFFFFF),
+                  color: const Color(0xFFFFFFFF),
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
                   fontFamily: 'SF Pro Display',
@@ -451,7 +451,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/tick_icon.svg',
               width: 14,
               height: 10,
-              colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
             ),
             const SizedBox(width: 8),
             Text(
@@ -500,19 +500,19 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         iconAsset,
                         height: 22,
                         width: 22,
-                        color: Color(0xFFFFFFFF),
+                        color: const Color(0xFFFFFFFF),
                       )
                     : SvgPicture.asset(
                         iconAsset,
                         height: 22,
                         width: 22,
-                        colorFilter: ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+                        colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
                       ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontSize: 18,
                       fontWeight: FontWeight.w600,

@@ -1,3 +1,6 @@
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:easy_localization/easy_localization.dart';
@@ -5,29 +8,36 @@ import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import '../utils/file_utils.dart';
-import '../utils/ui_utils.dart';
 
 List<List<String>> parseCsvInBackground(Uint8List bytes) {
+
   var csvString = utf8.decode(bytes, allowMalformed: true);
+
   if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
     csvString = csvString.substring(1);
   }
+
   csvString = csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
   final rows = Csv(dynamicTyping: false).decode(csvString);
+
   return rows.map((row) => row.map((e) => e.toString()).toList()).toList();
 }
 
 String computeFileHash(Uint8List bytes) {
+
   int hash = 0x811C9DC5;
+
   for (final byte in bytes) {
     hash ^= byte;
     hash = (hash * 0x01000193) & 0xFFFFFFFF;
   }
+
   return '${bytes.length}_${hash.toRadixString(16)}';
 }
 
 Future<void> downloadTemplate(BuildContext context) async {
+
   const headerRow =
       'Full Name,Contact Number,Email Address,Father Name,National ID,'
       'Religion,Date of Birth,Gender,Address,Relationship Status,'
@@ -83,6 +93,7 @@ Future<void> downloadTemplate(BuildContext context) async {
   const templateStr = '$headerRow\n$dataRows';
 
   try {
+
     final String? outputFile = await FilePicker.saveFile(
       dialogTitle: 'save_worker_template'.tr(),
       fileName: 'worker_template.csv',
@@ -97,8 +108,10 @@ Future<void> downloadTemplate(BuildContext context) async {
 
     if (!context.mounted) return;
     FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
+
     await FileOpener.open(outputFile);
   } catch (_) {
+
     if (!context.mounted) return;
     FlashySnackBar.show(
       context,
@@ -109,6 +122,7 @@ Future<void> downloadTemplate(BuildContext context) async {
 }
 
 Future<Uint8List?> pickCsvFile() async {
+
   final result = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: ['csv'],
@@ -117,9 +131,11 @@ Future<Uint8List?> pickCsvFile() async {
   if (result == null || result.files.isEmpty) return null;
 
   final file = result.files.first;
+
   const int maxBytes = 5 * 1024 * 1024;
 
   final bytes = await file.readAsBytes();
+
   if (bytes.length > maxBytes) {
     return null;
   }

@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -13,38 +14,44 @@ import 'firestore_service.dart';
 import 'error_reporter.dart';
 
 class AuthService {
+
   static AuthService? _instance;
   static AuthService get instance => _instance!;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final User _guestUser = GuestUser();
 
   AuthService() {
     _instance = this;
   }
 
-  static final ValueNotifier<String?> profilePicNotifier =
-      ValueNotifier<String?>(null);
-  static final ValueNotifier<String?> companyStampNotifier =
-      ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> companyStampNotifier = ValueNotifier<String?>(null);
 
   Stream<User?> get authStateChanges {
+
     if (FirestoreService.isTesting) {
       return Stream.value(MockUser());
     }
+
     if (PreferencesService.cachedIsGuest) {
       return Stream.value(_guestUser);
     }
+
     return _auth.authStateChanges();
   }
 
   User? get currentUser {
+
     if (FirestoreService.isTesting) {
       return MockUser();
     }
+
     if (PreferencesService.cachedIsGuest) {
       return _guestUser;
     }
+
     return _auth.currentUser;
   }
 
@@ -63,6 +70,7 @@ class AuthService {
     String? preferredName,
     required String fallback,
   }) {
+
     final preferred = preferredName?.trim() ?? '';
     if (preferred.isNotEmpty) return preferred;
 
@@ -92,6 +100,7 @@ class AuthService {
     required User user,
     required String name,
   }) async {
+
     final snapshot = await FirebaseFirestore.instance
         .collection('hrms_user')
         .doc(user.uid)
@@ -120,6 +129,7 @@ class AuthService {
   }
 
   Future<void> _rollbackAuthenticatedSession(String contextName) async {
+
     try {
       await _auth.signOut();
     } catch (e, st) {
@@ -144,15 +154,18 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
+
     try {
+
       final credential = await _auth.createUserWithEmailAndPassword(
         email: _normalizeEmail(email),
         password: password,
       );
+
       await PreferencesService.setGuest(false);
-      await PreferencesService.setLoggedIn(true);
       return credential;
     } on FirebaseAuthException {
       rethrow;
@@ -166,22 +179,29 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
+
     UserCredential? credential;
     try {
+
       credential = await _auth.signInWithEmailAndPassword(
         email: _normalizeEmail(email),
         password: password,
       );
+
       await PreferencesService.setGuest(false);
-      await PreferencesService.setLoggedIn(true);
+
       await _syncPremiumStatusFromFirestore();
+
       await _clearSeededDummyDataIfNeeded();
+
       return credential;
     } on FirebaseAuthException {
       rethrow;
     } catch (e, st) {
+
       if (credential != null) {
         await _rollbackAuthenticatedSession('emailSignInRollback');
       }
@@ -193,20 +213,26 @@ class AuthService {
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
-    await PreferencesService.setLoggedIn(true);
+
     await PreferencesService.setGuest(true);
     await PreferencesService.setSessionLocked(false);
+
     await DummyData.resetToDefaults();
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
+
     return GuestUserCredential(_guestUser);
   }
 
   Future<UserCredential?> signInWithGoogle() async {
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
+
     UserCredential? authenticatedCredential;
     try {
+
       String? clientId;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
@@ -222,6 +248,7 @@ class AuthService {
 
       final userCredential = await _auth.signInWithCredential(credential);
       authenticatedCredential = userCredential;
+
       final user = userCredential.user;
       if (user == null) {
         throw StateError('Google authentication returned no user');
@@ -237,17 +264,20 @@ class AuthService {
       await _safeUpdateDisplayName(user, name);
 
       final profile = await _ensureSocialProfile(user: user, name: name);
-      await PreferencesService.setLoggedIn(true);
       await _setPremiumFromProfile(profile);
+
       await _clearSeededDummyDataIfNeeded();
+
       return userCredential;
     } on GoogleSignInException catch (e) {
+
       if (e.code == GoogleSignInExceptionCode.canceled ||
           e.code == GoogleSignInExceptionCode.interrupted) {
         return null;
       }
       rethrow;
     } catch (e, st) {
+
       if (authenticatedCredential != null) {
         await _rollbackAuthenticatedSession('googleSignInRollback');
       }
@@ -257,10 +287,13 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithApple() async {
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
+
     UserCredential? authenticatedCredential;
     try {
+
       final appleProvider = OAuthProvider('apple.com');
       appleProvider.setCustomParameters({'locale': 'en'});
       appleProvider.addScope('email');
@@ -268,6 +301,7 @@ class AuthService {
 
       final userCredential = await _auth.signInWithProvider(appleProvider);
       authenticatedCredential = userCredential;
+
       final user = userCredential.user;
       if (user == null) {
         throw StateError('Apple authentication returned no user');
@@ -279,19 +313,23 @@ class AuthService {
       await _safeUpdateDisplayName(user, name);
 
       final profile = await _ensureSocialProfile(user: user, name: name);
-      await PreferencesService.setLoggedIn(true);
       await _setPremiumFromProfile(profile);
+
       await _clearSeededDummyDataIfNeeded();
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
+
       if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
         return null;
       }
+
       if (authenticatedCredential != null) {
         await _rollbackAuthenticatedSession('appleSignInRollback');
       }
       rethrow;
     } catch (e, st) {
+
       if (authenticatedCredential != null) {
         await _rollbackAuthenticatedSession('appleSignInRollback');
       }
@@ -302,13 +340,17 @@ class AuthService {
 
   Future<void> signOut({bool preserveBiometricLogin = false}) async {
     final isGuest = await PreferencesService.isGuest();
+
     await PreferencesService.setGuest(false);
+
     if (!isGuest) {
       await _auth.signOut();
     }
+
     await PreferencesService.clear(
       preserveBiometricCredentials: preserveBiometricLogin || isGuest,
     );
+
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
   }
@@ -325,6 +367,7 @@ class AuthService {
           .collection('hrms_user')
           .doc(user.uid)
           .get(const GetOptions(source: Source.server));
+
       await PreferencesService.setPremium(
         snapshot.data()?['isPremium'] == true,
       );
@@ -365,12 +408,14 @@ class AuthService {
     if (providerIds.contains('password')) {
       final email = user.email?.trim() ?? '';
       final enteredPassword = password ?? '';
+
       if (email.isEmpty) {
         throw FirebaseAuthException(code: 'email-missing');
       }
       if (enteredPassword.isEmpty) {
         throw FirebaseAuthException(code: 'password-required');
       }
+
       final credential = EmailAuthProvider.credential(
         email: email,
         password: enteredPassword,
@@ -428,7 +473,9 @@ class UserAvatar extends StatelessWidget {
         final url = photoUrl?.trim();
 
         Widget imageWidget;
+
         if (url != null && url.isNotEmpty) {
+
           if (url.startsWith('http')) {
             imageWidget = CachedNetworkImage(
               imageUrl: url,
@@ -438,7 +485,9 @@ class UserAvatar extends StatelessWidget {
               placeholder: (context, url) => _buildFallback(size),
               errorWidget: (context, url, error) => _buildFallback(size),
             );
-          } else if (url.startsWith('data:image')) {
+          }
+
+          else if (url.startsWith('data:image')) {
             try {
               final commaIndex = url.indexOf(',');
               if (commaIndex < 0 || commaIndex == url.length - 1) {
@@ -450,23 +499,25 @@ class UserAvatar extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildFallback(size),
+                errorBuilder: (context, error, stackTrace) => _buildFallback(size),
               );
             } catch (e) {
               imageWidget = _buildFallback(size);
             }
-          } else {
+          }
+
+          else {
             imageWidget = Image.file(
               File(url),
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildFallback(size),
+              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
             );
           }
-        } else {
+        }
+
+        else {
           imageWidget = _buildFallback(size);
         }
 

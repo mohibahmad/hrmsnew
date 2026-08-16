@@ -2,41 +2,31 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../models/worker.dart';
+import '../providers.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/dummy_data.dart';
-import '../services/upload_service.dart';
-import '../services/error_reporter.dart';
-import '../services/time_off_service.dart';
 import '../services/bulk_worker_csv_service.dart';
 import '../services/bulk_worker_media_service.dart';
-import '../utils/ui_utils.dart';
-import '../utils/rate_us_helper.dart';
-import '../utils/date_time_utils.dart';
-import '../utils/worker_identity.dart';
-import '../utils/validators.dart';
-import '../utils/dialog_utils.dart';
-import '../utils/bulk_worker_validator.dart';
-import '../models/worker.dart';
-import 'package:flutter/foundation.dart' show compute;
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
+import '../services/firestore_service.dart';
+import '../services/time_off_service.dart';
+import '../services/upload_service.dart';
+import '../utils/utils.dart';
 import '../widgets/bulk_worker_edit_dialog.dart';
 import '../widgets/notification_bell.dart';
-
-String _formatSalaryWithCommas(dynamic value, {String locale = 'en_US'}) {
-  final text = (value ?? '').toString().trim();
-  if (text.isEmpty) return '';
-  final cleaned = text.replaceAll(RegExp(r'[,\s\u00A0\u202F]'), '');
-  final amount = double.tryParse(cleaned);
-  if (amount == null || !amount.isFinite) return '';
-  return NumberFormat('#,##0.##', locale).format(amount);
-}
+import '../widgets/unsaved_changes_dialog.dart';
 
 class UploadProgress {
   final String phase;
@@ -72,8 +62,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   static const double _tableContentWidth = 3628;
   static const double _rowHeight = 65.0;
 
-  late AuthService _authService;
-  late FirestoreService _firestore;
+  late final AuthService _authService;
+  late final FirestoreService _firestore;
 
   bool _isSaving = false;
   bool _hasParsedFile = false;
@@ -104,7 +94,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     super.initState();
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
-
     _authSubscription = _authService.authStateChanges.listen((_) {
       _clearIdentityCache();
     });
@@ -129,196 +118,46 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
-    final result = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'UnsavedChangesDialog',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curve = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutBack,
-        );
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(
-                sigmaX: 10 * animation.value,
-                sigmaY: 10 * animation.value,
-              ),
-              child: Container(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
-              ),
-            ),
-            FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: curve,
-                child: Dialog(
-                backgroundColor: Colors.transparent,
-                child: Container(
-                  width: 380,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF000000).withValues(alpha: 0.15),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFEE2E2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.warning_rounded,
-                            color: Color(0xFFEF4444),
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'discard_changes'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'unsaved_changes_message'.tr(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w400,
-                          fontFamily: 'SF Pro Display',
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, false),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 56,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF000000),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, true),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 56,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'discard'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-    );
-    return result ?? false;
+    return UnsavedChangesDialog.show(context);
   }
 
   Map<String, dynamic> _preNormalizeForWorker(Map<String, dynamic> w) {
     final normalized = Map<String, dynamic>.from(w);
+
     for (final key in ['dob', 'joiningDate']) {
       final raw = normalized[key]?.toString().trim() ?? '';
-      if (raw.isNotEmpty) {
-        final parsed =
-            AppDateUtils.parseDdMmYyyy(raw) ?? AppDateUtils.dateFromValue(raw);
-        normalized[key] = parsed != null
-            ? AppDateUtils.asUtcDateOnly(parsed)
-            : '';
-      }
+      if (raw.isEmpty) continue;
+
+      final parsed =
+          AppDateUtils.parseDdMmYyyy(raw) ?? AppDateUtils.dateFromValue(raw);
+      normalized[key] = parsed != null
+          ? AppDateUtils.asUtcDateOnly(parsed)
+          : '';
     }
+
     return normalized;
   }
 
-  List<Map<String, dynamic>> get _workersReadyToSave =>
-      _validWorkers.where((w) => !hasWorkerErrors(w)).map((w) {
-        final clean = Map<String, dynamic>.from(w);
-        clean.remove('_fieldErrors');
-        clean.remove('_rowNumber');
-        final rowId = (w['clientRowId'] ?? w['client_row_id'] ?? '')
-            .toString()
-            .trim();
-        final normalizedMap = _preNormalizeForWorker(clean);
-        final result = Worker.fromMap(normalizedMap).toMap();
-        result['payroll_initialized'] = true;
-        if (rowId.isNotEmpty) {
-          result['clientRowId'] = rowId;
-        }
-        return result;
-      }).toList();
+  List<Map<String, dynamic>> get _workersReadyToSave {
+    return _validWorkers.where((w) => !hasWorkerErrors(w)).map((w) {
+      final clean = Map<String, dynamic>.from(w)
+        ..remove('_fieldErrors')
+        ..remove('_rowNumber');
+
+      final rowId = (w['clientRowId'] ?? w['client_row_id'] ?? '')
+          .toString()
+          .trim();
+      final normalizedMap = _preNormalizeForWorker(clean);
+      final result = Worker.fromMap(normalizedMap).toMap();
+      result['payroll_initialized'] = true;
+
+      if (rowId.isNotEmpty) {
+        result['clientRowId'] = rowId;
+      }
+
+      return result;
+    }).toList();
+  }
 
   String _computeFileHash(Uint8List bytes) => computeFileHash(bytes);
 
@@ -326,13 +165,12 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     try {
       await downloadTemplate(context);
     } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'could_not_download_template'.tr(),
-          isError: true,
-        );
-      }
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'could_not_download_template'.tr(),
+        isError: true,
+      );
     }
   }
 
@@ -343,31 +181,29 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
       final fileHash = _computeFileHash(bytes);
       if (_lastFileHash != null && _lastFileHash == fileHash) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'same_csv_file_already_uploaded'.tr(),
-            isError: true,
-          );
-        }
+        if (!mounted) return;
+        FlashySnackBar.show(
+          context,
+          message: 'same_csv_file_already_uploaded'.tr(),
+          isError: true,
+        );
         return;
       }
 
       final rows = await compute(parseCsvInBackground, bytes);
-
       if (!mounted) return;
+
       final didParse = await _processCsvData(rows);
       if (didParse) {
         _lastFileHash = fileHash;
       }
     } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'error_picking_csv'.tr(),
-          isError: true,
-        );
-      }
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'error_picking_csv'.tr(),
+        isError: true,
+      );
     }
   }
 
@@ -377,7 +213,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       return (emails: _cachedEmails, nationalIds: _cachedNationalIds);
     }
 
-    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final emails = <String>{};
     final nationalIds = <String>{};
 
@@ -430,24 +266,21 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     }
 
     final missingColumns = kRequiredFields
-        .where((field) => !foundFields.contains(field))
+        .where((f) => !foundFields.contains(f))
         .toList();
 
     final ({Set<String> emails, Set<String> nationalIds}) existing;
     try {
       existing = await _loadExistingIdentitySets();
     } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'could_not_validate_csv_duplicates'.tr(),
-          isError: true,
-        );
-      }
+      if (!mounted) return false;
+      FlashySnackBar.show(
+        context,
+        message: 'could_not_validate_csv_duplicates'.tr(),
+        isError: true,
+      );
       return false;
     }
-    final existingEmails = existing.emails;
-    final existingNationalIds = existing.nationalIds;
 
     if (!mounted) return false;
 
@@ -457,9 +290,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) {
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty))
         continue;
-      }
 
       final workerData = <String, dynamic>{
         'name': '',
@@ -502,16 +334,16 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             break;
           }
         }
-        if (workerData[matchedKey]?.toString().trim().isNotEmpty ?? false) {
+
+        if (workerData[matchedKey]?.toString().trim().isNotEmpty ?? false)
           continue;
-        }
         workerData[matchedKey] = value;
       }
 
-      final fieldErrors = validateWorkerData(
+      final errors = validateWorkerData(
         workerData,
-        existingEmails: existingEmails,
-        existingNationalIds: existingNationalIds,
+        existingEmails: existing.emails,
+        existingNationalIds: existing.nationalIds,
         csvEmails: csvEmails,
         csvNationalIds: csvNationalIds,
       );
@@ -524,7 +356,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
 
       workerData['_rowNumber'] = i + 1;
-      workerData['_fieldErrors'] = fieldErrors;
+      workerData['_fieldErrors'] = errors;
       workerData['clientRowId'] = 'row_${i + 1}';
       parsedWorkers.add(workerData);
     }
@@ -583,25 +415,29 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       final snackParts = <String>[
         'csv_workers_found'.tr(namedArgs: {'count': '${parsedWorkers.length}'}),
       ];
+
       if (missingColumns.isNotEmpty) {
         final columns = missingColumns
-            .map((field) => kFieldLabels[field] ?? field)
+            .map((f) => kFieldLabels[f] ?? f)
             .join(', ');
         snackParts.add(
           'csv_missing_columns'.tr(namedArgs: {'columns': columns}),
         );
       }
+
       if (allMissingFieldNames.isNotEmpty) {
         final fields = allMissingFieldNames
-            .map((field) => kFieldLabels[field] ?? field)
+            .map((f) => kFieldLabels[f] ?? f)
             .join(', ');
         snackParts.add('csv_empty_fields'.tr(namedArgs: {'fields': fields}));
       }
+
       if (duplicateWorkers > 0) {
         snackParts.add(
           'csv_duplicates_found'.tr(namedArgs: {'count': '$duplicateWorkers'}),
         );
       }
+
       FlashySnackBar.show(
         context,
         title: 'csv_uploaded_with_issues_title'.tr(),
@@ -631,17 +467,15 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       debugPrint('Error loading existing identity sets: $e');
       existing = (emails: <String>{}, nationalIds: <String>{});
     }
-    final existingEmails = existing.emails;
-    final existingNationalIds = existing.nationalIds;
 
     final csvEmails = <String>{};
     final csvNationalIds = <String>{};
 
     for (final workerData in _validWorkers) {
-      final fieldErrs = validateWorkerData(
+      final errors = validateWorkerData(
         workerData,
-        existingEmails: existingEmails,
-        existingNationalIds: existingNationalIds,
+        existingEmails: existing.emails,
+        existingNationalIds: existing.nationalIds,
         csvEmails: csvEmails,
         csvNationalIds: csvNationalIds,
       );
@@ -653,7 +487,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       if (email.isNotEmpty) csvEmails.add(email);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
 
-      workerData['_fieldErrors'] = fieldErrs;
+      workerData['_fieldErrors'] = errors;
     }
 
     final counts = validationCounts(_validWorkers);
@@ -679,34 +513,35 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     } catch (_) {
       return;
     }
-    final existingEmails = existing.emails;
-    final existingNationalIds = existing.nationalIds;
 
     final csvEmails = <String>{};
     final csvNationalIds = <String>{};
+
     for (int i = 0; i < _validWorkers.length; i++) {
       if (i == workerIndex) continue;
+
       final email = WorkerIdentity.normalizeEmail(
         _validWorkers[i]['email']?.toString() ?? '',
       );
       final nationalId = WorkerIdentity.normalizeNationalId(
         _validWorkers[i]['nationalId']?.toString() ?? '',
       );
+
       if (email.isNotEmpty) csvEmails.add(email);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
     }
 
     final workerData = _validWorkers[workerIndex];
-    final fieldErrs = validateWorkerData(
+    workerData['_fieldErrors'] = validateWorkerData(
       workerData,
-      existingEmails: existingEmails,
-      existingNationalIds: existingNationalIds,
+      existingEmails: existing.emails,
+      existingNationalIds: existing.nationalIds,
       csvEmails: csvEmails,
       csvNationalIds: csvNationalIds,
     );
-    workerData['_fieldErrors'] = fieldErrs;
 
     final counts = validationCounts(_validWorkers);
+
     if (mounted) {
       setState(() {
         _duplicateCount = counts.duplicate;
@@ -719,12 +554,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Future<void> _saveBulkWorkers() async {
     if (_isSaving) return;
-
-    for (final worker in _validWorkers) {
-      final row = worker['_rowNumber'] ?? worker['clientRowId'] ?? '?';
-      debugPrint('DOB RAW [row $row]: "${worker['dob'] ?? ''}"');
-      debugPrint('JOINING RAW [row $row]: "${worker['joiningDate'] ?? ''}"');
-    }
 
     final revalidated = await _revalidateAllWorkers();
     if (!revalidated || !mounted) return;
@@ -742,218 +571,37 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     var workersReadyToSave = _workersReadyToSave;
 
     if (workersReadyToSave.isEmpty) {
-      final parts = <String>[];
-      if (_missingRequiredCount > 0) {
-        parts.add(
-          'skipped_missing_required_message'.tr(
-            namedArgs: {'count': _missingRequiredCount.toString()},
-          ),
-        );
-      }
-      if (_invalidDobCount > 0) {
-        parts.add(
-          'skipped_invalid_dob_message'.tr(
-            namedArgs: {'count': _invalidDobCount.toString()},
-          ),
-        );
-      }
-      if (_invalidGenderCount > 0) {
-        parts.add(
-          'skipped_invalid_gender_message'.tr(
-            namedArgs: {'count': _invalidGenderCount.toString()},
-          ),
-        );
-      }
-      if (_duplicateCount > 0) {
-        parts.add(
-          'skipped_duplicates_message'.tr(
-            namedArgs: {'count': _duplicateCount.toString()},
-          ),
-        );
-      }
-
-      final invalidFields = workersWithErrors
-          .expand((worker) => fieldErrors(worker).keys)
-          .toSet()
-          .map((field) => kFieldLabels[field] ?? field)
-          .join(', ');
-      if (invalidFields.isNotEmpty) {
-        parts.add(invalidFields);
-      }
-
-      FlashySnackBar.show(
-        context,
-        message: 'csv_validation_errors_found'.tr(
-          namedArgs: {'errors': parts.join('\n')},
-        ),
-        isError: true,
-        displayDuration: const Duration(seconds: 10),
-        maxLines: null,
-      );
+      _showNoValidWorkersMessage(workersWithErrors);
       return;
     }
 
-    final requiredMessage = 'validation_required'.tr();
-    final duplicateEmailMessage = 'validation_duplicate_email'.tr();
-    final duplicateNationalIdMessage = 'validation_duplicate_national_id'.tr();
-
-    int localDuplicateCount = 0;
-    int localMissingCount = 0;
-    int localInvalidDobCount = 0;
-    int localInvalidGenderCount = 0;
-
-    for (final worker in workersWithErrors) {
-      final errors = fieldErrors(worker);
-      if (errors['email'] == duplicateEmailMessage ||
-          errors['nationalId'] == duplicateNationalIdMessage) {
-        localDuplicateCount++;
-      }
-      if (errors.values.contains(requiredMessage)) {
-        localMissingCount++;
-      }
-      if (errors.containsKey('dob') && errors['dob'] != requiredMessage) {
-        localInvalidDobCount++;
-      }
-      if (errors.containsKey('gender') && errors['gender'] != requiredMessage) {
-        localInvalidGenderCount++;
-      }
-    }
+    final errorCounts = _countErrorTypes(workersWithErrors);
 
     setState(() => _isSaving = true);
 
-    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     _uploadedMediaUrls = [];
     _showBulkProgressDialog();
 
     try {
-      int importedCount = workersReadyToSave.length;
-      int guestSkippedDuplicates = 0;
-      BulkWorkerResult? bulkResult;
-
-      if (isGuest) {
-        final existingWorkers = DummyData.workers.toList();
-        final acceptedWorkers = <Map<String, dynamic>>[];
-        for (final worker in workersReadyToSave) {
-          final duplicateField = WorkerIdentity.duplicateField(worker, [
-            ...existingWorkers,
-            ...acceptedWorkers,
-          ]);
-          if (duplicateField != null) {
-            guestSkippedDuplicates++;
-            continue;
-          }
-          acceptedWorkers.add(worker);
-        }
-        importedCount = acceptedWorkers.length;
-        for (int i = 0; i < acceptedWorkers.length; i++) {
-          final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
-          DummyData.workers.insert(0, {...acceptedWorkers[i], 'id': newId});
-        }
-        await DummyData.saveToPrefs();
-      } else {
-        workersReadyToSave = await uploadEmbeddedWorkerMedia(
-          workersReadyToSave,
-          uploadedMediaUrls: _uploadedMediaUrls,
-          uploadedMediaByRowId: _uploadedMediaByRowId,
-        );
-        bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
-        importedCount = bulkResult.imported;
-
-        if (bulkResult.skippedClientRowIds.isNotEmpty &&
-            _uploadedMediaByRowId.isNotEmpty) {
-          final orphanUrls = <String>[];
-          for (final rowId in bulkResult.skippedClientRowIds) {
-            final urls = _uploadedMediaByRowId[rowId];
-            if (urls != null && urls.isNotEmpty) {
-              orphanUrls.addAll(urls);
-            }
-          }
-          if (orphanUrls.isNotEmpty) {
-            try {
-              await Future.wait(orphanUrls.map(UploadService.deleteByUrl));
-            } catch (cleanupError, cleanupStack) {
-              ErrorReporter.report(
-                cleanupError,
-                cleanupStack,
-                context: 'BulkWorkerSkippedRowMediaCleanup',
-              );
-            }
-          }
-        }
-      }
-
-      _clearIdentityCache();
-
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      final serverDuplicateCount =
-          bulkResult?.skipReasons.where((reason) {
-            return reason.trim().toLowerCase().startsWith('duplicate ');
-          }).length ??
-          0;
-      final finalSkippedDuplicates =
-          localDuplicateCount + serverDuplicateCount + guestSkippedDuplicates;
-
-      final summaryParts = <String>[
-        'workers_added_successfully'.tr(
-          namedArgs: {'count': importedCount.toString()},
-        ),
-      ];
-
-      if (finalSkippedDuplicates > 0) {
-        summaryParts.add(
-          'skipped_duplicates_message'.tr(
-            namedArgs: {'count': finalSkippedDuplicates.toString()},
-          ),
-        );
-      }
-      if (bulkResult != null && bulkResult.skipReasons.isNotEmpty) {
-        for (final reason in bulkResult.skipReasons) {
-          summaryParts.add('  • $reason');
-        }
-      }
-      if (localMissingCount > 0) {
-        summaryParts.add(
-          'skipped_missing_required_message'.tr(
-            namedArgs: {'count': localMissingCount.toString()},
-          ),
-        );
-      }
-      if (localInvalidDobCount > 0) {
-        summaryParts.add(
-          'skipped_invalid_dob_message'.tr(
-            namedArgs: {'count': localInvalidDobCount.toString()},
-          ),
-        );
-      }
-      if (localInvalidGenderCount > 0) {
-        summaryParts.add(
-          'skipped_invalid_gender_message'.tr(
-            namedArgs: {'count': localInvalidGenderCount.toString()},
-          ),
-        );
-      }
-
-      final hasSkipped =
-          workersWithErrors.isNotEmpty ||
-          (bulkResult?.skipped ?? 0) > 0 ||
-          guestSkippedDuplicates > 0;
-
-      FlashySnackBar.show(
-        context,
-        title: hasSkipped
-            ? 'csv_uploaded_with_issues_title'.tr()
-            : 'csv_uploaded_title'.tr(),
-        message: summaryParts.join('\n'),
-        isError: hasSkipped,
-        maxLines: null,
-        displayDuration: hasSkipped
-            ? const Duration(seconds: 12)
-            : const Duration(seconds: 5),
+      final saveResult = await _performSave(
+        isGuest: isGuest,
+        workersReadyToSave: workersReadyToSave,
       );
 
-      if (importedCount > 0) {
+      _clearIdentityCache();
+      if (!mounted) return;
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      _showSaveResultSnackBar(
+        saveResult: saveResult,
+        workersWithErrors: workersWithErrors,
+        errorCounts: errorCounts,
+        isGuest: isGuest,
+      );
+
+      if (saveResult.importedCount > 0) {
         await tryShowFirstMilestoneRateUs('bulk_worker');
       }
 
@@ -997,14 +645,16 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
           await Future.wait(_uploadedMediaUrls.map(UploadService.deleteByUrl));
         } catch (_) {}
       }
+
       _uploadedMediaUrls = [];
+
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
       if (mounted) {
         FlashySnackBar.show(
           context,
           message:
-              '${'could_not_save_worker'.tr()}\n'
-              '${readableSaveError(error)}',
+              '${'could_not_save_worker'.tr()}\n${readableSaveError(error)}',
           isError: true,
           maxLines: null,
           displayDuration: const Duration(seconds: 10),
@@ -1014,6 +664,261 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       _uploadedMediaUrls = [];
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _showNoValidWorkersMessage(
+    List<Map<String, dynamic>> workersWithErrors,
+  ) {
+    final parts = <String>[];
+
+    if (_missingRequiredCount > 0) {
+      parts.add(
+        'skipped_missing_required_message'.tr(
+          namedArgs: {'count': _missingRequiredCount.toString()},
+        ),
+      );
+    }
+    if (_invalidDobCount > 0) {
+      parts.add(
+        'skipped_invalid_dob_message'.tr(
+          namedArgs: {'count': _invalidDobCount.toString()},
+        ),
+      );
+    }
+    if (_invalidGenderCount > 0) {
+      parts.add(
+        'skipped_invalid_gender_message'.tr(
+          namedArgs: {'count': _invalidGenderCount.toString()},
+        ),
+      );
+    }
+    if (_duplicateCount > 0) {
+      parts.add(
+        'skipped_duplicates_message'.tr(
+          namedArgs: {'count': _duplicateCount.toString()},
+        ),
+      );
+    }
+
+    final invalidFields = workersWithErrors
+        .expand((worker) => fieldErrors(worker).keys)
+        .toSet()
+        .map((field) => kFieldLabels[field] ?? field)
+        .join(', ');
+
+    if (invalidFields.isNotEmpty) {
+      parts.add(invalidFields);
+    }
+
+    FlashySnackBar.show(
+      context,
+      message: 'csv_validation_errors_found'.tr(
+        namedArgs: {'errors': parts.join('\n')},
+      ),
+      isError: true,
+      displayDuration: const Duration(seconds: 10),
+      maxLines: null,
+    );
+  }
+
+  ({int duplicate, int missing, int invalidDob, int invalidGender})
+  _countErrorTypes(List<Map<String, dynamic>> workersWithErrors) {
+    final requiredMsg = 'validation_required'.tr();
+    final dupEmailMsg = 'validation_duplicate_email'.tr();
+    final dupNidMsg = 'validation_duplicate_national_id'.tr();
+
+    int duplicate = 0;
+    int missing = 0;
+    int invalidDob = 0;
+    int invalidGender = 0;
+
+    for (final worker in workersWithErrors) {
+      final errors = fieldErrors(worker);
+
+      if (errors['email'] == dupEmailMsg || errors['nationalId'] == dupNidMsg) {
+        duplicate++;
+      }
+      if (errors.values.contains(requiredMsg)) {
+        missing++;
+      }
+      if (errors.containsKey('dob') && errors['dob'] != requiredMsg) {
+        invalidDob++;
+      }
+      if (errors.containsKey('gender') && errors['gender'] != requiredMsg) {
+        invalidGender++;
+      }
+    }
+
+    return (
+      duplicate: duplicate,
+      missing: missing,
+      invalidDob: invalidDob,
+      invalidGender: invalidGender,
+    );
+  }
+
+  Future<_SaveResult> _performSave({
+    required bool isGuest,
+    required List<Map<String, dynamic>> workersReadyToSave,
+  }) async {
+    if (isGuest) {
+      return _saveAsGuest(workersReadyToSave);
+    }
+    return _saveToFirestore(workersReadyToSave);
+  }
+
+  Future<_SaveResult> _saveAsGuest(
+    List<Map<String, dynamic>> workersReadyToSave,
+  ) async {
+    final existingWorkers = DummyData.workers.toList();
+    final acceptedWorkers = <Map<String, dynamic>>[];
+    int guestSkippedDuplicates = 0;
+
+    for (final worker in workersReadyToSave) {
+      final duplicateField = WorkerIdentity.duplicateField(worker, [
+        ...existingWorkers,
+        ...acceptedWorkers,
+      ]);
+
+      if (duplicateField != null) {
+        guestSkippedDuplicates++;
+        continue;
+      }
+      acceptedWorkers.add(worker);
+    }
+
+    for (int i = 0; i < acceptedWorkers.length; i++) {
+      final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
+      DummyData.workers.insert(0, {...acceptedWorkers[i], 'id': newId});
+    }
+
+    await DummyData.saveToPrefs();
+
+    return _SaveResult(
+      importedCount: acceptedWorkers.length,
+      guestSkippedDuplicates: guestSkippedDuplicates,
+    );
+  }
+
+  Future<_SaveResult> _saveToFirestore(
+    List<Map<String, dynamic>> workersReadyToSave,
+  ) async {
+    workersReadyToSave = await uploadEmbeddedWorkerMedia(
+      workersReadyToSave,
+      uploadedMediaUrls: _uploadedMediaUrls,
+      uploadedMediaByRowId: _uploadedMediaByRowId,
+    );
+
+    final bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
+
+    if (bulkResult.skippedClientRowIds.isNotEmpty &&
+        _uploadedMediaByRowId.isNotEmpty) {
+      final orphanUrls = <String>[];
+      for (final rowId in bulkResult.skippedClientRowIds) {
+        final urls = _uploadedMediaByRowId[rowId];
+        if (urls != null && urls.isNotEmpty) {
+          orphanUrls.addAll(urls);
+        }
+      }
+
+      if (orphanUrls.isNotEmpty) {
+        try {
+          await Future.wait(orphanUrls.map(UploadService.deleteByUrl));
+        } catch (cleanupError, cleanupStack) {
+          ErrorReporter.report(
+            cleanupError,
+            cleanupStack,
+            context: 'BulkWorkerSkippedRowMediaCleanup',
+          );
+        }
+      }
+    }
+
+    return _SaveResult(
+      importedCount: bulkResult.imported,
+      bulkResult: bulkResult,
+    );
+  }
+
+  void _showSaveResultSnackBar({
+    required _SaveResult saveResult,
+    required List<Map<String, dynamic>> workersWithErrors,
+    required ({int duplicate, int missing, int invalidDob, int invalidGender})
+    errorCounts,
+    required bool isGuest,
+  }) {
+    final serverDuplicateCount =
+        saveResult.bulkResult?.skipReasons
+            .where((r) => r.trim().toLowerCase().startsWith('duplicate '))
+            .length ??
+        0;
+
+    final finalSkippedDuplicates =
+        errorCounts.duplicate +
+        serverDuplicateCount +
+        saveResult.guestSkippedDuplicates;
+
+    final summaryParts = <String>[
+      'workers_added_successfully'.tr(
+        namedArgs: {'count': saveResult.importedCount.toString()},
+      ),
+    ];
+
+    if (finalSkippedDuplicates > 0) {
+      summaryParts.add(
+        'skipped_duplicates_message'.tr(
+          namedArgs: {'count': finalSkippedDuplicates.toString()},
+        ),
+      );
+    }
+
+    if (saveResult.bulkResult != null) {
+      for (final reason in saveResult.bulkResult!.skipReasons) {
+        summaryParts.add('  • $reason');
+      }
+    }
+
+    if (errorCounts.missing > 0) {
+      summaryParts.add(
+        'skipped_missing_required_message'.tr(
+          namedArgs: {'count': errorCounts.missing.toString()},
+        ),
+      );
+    }
+
+    if (errorCounts.invalidDob > 0) {
+      summaryParts.add(
+        'skipped_invalid_dob_message'.tr(
+          namedArgs: {'count': errorCounts.invalidDob.toString()},
+        ),
+      );
+    }
+
+    if (errorCounts.invalidGender > 0) {
+      summaryParts.add(
+        'skipped_invalid_gender_message'.tr(
+          namedArgs: {'count': errorCounts.invalidGender.toString()},
+        ),
+      );
+    }
+
+    final hasSkipped =
+        workersWithErrors.isNotEmpty ||
+        (saveResult.bulkResult?.skipped ?? 0) > 0 ||
+        saveResult.guestSkippedDuplicates > 0;
+
+    FlashySnackBar.show(
+      context,
+      title: hasSkipped
+          ? 'csv_uploaded_with_issues_title'.tr()
+          : 'csv_uploaded_title'.tr(),
+      message: summaryParts.join('\n'),
+      isError: hasSkipped,
+      maxLines: null,
+      displayDuration: hasSkipped
+          ? const Duration(seconds: 12)
+          : const Duration(seconds: 5),
+    );
   }
 
   void _showBulkProgressDialog() {
@@ -1028,16 +933,16 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
+          child: const Padding(
+            padding: EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 24),
+                CircularProgressIndicator(),
+                SizedBox(height: 24),
                 Text(
-                  'saving_bulk_workers'.tr(),
-                  style: const TextStyle(
+                  '',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
@@ -1058,857 +963,96 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     final worker = _validWorkers[workerIndex];
     final currentValue = (worker[fieldKey] ?? '').toString();
     final label = kFieldLabels[fieldKey] ?? fieldKey;
-    final isLeavesField =
-        fieldKey == 'annualLeaves' ||
-        fieldKey == 'sickLeaves' ||
-        fieldKey == 'casualLeaves' ||
-        fieldKey == 'medicalLeaves';
 
     final existingEmails = <String>{};
     final existingNationalIds = <String>{};
-    final bool needsExistingIdentity =
-        fieldKey == 'email' || fieldKey == 'nationalId';
-    if (needsExistingIdentity) {
+
+    if (fieldKey == 'email' || fieldKey == 'nationalId') {
       try {
         final existing = await _loadExistingIdentitySets();
         existingEmails.addAll(existing.emails);
         existingNationalIds.addAll(existing.nationalIds);
       } catch (_) {}
     }
+
     if (!mounted) return;
 
     final result = await showDialog<String>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (ctx) {
-        final controller = TextEditingController(text: currentValue);
-        String? dialogError;
-
-        final isMediaField =
-            fieldKey == 'profileImage' ||
-            fieldKey == 'frontId' ||
-            fieldKey == 'backId' ||
-            fieldKey == 'cv';
-        String? mediaDataUrl;
-        String? mediaFileName;
-        bool isValidatingMedia = false;
-        bool hasExistingUpload = false;
-        if (isMediaField && currentValue.isNotEmpty) {
-          hasExistingUpload = true;
-          final storedName = worker['${fieldKey}_name'];
-          if (currentValue.startsWith('data:')) {
-            if (storedName != null && storedName.toString().isNotEmpty) {
-              controller.text = storedName.toString();
-            } else {
-              final mime = currentValue.split(';').first.split(':').last;
-              controller.text = mime == 'application/pdf'
-                  ? 'document.pdf'
-                  : 'image.jpg';
-            }
-          }
-          controller.selection = TextSelection.collapsed(
-            offset: controller.text.length,
-          );
-        }
-
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 40,
-          ),
-          child: Center(
-            child: Container(
-              width: 440,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
-                    blurRadius: 40,
-                    offset: const Offset(0, 12),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: StatefulBuilder(
-                builder: (_, setDialogState) {
-                  Future<void> pickMediaFile() async {
-                    try {
-                      final result = await FilePicker.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: fieldKey == 'cv'
-                            ? ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
-                            : ['jpg', 'jpeg', 'png'],
-                      );
-                      if (result != null && result.files.isNotEmpty) {
-                        final file = result.files.first;
-                        final bytes = await file.readAsBytes();
-                        if (bytes.length > 10 * 1024 * 1024) {
-                          setDialogState(() {
-                            dialogError = 'file_too_large'.tr(
-                              namedArgs: {'size': '10MB'},
-                            );
-                          });
-                          return;
-                        }
-                        if (bytes.isNotEmpty) {
-                          final ext = file.name.split('.').last.toLowerCase();
-                          const mimeMap = {
-                            'pdf': 'application/pdf',
-                            'doc': 'application/msword',
-                            'docx':
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                            'png': 'image/png',
-                            'jpg': 'image/jpeg',
-                            'jpeg': 'image/jpeg',
-                          };
-                          final mime = mimeMap[ext] ?? 'image/jpeg';
-                          final dataUrl =
-                              'data:$mime;base64,${base64Encode(bytes)}';
-                          setDialogState(() {
-                            mediaDataUrl = dataUrl;
-                            mediaFileName = file.name;
-                            hasExistingUpload = true;
-                            controller.text = file.name;
-                            controller.selection = TextSelection.collapsed(
-                              offset: controller.text.length,
-                            );
-                          });
-                        }
-                      }
-                    } catch (e) {
-                      setDialogState(() {
-                        dialogError = 'failed_to_pick_image'.tr();
-                      });
-                    }
-                  }
-
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(ctx).size.height * 0.75,
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  label,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF374151),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                if (isDateField(fieldKey))
-                                  buildDateField(
-                                    context: ctx,
-                                    fieldKey: fieldKey,
-                                    currentValue: controller.text,
-                                    label: label,
-                                    setDialogState: setDialogState,
-                                    onDateSelected: (dateStr) {
-                                      controller.text = dateStr;
-                                    },
-                                  )
-                                else
-                                  Container(
-                                    clipBehavior: Clip.hardEdge,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: const Color(0xFFD1D5DB),
-                                        width: 1.2,
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                    ),
-                                    child: TextField(
-                                      controller: controller,
-                                      readOnly: isDateField(fieldKey),
-                                      autofocus: true,
-                                      maxLines: isMediaField ? 1 : null,
-                                      minLines: 1,
-                                      expands: false,
-                                      keyboardType: keyboardTypeForField(
-                                        fieldKey,
-                                      ),
-                                      inputFormatters: inputFormattersForField(
-                                        fieldKey,
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontFamily: 'SF Pro Display',
-                                        color:
-                                            (isMediaField &&
-                                                (mediaDataUrl != null ||
-                                                    hasExistingUpload))
-                                            ? const Color(0xFF9CA3AF)
-                                            : const Color(0xFF111827),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      decoration: InputDecoration(
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                        hintText: isLeavesField
-                                            ? '0'
-                                            : isMediaField
-                                            ? mediaFieldHint(fieldKey)
-                                            : 'edit_cell_enter_value'.tr(
-                                                namedArgs: {'label': label},
-                                              ),
-                                        hintStyle: const TextStyle(
-                                          color: Color(0xFF9CA3AF),
-                                          fontSize: 15,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        suffixIcon:
-                                            (fieldKey == 'profileImage' ||
-                                                fieldKey == 'frontId' ||
-                                                fieldKey == 'backId' ||
-                                                fieldKey == 'cv')
-                                            ? GestureDetector(
-                                                onTap: () => pickMediaFile(),
-                                                child: Container(
-                                                  margin:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 8,
-                                                      ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFFEEF2FF,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        fieldKey == 'cv'
-                                                            ? Icons
-                                                                  .attach_file_rounded
-                                                            : fieldKey ==
-                                                                  'profileImage'
-                                                            ? Icons
-                                                                  .add_a_photo_rounded
-                                                            : Icons
-                                                                  .badge_rounded,
-                                                        size: 18,
-                                                        color: const Color(
-                                                          0xFF0247C4,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        fieldKey == 'cv'
-                                                            ? 'upload_cv'.tr()
-                                                            : 'upload_image'
-                                                                  .tr(),
-                                                        style: const TextStyle(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: Color(
-                                                            0xFF0247C4,
-                                                          ),
-                                                          fontFamily:
-                                                              'SF Pro Display',
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        maxLines: 1,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-
-                          if (fieldHint(fieldKey).isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.lightbulb_outline,
-                                    size: 13,
-                                    color: Color(0xFF9CA3AF),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      fieldHint(fieldKey),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Color(0xFF9CA3AF),
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          if (dialogError != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline_rounded,
-                                    size: 14,
-                                    color: Color(0xFFDC2626),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      dialogError!,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFFDC2626),
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          Container(
-                            margin: const EdgeInsets.only(top: 16),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: Color(0xFFE5E7EB),
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFF6B7280),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'cancel'.tr(),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0247C4),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shadowColor: Colors.transparent,
-                                    minimumSize: const Size(0, 42),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    if (isValidatingMedia) return;
-                                    final val = controller.text
-                                        .replaceAll(RegExp(r'[\r\n]+'), ' ')
-                                        .trim();
-                                    if (!isMediaField && val.isEmpty) {
-                                      setDialogState(() {
-                                        dialogError =
-                                            'edit_cell_cannot_be_empty'.tr();
-                                      });
-                                    } else if (isMediaField &&
-                                        val.isEmpty &&
-                                        (mediaDataUrl == null ||
-                                            mediaDataUrl!.isEmpty)) {
-                                      setDialogState(() {
-                                        dialogError =
-                                            'edit_cell_cannot_be_empty'.tr();
-                                      });
-                                    } else if (fieldKey == 'email' &&
-                                        val.isNotEmpty) {
-                                      final normalizedEmail =
-                                          WorkerIdentity.normalizeEmail(val);
-                                      if (!Validators.isValidEmail(
-                                            normalizedEmail,
-                                          ) ||
-                                          Validators.isPlaceholderEmailDomain(
-                                            normalizedEmail,
-                                          )) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_email'.tr();
-                                        });
-                                      } else {
-                                        final isDuplicate =
-                                            existingEmails.contains(
-                                              normalizedEmail,
-                                            ) ||
-                                            _validWorkers.asMap().entries.any((
-                                              entry,
-                                            ) {
-                                              return entry.key != workerIndex &&
-                                                  WorkerIdentity.normalizeEmail(
-                                                        entry.value['email']
-                                                                ?.toString() ??
-                                                            '',
-                                                      ) ==
-                                                      normalizedEmail;
-                                            });
-                                        if (isDuplicate) {
-                                          setDialogState(() {
-                                            dialogError =
-                                                'validation_duplicate_email'
-                                                    .tr();
-                                          });
-                                        } else {
-                                          Navigator.of(
-                                            ctx,
-                                          ).pop(normalizedEmail);
-                                        }
-                                      }
-                                    } else if (fieldKey == 'nationalId' &&
-                                        val.isNotEmpty) {
-                                      if (!Validators.isValidNationalId(val)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_national_id'
-                                                  .tr();
-                                        });
-                                        return;
-                                      }
-                                      final normalizedId =
-                                          WorkerIdentity.normalizeNationalId(
-                                            val,
-                                          );
-                                      final isDuplicate =
-                                          existingNationalIds.contains(
-                                            normalizedId,
-                                          ) ||
-                                          _validWorkers.asMap().entries.any((
-                                            entry,
-                                          ) {
-                                            return entry.key != workerIndex &&
-                                                WorkerIdentity.normalizeNationalId(
-                                                      entry.value['nationalId']
-                                                              ?.toString() ??
-                                                          '',
-                                                    ) ==
-                                                    normalizedId;
-                                          });
-                                      if (isDuplicate) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_duplicate_national_id'
-                                                  .tr();
-                                        });
-                                      } else {
-                                        Navigator.of(ctx).pop(val);
-                                      }
-                                    } else if (fieldKey == 'gender') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'male',
-                                        'female',
-                                        'other',
-                                        'others',
-                                      };
-                                      if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_gender'.tr();
-                                        });
-                                      } else {
-                                        Navigator.of(ctx).pop(
-                                          normalized == 'others'
-                                              ? 'Other'
-                                              : normalized == 'male'
-                                              ? 'Male'
-                                              : normalized == 'female'
-                                              ? 'Female'
-                                              : val,
-                                        );
-                                      }
-                                    } else if (fieldKey ==
-                                        'relationshipStatus') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {'single', 'married'};
-                                      if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_relationship'
-                                                  .tr();
-                                        });
-                                      } else {
-                                        final display =
-                                            normalized[0].toUpperCase() +
-                                            normalized.substring(1);
-                                        Navigator.of(ctx).pop(display);
-                                      }
-                                    } else if (fieldKey == 'experienceLevel') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'fresher',
-                                        'junior',
-                                        'mid-level',
-                                        'mid level',
-                                        'senior',
-                                      };
-                                      if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_experience_level'
-                                                  .tr();
-                                        });
-                                      } else {
-                                        final display = normalized == 'fresher'
-                                            ? 'Fresher'
-                                            : normalized == 'junior'
-                                            ? 'Junior'
-                                            : normalized == 'mid-level' ||
-                                                  normalized == 'mid level'
-                                            ? 'Mid-Level'
-                                            : 'Senior';
-                                        Navigator.of(ctx).pop(display);
-                                      }
-                                    } else if (fieldKey == 'education') {
-                                      final normalizedEducation =
-                                          normalizeEducation(val);
-                                      if (normalizedEducation == null) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_education'
-                                                  .tr();
-                                        });
-                                      } else {
-                                        Navigator.of(
-                                          ctx,
-                                        ).pop(normalizedEducation);
-                                      }
-                                    } else if (fieldKey == 'type1') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'full-time',
-                                        'full time',
-                                        'part-time',
-                                        'part time',
-                                        'contract',
-                                        'intern',
-                                      };
-                                      if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_employee_type'
-                                                  .tr();
-                                        });
-                                      } else if (normalized == 'full-time' ||
-                                          normalized == 'full time') {
-                                        Navigator.of(ctx).pop('Full-Time');
-                                      } else if (normalized == 'part-time' ||
-                                          normalized == 'part time') {
-                                        Navigator.of(ctx).pop('Part-Time');
-                                      } else if (normalized == 'contract') {
-                                        Navigator.of(ctx).pop('Contract');
-                                      } else {
-                                        Navigator.of(ctx).pop('Intern');
-                                      }
-                                    } else if (fieldKey == 'type2') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'on-site',
-                                        'on site',
-                                        'onsite',
-                                        'remote',
-                                        'hybrid',
-                                      };
-                                      if (!valid.contains(normalized)) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_work_model'
-                                                  .tr();
-                                        });
-                                      } else if (normalized == 'remote') {
-                                        Navigator.of(ctx).pop('Remote');
-                                      } else if (normalized == 'hybrid') {
-                                        Navigator.of(ctx).pop('Hybrid');
-                                      } else {
-                                        Navigator.of(ctx).pop('On-Site');
-                                      }
-                                    } else if (fieldKey == 'salaryAmount') {
-                                      final amount = Validators.parseAmount(
-                                        val,
-                                      );
-                                      if (amount == null) {
-                                        setDialogState(() {
-                                          dialogError = 'valid_amount_required'
-                                              .tr();
-                                        });
-                                      } else if (amount <= 0) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'amount_must_be_positive'.tr();
-                                        });
-                                      } else {
-                                        Navigator.of(ctx).pop(val);
-                                      }
-                                    } else if (fieldKey == 'annualLeaves' ||
-                                        fieldKey == 'sickLeaves' ||
-                                        fieldKey == 'casualLeaves' ||
-                                        fieldKey == 'medicalLeaves') {
-                                      final leaves = int.tryParse(val);
-                                      if (leaves == null ||
-                                          leaves < 0 ||
-                                          leaves > 366) {
-                                        setDialogState(() {
-                                          dialogError = 'invalid_number'.tr();
-                                        });
-                                      } else {
-                                        Navigator.of(
-                                          ctx,
-                                        ).pop(leaves.toString());
-                                      }
-                                    } else if (fieldKey == 'dob') {
-                                      final dob = AppDateUtils.parseDdMmYyyy(
-                                        val,
-                                      );
-                                      if (dob == null) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_date'.tr();
-                                        });
-                                      } else if (!isAtLeast18(dob)) {
-                                        setDialogState(() {
-                                          dialogError = 'validation_min_age'
-                                              .tr();
-                                        });
-                                      } else {
-                                        Navigator.of(ctx).pop(val);
-                                      }
-                                    } else if (fieldKey == 'joiningDate') {
-                                      final joiningDate =
-                                          AppDateUtils.parseDdMmYyyy(val);
-                                      if (joiningDate == null) {
-                                        setDialogState(() {
-                                          dialogError =
-                                              'validation_invalid_date'.tr();
-                                        });
-                                      } else {
-                                        final now = DateTime.now();
-                                        final today = DateTime(
-                                          now.year,
-                                          now.month,
-                                          now.day,
-                                        );
-                                        final joiningOnly = DateTime(
-                                          joiningDate.year,
-                                          joiningDate.month,
-                                          joiningDate.day,
-                                        );
-                                        if (joiningOnly.isAfter(today)) {
-                                          setDialogState(() {
-                                            dialogError =
-                                                'joining_date_cannot_be_future'
-                                                    .tr();
-                                          });
-                                        } else {
-                                          Navigator.of(ctx).pop(val);
-                                        }
-                                      }
-                                    } else if (isMediaField) {
-                                      if (mediaDataUrl != null) {
-                                        worker['${fieldKey}_name'] =
-                                            mediaFileName ?? '';
-                                        Navigator.of(ctx).pop(mediaDataUrl);
-                                        return;
-                                      }
-
-                                      final mediaValue = val.isNotEmpty
-                                          ? val
-                                          : currentValue.trim();
-                                      if (mediaValue.startsWith('data:')) {
-                                        worker['${fieldKey}_name'] =
-                                            _extractFileName(
-                                              mediaValue,
-                                              fieldKey,
-                                            );
-                                        Navigator.of(ctx).pop(mediaValue);
-                                        return;
-                                      }
-
-                                      setDialogState(() {
-                                        isValidatingMedia = true;
-                                        dialogError = null;
-                                      });
-                                      final mediaError =
-                                          await validateRemoteWorkerMediaLink(
-                                            field: fieldKey,
-                                            url: mediaValue,
-                                          );
-                                      if (!ctx.mounted) return;
-                                      if (mediaError != null) {
-                                        setDialogState(() {
-                                          isValidatingMedia = false;
-                                          dialogError = mediaError;
-                                        });
-                                        return;
-                                      }
-
-                                      worker['${fieldKey}_name'] =
-                                          _extractFileName(
-                                            mediaValue,
-                                            fieldKey,
-                                          );
-                                      Navigator.of(ctx).pop(mediaValue);
-                                    } else {
-                                      Navigator.of(ctx).pop(val);
-                                    }
-                                  },
-                                  child: isValidatingMedia
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.check_rounded,
-                                              size: 18,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              'save'.tr(),
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (ctx) => _EditCellDialog(
+        currentValue: currentValue,
+        fieldKey: fieldKey,
+        label: label,
+        workerIndex: workerIndex,
+        worker: worker,
+        validWorkers: _validWorkers,
+        existingEmails: existingEmails,
+        existingNationalIds: existingNationalIds,
+      ),
     );
 
-    if (result != null && mounted && workerIndex < _validWorkers.length) {
-      setState(() {
-        _validWorkers[workerIndex][fieldKey] = result;
-        if (fieldKey == 'annualLeaves') {
-          final annualLeaves = int.tryParse(result) ?? 0;
-          _validWorkers[workerIndex]['annualLeaves'] = annualLeaves;
-          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves;
-          _validWorkers[workerIndex]['leavesUsed'] = 0;
-        } else if (fieldKey == 'sickLeaves' ||
-            fieldKey == 'casualLeaves' ||
-            fieldKey == 'medicalLeaves') {
-          final days = int.tryParse(result) ?? 0;
-          _validWorkers[workerIndex][fieldKey] = days;
-          final availableKey =
-              'available${fieldKey[0].toUpperCase()}${fieldKey.substring(1)}';
-          _validWorkers[workerIndex][availableKey] = days;
-        }
-        _validWorkers[workerIndex].addAll(
-          TimeOffService.canonicalWorkerLeaveFields(_validWorkers[workerIndex]),
-        );
+    if (result == null || !mounted || workerIndex >= _validWorkers.length)
+      return;
 
-        _missingColumns = _missingColumns
-            .where(
-              (field) => _validWorkers.any(
-                (w) => (w[field] ?? '').toString().trim().isEmpty,
-              ),
-            )
-            .toList();
-        _hasUnsavedChanges = true;
-      });
-      await _revalidateSingleWorker(workerIndex);
-    }
+    setState(() {
+      _validWorkers[workerIndex][fieldKey] = result;
+
+      if (fieldKey == 'annualLeaves') {
+        final leaves = int.tryParse(result) ?? 0;
+        _validWorkers[workerIndex]['annualLeaves'] = leaves;
+        _validWorkers[workerIndex]['availableAnnualLeaves'] = leaves;
+        _validWorkers[workerIndex]['leavesUsed'] = 0;
+      } else if (fieldKey == 'sickLeaves' ||
+          fieldKey == 'casualLeaves' ||
+          fieldKey == 'medicalLeaves') {
+        final days = int.tryParse(result) ?? 0;
+        _validWorkers[workerIndex][fieldKey] = days;
+        final availableKey =
+            'available${fieldKey[0].toUpperCase()}${fieldKey.substring(1)}';
+        _validWorkers[workerIndex][availableKey] = days;
+      }
+
+      _validWorkers[workerIndex].addAll(
+        TimeOffService.canonicalWorkerLeaveFields(_validWorkers[workerIndex]),
+      );
+
+      _missingColumns = _missingColumns
+          .where(
+            (field) => _validWorkers.any(
+              (w) => (w[field] ?? '').toString().trim().isEmpty,
+            ),
+          )
+          .toList();
+
+      _hasUnsavedChanges = true;
+    });
+
+    await _revalidateSingleWorker(workerIndex);
   }
 
   Future<void> _deleteWorker(int index) async {
     if (index < 0 || index >= _validWorkers.length) return;
+
     final confirmed = await DeleteDialog.show(
       context: context,
       title: 'delete_worker'.tr(),
       content: 'delete_worker_desc'.tr(),
     );
     if (!confirmed) return;
+
     setState(() {
       _validWorkers.removeAt(index);
       _hasUnsavedChanges = _validWorkers.isNotEmpty;
+
       if (_validWorkers.isEmpty) {
         _hasParsedFile = false;
         _missingColumns = [];
       }
     });
+
     final counts = validationCounts(_validWorkers);
+
     if (mounted) {
       setState(() {
         _duplicateCount = counts.duplicate;
@@ -1923,7 +1067,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
+      onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) {
@@ -2025,7 +1169,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
               ),
             ],
           ),
-
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2052,21 +1195,18 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   }
 
   Widget _buildSaveAllButton() {
-    final bool isCurrentlySaving = _isSaving;
     return GestureDetector(
-      onTap: () => _saveBulkWorkers(),
+      onTap: _saveBulkWorkers,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
-          color: isCurrentlySaving
-              ? const Color(0xFFE6EAEF)
-              : const Color(0xFF0B50C3),
+          color: _isSaving ? const Color(0xFFE6EAEF) : const Color(0xFF0B50C3),
           borderRadius: BorderRadius.circular(6),
         ),
         alignment: Alignment.center,
-        child: isCurrentlySaving
+        child: _isSaving
             ? const SizedBox(
                 width: 20,
                 height: 20,
@@ -2136,8 +1276,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   }
 
   Widget _buildSummaryCard() {
-    final bool anyErrors = _validWorkers.any(hasWorkerErrors);
-    final int errorCount = _validWorkers.where(hasWorkerErrors).length;
+    final anyErrors = _validWorkers.any(hasWorkerErrors);
+    final errorCount = _validWorkers.where(hasWorkerErrors).length;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2219,9 +1359,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   }
 
   Widget _buildMissingColumnsBanner() {
-    final columns = _missingColumns
-        .map((field) => kFieldLabels[field] ?? field)
-        .join(', ');
+    final columns = _missingColumns.map((f) => kFieldLabels[f] ?? f).join(', ');
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -2295,8 +1434,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                               Container(
                                 width: 80,
                                 height: 80,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEFF6FF),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -2395,67 +1534,51 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       ),
       child: Row(
         children: [
-          _buildHeaderCell('full_name'.tr(), 150, fieldKey: 'name'),
-          _buildHeaderCell('contact_number'.tr(), 130, fieldKey: 'phone'),
-          _buildHeaderCell('email_address'.tr(), 150, fieldKey: 'email'),
-          _buildHeaderCell('job_position'.tr(), 130, fieldKey: 'position'),
-          _buildHeaderCell('salary_amount'.tr(), 130, fieldKey: 'salaryAmount'),
-          _buildHeaderCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
-          _buildHeaderCell(
-            'national_id_title'.tr(),
-            130,
-            fieldKey: 'nationalId',
-          ),
-          _buildHeaderCell('religion_title'.tr(), 120, fieldKey: 'religion'),
-          _buildHeaderCell('date_of_birth'.tr(), 120, fieldKey: 'dob'),
-          _buildHeaderCell('gender_title'.tr(), 100, fieldKey: 'gender'),
-          _buildHeaderCell('address_title'.tr(), 130, fieldKey: 'address'),
-          _buildHeaderCell(
+          _headerCell('full_name'.tr(), 150, fieldKey: 'name'),
+          _headerCell('contact_number'.tr(), 130, fieldKey: 'phone'),
+          _headerCell('email_address'.tr(), 150, fieldKey: 'email'),
+          _headerCell('job_position'.tr(), 130, fieldKey: 'position'),
+          _headerCell('salary_amount'.tr(), 130, fieldKey: 'salaryAmount'),
+          _headerCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
+          _headerCell('national_id_title'.tr(), 130, fieldKey: 'nationalId'),
+          _headerCell('religion_title'.tr(), 120, fieldKey: 'religion'),
+          _headerCell('date_of_birth'.tr(), 120, fieldKey: 'dob'),
+          _headerCell('gender_title'.tr(), 100, fieldKey: 'gender'),
+          _headerCell('address_title'.tr(), 130, fieldKey: 'address'),
+          _headerCell(
             'relationship_status_title'.tr(),
             130,
             fieldKey: 'relationshipStatus',
           ),
-          _buildHeaderCell('employee_type'.tr(), 130, fieldKey: 'type1'),
-          _buildHeaderCell('work_model'.tr(), 130, fieldKey: 'type2'),
-          _buildHeaderCell(
+          _headerCell('employee_type'.tr(), 130, fieldKey: 'type1'),
+          _headerCell('work_model'.tr(), 130, fieldKey: 'type2'),
+          _headerCell(
             'experience_level_title'.tr(),
             130,
             fieldKey: 'experienceLevel',
           ),
-          _buildHeaderCell('education_title'.tr(), 130, fieldKey: 'education'),
-          _buildHeaderCell(
+          _headerCell('education_title'.tr(), 130, fieldKey: 'education'),
+          _headerCell(
             'annual_leaves_title'.tr(),
             120,
             fieldKey: 'annualLeaves',
           ),
-          _buildHeaderCell(
-            'sick_leaves_title'.tr(),
-            120,
-            fieldKey: 'sickLeaves',
-          ),
-          _buildHeaderCell(
+          _headerCell('sick_leaves_title'.tr(), 120, fieldKey: 'sickLeaves'),
+          _headerCell(
             'casual_leaves_title'.tr(),
             120,
             fieldKey: 'casualLeaves',
           ),
-          _buildHeaderCell(
+          _headerCell(
             'medical_leaves_title'.tr(),
             120,
             fieldKey: 'medicalLeaves',
           ),
-          _buildHeaderCell(
-            'joining_date_title'.tr(),
-            130,
-            fieldKey: 'joiningDate',
-          ),
-          _buildHeaderCell(
-            'profile_image_url'.tr(),
-            110,
-            fieldKey: 'profileImage',
-          ),
-          _buildHeaderCell('front_id_image_url'.tr(), 110, fieldKey: 'frontId'),
-          _buildHeaderCell('back_id_image_url'.tr(), 110, fieldKey: 'backId'),
-          _buildHeaderCell('cv_url'.tr(), 110, fieldKey: 'cv'),
+          _headerCell('joining_date_title'.tr(), 130, fieldKey: 'joiningDate'),
+          _headerCell('profile_image_url'.tr(), 110, fieldKey: 'profileImage'),
+          _headerCell('front_id_image_url'.tr(), 110, fieldKey: 'frontId'),
+          _headerCell('back_id_image_url'.tr(), 110, fieldKey: 'backId'),
+          _headerCell('cv_url'.tr(), 110, fieldKey: 'cv'),
         ],
       ),
     );
@@ -2471,188 +1594,187 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   }
 
   Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
+    String cellValue(String key) => worker[key]?.toString() ?? '';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       color: index.isEven ? const Color(0xFFFAFBFC) : Colors.white,
       child: Row(
         children: [
-          _buildDataCell(
-            worker['name']?.toString() ?? '',
+          _dataCell(
+            cellValue('name'),
             150,
-            hasError: hasFieldError(worker, 'name'),
             fieldKey: 'name',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['phone']?.toString() ?? '',
+          _dataCell(
+            cellValue('phone'),
             130,
-            hasError: hasFieldError(worker, 'phone'),
             fieldKey: 'phone',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['email']?.toString() ?? '',
+          _dataCell(
+            cellValue('email'),
             150,
-            hasError: hasFieldError(worker, 'email'),
             fieldKey: 'email',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['position']?.toString() ?? '',
+          _dataCell(
+            cellValue('position'),
             130,
-            hasError: hasFieldError(worker, 'position'),
             fieldKey: 'position',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            _formatSalaryWithCommas(
-              worker['salaryAmount'],
-              locale: context.locale.toString(),
-            ),
+          _dataCell(
+            CurrencyUtils.formatWithCommas(worker['salaryAmount']),
             130,
-            hasError: hasFieldError(worker, 'salaryAmount'),
             fieldKey: 'salaryAmount',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['fatherName']?.toString() ?? '',
+          _dataCell(
+            cellValue('fatherName'),
             150,
-            hasError: hasFieldError(worker, 'fatherName'),
             fieldKey: 'fatherName',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['nationalId']?.toString() ?? '',
+          _dataCell(
+            cellValue('nationalId'),
             130,
-            hasError: hasFieldError(worker, 'nationalId'),
             fieldKey: 'nationalId',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['religion']?.toString() ?? '',
+          _dataCell(
+            cellValue('religion'),
             120,
-            hasError: hasFieldError(worker, 'religion'),
             fieldKey: 'religion',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['dob']?.toString() ?? '',
+          _dataCell(
+            cellValue('dob'),
             120,
-            hasError: hasFieldError(worker, 'dob'),
             fieldKey: 'dob',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['gender']?.toString() ?? '',
+          _dataCell(
+            cellValue('gender'),
             100,
-            hasError: hasFieldError(worker, 'gender'),
             fieldKey: 'gender',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['address']?.toString() ?? '',
+          _dataCell(
+            cellValue('address'),
             130,
-            hasError: hasFieldError(worker, 'address'),
             fieldKey: 'address',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['relationshipStatus']?.toString() ?? '',
+          _dataCell(
+            cellValue('relationshipStatus'),
             130,
-            hasError: hasFieldError(worker, 'relationshipStatus'),
             fieldKey: 'relationshipStatus',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['type1']?.toString() ?? '',
+          _dataCell(
+            cellValue('type1'),
             130,
-            hasError: hasFieldError(worker, 'type1'),
             fieldKey: 'type1',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['type2']?.toString() ?? '',
+          _dataCell(
+            cellValue('type2'),
             130,
-            hasError: hasFieldError(worker, 'type2'),
             fieldKey: 'type2',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['experienceLevel']?.toString() ?? '',
+          _dataCell(
+            cellValue('experienceLevel'),
             130,
-            hasError: hasFieldError(worker, 'experienceLevel'),
             fieldKey: 'experienceLevel',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['education']?.toString() ?? '',
+          _dataCell(
+            cellValue('education'),
             130,
-            hasError: hasFieldError(worker, 'education'),
             fieldKey: 'education',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['annualLeaves']?.toString() ?? '',
+          _dataCell(
+            cellValue('annualLeaves'),
             120,
-            hasError: hasFieldError(worker, 'annualLeaves'),
             fieldKey: 'annualLeaves',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['sickLeaves']?.toString() ?? '',
+          _dataCell(
+            cellValue('sickLeaves'),
             120,
-            hasError: hasFieldError(worker, 'sickLeaves'),
             fieldKey: 'sickLeaves',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['casualLeaves']?.toString() ?? '',
+          _dataCell(
+            cellValue('casualLeaves'),
             120,
-            hasError: hasFieldError(worker, 'casualLeaves'),
             fieldKey: 'casualLeaves',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['medicalLeaves']?.toString() ?? '',
+          _dataCell(
+            cellValue('medicalLeaves'),
             120,
-            hasError: hasFieldError(worker, 'medicalLeaves'),
             fieldKey: 'medicalLeaves',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['joiningDate']?.toString() ?? '',
+          _dataCell(
+            cellValue('joiningDate'),
             130,
-            hasError: hasFieldError(worker, 'joiningDate'),
             fieldKey: 'joiningDate',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['profileImage']?.toString() ?? '',
+          _dataCell(
+            cellValue('profileImage'),
             110,
-            hasError: hasFieldError(worker, 'profileImage'),
             fieldKey: 'profileImage',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['frontId']?.toString() ?? '',
+          _dataCell(
+            cellValue('frontId'),
             110,
-            hasError: hasFieldError(worker, 'frontId'),
             fieldKey: 'frontId',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['backId']?.toString() ?? '',
+          _dataCell(
+            cellValue('backId'),
             110,
-            hasError: hasFieldError(worker, 'backId'),
             fieldKey: 'backId',
             workerIndex: index,
+            worker: worker,
           ),
-          _buildDataCell(
-            worker['cv']?.toString() ?? '',
+          _dataCell(
+            cellValue('cv'),
             110,
-            hasError: hasFieldError(worker, 'cv'),
             fieldKey: 'cv',
             workerIndex: index,
+            worker: worker,
           ),
           const SizedBox(width: 12),
           GestureDetector(
@@ -2682,9 +1804,10 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     );
   }
 
-  Widget _buildHeaderCell(String text, double width, {String? fieldKey}) {
-    final bool hasErr =
+  Widget _headerCell(String text, double width, {String? fieldKey}) {
+    final hasErr =
         fieldKey != null && errorFieldNames(_validWorkers).contains(fieldKey);
+
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -2714,53 +1837,26 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     );
   }
 
-  Widget _buildDataCell(
+  Widget _dataCell(
     String text,
     double width, {
     bool isBold = false,
-    bool hasError = false,
-    String? fieldKey,
-    int workerIndex = -1,
+    required String fieldKey,
+    required int workerIndex,
+    required Map<String, dynamic> worker,
   }) {
-    final isMediaField =
-        fieldKey == 'profileImage' ||
-        fieldKey == 'frontId' ||
-        fieldKey == 'backId' ||
-        fieldKey == 'cv';
-
+    final hasError = hasFieldError(worker, fieldKey);
+    final isMediaField = _isMediaField(fieldKey);
     final hasValue = text.isNotEmpty && text != '-';
 
-    String displayText;
-    if (hasError && text.isEmpty) {
-      displayText = 'required_field'.tr();
-    } else if (isMediaField && hasValue) {
-      if (workerIndex >= 0 && workerIndex < _validWorkers.length) {
-        final storedName = _validWorkers[workerIndex]['${fieldKey}_name'];
-        if (storedName != null && storedName.toString().isNotEmpty) {
-          displayText = storedName.toString();
-        } else if (text.startsWith('data:')) {
-          final mime = text.split(';').first.split(':').last;
-          displayText = mime == 'application/pdf'
-              ? 'document.pdf'
-              : 'image.jpg';
-        } else {
-          displayText = _extractFileName(text, fieldKey);
-        }
-      } else if (text.startsWith('data:')) {
-        final mime = text.split(';').first.split(':').last;
-        displayText = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
-      } else {
-        displayText = _extractFileName(text, fieldKey);
-      }
-    } else if (text.isEmpty) {
-      displayText = '-';
-    } else {
-      displayText = text;
-    }
-
-    if (displayText.contains('\n') || displayText.contains('\r')) {
-      displayText = displayText.replaceAll(RegExp(r'[\r\n]+'), ' ');
-    }
+    final displayText = _resolveDisplayText(
+      text: text,
+      hasError: hasError,
+      isMediaField: isMediaField,
+      hasValue: hasValue,
+      workerIndex: workerIndex,
+      fieldKey: fieldKey,
+    ).replaceAll(RegExp(r'[\r\n]+'), ' ');
 
     return Container(
       width: width,
@@ -2788,7 +1884,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (workerIndex >= 0 && fieldKey != null)
+          if (workerIndex >= 0)
             GestureDetector(
               onTap: () => _editCell(workerIndex, fieldKey),
               child: Container(
@@ -2796,9 +1892,11 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: hasError
-                      ? const Color(0xFFDC2626).withValues(alpha: 0.1)
-                      : const Color(0xFF6B7280).withValues(alpha: 0.1),
+                  color:
+                      (hasError
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF6B7280))
+                          .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
@@ -2815,24 +1913,64 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     );
   }
 
+  bool _isMediaField(String fieldKey) {
+    return fieldKey == 'profileImage' ||
+        fieldKey == 'frontId' ||
+        fieldKey == 'backId' ||
+        fieldKey == 'cv';
+  }
+
+  String _resolveDisplayText({
+    required String text,
+    required bool hasError,
+    required bool isMediaField,
+    required bool hasValue,
+    required int workerIndex,
+    required String fieldKey,
+  }) {
+    if (hasError && text.isEmpty) return 'required_field'.tr();
+
+    if (isMediaField && hasValue) {
+      if (workerIndex >= 0 && workerIndex < _validWorkers.length) {
+        final storedName = _validWorkers[workerIndex]['${fieldKey}_name'];
+        if (storedName != null && storedName.toString().isNotEmpty) {
+          return storedName.toString();
+        }
+      }
+
+      if (text.startsWith('data:')) {
+        final mime = text.split(';').first.split(':').last;
+        return mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+      }
+
+      return _extractFileName(text, fieldKey);
+    }
+
+    if (text.isEmpty) return '-';
+    return text;
+  }
+
   String _extractFileName(String url, String? fieldKey) {
     try {
       final uri = Uri.tryParse(url);
       if (uri == null) return url;
+
       final path = uri.path;
       if (path.isEmpty || path == '/') return url;
+
       final segments = path.split('/').where((s) => s.isNotEmpty).toList();
       if (segments.isEmpty) return url;
+
       final lastSegment = segments.last;
       if (lastSegment.contains('.')) return lastSegment;
-      final defaultName = switch (fieldKey) {
+
+      return switch (fieldKey) {
         'profileImage' => 'profile.jpg',
         'frontId' => 'front_id.jpg',
         'backId' => 'back_id.jpg',
         'cv' => 'document.pdf',
         _ => 'file',
       };
-      return defaultName;
     } catch (_) {
       return url;
     }
@@ -2861,103 +1999,904 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return imageFallback;
 
-    if (fieldKey == 'cv' || trimmed.endsWith('.pdf') || trimmed.contains('application/pdf')) {
+    if (fieldKey == 'cv' ||
+        trimmed.endsWith('.pdf') ||
+        trimmed.contains('application/pdf')) {
       return documentFallback;
     }
 
-    // 1. Check data URI or base64 string with data: prefix
     if (trimmed.startsWith('data:')) {
-      try {
-        final commaIndex = trimmed.indexOf(',');
-        final base64Content = commaIndex >= 0 ? trimmed.substring(commaIndex + 1) : trimmed;
-        final bytes = base64Decode(base64Content.trim());
-        if (bytes.isNotEmpty) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.memory(
-              bytes,
-              width: 24,
-              height: 24,
-              fit: BoxFit.cover,
-              cacheWidth: 48,
-              cacheHeight: 48,
-              errorBuilder: (_, _, _) => imageFallback,
-            ),
-          );
-        }
-      } catch (_) {}
-      return imageFallback;
+      return _thumbnailFromDataUri(trimmed, imageFallback);
     }
 
-    // 2. Check Flutter assets
     if (trimmed.startsWith('assets/')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.asset(
-          trimmed,
-          width: 24,
-          height: 24,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => imageFallback,
-        ),
-      );
+      return _thumbnailFromAsset(trimmed, imageFallback);
     }
 
-    // 3. Check HTTP / HTTPS network URL
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    if (isHttpUrl(trimmed)) {
+      return _thumbnailFromNetwork(trimmed, imageFallback);
+    }
+
+    if (trimmed.startsWith('/') || trimmed.startsWith('file://')) {
+      return _thumbnailFromFile(trimmed, imageFallback);
+    }
+
+    return _thumbnailFromRawBase64(trimmed, imageFallback);
+  }
+
+  Widget _thumbnailFromDataUri(String dataUri, Widget fallback) {
+    try {
+      final commaIndex = dataUri.indexOf(',');
+      final base64Content = commaIndex >= 0
+          ? dataUri.substring(commaIndex + 1)
+          : dataUri;
+      final bytes = base64Decode(base64Content.trim());
+
+      if (bytes.isEmpty) return fallback;
+
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Image.network(
-          trimmed,
+        child: Image.memory(
+          bytes,
           width: 24,
           height: 24,
           fit: BoxFit.cover,
           cacheWidth: 48,
           cacheHeight: 48,
-          errorBuilder: (_, _, _) => imageFallback,
+          errorBuilder: (_, _, _) => fallback,
         ),
       );
+    } catch (_) {
+      return fallback;
     }
-
-    // 4. Check local file path
-    if (trimmed.startsWith('/') || trimmed.startsWith('file://')) {
-      try {
-        final filePath = trimmed.startsWith('file://') ? Uri.parse(trimmed).toFilePath() : trimmed;
-        final file = io.File(filePath);
-        if (file.existsSync()) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.file(
-              file,
-              width: 24,
-              height: 24,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => imageFallback,
-            ),
-          );
-        }
-      } catch (_) {}
-    }
-
-    // 5. Try raw base64 string fallback
-    try {
-      final bytes = base64Decode(trimmed);
-      if (bytes.isNotEmpty) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.memory(
-            bytes,
-            width: 24,
-            height: 24,
-            fit: BoxFit.cover,
-            cacheWidth: 48,
-            cacheHeight: 48,
-            errorBuilder: (_, _, _) => imageFallback,
-          ),
-        );
-      }
-    } catch (_) {}
-
-    return imageFallback;
   }
+
+  Widget _thumbnailFromAsset(String assetPath, Widget fallback) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.asset(
+        assetPath,
+        width: 24,
+        height: 24,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+
+  Widget _thumbnailFromNetwork(String url, Widget fallback) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        url,
+        width: 24,
+        height: 24,
+        fit: BoxFit.cover,
+        cacheWidth: 48,
+        cacheHeight: 48,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+
+  Widget _thumbnailFromFile(String path, Widget fallback) {
+    try {
+      final filePath = path.startsWith('file://')
+          ? Uri.parse(path).toFilePath()
+          : path;
+      final file = io.File(filePath);
+
+      if (!file.existsSync()) return fallback;
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.file(
+          file,
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  Widget _thumbnailFromRawBase64(String raw, Widget fallback) {
+    try {
+      final bytes = base64Decode(raw);
+
+      if (bytes.isEmpty) return fallback;
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.memory(
+          bytes,
+          width: 24,
+          height: 24,
+          fit: BoxFit.cover,
+          cacheWidth: 48,
+          cacheHeight: 48,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    } catch (_) {
+      return fallback;
+    }
+  }
+}
+
+class _EditCellDialog extends StatefulWidget {
+  final String currentValue;
+  final String fieldKey;
+  final String label;
+  final int workerIndex;
+  final Map<String, dynamic> worker;
+  final List<Map<String, dynamic>> validWorkers;
+  final Set<String> existingEmails;
+  final Set<String> existingNationalIds;
+
+  const _EditCellDialog({
+    required this.currentValue,
+    required this.fieldKey,
+    required this.label,
+    required this.workerIndex,
+    required this.worker,
+    required this.validWorkers,
+    required this.existingEmails,
+    required this.existingNationalIds,
+  });
+
+  @override
+  State<_EditCellDialog> createState() => _EditCellDialogState();
+}
+
+class _EditCellDialogState extends State<_EditCellDialog> {
+  late final TextEditingController _controller;
+  String? _dialogError;
+  String? _mediaDataUrl;
+  String? _mediaFileName;
+  bool _isValidatingMedia = false;
+  bool _hasExistingUpload = false;
+
+  bool get _isMediaField =>
+      widget.fieldKey == 'profileImage' ||
+      widget.fieldKey == 'frontId' ||
+      widget.fieldKey == 'backId' ||
+      widget.fieldKey == 'cv';
+
+  bool get _isLeavesField =>
+      widget.fieldKey == 'annualLeaves' ||
+      widget.fieldKey == 'sickLeaves' ||
+      widget.fieldKey == 'casualLeaves' ||
+      widget.fieldKey == 'medicalLeaves';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.currentValue);
+
+    if (_isMediaField && widget.currentValue.isNotEmpty) {
+      _hasExistingUpload = true;
+      final storedName = widget.worker['${widget.fieldKey}_name'];
+
+      if (widget.currentValue.startsWith('data:')) {
+        if (storedName != null && storedName.toString().isNotEmpty) {
+          _controller.text = storedName.toString();
+        } else {
+          final mime = widget.currentValue.split(';').first.split(':').last;
+          _controller.text = mime == 'application/pdf'
+              ? 'document.pdf'
+              : 'image.jpg';
+        }
+      }
+
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickMediaFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: widget.fieldKey == 'cv'
+            ? ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+            : ['jpg', 'jpeg', 'png'],
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final bytes = await file.readAsBytes();
+
+      if (bytes.length > 10 * 1024 * 1024) {
+        setState(() {
+          _dialogError = 'file_too_large'.tr(namedArgs: {'size': '10MB'});
+        });
+        return;
+      }
+
+      if (bytes.isEmpty) return;
+
+      final mime = mimeTypeForExtension(file.name);
+      final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+
+      setState(() {
+        _mediaDataUrl = dataUrl;
+        _mediaFileName = file.name;
+        _hasExistingUpload = true;
+        _controller.text = file.name;
+        _controller.selection = TextSelection.collapsed(
+          offset: _controller.text.length,
+        );
+      });
+    } catch (_) {
+      setState(() {
+        _dialogError = 'failed_to_pick_image'.tr();
+      });
+    }
+  }
+
+  Future<void> _onSave() async {
+    if (_isValidatingMedia) return;
+
+    final val = _controller.text.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
+
+    if (!_isMediaField && val.isEmpty) {
+      setState(() => _dialogError = 'edit_cell_cannot_be_empty'.tr());
+      return;
+    }
+
+    if (_isMediaField &&
+        val.isEmpty &&
+        (_mediaDataUrl == null || _mediaDataUrl!.isEmpty)) {
+      setState(() => _dialogError = 'edit_cell_cannot_be_empty'.tr());
+      return;
+    }
+
+    final result = await _validateAndGetResult(val);
+    if (result != null && mounted) {
+      Navigator.of(context).pop(result);
+    }
+  }
+
+  Future<String?> _validateAndGetResult(String val) async {
+    switch (widget.fieldKey) {
+      case 'email':
+        return _validateEmail(val);
+      case 'nationalId':
+        return _validateNationalId(val);
+      case 'gender':
+        return _validateGender(val);
+      case 'relationshipStatus':
+        return _validateRelationshipStatus(val);
+      case 'experienceLevel':
+        return _validateExperienceLevel(val);
+      case 'education':
+        return _validateEducation(val);
+      case 'type1':
+        return _validateType1(val);
+      case 'type2':
+        return _validateType2(val);
+      case 'salaryAmount':
+        return _validateSalaryAmount(val);
+      case 'annualLeaves':
+      case 'sickLeaves':
+      case 'casualLeaves':
+      case 'medicalLeaves':
+        return _validateLeaves(val);
+      case 'dob':
+        return _validateDob(val);
+      case 'joiningDate':
+        return _validateJoiningDate(val);
+      case 'profileImage':
+      case 'frontId':
+      case 'backId':
+      case 'cv':
+        return _validateMedia(val);
+      default:
+        return val;
+    }
+  }
+
+  String? _validateEmail(String val) {
+    if (val.isEmpty) return val;
+
+    final normalized = WorkerIdentity.normalizeEmail(val);
+
+    if (!Validators.isValidEmail(normalized) ||
+        Validators.isPlaceholderEmailDomain(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_email'.tr());
+      return null;
+    }
+
+    final isDuplicate =
+        widget.existingEmails.contains(normalized) ||
+        widget.validWorkers.asMap().entries.any((entry) {
+          return entry.key != widget.workerIndex &&
+              WorkerIdentity.normalizeEmail(
+                    entry.value['email']?.toString() ?? '',
+                  ) ==
+                  normalized;
+        });
+
+    if (isDuplicate) {
+      setState(() => _dialogError = 'validation_duplicate_email'.tr());
+      return null;
+    }
+
+    return normalized;
+  }
+
+  String? _validateNationalId(String val) {
+    if (val.isEmpty) return val;
+
+    if (!Validators.isValidNationalId(val)) {
+      setState(() => _dialogError = 'validation_invalid_national_id'.tr());
+      return null;
+    }
+
+    final normalized = WorkerIdentity.normalizeNationalId(val);
+
+    final isDuplicate =
+        widget.existingNationalIds.contains(normalized) ||
+        widget.validWorkers.asMap().entries.any((entry) {
+          return entry.key != widget.workerIndex &&
+              WorkerIdentity.normalizeNationalId(
+                    entry.value['nationalId']?.toString() ?? '',
+                  ) ==
+                  normalized;
+        });
+
+    if (isDuplicate) {
+      setState(() => _dialogError = 'validation_duplicate_national_id'.tr());
+      return null;
+    }
+
+    return val;
+  }
+
+  String? _validateGender(String val) {
+    final normalized = val.toLowerCase();
+    const valid = {'male', 'female', 'other', 'others'};
+
+    if (!valid.contains(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_gender'.tr());
+      return null;
+    }
+
+    return switch (normalized) {
+      'male' => 'Male',
+      'female' => 'Female',
+      'other' || 'others' => 'Other',
+      _ => val,
+    };
+  }
+
+  String? _validateRelationshipStatus(String val) {
+    final normalized = val.toLowerCase();
+    const valid = {'single', 'married'};
+
+    if (!valid.contains(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_relationship'.tr());
+      return null;
+    }
+
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+
+  String? _validateExperienceLevel(String val) {
+    final normalized = val.toLowerCase();
+    const valid = {'fresher', 'junior', 'mid-level', 'mid level', 'senior'};
+
+    if (!valid.contains(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_experience_level'.tr());
+      return null;
+    }
+
+    return switch (normalized) {
+      'fresher' => 'Fresher',
+      'junior' => 'Junior',
+      'mid-level' || 'mid level' => 'Mid-Level',
+      'senior' => 'Senior',
+      _ => val,
+    };
+  }
+
+  String? _validateEducation(String val) {
+    final normalized = normalizeEducation(val);
+
+    if (normalized == null) {
+      setState(() => _dialogError = 'validation_invalid_education'.tr());
+      return null;
+    }
+
+    return normalized;
+  }
+
+  String? _validateType1(String val) {
+    final normalized = val.toLowerCase();
+    const valid = {
+      'full-time',
+      'full time',
+      'part-time',
+      'part time',
+      'contract',
+      'intern',
+    };
+
+    if (!valid.contains(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_employee_type'.tr());
+      return null;
+    }
+
+    return switch (normalized) {
+      'full-time' || 'full time' => 'Full-Time',
+      'part-time' || 'part time' => 'Part-Time',
+      'contract' => 'Contract',
+      'intern' => 'Intern',
+      _ => val,
+    };
+  }
+
+  String? _validateType2(String val) {
+    final normalized = val.toLowerCase();
+    const valid = {'on-site', 'on site', 'onsite', 'remote', 'hybrid'};
+
+    if (!valid.contains(normalized)) {
+      setState(() => _dialogError = 'validation_invalid_work_model'.tr());
+      return null;
+    }
+
+    return switch (normalized) {
+      'remote' => 'Remote',
+      'hybrid' => 'Hybrid',
+      _ => 'On-Site',
+    };
+  }
+
+  String? _validateSalaryAmount(String val) {
+    final amount = Validators.parseAmount(val);
+
+    if (amount == null) {
+      setState(() => _dialogError = 'valid_amount_required'.tr());
+      return null;
+    }
+
+    if (amount <= 0) {
+      setState(() => _dialogError = 'amount_must_be_positive'.tr());
+      return null;
+    }
+
+    return val;
+  }
+
+  String? _validateLeaves(String val) {
+    final leaves = int.tryParse(val);
+
+    if (leaves == null || leaves < 0 || leaves > 366) {
+      setState(() => _dialogError = 'invalid_number'.tr());
+      return null;
+    }
+
+    return leaves.toString();
+  }
+
+  String? _validateDob(String val) {
+    final dob = AppDateUtils.parseDdMmYyyy(val);
+
+    if (dob == null) {
+      setState(() => _dialogError = 'validation_invalid_date'.tr());
+      return null;
+    }
+
+    if (!isAtLeast18(dob)) {
+      setState(() => _dialogError = 'validation_min_age'.tr());
+      return null;
+    }
+
+    return val;
+  }
+
+  String? _validateJoiningDate(String val) {
+    final joiningDate = AppDateUtils.parseDdMmYyyy(val);
+
+    if (joiningDate == null) {
+      setState(() => _dialogError = 'validation_invalid_date'.tr());
+      return null;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final joiningOnly = DateTime(
+      joiningDate.year,
+      joiningDate.month,
+      joiningDate.day,
+    );
+
+    if (joiningOnly.isAfter(today)) {
+      setState(() => _dialogError = 'joining_date_cannot_be_future'.tr());
+      return null;
+    }
+
+    return val;
+  }
+
+  Future<String?> _validateMedia(String val) async {
+    if (_mediaDataUrl != null) {
+      widget.worker['${widget.fieldKey}_name'] = _mediaFileName ?? '';
+      return _mediaDataUrl;
+    }
+
+    final mediaValue = val.isNotEmpty ? val : widget.currentValue.trim();
+
+    if (mediaValue.startsWith('data:')) {
+      widget.worker['${widget.fieldKey}_name'] = _extractFileName(
+        mediaValue,
+        widget.fieldKey,
+      );
+      return mediaValue;
+    }
+
+    setState(() {
+      _isValidatingMedia = true;
+      _dialogError = null;
+    });
+
+    final mediaError = await validateRemoteWorkerMediaLink(
+      field: widget.fieldKey,
+      url: mediaValue,
+    );
+
+    if (!mounted) return null;
+
+    if (mediaError != null) {
+      setState(() {
+        _isValidatingMedia = false;
+        _dialogError = mediaError;
+      });
+      return null;
+    }
+
+    widget.worker['${widget.fieldKey}_name'] = _extractFileName(
+      mediaValue,
+      widget.fieldKey,
+    );
+    return mediaValue;
+  }
+
+  String _extractFileName(String url, String? fieldKey) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return url;
+
+      final path = uri.path;
+      if (path.isEmpty || path == '/') return url;
+
+      final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) return url;
+
+      final lastSegment = segments.last;
+      if (lastSegment.contains('.')) return lastSegment;
+
+      return switch (fieldKey) {
+        'profileImage' => 'profile.jpg',
+        'frontId' => 'front_id.jpg',
+        'backId' => 'back_id.jpg',
+        'cv' => 'document.pdf',
+        _ => 'file',
+      };
+    } catch (_) {
+      return url;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: Center(
+        child: Container(
+          width: 440,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                blurRadius: 40,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildInputSection(),
+                  if (fieldHint(widget.fieldKey).isNotEmpty) _buildHintRow(),
+                  if (_dialogError != null) _buildErrorRow(),
+                  _buildActionBar(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (isDateField(widget.fieldKey))
+            buildDateField(
+              context: context,
+              fieldKey: widget.fieldKey,
+              currentValue: _controller.text,
+              label: widget.label,
+              setDialogState: setState,
+              onDateSelected: (dateStr) => _controller.text = dateStr,
+            )
+          else
+            Container(
+              clipBehavior: Clip.hardEdge,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: TextField(
+                controller: _controller,
+                readOnly: isDateField(widget.fieldKey),
+                autofocus: true,
+                maxLines: _isMediaField ? 1 : null,
+                minLines: 1,
+                keyboardType: keyboardTypeForField(widget.fieldKey),
+                inputFormatters: inputFormattersForField(widget.fieldKey),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
+                  color:
+                      (_isMediaField &&
+                          (_mediaDataUrl != null || _hasExistingUpload))
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF111827),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  hintText: _isLeavesField
+                      ? '0'
+                      : _isMediaField
+                      ? mediaFieldHint(widget.fieldKey)
+                      : 'edit_cell_enter_value'.tr(
+                          namedArgs: {'label': widget.label},
+                        ),
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  suffixIcon: _isMediaField ? _buildMediaPickerButton() : null,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaPickerButton() {
+    return GestureDetector(
+      onTap: _pickMediaFile,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF2FF),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.fieldKey == 'cv'
+                  ? Icons.attach_file_rounded
+                  : widget.fieldKey == 'profileImage'
+                  ? Icons.add_a_photo_rounded
+                  : Icons.badge_rounded,
+              size: 18,
+              color: const Color(0xFF0247C4),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              widget.fieldKey == 'cv' ? 'upload_cv'.tr() : 'upload_image'.tr(),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0247C4),
+                fontFamily: 'SF Pro Display',
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHintRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.lightbulb_outline,
+            size: 13,
+            color: Color(0xFF9CA3AF),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              fieldHint(widget.fieldKey),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF9CA3AF),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 14,
+            color: Color(0xFFDC2626),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _dialogError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFDC2626),
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF6B7280),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0247C4),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              minimumSize: const Size(0, 42),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            onPressed: _onSave,
+            child: _isValidatingMedia
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_rounded, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'save'.tr(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SaveResult {
+  final int importedCount;
+  final BulkWorkerResult? bulkResult;
+  final int guestSkippedDuplicates;
+
+  const _SaveResult({
+    required this.importedCount,
+    this.bulkResult,
+    this.guestSkippedDuplicates = 0,
+  });
 }

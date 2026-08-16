@@ -1,27 +1,23 @@
 import 'dart:async';
-import 'package:flutter/material.dart' hide GestureDetector;
+import '../utils/ui_helpers.dart';
+import '../utils/helpers.dart';
+
 import 'package:easy_localization/easy_localization.dart';
-import '../widgets/clickable_gesture_detector.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 import '../providers.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/firestore_service.dart';
 import '../services/payroll_service.dart';
 import '../services/preferences_service.dart';
-
-import '../utils/date_time_utils.dart';
-import '../utils/currency_utils.dart';
-import '../utils/localization_helper.dart';
+import '../utils/utils.dart';
+import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/notification_bell.dart';
-import '../utils/ui_utils.dart';
-import '../utils/dialog_utils.dart';
-
-import '../utils/rate_us_helper.dart';
-import '../utils/guest_restriction.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -41,29 +37,25 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   final _searchController = TextEditingController();
+
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
   String _selectedPeriod = 'Month';
+
   StreamSubscription? _expensesSub;
   StreamSubscription? _profileSub;
   StreamSubscription? _payrollSub;
+
   final Map<String, double> _payrollAmountsByKey = {};
-  late AuthService _authService;
-  late FirestoreService _firestore;
+
+  late final AuthService _authService;
+  late final FirestoreService _firestore;
+
   String _currencyCode = CurrencyUtils.defaultCode;
   bool _initialized = false;
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
-
-  @override
-  void dispose() {
-    _expensesSub?.cancel();
-    _profileSub?.cancel();
-    _payrollSub?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   void initState() {
@@ -81,11 +73,20 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
 
-    if (!_isGuest) {
-      _setupRealTimeSubscriptions();
-    } else {
+    if (_isGuest) {
       _loadDummyData();
+    } else {
+      _setupRealTimeSubscriptions();
     }
+  }
+
+  @override
+  void dispose() {
+    _expensesSub?.cancel();
+    _profileSub?.cancel();
+    _payrollSub?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _setupRealTimeSubscriptions() {
@@ -99,22 +100,23 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     _payrollSub = _firestore.payrollStream.listen((snapshot) {
       if (!mounted) return;
       final amounts = <String, double>{};
-      for (final document in snapshot.docs) {
-        final data = document.data() as Map<String, dynamic>;
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
         if (!PayrollService.isPayrollRecordPaid(data)) continue;
+
         final payrollKey = (data['payrollKey'] ?? '').toString().trim();
         if (payrollKey.isEmpty) continue;
+
         final numericAmount = data['netSalaryAmount'];
         final amount = numericAmount is num
             ? numericAmount.toDouble()
             : PayrollService.extractSalary(
-                (data['netSalaryFormatted'] ?? data['netSalary'] ?? '')
-                    .toString(),
+                (data['netSalaryFormatted'] ?? data['netSalary'] ?? '').toString(),
               );
-        if (amount.isFinite && amount > 0) {
-          amounts[payrollKey] = amount;
-        }
+
+        if (amount.isFinite && amount > 0) amounts[payrollKey] = amount;
       }
+
       setState(() {
         _payrollAmountsByKey
           ..clear()
@@ -124,35 +126,30 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     _expensesSub = _firestore.expensesStream.listen(
       (snapshot) {
-        if (mounted) {
-          setState(() {
-            _expensesDocs = _sortExpenses(snapshot.docs);
-            _isLoading = false;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _expensesDocs = _sortExpenses(snapshot.docs);
+          _isLoading = false;
+        });
       },
-      onError: (e) {
+      onError: (_) {
         if (mounted) setState(() => _isLoading = false);
       },
     );
   }
 
   void _loadDummyData() {
-    _expensesDocs = DummyData.expenses
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    _expensesDocs = DummyData.expenses.map((e) => Map<String, dynamic>.from(e)).toList();
 
-    final activePayrollRecords = PayrollService.paidPayrollRecordsForActiveWorkers(
+    final activePayroll = PayrollService.paidPayrollRecordsForActiveWorkers(
       DummyData.workers,
       DummyData.payroll,
     );
 
-    for (final record in activePayrollRecords) {
+    for (final record in activePayroll) {
       final payrollKey = (record['payrollKey'] ?? '').toString().trim();
       if (payrollKey.isEmpty) continue;
-      final netSalary = (record['netSalary'] is num)
-          ? (record['netSalary'] as num).toDouble()
-          : 0.0;
+      final netSalary = record['netSalary'] is num ? (record['netSalary'] as num).toDouble() : 0.0;
       if (netSalary > 0) _payrollAmountsByKey[payrollKey] = netSalary;
     }
 
@@ -161,26 +158,44 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   List<Map<String, dynamic>> _sortExpenses(List docs) {
-    final sortedList = docs
+    final list = docs
         .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-        .toList();
-    sortedList.sort((a, b) {
-      final aTime = AppDateUtils.dateFromValue(a['createdAt']) ??
-          AppDateUtils.dateFromValue(a['date']);
-      final bTime = AppDateUtils.dateFromValue(b['createdAt']) ??
-          AppDateUtils.dateFromValue(b['date']);
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      return bTime.compareTo(aTime);
-    });
-    return sortedList;
+        .toList()
+      ..sort((a, b) {
+        final aTime = AppDateUtils.dateFromValue(a['createdAt']) ?? AppDateUtils.dateFromValue(a['date']);
+        final bTime = AppDateUtils.dateFromValue(b['createdAt']) ?? AppDateUtils.dateFromValue(b['date']);
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
+    return list;
   }
 
-  // ==================== HELPERS ====================
+  void _adjustDummyDatesForPeriod(String period) {
+    final dummyList = DummyData.expenses;
+    if (dummyList.isEmpty) return;
 
-  double get _totalExpenseSum =>
-      _expensesDocs.fold(0.0, (sum, doc) => sum + _expenseAmount(doc));
+    final now = DateTime.now();
+    final maxDays = switch (period) {
+      'Today' => 0,
+      'Week' || 'This Week' => 7,
+      'Month' || 'This Month' => 30,
+      '6 Month' || 'Last 6 Months' => 180,
+      _ => 365,
+    };
+
+    for (int i = 0; i < dummyList.length; i++) {
+      final daysAgo = (i * (maxDays + 1) / dummyList.length).floor();
+      final newDate = now.subtract(Duration(days: daysAgo));
+      dummyList[i]['date'] =
+          '${newDate.day.toString().padLeft(2, '0')}/${newDate.month.toString().padLeft(2, '0')}/${newDate.year}';
+    }
+
+    _expensesDocs = dummyList.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  double get _totalExpenseSum => _expensesDocs.fold(0.0, (sum, doc) => sum + _expenseAmount(doc));
 
   double get _selectedPeriodExpenseSum => _expensesDocs.fold(0.0, (sum, doc) {
         if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
@@ -189,32 +204,23 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         return sum;
       });
 
-  String get _selectedPeriodExpenseTitle {
-    switch (_selectedPeriod) {
-      case 'Today':
-        return 'today_expense'.tr();
-      case 'Week':
-      case 'This Week':
-        return 'this_week_expense'.tr();
-      case '6 Month':
-      case 'Last 6 Months':
-        return 'last_6_months_expense'.tr();
-      case 'Yearly':
-      case 'This Year':
-        return 'this_year_expense'.tr();
-      case 'All Time':
-        return 'all_time_expense'.tr();
-      default:
-        return 'this_month_expense'.tr();
-    }
-  }
+  String get _selectedPeriodExpenseTitle => switch (_selectedPeriod) {
+        'Today' => 'today_expense'.tr(),
+        'Week' || 'This Week' => 'this_week_expense'.tr(),
+        '6 Month' || 'Last 6 Months' => 'last_6_months_expense'.tr(),
+        'Yearly' || 'This Year' => 'this_year_expense'.tr(),
+        'All Time' => 'all_time_expense'.tr(),
+        _ => 'this_month_expense'.tr(),
+      };
 
   double _expenseAmount(Map<String, dynamic> expense) {
     final isSalary = (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+
     if (isSalary && payrollKey.isNotEmpty) {
       return _payrollAmountsByKey[payrollKey] ?? 0.0;
     }
+
     final rawAmount = expense['amount'];
     if (rawAmount is num) return rawAmount.toDouble();
     return PayrollService.extractSalary((rawAmount ?? '').toString());
@@ -230,80 +236,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final name = (expense['name'] ?? '').toString().trim();
     final category = (expense['category'] ?? '').toString().trim().toLowerCase();
     if (category != 'salary') return name;
-    return name
-        .replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '')
-        .trim();
+    return name.replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '').trim();
   }
 
   String _formatCurrency(double amount) {
-    final codeSymbol = CurrencyUtils.symbolFor(_currencyCode);
+    final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     if (amount.abs() >= 1e3) {
-      return CurrencyUtils.formatCompactLocale(
-        amount,
-        context.locale.toString(),
-        symbol: codeSymbol,
-      );
+      return CurrencyUtils.formatCompactLocale(amount, context.locale.toString(), symbol: symbol.trim());
     }
-    final symbol = '$codeSymbol ';
     try {
-      return NumberFormat.currency(
-        locale: context.locale.toString(),
-        symbol: symbol,
-        decimalDigits: 2,
-      ).format(amount);
+      return NumberFormat.currency(locale: context.locale.toString(), symbol: symbol, decimalDigits: 2).format(amount);
     } catch (_) {
-      return NumberFormat.currency(
-        locale: 'en_US',
-        symbol: symbol,
-        decimalDigits: 2,
-      ).format(amount);
+      return NumberFormat.currency(locale: 'en_US', symbol: symbol, decimalDigits: 2).format(amount);
     }
   }
 
   String _formatFullCurrency(double amount) {
     final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     try {
-      return NumberFormat.currency(
-        locale: context.locale.toString(),
-        symbol: symbol,
-        decimalDigits: 0,
-      ).format(amount);
+      return NumberFormat.currency(locale: context.locale.toString(), symbol: symbol, decimalDigits: 0).format(amount);
     } catch (_) {
-      return NumberFormat.currency(
-        locale: 'en_US',
-        symbol: symbol,
-        decimalDigits: 0,
-      ).format(amount);
+      return NumberFormat.currency(locale: 'en_US', symbol: symbol, decimalDigits: 0).format(amount);
     }
   }
 
-  String _eds(dynamic value) =>
-      AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
-
-  void _adjustDummyDatesForPeriod(String period) {
-    final dummyList = DummyData.expenses;
-    if (dummyList.isEmpty) return;
-
-    final now = DateTime.now();
-    int maxDays = 365;
-    if (period == 'Today') {
-      maxDays = 0;
-    } else if (period == 'Week' || period == 'This Week') {
-      maxDays = 7;
-    } else if (period == 'Month' || period == 'This Month') {
-      maxDays = 30;
-    } else if (period == '6 Month' || period == 'Last 6 Months') {
-      maxDays = 180;
-    }
-
-    for (int i = 0; i < dummyList.length; i++) {
-      int daysAgo = (i * (maxDays + 1) / dummyList.length).floor();
-      final newDate = now.subtract(Duration(days: daysAgo));
-      dummyList[i]['date'] =
-          '${newDate.day.toString().padLeft(2, '0')}/${newDate.month.toString().padLeft(2, '0')}/${newDate.year}';
-    }
-    _expensesDocs = dummyList.map((e) => Map<String, dynamic>.from(e)).toList();
-  }
+  String _eds(dynamic value) => AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
 
   List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
@@ -311,35 +268,29 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         final payrollKey = (doc['payrollKey'] ?? '').toString().trim();
         if (!_payrollAmountsByKey.containsKey(payrollKey)) return false;
       }
+
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final matchesSearch = name.contains(query) || category.contains(query);
-      final matchesPeriod =
+
+      return (name.contains(query) || category.contains(query)) &&
           AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod);
-      return matchesSearch && matchesPeriod;
     }).toList();
   }
 
-  // ==================== GUEST OPERATIONS ====================
-
   void _addExpenseToGuest(Map<String, dynamic> expenseMap) {
     final newId = 'dummy_e${DateTime.now().millisecondsSinceEpoch}';
-    setState(() => _expensesDocs.insert(0, {...expenseMap, 'id': newId}));
-    DummyData.expenses.insert(0, {...expenseMap, 'id': newId});
+    final entry = {...expenseMap, 'id': newId};
+    setState(() => _expensesDocs.insert(0, entry));
+    DummyData.expenses.insert(0, entry);
     DummyData.saveToPrefs();
   }
 
-  void _updateExpenseInGuest(String docId, Map<String, dynamic> updatedMap,
-      {String? payrollKey, double? amt}) {
+  void _updateExpenseInGuest(String docId, Map<String, dynamic> updatedMap, {String? payrollKey, double? amt}) {
     setState(() {
       final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
-      if (idx != -1) {
-        _expensesDocs[idx] = {..._expensesDocs[idx], ...updatedMap, 'id': docId};
-      }
-      if (payrollKey != null && amt != null) {
-        _payrollAmountsByKey[payrollKey] = amt;
-      }
+      if (idx != -1) _expensesDocs[idx] = {..._expensesDocs[idx], ...updatedMap, 'id': docId};
+      if (payrollKey != null && amt != null) _payrollAmountsByKey[payrollKey] = amt;
     });
 
     final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
@@ -348,68 +299,53 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
 
     if (payrollKey != null && amt != null) {
-      Map<String, dynamic> updateRecord(Map<String, dynamic> record) {
-        final baseSalary = PayrollService.extractSalary(
-          record['salary'] ?? record['salaryAmount'],
-        );
-
-        // Net Pay = Base Salary + Overtime - Absence Deduction - Leave Deduction
-        final double overtime;
-        final double absenceDeduction;
-        if (amt >= baseSalary) {
-          overtime = amt - baseSalary;
-          absenceDeduction = 0.0;
-        } else {
-          overtime = 0.0;
-          absenceDeduction = baseSalary - amt;
-        }
-
-        final formatted = PayrollService.formatAmountInCurrency(
-          amt,
-          _currencyCode,
-        );
-        return {
-          ...record,
-          'netSalaryAmount': amt,
-          'netSalary': formatted,
-          'netSalaryFormatted': formatted,
-          'salaryAfterDeduction': formatted,
-          'amount': amt,
-          'overtimeAmount': overtime,
-          'absentDeduction': absenceDeduction,
-          'leaveDeduction': 0.0,
-          'status': 'Paid',
-          'isPaid': true,
-          'paid': true,
-          'paymentStatus': 'paid',
-          'updatedAt': DateTime.now(),
-          'lastModified': DateTime.now(),
-        };
-      }
-
-      final payrollIndex = DummyData.payroll.indexWhere(
-        (record) =>
-            (record['payrollKey'] ?? '').toString().trim() == payrollKey,
-      );
-      if (payrollIndex != -1) {
-        DummyData.payroll[payrollIndex] = updateRecord(
-          DummyData.payroll[payrollIndex],
-        );
-      }
-
-      PreferencesService.getGuestPayroll().then((guestPayroll) {
-        if (guestPayroll != null) {
-          final idx = guestPayroll.indexWhere(
-            (p) => (p['payrollKey'] ?? '').toString().trim() == payrollKey,
-          );
-          if (idx != -1) {
-            guestPayroll[idx] = updateRecord(guestPayroll[idx]);
-            PreferencesService.setGuestPayroll(guestPayroll);
-          }
-        }
-      });
+      _updatePayrollRecordWithAmount(payrollKey, amt);
     }
+
     DummyData.saveToPrefs();
+  }
+
+  void _updatePayrollRecordWithAmount(String payrollKey, double amt) {
+    Map<String, dynamic> buildUpdated(Map<String, dynamic> record) {
+      final baseSalary = PayrollService.extractSalary(record['salary'] ?? record['salaryAmount']);
+      final overtime = amt >= baseSalary ? amt - baseSalary : 0.0;
+      final absenceDeduction = amt < baseSalary ? baseSalary - amt : 0.0;
+      final formatted = PayrollService.formatAmountInCurrency(amt, _currencyCode);
+
+      return {
+        ...record,
+        'netSalaryAmount': amt,
+        'netSalary': formatted,
+        'netSalaryFormatted': formatted,
+        'salaryAfterDeduction': formatted,
+        'amount': amt,
+        'overtimeAmount': overtime,
+        'absentDeduction': absenceDeduction,
+        'leaveDeduction': 0.0,
+        'status': 'Paid',
+        'isPaid': true,
+        'paid': true,
+        'paymentStatus': 'paid',
+        'updatedAt': DateTime.now(),
+        'lastModified': DateTime.now(),
+      };
+    }
+
+    final payrollIdx = DummyData.payroll.indexWhere(
+      (r) => (r['payrollKey'] ?? '').toString().trim() == payrollKey,
+    );
+    if (payrollIdx != -1) {
+      DummyData.payroll[payrollIdx] = buildUpdated(DummyData.payroll[payrollIdx]);
+    }
+
+    PreferencesService.getGuestPayroll().then((guestPayroll) {
+      if (guestPayroll == null) return;
+      final idx = guestPayroll.indexWhere((p) => (p['payrollKey'] ?? '').toString().trim() == payrollKey);
+      if (idx != -1) {
+        guestPayroll[idx] = buildUpdated(guestPayroll[idx]);
+        PreferencesService.setGuestPayroll(guestPayroll);
+      }
+    });
   }
 
   void _deleteExpenseFromGuest(String docId, {String? payrollKey}) {
@@ -417,26 +353,21 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       _expensesDocs.removeWhere((e) => e['id'] == docId);
       if (payrollKey != null) _payrollAmountsByKey.remove(payrollKey);
     });
+
     DummyData.expenses.removeWhere((e) => e['id'] == docId);
+
     if (payrollKey != null) {
-      final normalizedKey = payrollKey.trim();
-      DummyData.payroll.removeWhere(
-        (record) =>
-            (record['payrollKey'] ?? '').toString().trim() == normalizedKey,
-      );
+      final normalized = payrollKey.trim();
+      DummyData.payroll.removeWhere((r) => (r['payrollKey'] ?? '').toString().trim() == normalized);
       PreferencesService.getGuestPayroll().then((guestPayroll) {
-        if (guestPayroll != null) {
-          guestPayroll.removeWhere(
-            (p) => (p['payrollKey'] ?? '').toString().trim() == normalizedKey,
-          );
-          PreferencesService.setGuestPayroll(guestPayroll);
-        }
+        if (guestPayroll == null) return;
+        guestPayroll.removeWhere((p) => (p['payrollKey'] ?? '').toString().trim() == normalized);
+        PreferencesService.setGuestPayroll(guestPayroll);
       });
     }
+
     DummyData.saveToPrefs();
   }
-
-  // ==================== CRUD OPERATIONS ====================
 
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
     final docId = (doc['id'] ?? '').toString().trim();
@@ -457,17 +388,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         _deleteExpenseFromGuest(docId, payrollKey: isPayroll ? payrollKey : null);
       } else {
         if (isPayroll) {
-          await _firestore.deletePayrollLinkedExpense(
-            expenseId: docId,
-            payrollKey: payrollKey,
-          );
+          await _firestore.deletePayrollLinkedExpense(expenseId: docId, payrollKey: payrollKey);
         } else {
           await _firestore.deleteExpense(docId);
         }
       }
-      if (mounted) {
-        FlashySnackBar.show(context, message: 'expense_deleted'.tr());
-      }
+
+      if (mounted) FlashySnackBar.show(context, message: 'expense_deleted'.tr());
     } catch (e) {
       if (!mounted) return;
       FlashySnackBar.show(
@@ -478,8 +405,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
   }
 
-  // ==================== EXPENSE DIALOG (UNIFIED) ====================
-
   Future<void> _showExpenseDialog({
     required String title,
     required String buttonText,
@@ -487,36 +412,25 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     required Future<void> Function(Map<String, dynamic>) onSave,
   }) async {
     final isEdit = initialData != null;
-    final categoryController = TextEditingController(
-      text: isEdit ? initialData['category']?.toString() ?? '' : '',
-    );
+    final categoryController = TextEditingController(text: isEdit ? initialData['category']?.toString() ?? '' : '');
     final amountController = TextEditingController(
-      text: isEdit
-          ? NumberFormat('#,##0.##').format(_expenseAmount(initialData))
-          : '',
+      text: isEdit ? NumberFormat('#,##0.##').format(_expenseAmount(initialData)) : '',
     );
     final descriptionController = TextEditingController(
-      text: isEdit
-          ? initialData['name']?.toString() ??
-              initialData['description']?.toString() ??
-              ''
-          : '',
+      text: isEdit ? initialData['name']?.toString() ?? initialData['description']?.toString() ?? '' : '',
     );
 
-    final parsedDate = isEdit
-        ? AppDateUtils.dateFromValue(initialData['date']) ?? DateTime.now()
-        : DateTime.now();
+    final parsedDate = isEdit ? AppDateUtils.dateFromValue(initialData['date']) ?? DateTime.now() : DateTime.now();
     int selectedDay = parsedDate.day;
     DateTime calendarDate = DateTime(parsedDate.year, parsedDate.month, 1);
-
     var isSaving = false;
 
     await showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
+      builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (ctx, setModalState) {
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               backgroundColor: Colors.white,
@@ -529,7 +443,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildDialogHeader(
-                      context,
+                      ctx,
                       title: title,
                       buttonText: buttonText,
                       isSaving: isSaving,
@@ -548,8 +462,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           return;
                         }
                         await onSave(result);
-                        if (!context.mounted) return;
-                        Navigator.of(context).pop();
+                        if (!ctx.mounted) return;
+                        Navigator.of(ctx).pop();
                       },
                     ),
                     const SizedBox(height: 24),
@@ -563,11 +477,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       onMonthChanged: (newDate) {
                         setModalState(() {
                           calendarDate = newDate;
-                          final daysInNewMonth =
-                              DateTime(newDate.year, newDate.month + 1, 0).day;
-                          if (selectedDay > daysInNewMonth) {
-                            selectedDay = daysInNewMonth;
-                          }
+                          final daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
+                          if (selectedDay > daysInNewMonth) selectedDay = daysInNewMonth;
                         });
                       },
                     ),
@@ -588,7 +499,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _buildDialogHeader(
-    BuildContext context, {
+    BuildContext ctx, {
     required String title,
     required String buttonText,
     required bool isSaving,
@@ -599,19 +510,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       children: [
         IconButton(
           icon: const Icon(Icons.close, color: Colors.black, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(ctx).pop(),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
         ),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
+        Text(title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
@@ -622,20 +526,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
           onPressed: isSaving ? null : onSave,
           child: isSaving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text(
-                  buttonText,
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(buttonText,
+                  style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
         ),
       ],
     );
@@ -655,25 +548,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       children: [
         Row(
           children: [
-            Expanded(
-              child: _buildModalTextField(
-                'expense_category'.tr(),
-                categoryController,
-                hintText: 'please_enter_category'.tr(),
-                maxLength: 50,
-              ),
-            ),
+            Expanded(child: _buildModalTextField('expense_category'.tr(), categoryController, hintText: 'please_enter_category'.tr(), maxLength: 50)),
             const SizedBox(width: 16),
-            Expanded(
-              child: _buildModalTextField(
-                'amount_header'.tr(),
-                amountController,
-                hintText: 'hint_amount'.tr(),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                isAmount: true,
-                prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
-              ),
-            ),
+            Expanded(child: _buildModalTextField(
+              'amount_header'.tr(), amountController,
+              hintText: 'hint_amount'.tr(),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              isAmount: true,
+              prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
+            )),
           ],
         ),
         const SizedBox(height: 16),
@@ -684,15 +567,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'expense_title'.tr(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
+                  Text('expense_title'.tr(),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
                   const SizedBox(height: 8),
                   Container(
                     height: 215,
@@ -712,25 +588,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: InputBorder.none,
                       ),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black,
-                        fontFamily: 'SF Pro Display',
-                      ),
+                      style: const TextStyle(fontSize: 14, color: Colors.black, fontFamily: 'SF Pro Display'),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 16),
-            Expanded(
-              child: _buildModalCalendar(
-                calendarDate,
-                selectedDay,
-                onDaySelected,
-                onMonthChanged,
-              ),
-            ),
+            Expanded(child: _buildModalCalendar(calendarDate, selectedDay, onDaySelected, onMonthChanged)),
           ],
         ),
       ],
@@ -750,58 +615,34 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final description = descriptionController.text.trim();
 
     if (category.isEmpty || amountText.isEmpty || description.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_fill_all_fields'.tr(),
-        isError: true,
-      );
+      FlashySnackBar.show(context, message: 'please_fill_all_fields'.tr(), isError: true);
       return null;
     }
 
-    final double? amt = double.tryParse(amountText.replaceAll(",", ""));
+    final amt = double.tryParse(amountText.replaceAll(',', ''));
     if (amt == null || !amt.isFinite || amt <= 0) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_valid_amount'.tr(),
-        isError: true,
-      );
+      FlashySnackBar.show(context, message: 'please_enter_valid_amount'.tr(), isError: true);
       return null;
     }
 
     if (amt > 999999999) {
-      FlashySnackBar.show(
-        context,
-        message: 'amount_cannot_exceed_max'.tr(),
-        isError: true,
-      );
+      FlashySnackBar.show(context, message: 'amount_cannot_exceed_max'.tr(), isError: true);
       return null;
     }
 
-    // Policy check for new expenses only
     if (initialData == null) {
       try {
         final policies = await _firestore.getPolicies();
-        final expPolicyList = policies
-            .where((p) => p['typeId'] == 'Expense Policy')
-            .toList();
-        if (expPolicyList.isNotEmpty) {
-          final expPolicy = expPolicyList.first;
-          final double maxLimit = double.tryParse(
-                expPolicy['maxExpenseLimitPerClaim']?.toString() ?? '500.0',
-              ) ??
-              500.0;
+        final expPolicy = policies.where((p) => p['typeId'] == 'Expense Policy').toList();
+        if (expPolicy.isNotEmpty) {
+          final maxLimit = double.tryParse(expPolicy.first['maxExpenseLimitPerClaim']?.toString() ?? '500.0') ?? 500.0;
           if (!mounted) return null;
           if (amt > maxLimit) {
             FlashySnackBar.show(
               context,
-              message: 'expense_claim_exceeds_limit'.tr(
-                namedArgs: {
-                  'maxLimit': formatMoney(
-                    maxLimit,
-                    CurrencyUtils.symbolFor(_currencyCode),
-                  ),
-                },
-              ),
+              message: 'expense_claim_exceeds_limit'.tr(namedArgs: {
+                'maxLimit': formatMoney(maxLimit, CurrencyUtils.symbolFor(_currencyCode)),
+              }),
               isError: true,
             );
             return null;
@@ -811,17 +652,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
 
     final date = DateTime(calendarDate.year, calendarDate.month, selectedDay);
-
-    return {
-      'date': date,
-      'category': category,
-      'amount': amt,
-      'name': description,
-      'description': description,
-    };
+    return {'date': date, 'category': category, 'amount': amt, 'name': description, 'description': description};
   }
-
-  // ==================== ADD EXPENSE ====================
 
   Future<void> _showAddExpenseModal(BuildContext parentContext) async {
     if (_isGuest) {
@@ -841,28 +673,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             await _firestore.addExpense(expenseMap);
           }
           if (!context.mounted) return;
-          FlashySnackBar.show(
-            parentContext,
-            message: 'successfully_added_expense'.tr(
-              namedArgs: {'name': expenseMap['category']},
-            ),
-          );
+          FlashySnackBar.show(parentContext, message: 'successfully_added_expense'.tr(namedArgs: {'name': expenseMap['category']}));
           tryShowFirstMilestoneRateUs('expense');
         } catch (e) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'failed_to_add_expense'.tr(namedArgs: {'error': e.toString()}),
-              isError: true,
-            );
-          }
+          if (mounted) FlashySnackBar.show(context, message: 'failed_to_add_expense'.tr(namedArgs: {'error': e.toString()}), isError: true);
           rethrow;
         }
       },
     );
   }
-
-  // ==================== EDIT EXPENSE ====================
 
   Future<void> _editExpense(Map<String, dynamic> doc) async {
     if (_isGuest) {
@@ -882,46 +701,23 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
         try {
           if (_isGuest) {
-            _updateExpenseInGuest(docId, updatedMap,
-                payrollKey: wasPayroll ? payrollKey : null, amt: wasPayroll ? amt : null);
+            _updateExpenseInGuest(docId, updatedMap, payrollKey: wasPayroll ? payrollKey : null, amt: wasPayroll ? amt : null);
+          } else if (wasPayroll && payrollKey.isNotEmpty) {
+            await _firestore.updatePayrollLinkedExpense(
+              expenseId: docId, payrollKey: payrollKey, expenseData: updatedMap, netAmount: amt, currency: _currencyCode,
+            );
           } else {
-            if (wasPayroll && payrollKey.isNotEmpty) {
-              await _firestore.updatePayrollLinkedExpense(
-                expenseId: docId,
-                payrollKey: payrollKey,
-                expenseData: updatedMap,
-                netAmount: amt,
-                currency: _currencyCode,
-              );
-            } else {
-              await _firestore.updateExpense(docId, updatedMap);
-            }
+            await _firestore.updateExpense(docId, updatedMap);
           }
-          if (mounted) {
-            FlashySnackBar.show(context, message: 'expense_updated'.tr());
-          }
+          if (mounted) FlashySnackBar.show(context, message: 'expense_updated'.tr());
         } on ArgumentError catch (e) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: e.message?.toString() ?? 'failed_to_update_expense'.tr(),
-              isError: true,
-            );
-          }
+          if (mounted) FlashySnackBar.show(context, message: e.message?.toString() ?? 'failed_to_update_expense'.tr(), isError: true);
         } catch (e) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'failed_to_update_expense'.tr(namedArgs: {'error': e.toString()}),
-              isError: true,
-            );
-          }
+          if (mounted) FlashySnackBar.show(context, message: 'failed_to_update_expense'.tr(namedArgs: {'error': e.toString()}), isError: true);
         }
       },
     );
   }
-
-  // ==================== WIDGET BUILDERS ====================
 
   Widget _buildModalTextField(
     String label,
@@ -935,22 +731,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
         const SizedBox(height: 8),
         Container(
           height: 44,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
           child: TextField(
@@ -961,7 +746,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 ? [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
                     LengthLimitingTextInputFormatter(18),
-                    _ThousandsSeparatorInputFormatter(),
+                    const ThousandsSeparatorInputFormatter(),
                   ]
                 : maxLength != null
                     ? [LengthLimitingTextInputFormatter(maxLength)]
@@ -974,19 +759,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               isDense: true,
               contentPadding: EdgeInsets.zero,
               prefixText: prefixText,
-              prefixStyle: const TextStyle(
-                fontSize: 14,
-                color: Colors.black,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
+              prefixStyle: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
             ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
+            style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
           ),
         ),
       ],
@@ -1003,10 +778,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
@@ -1014,25 +786,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
-                ),
+                onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1)),
                 child: const Icon(Icons.chevron_left, size: 16, color: Colors.black),
               ),
               const SizedBox(width: 16),
-              Text(
-                monthYearStr,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text(monthYearStr, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'SF Pro Display')),
               const SizedBox(width: 16),
               GestureDetector(
-                onTap: () => onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
-                ),
+                onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
                 child: const Icon(Icons.chevron_right, size: 16, color: Colors.black),
               ),
             ],
@@ -1066,27 +827,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Container(
       height: 18,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: Text(
-        day,
-        style: const TextStyle(
-          color: Color(0xFFFFFFFF),
-          fontSize: 8,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'SF Pro Display',
-        ),
-      ),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+      child: Text(day,
+          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 8, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
     );
   }
 
-  Widget _buildDaysGrid(
-    DateTime calendarDate,
-    int selectedDay,
-    ValueChanged<int> onDaySelected,
-  ) {
+  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
     final rows = <Widget>[];
     final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
     final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
@@ -1099,22 +846,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       for (int j = 0; j < 7; j++) {
         final index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
-          rowChildren.add(
-            Expanded(
-              child: _buildDayCell(
-                '$day',
-                day == selectedDay,
-                () => onDaySelected(day),
-                DateTime(calendarDate.year, calendarDate.month, day),
-              ),
-            ),
-          );
+          rowChildren.add(Expanded(child: _buildDayCell('$day', day == selectedDay, () => onDaySelected(day))));
           currentDay++;
         } else {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
@@ -1122,17 +860,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       if (currentDay > daysInMonth) break;
       if (i < 5) rows.add(const SizedBox(height: 4));
     }
+
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(
-    String day,
-    bool isSelected,
-    VoidCallback? onTap,
-    DateTime? date,
-  ) {
+  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
     if (day.isEmpty) return const SizedBox();
-    final selectedBg = const Color(0xFF0247C4);
+    const selectedBg = Color(0xFF0247C4);
+
     return AspectRatio(
       aspectRatio: 1.1,
       child: GestureDetector(
@@ -1141,26 +876,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? selectedBg : Colors.transparent,
-            border: Border.all(
-              color: isSelected ? selectedBg : Colors.grey.shade300,
-              width: 1,
-            ),
+            border: Border.all(color: isSelected ? selectedBg : Colors.grey.shade300, width: 1),
             borderRadius: BorderRadius.circular(3),
           ),
-          child: Text(
-            day,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-              fontSize: 13,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
+          child: Text(day,
+              style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 13, fontFamily: 'SF Pro Display')),
         ),
       ),
     );
   }
-
-  // ==================== MAIN BUILD ====================
 
   @override
   Widget build(BuildContext context) {
@@ -1170,7 +894,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          _buildHeader(context),
+          _buildHeader(),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
@@ -1200,7 +924,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
     return Container(
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1214,24 +938,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'expenses'.tr(),
-                style: const TextStyle(
-                  color: Color(0xFF000000),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              Text('expenses'.tr(),
+                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
             ],
           ),
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
-          ),
+          GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
         ],
       ),
     );
@@ -1252,15 +966,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SvgPicture.asset(
-                  'assets/search icon.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFBDBDBD),
-                    BlendMode.srcIn,
-                  ),
-                ),
+                SvgPicture.asset('assets/search icon.svg', width: 20, height: 20,
+                    colorFilter: const ColorFilter.mode(Color(0xFFBDBDBD), BlendMode.srcIn)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
@@ -1301,21 +1008,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               elevation: 0,
             ),
-            icon: SvgPicture.asset(
-              'assets/add_expense.svg',
-              width: 18,
-              height: 18,
-              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
-            ),
-            label: Text(
-              'add_expenses'.tr(),
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
+            icon: SvgPicture.asset('assets/add_expense.svg', width: 18, height: 18,
+                colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
+            label: Text('add_expenses'.tr(),
+                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
           ),
         ),
       ],
@@ -1325,23 +1021,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget _buildSummaryCards() {
     return Row(
       children: [
-        Expanded(
-          child: _buildCard(
-            title: _selectedPeriodExpenseTitle,
-            titleColor: const Color(0xFF0247C4),
-            amount: _formatCurrency(_selectedPeriodExpenseSum),
-            iconWidget: SvgPicture.asset('assets/expense_month.svg', width: 44, height: 44),
-          ),
-        ),
+        Expanded(child: _buildCard(
+          title: _selectedPeriodExpenseTitle,
+          titleColor: const Color(0xFF0247C4),
+          amount: _formatCurrency(_selectedPeriodExpenseSum),
+          iconWidget: SvgPicture.asset('assets/expense_month.svg', width: 44, height: 44),
+        )),
         const SizedBox(width: 24),
-        Expanded(
-          child: _buildCard(
-            title: 'total_expense'.tr(),
-            titleColor: Colors.red,
-            amount: _formatCurrency(_totalExpenseSum),
-            iconWidget: SvgPicture.asset('assets/total_expense.svg', width: 44, height: 44),
-          ),
-        ),
+        Expanded(child: _buildCard(
+          title: 'total_expense'.tr(),
+          titleColor: Colors.red,
+          amount: _formatCurrency(_totalExpenseSum),
+          iconWidget: SvgPicture.asset('assets/total_expense.svg', width: 44, height: 44),
+        )),
       ],
     );
   }
@@ -1366,32 +1058,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: titleColor,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(title,
+                    style: TextStyle(fontSize: 15, color: titleColor, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 12),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    amount,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text(amount,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
@@ -1407,37 +1083,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'expenses_list'.tr(),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
+        Text('expenses_list'.tr(),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+        CustomTimeframeDropdown(
+          selectedPeriod: _selectedPeriod,
+          options: const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year', 'All Time'],
+          onChanged: (value) {
+            setState(() {
+              _selectedPeriod = value;
+              if (_isGuest) _adjustDummyDatesForPeriod(value);
+            });
+          },
         ),
-        _buildTodayDropdown(),
       ],
-    );
-  }
-
-  Widget _buildTodayDropdown() {
-    return CustomTimeframeDropdown(
-      selectedPeriod: _selectedPeriod,
-      options: const [
-        'Today',
-        'This Week',
-        'This Month',
-        'Last 6 Months',
-        'This Year',
-        'All Time',
-      ],
-      onChanged: (value) {
-        setState(() {
-          _selectedPeriod = value;
-          if (_isGuest) _adjustDummyDatesForPeriod(value);
-        });
-      },
     );
   }
 
@@ -1446,28 +1104,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     return Container(
       height: tableHeight,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: _tableHeader('expense_title'.tr()),
-                )),
-                Expanded(flex: 3, child: Padding(
-                  padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-                  child: _tableHeader('expense_category'.tr()),
-                )),
-                Expanded(flex: 3, child: Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center),
-                )),
+                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('expense_title'.tr()))),
+                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(left: 40, right: 16), child: _tableHeader('expense_category'.tr()))),
+                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center))),
                 Expanded(flex: 2, child: _tableHeader('amount_header'.tr(), textAlign: TextAlign.center)),
                 const SizedBox(width: 48),
               ],
@@ -1480,7 +1126,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: expenses.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _buildDataRow(expenses[index], index),
+              itemBuilder: (_, index) => _buildDataRow(expenses[index]),
             ),
           ),
         ],
@@ -1489,88 +1135,46 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _tableHeader(String title, {TextAlign? textAlign}) {
-    return Text(
-      title,
-      textAlign: textAlign,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-        color: Color(0xFF000000),
-        fontFamily: 'SF Pro Display',
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
+    return Text(title, textAlign: textAlign,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+        maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 
-  Widget _buildDataRow(Map<String, dynamic> doc, int index) {
+  Widget _buildDataRow(Map<String, dynamic> doc) {
     final name = _expenseDisplayName(doc);
     final date = _eds(doc['date']);
-    final category = LocalizationHelper.localizeExpenseCategory(
-      (doc['category'] ?? '').toString(),
-    );
+    final category = LocalizationHelper.localizeExpenseCategory((doc['category'] ?? '').toString());
     final amount = _expenseAmount(doc);
 
     return GestureDetector(
       onTap: () => _editExpense(doc),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6F8FA),
-          borderRadius: BorderRadius.circular(6),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFFF6F8FA), borderRadius: BorderRadius.circular(6)),
         child: Row(
           children: [
             Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              padding: const EdgeInsets.only(right: 16),
+              child: Text(name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-              child: Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              padding: const EdgeInsets.only(left: 40, right: 16),
+              child: Text(category,
+                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                date,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              padding: const EdgeInsets.only(right: 16),
+              child: Text(date, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 2, child: Text(
               _isPayrollExpense(doc) ? _formatFullCurrency(amount) : _formatCurrency(amount),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF0247C4),
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF0247C4), fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
             )),
             _buildActionMenu(doc),
           ],
@@ -1586,10 +1190,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         tooltip: '',
         icon: const Icon(Icons.more_vert, color: Colors.black),
         offset: const Offset(0, 40),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: const BorderSide(color: Color(0xFFCBCBCB)),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFCBCBCB))),
         color: const Color(0xFFFBFBFC),
         elevation: 4,
         onSelected: (value) {
@@ -1599,28 +1200,17 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             _deleteExpense(doc);
           }
         },
-        itemBuilder: (context) => [
+        itemBuilder: (_) => [
           PopupMenuItem(
             value: 'edit',
             height: 36,
             child: Row(
               children: [
-                SvgPicture.asset(
-                  'assets/edit_icon.svg',
-                  width: 16,
-                  height: 16,
-                  colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn),
-                ),
+                SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16,
+                    colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
                 const SizedBox(width: 8),
-                Text(
-                  'edit_expense'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFF0247C4),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
+                Text('edit_expense'.tr(),
+                    style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
               ],
             ),
           ),
@@ -1629,22 +1219,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             height: 36,
             child: Row(
               children: [
-                SvgPicture.asset(
-                  'assets/delete_icon.svg',
-                  width: 16,
-                  height: 16,
-                  colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
-                ),
+                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16,
+                    colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn)),
                 const SizedBox(width: 8),
-                Text(
-                  'delete'.tr(),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
+                Text('delete'.tr(),
+                    style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
               ],
             ),
           ),
@@ -1659,70 +1238,18 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       width: double.infinity,
       height: containerHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(12)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            'assets/placeholder_workers.svg',
-            width: 120,
-            height: 100,
-            colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn),
-          ),
+          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
+              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
           const SizedBox(height: 16),
-          Text(
-            'add_expenses'.tr(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0247C4),
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
+          Text('add_expenses'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), fontFamily: 'SF Pro Display')),
         ],
       ),
     );
   }
 }
 
-class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) return newValue;
-
-    String cleanText = newValue.text.replaceAll(',', '');
-    final parts = cleanText.split('.');
-    if (parts.length > 2) return oldValue;
-    if (parts.length == 2 && parts[1].length > 2) return oldValue;
-
-    final rawInteger = parts[0];
-    if (rawInteger.length > 12) return oldValue;
-
-    String formattedInteger = '';
-    if (rawInteger.isNotEmpty) {
-      final parsed = int.tryParse(rawInteger);
-      if (parsed == null) return oldValue;
-      formattedInteger = NumberFormat('#,##0', 'en_US').format(parsed);
-    }
-
-    String formatted = formattedInteger;
-    if (parts.length > 1) {
-      formatted += '.${parts[1]}';
-    }
-
-    int charsFromEnd = newValue.text.length - newValue.selection.end;
-    int selectionIndex = (formatted.length - charsFromEnd).clamp(0, formatted.length);
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: selectionIndex),
-    );
-  }
-}

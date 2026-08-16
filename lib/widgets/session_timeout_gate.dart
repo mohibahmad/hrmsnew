@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../utils/helpers.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,6 @@ import 'package:flutter/services.dart';
 
 import '../services/biometric_service.dart';
 import '../services/preferences_service.dart';
-import '../utils/localization_helper.dart';
 
 typedef SessionActiveCheck = bool Function();
 typedef BiometricAvailabilityCheck = Future<bool> Function();
@@ -153,7 +153,12 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
       available = false;
     }
 
-    if (!mounted || !_locked) return;
+    if (!mounted) return;
+
+    if (!_locked) {
+      setState(() => _checkingBiometrics = false);
+      return;
+    }
     setState(() {
       _checkingBiometrics = false;
       _biometricAvailable = available;
@@ -190,9 +195,6 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     if (result == BiometricAuthResult.cancelled) {
       setState(() {
         _authenticating = false;
-      });
-
-      setState(() {
         _authenticationFailed = false;
       });
       return;

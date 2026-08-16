@@ -1,7 +1,8 @@
+import '../utils/helpers.dart';
+
 import 'payroll_service.dart';
 import 'time_off_service.dart';
-import '../utils/worker_identity.dart';
-import '../utils/date_time_utils.dart';
+import '../utils/utils.dart';
 
 class DashboardChartPoint {
   final DateTime date;
@@ -18,6 +19,7 @@ class DashboardChartSeries {
 }
 
 class DashboardChartService {
+
   DashboardChartService._();
 
   static String _normalizePeriod(String period) {
@@ -52,8 +54,8 @@ class DashboardChartService {
     final datedValues = <({DateTime date, double value})>[];
 
     for (final record in records) {
-      if ((record['status'] ?? '').toString().trim().toLowerCase() ==
-          'cancelled') {
+
+      if ((record['status'] ?? '').toString().trim().toLowerCase() == 'cancelled') {
         continue;
       }
 
@@ -63,9 +65,11 @@ class DashboardChartService {
 
       final date = (dateOf ?? salaryRecordDate)(record);
       if (date != null) {
+
         if (date.isAfter(current)) continue;
         datedValues.add((date: date, value: value));
       } else if (placeUndatedInCurrentPeriod) {
+
         datedValues.add((date: current, value: value));
       }
     }
@@ -74,12 +78,10 @@ class DashboardChartService {
       final points = List.generate(6, (index) {
         final startHour = index * 4;
         final value = datedValues
-            .where(
-              (item) =>
-                  _sameDay(item.date, currentDay) &&
-                  item.date.hour >= startHour &&
-                  item.date.hour < startHour + 4,
-            )
+            .where((item) =>
+                _sameDay(item.date, currentDay) &&
+                item.date.hour >= startHour &&
+                item.date.hour < startHour + 4)
             .fold<double>(0, (sum, item) => sum + item.value);
         return DashboardChartPoint(
           date: currentDay.add(Duration(hours: startHour)),
@@ -107,6 +109,7 @@ class DashboardChartService {
       final start = DateTime(current.year, current.month, 1);
       final dayCount = current.day;
       double runningTotal = 0;
+
       final points = List.generate(dayCount, (index) {
         final day = start.add(Duration(days: index));
         runningTotal += datedValues
@@ -114,6 +117,7 @@ class DashboardChartService {
             .fold<double>(0, (sum, item) => sum + item.value);
         return DashboardChartPoint(date: day, value: runningTotal);
       });
+
       return DashboardChartSeries(points: points, total: runningTotal);
     }
 
@@ -127,7 +131,9 @@ class DashboardChartService {
         final monthKey = item.date.year * 12 + item.date.month - 1;
         totalsByMonth[monthKey] = (totalsByMonth[monthKey] ?? 0) + item.value;
       }
+
       final monthKeys = totalsByMonth.keys.toList()..sort();
+
       final points = monthKeys.map((monthKey) {
         final year = monthKey ~/ 12;
         final month = monthKey % 12 + 1;
@@ -136,6 +142,7 @@ class DashboardChartService {
           value: totalsByMonth[monthKey]!,
         );
       }).toList();
+
       return DashboardChartSeries(points: points, total: _sum(points));
     }
 
@@ -143,19 +150,18 @@ class DashboardChartService {
     final firstMonth = normalizedPeriod == '6 Month'
         ? DateTime(current.year, current.month - 5, 1)
         : DateTime(current.year, 1, 1);
+
     final points = List.generate(monthCount, (index) {
       final month = DateTime(firstMonth.year, firstMonth.month + index, 1);
       return DashboardChartPoint(
         date: month,
         value: datedValues
-            .where(
-              (item) =>
-                  item.date.year == month.year &&
-                  item.date.month == month.month,
-            )
+            .where((item) =>
+                item.date.year == month.year && item.date.month == month.month)
             .fold<double>(0, (sum, item) => sum + item.value),
       );
     });
+
     return DashboardChartSeries(points: points, total: _sum(points));
   }
 
@@ -169,8 +175,7 @@ class DashboardChartService {
     final end = AppDateUtils.periodEnd(period, currentValue);
 
     final target = _dateOnly(date);
-    return !target.isBefore(_dateOnly(start)) &&
-        !target.isAfter(_dateOnly(end));
+    return !target.isBefore(_dateOnly(start)) && !target.isAfter(_dateOnly(end));
   }
 
   static List<Map<String, dynamic>> leaveDaysForPeriod({
@@ -179,11 +184,17 @@ class DashboardChartService {
     DateTime? now,
   }) {
     final leaveDays = <Map<String, dynamic>>[];
+
     for (final record in records) {
+
       if (!TimeOffService.isActiveRecord(record)) continue;
+
       final type = TimeOffService.leaveType(record);
+
       for (final date in TimeOffService.selectedDatesForRecord(record)) {
+
         if (!isDateWithinPeriod(date, period, now: now)) continue;
+
         leaveDays.add({
           'status': 'leave',
           'type': type,
@@ -194,6 +205,7 @@ class DashboardChartService {
         });
       }
     }
+
     return leaveDays;
   }
 
@@ -206,9 +218,7 @@ class DashboardChartService {
   }) {
     final merged = <String, Map<String, dynamic>>{};
 
-    final identityIndex = workers.isEmpty
-        ? null
-        : _buildWorkerIdentityIndex(workers);
+    final identityIndex = workers.isEmpty ? null : _buildWorkerIdentityIndex(workers);
 
     for (final leave in leaveDaysForPeriod(
       records: timeOffRecords,
@@ -221,25 +231,20 @@ class DashboardChartService {
     }
 
     for (final attendance in attendanceRecords) {
+
       if (attendance['excludeFromLeaveChart'] == true) continue;
 
-      final status = (attendance['status'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
+      final status = (attendance['status'] ?? '').toString().trim().toLowerCase();
       if (status != 'leave') continue;
 
       final date = TimeOffService.parseDate(
-        attendance['attendanceDate'] ??
-            attendance['date'] ??
-            attendance['createdAt'],
+        attendance['attendanceDate'] ?? attendance['date'] ?? attendance['createdAt'],
       );
       if (date == null || !isDateWithinPeriod(date, period, now: now)) {
         continue;
       }
 
       final type = _attendanceLeaveType(attendance);
-
       if (type.isEmpty) continue;
 
       final normalized = <String, dynamic>{
@@ -259,16 +264,13 @@ class DashboardChartService {
   }
 
   static String _attendanceLeaveType(Map<String, dynamic> record) {
+
     final explicit = TimeOffService.normalizeLeaveType(
-      (record['type'] ?? record['leaveType'] ?? record['action'] ?? '')
-          .toString(),
+      (record['type'] ?? record['leaveType'] ?? record['action'] ?? '').toString(),
     );
     if (TimeOffService.paidLeaveTypes.contains(explicit)) return explicit;
 
-    final reason = (record['reason'] ?? record['desc'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final reason = (record['reason'] ?? record['desc'] ?? '').toString().trim().toLowerCase();
     if (reason.contains('sick')) return 'Sick Leave';
     if (reason.contains('medical')) return 'Medical Leave';
     if (reason.contains('casual') || reason.contains('vacation')) {
@@ -294,6 +296,7 @@ class DashboardChartService {
       final canonical = workerId.isNotEmpty
           ? 'id:$workerId'
           : (email.isNotEmpty ? 'email:$email' : 'name:$name');
+
       if (workerId.isNotEmpty) index['id:$workerId'] = canonical;
       if (email.isNotEmpty) index['email:$email'] = canonical;
       if (name.isNotEmpty) {
@@ -304,6 +307,7 @@ class DashboardChartService {
     for (final worker in workers) {
       final name = WorkerIdentity.normalizeName(worker['name']);
       if (name.isEmpty || (nameCounts[name] ?? 0) != 1) continue;
+
       final workerId = (worker['workerId'] ?? worker['id'] ?? '')
           .toString()
           .trim()
@@ -312,8 +316,10 @@ class DashboardChartService {
       final canonical = workerId.isNotEmpty
           ? 'id:$workerId'
           : (email.isNotEmpty ? 'email:$email' : 'name:$name');
+
       index['name:$name'] = canonical;
     }
+
     return index;
   }
 
@@ -321,17 +327,17 @@ class DashboardChartService {
     Map<String, dynamic> record,
     Map<String, String> index,
   ) {
-    final recordWorkerId = (record['workerId'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim().toLowerCase();
     if (recordWorkerId.isNotEmpty && index.containsKey('id:$recordWorkerId')) {
       return index['id:$recordWorkerId']!;
     }
+
     final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
     if (recordEmail.isNotEmpty && index.containsKey('email:$recordEmail')) {
       return index['email:$recordEmail']!;
     }
+
     final recordName = WorkerIdentity.normalizeName(
       record['name'] ?? record['workerName'],
     );
@@ -351,10 +357,11 @@ class DashboardChartService {
   ) {
     final worker = identityIndex == null
         ? (record['workerId'] ?? record['email'] ?? record['name'] ?? '')
-              .toString()
-              .trim()
-              .toLowerCase()
+            .toString()
+            .trim()
+            .toLowerCase()
         : _canonicalWorkerKey(record, identityIndex);
+
     return '$worker:${date.year}-${date.month}-${date.day}';
   }
 

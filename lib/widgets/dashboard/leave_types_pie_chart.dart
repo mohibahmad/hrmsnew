@@ -4,21 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../utils/ui_utils.dart';
-import '../../utils/localization_helper.dart';
 import '../custom_timeframe_dropdown.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 const _knownTypeColors = <String, Color>{
   'Casual Leave': Color(0xFF84A9FF),
   'Sick Leave': Color(0xFFFF4A5E),
   'Medical Leave': Color(0xFF97FFA9),
   'Annual Leave': Color(0xFFFFC857),
-  'Maternity Leave': Color(0xFFFF9FDB),
-  'Paternity Leave': Color(0xFF7DE8E8),
-  'Unpaid Leave': Color(0xFFFFB347),
-  'Emergency Leave': Color(0xFFFC6C85),
-  'Study Leave': Color(0xFFA78BFA),
-  'Hajj Leave': Color(0xFF6EE7B7),
 };
 
 const _fallbackPalette = <Color>[
@@ -147,7 +141,6 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 entries: [
                                   for (final entry in sortedTypes)
                                     _CalloutEntry(
-                                      type: entry.key,
                                       percent: typePercents[entry.key]!,
                                       displayPercent:
                                           displayPercents[entry.key]!,
@@ -309,12 +302,10 @@ Map<String, int> calculateRoundedLeavePercentages(
 }
 
 class _CalloutEntry {
-  final String type;
   final double percent;
   final int displayPercent;
   final double midAngle;
   const _CalloutEntry({
-    required this.type,
     required this.percent,
     required this.displayPercent,
     required this.midAngle,

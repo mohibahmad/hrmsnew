@@ -4,8 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
 import '../../services/auth_service.dart';
-
-import '../../utils/validators.dart';
+import '../../utils/helpers.dart';
 
 class TopHeader extends ConsumerWidget {
   final VoidCallback onProfileTap;
@@ -72,7 +71,7 @@ class TopHeader extends ConsumerWidget {
               const SizedBox(height: 1),
               Text(
                 'welcome_subtitle'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',

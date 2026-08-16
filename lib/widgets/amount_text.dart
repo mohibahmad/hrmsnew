@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../utils/currency_utils.dart';
+import '../utils/utils.dart';
 
 class AmountText extends StatelessWidget {
   final String amount;
@@ -105,7 +105,8 @@ class AmountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final display = formatCompact(amount);
+    final locale = Localizations.localeOf(context).toString();
+    final display = formatCompact(amount, locale: locale);
     return Text(
       display,
       style: style,

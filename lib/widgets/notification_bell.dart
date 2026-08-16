@@ -28,9 +28,6 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
     _firestore = ref.read(firestoreServiceProvider);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _unreadCount = DummyData.notifications
-          .where((n) => n['isRead'] != true)
-          .length;
       return;
     }
     _notifSub = _firestore.notificationsStream.listen((snap) {
