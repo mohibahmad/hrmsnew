@@ -77,7 +77,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final FirestoreService _firestore;
 
   String _currencyCode = CurrencyUtils.defaultCode;
-  bool _globalPayrollReminderFired = false;
   bool _isPremium = PreferencesService.cachedIsPremium;
   bool _dashboardReady = false;
   bool _initialized = false;
@@ -122,9 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
     _activatedScreens[3] = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _tryFireGlobalPayrollReminder();
-    });
+  
   }
 
   @override
@@ -524,26 +521,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     )['netSalary'] as num).toDouble();
   }
 
-  Future<void> _tryFireGlobalPayrollReminder() async {
-    if (_globalPayrollReminderFired) return;
-    int attempts = 0;
-    while (mounted && attempts < 8) {
-      final state = _payrollKey.currentState;
-      if (state == null) {
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-        attempts++;
-        continue;
-      }
-      if (state.isPayrollReminderDataReady) {
-        _globalPayrollReminderFired = true;
-        try { await state.triggerGlobalPayrollReminder(); } catch (_) {}
-        return;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      attempts++;
-    }
-  }
-
+  
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;

@@ -68,9 +68,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool _isLoadingAttendance = false;
   bool _attendanceFetchPending = false;
   bool _reminderCheckScheduled = false;
+  bool _reminderCheckPending = false;
+  bool _reminderCheckForcePending = false;
   bool _reminderDialogOpen = false;
-  bool _cycleAdvancedViaIgnore = false;
-  bool _payDayJustChanged = false;
+  // Last (suppressionKey, day) for which the reminder dialog was shown, so a
+  // queued re-check or the home-screen global trigger can't re-open it right
+  // after the user dismissed it. A new day or a new pay cycle re-arms it, and
+  // an explicit user action (force) always re-evaluates.
+  String? _lastShownReminderKey;
+  DateTime? _lastShownReminderDay;
   bool _workersLoaded = false;
   bool _payrollLoaded = false;
 
@@ -92,11 +98,28 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
-  bool get _isTodayPayDay {
+  /// Returns true only when today is AT OR AFTER the current active cycle's
+  /// due date (_payPeriodEnd). This is the correct gate for Pay All:
+  ///
+  ///   Active cycle = Aug 16 → Sep 16  (just advanced on Aug 16)
+  ///   Today        = Aug 16
+  ///   _payPeriodEnd = Sep 16
+  ///   → _isCurrentCycleDue = false  ← correct, Sep 16 not reached yet
+  ///
+  ///   Active cycle = Jul 16 → Aug 16
+  ///   Today        = Aug 16
+  ///   _payPeriodEnd = Aug 16
+  ///   → _isCurrentCycleDue = true   ← correct, due date reached
+  ///
+  /// Using `today.day == payDay` (the old _isTodayPayDay) was wrong because it
+  /// would show Pay All on Aug 16 even after the cycle had already advanced to
+  /// Aug16→Sep16, enabling an accidental early double-payment.
+  bool get _isCurrentCycleDue {
     if (_salaryPayDay == null) return false;
     final now = DateTime.now();
-    final lastDay = DateTime(now.year, now.month + 1, 0).day;
-    return now.day == _salaryPayDay!.clamp(1, lastDay);
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDate = DateTime(_payPeriodEnd.year, _payPeriodEnd.month, _payPeriodEnd.day);
+    return !today.isBefore(dueDate); // today >= dueDate
   }
 
   bool get isPayrollReminderDataReady => _workersLoaded && _payrollLoaded && _salaryPayDay != null;
@@ -151,7 +174,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.isActive && (!oldWidget.isActive || widget.activationToken != oldWidget.activationToken)) {
-      _schedulePayrollReminderCheck();
+      // Explicit navigation to the Payroll tab (sidebar click) always
+      // re-evaluates the reminder, even if it was already shown today.
+      _schedulePayrollReminderCheck(force: true);
     }
 
     if (!_initialized || !_isGuest) return;
@@ -195,10 +220,21 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return day != null && day >= 1 && day <= 31 ? day : null;
   }
 
-  PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
+  PayrollPeriod? _persistedCycleFromProfile(Map<String, dynamic>? profile, int payDay, {DateTime? referenceDate}) {
     final savedStart = AppDateUtils.dateFromValue(profile?['payrollCycleStart']);
     final savedEnd = AppDateUtils.dateFromValue(profile?['payrollCycleEnd']);
     final normalizedPayDay = payDay.clamp(1, 28);
+
+    // Only accept the persisted cycle if it's reasonably recent relative to a reference date.
+    // This prevents a stale cycle from a previous month (e.g. April) from being used
+    // when the current cycle is different (e.g. August), which would cause the payroll
+    // period to incorrectly jump backward.
+    final referenceMonth = referenceDate?.month ?? 0;
+    final savedStartMonth = savedStart?.month ?? 0;
+    final monthDifference = (savedStartMonth - referenceMonth).abs();
+    // Allow a difference of at most 1 month (the cycle could have just advanced).
+    // Larger differences indicate a stale cycle from a different pay period.
+    final isStaleByMonth = monthDifference > 1;
 
     if (savedStart != null &&
         savedEnd != null &&
@@ -206,52 +242,115 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         savedStart.day == normalizedPayDay &&
         savedEnd.day == normalizedPayDay &&
         savedEnd.difference(savedStart).inDays >= 25 &&
-        savedEnd.difference(savedStart).inDays <= 35) {
+        savedEnd.difference(savedStart).inDays <= 35 &&
+        !isStaleByMonth) {
       return PayrollPeriod(
         start: DateTime(savedStart.year, savedStart.month, savedStart.day),
         end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
       );
     }
-    return PayrollService.payDayPeriodContaining(DateTime.now(), payDay);
+    return null;
   }
 
-  Future<PayrollPeriod> _stickyPeriodFromProfile(Map<String, dynamic>? profile, int payDay) {
-    return _stickyForBase(_periodFromProfile(profile, payDay), payDay);
+  PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
+    // Initial resolve (before payroll/workers are tailed) must never advance;
+    // _reconcilePayrollPeriod performs the exact one-cycle advance later.
+    // ALWAYS pass the current date as reference: gating it on _salaryPayDay
+    // made it null on first load, so _persistedCycleFromProfile treated every
+    // persisted cycle as stale and rejected it. Honouring the persisted cycle
+    // (e.g. an overdue Jul16→Aug16) keeps _payPeriodEnd on the due date so the
+    // reminder/overdue popup still fires on app start.
+    final referenceDate = DateTime.now();
+    return _resolveCurrentPayrollPeriod(
+      payDay: payDay,
+      persisted: _persistedCycleFromProfile(profile, payDay, referenceDate: referenceDate),
+      advanceIfFullyPaid: false,
+    );
   }
 
-  Future<PayrollPeriod> _stickyForBase(PayrollPeriod base, int payDay) async {
-    if (_cycleAdvancedViaIgnore || _payDayJustChanged) return base;
-    if (!_isGuest && _rawPayrollDocs.isEmpty) return base;
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final prev = PayrollService.payDayPeriod(DateTime(base.start.year, base.start.month, 1), payDay);
-
-    if (prev.end.isAfter(today)) return base;
-
-    final prevHasUnpaid = PayrollService.unpaidWorkersForPeriod(
-      _workersList,
-      _rawPayrollDocs,
-      month: DateTime(prev.end.year, prev.end.month, 1),
-      allowUndatedRecords: _isGuest,
+  // Central, idempotent current-cycle resolver. It only ever returns the cycle
+  // containing today, or that cycle + EXACTLY ONE advance when every eligible
+  // worker for it is Paid at/after the payday boundary.
+  PayrollPeriod _resolveCurrentPayrollPeriod({
+    int? payDay,
+    PayrollPeriod? persisted,
+    bool advanceIfFullyPaid = true,
+    DateTime? referenceDate,
+  }) {
+    return PayrollService.resolveCurrentPayrollPeriod(
+      workersList: _workersList,
+      payrollRecords: _rawPayrollDocs,
+      payDay: payDay ?? _salaryPayDay ?? DateTime.now().day,
       companyCurrency: _companyCurrency,
-      periodStart: prev.start,
-      periodEnd: prev.end,
-    ).isNotEmpty;
-
-    return prevHasUnpaid ? prev : base;
+      referenceDate: referenceDate,
+      persistedCycle: persisted,
+      advanceIfFullyPaid: advanceIfFullyPaid,
+    );
   }
 
   Future<void> _reconcilePayrollPeriod() async {
     if (!mounted || !_workersLoaded || !_payrollLoaded || _salaryPayDay == null) return;
 
-    final resolved = await _stickyForBase(
-      PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
-      _salaryPayDay!,
+    // The resolver is idempotent for the same Firebase state, so repeated
+    // stream events can never advance more than one cycle.
+    var resolved = _resolveCurrentPayrollPeriod(
+      payDay: _salaryPayDay,
+      persisted: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
     );
-    _cycleAdvancedViaIgnore = false;
-    _payDayJustChanged = false;
     if (!mounted) return;
+
+    // ── Post-resolver overdue correction ──────────────────────────────
+    // During initial load the resolver runs with empty worker/payroll
+    // data, so it cannot detect unpaid workers in the previous cycle and
+    // returns `base` (the next cycle).  When data later arrives the
+    // resolver's built-in overdue check is blocked because the anchor
+    // matches base (persisted == base from the initial load).  This block
+    // catches that case: if the resolved cycle starts at/after the payday
+    // boundary AND the immediately previous cycle has unpaid workers, the
+    // cycle is overdue and must be corrected — unless the user explicitly
+    // advanced it via Ignore/Confirm.
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final normalizedPayDay = _salaryPayDay!.clamp(1, 28);
+    final lastDay = DateTime(today.year, today.month + 1, 0).day;
+    final currentMonthPayday = DateTime(today.year, today.month, normalizedPayDay.clamp(1, lastDay));
+
+    if (today.isAfter(currentMonthPayday) &&
+        !resolved.start.isBefore(currentMonthPayday) &&
+        PayrollService.payrollPeriodsEqual(
+            resolved, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
+      final prevCycleEnd = resolved.start;
+      final prevMonth = DateTime(prevCycleEnd.year, prevCycleEnd.month - 1, 1);
+      final prevLastDay = DateTime(prevMonth.year, prevMonth.month + 1, 0).day;
+      final prevCycleStart = DateTime(prevMonth.year, prevMonth.month, normalizedPayDay.clamp(1, prevLastDay));
+
+      final prevPayable = PayrollService.payableWorkersForPeriod(
+        _workersList,
+        _rawPayrollDocs,
+        month: DateTime(prevCycleEnd.year, prevCycleEnd.month, 1),
+        allowUndatedRecords: true,
+        companyCurrency: _companyCurrency,
+        periodStart: prevCycleStart,
+        periodEnd: prevCycleEnd,
+      );
+
+      if (prevPayable.isNotEmpty &&
+          !PayrollService.payrollPeriodsEqual(
+              resolved, PayrollPeriod(start: prevCycleStart, end: prevCycleEnd))) {
+        // Previous cycle has unpaid workers.  Only override if the cycle
+        // was NOT explicitly advanced via Ignore/Confirm.
+        final prevWindow = PayrollReminderWindow(
+          payrollMonth: DateTime(prevCycleEnd.year, prevCycleEnd.month, 1),
+          dueDate: prevCycleEnd,
+          dayOffset: 0,
+        );
+        final isIgnored =
+            await PreferencesService.isPayrollReminderIgnored(prevWindow.suppressionKey);
+        if (!isIgnored && mounted) {
+          resolved = PayrollPeriod(start: prevCycleStart, end: prevCycleEnd);
+        }
+      }
+    }
 
     final changed = PayrollService.periodDateKey(resolved.start) != PayrollService.periodDateKey(_payPeriodStart) ||
         PayrollService.periodDateKey(resolved.end) != PayrollService.periodDateKey(_payPeriodEnd);
@@ -275,14 +374,14 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     _scheduleAttendanceFetch();
   }
 
-  Future<PayrollPeriod> _periodForProfile(Map<String, dynamic>? profile, int? salaryPayDay) {
+  Future<PayrollPeriod> _periodForProfile(Map<String, dynamic>? profile, int? salaryPayDay) async {
     if (salaryPayDay == null) {
-      return Future.value(PayrollPeriod(
+      return PayrollPeriod(
         start: PayrollService.payPeriodStart(DateTime.now()),
         end: PayrollService.payPeriodEnd(DateTime.now()),
-      ));
+      );
     }
-    return _stickyPeriodFromProfile(profile, salaryPayDay);
+    return _periodFromProfile(profile, salaryPayDay);
   }
 
   void _applyCompanySettings({required String companyCurrency, required int? salaryPayDay, required PayrollPeriod period}) {
@@ -295,6 +394,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _combinePayroll();
     });
     _scheduleAttendanceFetch();
+    // Re-run the cycle resolver now that the pay day is known. Catches the
+    // app-start ordering where the workers/payroll streams emitted BEFORE the
+    // profile loaded: the earlier _reconcilePayrollPeriod() calls no-oped on a
+    // null pay day, so without this the overdue cycle is never restored and the
+    // reminder/overdue popup never appears.
+    _reconcilePayrollPeriod();
   }
 
   Future<void> _loadCompanySettings() async {
@@ -430,18 +535,34 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     _schedulePayrollReminderCheck();
   }
 
-  void _schedulePayrollReminderCheck() {
-    if (!widget.isActive || _reminderCheckScheduled) return;
+  void _schedulePayrollReminderCheck({bool force = false}) {
+    if (!widget.isActive) return;
+
+    if (_reminderCheckScheduled) {
+      _reminderCheckPending = true;
+      _reminderCheckForcePending = _reminderCheckForcePending || force;
+      return;
+    }
+
     _reminderCheckScheduled = true;
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        if (mounted) await _maybeShowPayrollReminder();
+        if (mounted) {
+          await _maybeShowPayrollReminder(force: force);
+        }
       } finally {
         _reminderCheckScheduled = false;
+
+        if (_reminderCheckPending && mounted) {
+          _reminderCheckPending = false;
+          final pendingForce = _reminderCheckForcePending;
+          _reminderCheckForcePending = false;
+          _schedulePayrollReminderCheck(force: pendingForce);
+        }
       }
     });
   }
-
   Future<void> triggerGlobalPayrollReminder() async {
     if (!mounted || _reminderCheckScheduled || _reminderDialogOpen) return;
     _reminderCheckScheduled = true;
@@ -536,10 +657,16 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           'leaves': matched.where((a) => a['status'] == 'Leave').length,
         };
       } else {
+        // Pass the exact pay-period boundaries so attendance is counted
+        // inclusively for payPeriodStart <= date <= payPeriodEnd.
+        // Without startDate/endDate the service falls back to the calendar
+        // month, which drops Jul 16–Jul 31 records for a Jul16→Aug16 cycle.
         attendance = await _firestore.getWorkerMonthlyAttendance(
           email,
           workerId: workerId,
           month: month,
+          startDate: _payPeriodStart,
+          endDate: _payPeriodEnd,
           preFetchedRecords: _liveAttendanceRecords,
         );
       }
@@ -731,19 +858,48 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
   }
 
-  Future<void> _maybeShowPayrollReminder() async {
+  Future<void> _maybeShowPayrollReminder({bool force = false}) async {
     if (!widget.isActive || _isLoading || !_workersLoaded || !_payrollLoaded || _reminderDialogOpen) return;
+
+    // If the user explicitly asked for the reminder (force) while an automatic
+    // check is still in flight, let the pending force check do the showing —
+    // otherwise the automatic check would open the dialog and the force re-check
+    // would open it a second time right after.
+    if (!force && _reminderCheckForcePending) return;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final offset = today.difference(_payPeriodEnd).inDays;
 
-    if (offset < -3) return;
+    // Pre-payday window: show reminders from 3 days before until payday.
+    // Post-payday overdue window: show for up to 7 days after payday.
+    if (offset < -3 || offset > 7) return;
 
     final window = PayrollReminderWindow(payrollMonth: _payrollMonth, dueDate: _payPeriodEnd, dayOffset: offset);
+
+    // Honour "Remind me later" / "Ignore" only for AUTOMATIC checks: a
+    // snoozed or ignored pay cycle must not keep re-prompting on its own
+    // (e.g. right after Pay All finished). An explicit user action (force —
+    // clicking Payroll in the sidebar) always re-shows the reminder when the
+    // payday is today or within the overdue window, exactly as the user asked.
+    if (!force) {
+      if (await PreferencesService.isPayrollReminderIgnored(window.suppressionKey)) return;
+      if (await PreferencesService.isPayrollReminderSnoozed(window.suppressionKey, now: now)) return;
+    }
+
     final payableWorkers = _payableWorkersForPeriod(window.payrollMonth);
     if (payableWorkers.isEmpty) return;
     if (!mounted || !widget.isActive) return;
+
+    // Show the reminder at most once per day per pay cycle for AUTOMATIC
+    // checks. Both the payroll screen's own scheduling and the home screen's
+    // global trigger funnel here; without this guard a queued re-check or the
+    // global trigger would open the dialog a second time immediately after the
+    // first one was dismissed. An explicit user action (force, e.g. clicking
+    // Payroll in the sidebar) always re-evaluates and re-shows when due.
+    if (!force && _lastShownReminderKey == window.suppressionKey && _lastShownReminderDay == today) return;
+    _lastShownReminderKey = window.suppressionKey;
+    _lastShownReminderDay = today;
 
     _reminderDialogOpen = true;
 
@@ -906,6 +1062,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           ),
           actions: [
             _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext, false)),
+            _desktopDialogButton(
+    label: 'Clear Pay Day',
+    onTap: () => Navigator.pop(dialogContext, 0),
+  ),
+
             _desktopDialogButton(label: 'ignore'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, true)),
           ],
         ),
@@ -924,7 +1085,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     await PreferencesService.ignorePayrollReminder(reminderWindow.suppressionKey);
 
     if (!mounted) return true;
-    _cycleAdvancedViaIgnore = true;
     setState(() {
       _payPeriodStart = next.start;
       _payPeriodEnd = next.end;
@@ -1004,7 +1164,49 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
 
     if (day == null || !mounted) return;
+if (day == 0) {
+  try {
+    await _firestore.updateUserProfile({
+      'salaryPayDay': null,
+      'payrollCycleStart': null,
+      'payrollCycleEnd': null,
+    });
 
+    if (!mounted) return;
+
+    final now = DateTime.now();
+
+    setState(() {
+      _salaryPayDay = null;
+      _payPeriodStart = PayrollService.payPeriodStart(now);
+      _payPeriodEnd = PayrollService.payPeriodEnd(now);
+      _payrollMonth = DateTime(now.year, now.month, 1);
+      _selectedFilter = 'All';
+      _combinePayroll();
+    });
+
+    FlashySnackBar.show(
+      context,
+      message: 'Pay Day cleared successfully.',
+    );
+  } catch (error, stackTrace) {
+    ErrorReporter.report(
+      error,
+      stackTrace,
+      context: 'ClearSalaryPayDay',
+    );
+
+    if (mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'failed_to_save_record'.tr(),
+        isError: true,
+      );
+    }
+  }
+
+  return;
+}
     try {
       final hasPaidInCurrentCycle = _payrollDocs.any(
         (rec) => rec['isPaid'] == true || (rec['status'] ?? '').toString().toLowerCase() == 'paid',
@@ -1018,12 +1220,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
         FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       } else {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        final payDayThisMonth = DateTime(now.year, now.month, day.clamp(1, 28));
-        period = today.isAfter(payDayThisMonth)
-            ? PayrollService.payDayPeriod(DateTime(now.year, now.month, 1), day)
-            : await _stickyForBase(PayrollService.payDayPeriodContaining(now, day), day);
+        // Recompute the cycle around today with the NEW salary day, using the
+        // same central resolver (it never drifts backwards or forward).
+        period = _resolveCurrentPayrollPeriod(payDay: day, advanceIfFullyPaid: false);
         if (!mounted) return;
         FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       }
@@ -1041,7 +1240,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         _payPeriodEnd = period.end;
         _payrollMonth = DateTime(period.end.year, period.end.month, 1);
       });
-      _payDayJustChanged = true;
       _schedulePayrollReminderCheck();
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SaveSalaryPayDay');
@@ -1191,7 +1389,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             label: Text(_payDayButtonLabel(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
           ),
         ),
-        if (_isTodayPayDay)
+        if (_isCurrentCycleDue)
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(

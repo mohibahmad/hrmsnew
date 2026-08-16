@@ -146,7 +146,6 @@ class AttendanceReportService {
     final leaveDates = TimeOffService.allLeaveDatesForWorker(worker, timeOffRecords)
         .where((date) => !date.isAfter(today))
         .toSet();
-    final leaveDateKeys = leaveDates.map(_dateKey).toSet();
 
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
@@ -155,10 +154,13 @@ class AttendanceReportService {
         continue;
       }
 
-      final status = (record['status'] ?? '').toString().trim().toLowerCase();
       final key = _dateKey(date);
 
-      if (status == 'leave' && !leaveDateKeys.contains(key)) continue;
+      // A "Leave" attendance record must always be kept, even when it is not
+      // backed by an active Time Off record (e.g. a manual Attendance leave or
+      // an Attendance-created leave whose Time Off document is missing).
+      // Otherwise the worker is wrongly dropped from the report, their leave
+      // is omitted, and the summary "On Leave" count is under-reported.
 
       final existing = recordsByDay[key];
       if (existing == null || _isNewer(existing, record)) {

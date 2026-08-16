@@ -262,7 +262,8 @@ class PreferencesService {
 
   static Future<void> snoozePayrollReminder(String periodKey, {DateTime? now}) async {
     final prefs = await SharedPreferences.getInstance();
-    final snoozedUntil = (now ?? DateTime.now()).add(const Duration(days: 7));
+    final current = now ?? DateTime.now();
+    final snoozedUntil = DateTime(current.year, current.month, current.day + 1);
     await prefs.setString('$_payrollReminderSnoozedPrefix$periodKey', snoozedUntil.toIso8601String());
   }
 
@@ -272,6 +273,48 @@ class PreferencesService {
     await prefs.remove('$_payrollReminderSnoozedPrefix$periodKey');
   }
 
+  static Future<bool> isPayrollReminderIgnored(String periodKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_payrollReminderIgnoredPrefix$periodKey') ?? false;
+  }
+
+ static Future<bool> isPayrollReminderSnoozed(
+  String periodKey, {
+  DateTime? now,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final key = '$_payrollReminderSnoozedPrefix$periodKey';
+  final raw = prefs.getString(key);
+
+  if (raw == null || raw.isEmpty) return false;
+
+  final until = DateTime.tryParse(raw);
+  if (until == null) {
+    await prefs.remove(key);
+    return false;
+  }
+
+  final current = now ?? DateTime.now();
+
+  final nextMidnight = DateTime(
+    current.year,
+    current.month,
+    current.day + 1,
+  );
+
+  // Remove old legacy 7-day snoozes.
+  if (until.isAfter(nextMidnight)) {
+    await prefs.remove(key);
+    return false;
+  }
+
+  if (!until.isAfter(current)) {
+    await prefs.remove(key);
+    return false;
+  }
+
+  return true;
+}
   static Future<bool> _getBool(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(key) ?? false;

@@ -1570,6 +1570,12 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
+  Future<QuerySnapshot> getPayrollOnce() async {
+    final coll = _payroll;
+    if (coll == null) throw StateError('No authenticated user');
+    return coll.orderBy('createdAt', descending: true).get();
+  }
+
   // ==================== TIME OFF METHODS ====================
 
   Future<String> addTimeOffRecord(Map<String, dynamic> record) async {

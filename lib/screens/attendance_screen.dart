@@ -548,6 +548,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   Future<void> _showCustomDateRangePicker() async {
     DateTime calendarDate = DateTime.now();
+    final todayNow = DateTime.now();
+    final today = DateTime(todayNow.year, todayNow.month, todayNow.day);
     final selectedDates = <DateTime>{};
     DateTime? dragAnchorDate;
     bool dragMoved = false;
@@ -687,7 +689,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           final isDragRemoving = selectionBeforeDrag.contains(dragAnchorDate);
                           final start = dragAnchorDate!.isBefore(current) ? dragAnchorDate! : current;
                           final end = dragAnchorDate!.isAfter(current) ? dragAnchorDate! : current;
-                          for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+                          // Never let a drag select (or preview) future dates;
+                          // the picker stays usable, only future days are excluded.
+                          final safeStart = start.isAfter(today) ? today : start;
+                          final safeEnd = end.isAfter(today) ? today : end;
+                          for (var d = safeStart; !d.isAfter(safeEnd); d = d.add(const Duration(days: 1))) {
                             isDragRemoving ? selectedDates.remove(d) : selectedDates.add(d);
                           }
                         });
@@ -695,10 +701,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       onPointerUp: (event) {
                         if (!dragMoved && dragAnchorDate != null) {
                           final date = dragAnchorDate!;
+                          final isFuture = date.isAfter(today);
                           setModalState(() {
                             final exists = selectedDates.any(
                               (d) => d.year == date.year && d.month == date.month && d.day == date.day,
                             );
+                            // Ignore taps that would ADD a future date (removing
+                            // one is harmless); future dates are simply not selectable.
+                            if (isFuture && !exists) return;
                             exists
                                 ? selectedDates.removeWhere(
                                     (d) => d.year == date.year && d.month == date.month && d.day == date.day)
@@ -766,6 +776,26 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
+      // A report that reaches into the future is always empty (no attendance
+      // exists for future dates) and misleads users into thinking data is
+      // missing. Custom is the only range a user can push past today.
+      final reportNow = DateTime.now();
+      final reportToday = DateTime(
+        reportNow.year,
+        reportNow.month,
+        reportNow.day,
+      );
+      if (period == 'Custom' && _containsFutureDate(range, reportToday)) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'future_dates_attendance_report_blocked'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
+
       final rows = _buildReportRows(period, range);
       final csvString = await compute(_generateCsvString, rows);
       final csvBytes = Uint8List.fromList(utf8.encode(csvString));
@@ -794,6 +824,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
+  bool _containsFutureDate(AttendanceDateRange range, DateTime today) {
+    if (range.discreteDates != null && range.discreteDates!.isNotEmpty) {
+      return range.discreteDates!.any((d) {
+        final day = DateTime(d.year, d.month, d.day);
+        return day.isAfter(today);
+      });
+    }
+    final endDay = DateTime(range.end.year, range.end.month, range.end.day);
+    return endDay.isAfter(today);
+  }
+
   List<List<dynamic>> _buildReportRows(String period, AttendanceDateRange range) {
     final rows = <List<dynamic>>[];
     final periodLabel = _localizeSharePeriod(period);
@@ -817,9 +858,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     rows.add(['Attendance Report - $periodLabel']);
     rows.add(['Period: $rangeLabel']);
     rows.add(['Generated On: ${AttendanceReportService.csvTextDate(DateTime.now()).trim()}']);
-    rows.add(['Total Presents Today / Period', overallPresents]);
-    rows.add(['Total Absents Today / Period', overallAbsents]);
-    rows.add(['Total On Leave Today / Period', overallLeaves]);
+    rows.add(['total_present'.tr(), overallPresents]);
+    rows.add(['total_absent'.tr(), overallAbsents]);
+    rows.add(['total_on_leave'.tr(), overallLeaves]);
     rows.add([]);
 
     for (final worker in _workersList) {
@@ -1080,6 +1121,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Widget _buildDayCell(String day, bool isSelected, bool isDragPreview, VoidCallback? onTap, DateTime? date) {
     if (day.isEmpty) return const Expanded(child: AspectRatio(aspectRatio: 1, child: SizedBox()));
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isFuture = date != null && date.isAfter(today);
+
     const selectedBg = _kPrimaryBlue;
     final isHighlighted = isSelected || isDragPreview;
 
@@ -1087,7 +1132,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: AspectRatio(
         aspectRatio: 1,
         child: GestureDetector(
-          onTap: onTap,
+          onTap: isFuture ? null : onTap,
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -1098,7 +1143,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             child: Text(
               day,
               style: TextStyle(
-                color: isHighlighted ? const Color(0xFFFFFFFF) : Colors.black,
+                color: isHighlighted
+                    ? const Color(0xFFFFFFFF)
+                    : (isFuture ? Colors.grey.shade400 : Colors.black),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
