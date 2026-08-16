@@ -388,6 +388,51 @@ void main() {
     expect(PayrollService.payrollPeriodsEqual(r2, r3), isTrue);
   });
 
+  // ── Employment-period filter: worker joining after the cycle end must not
+  //    appear as Payable (same rule the reminder popup enforces).
+  test('Late joiner (after period end) is NOT payable for the cycle', () {
+    // Mirrors the reported bug: joining Aug 14 while the pay-day-13 cycle is
+    // Jul 13 → Aug 13. The worker was never employed during the period.
+    const pd = 13;
+    final jul13 = DateTime(2026, 7, 13);
+    final aug13 = DateTime(2026, 8, 13);
+
+    Map<String, dynamic> w(String id) => {
+          'workerId': id,
+          'id': id,
+          'name': 'W$id',
+          'email': '$id@example.com',
+          'status': 'Active',
+          'salaryAmount': '1000',
+          'salary': '1000',
+        };
+
+    final lateJoiner = w('ayesha')..['joiningDate'] = DateTime(2026, 8, 14);
+    final others = [w('w2'), w('w3'), w('w4')];
+    final workers = [lateJoiner, ...others];
+
+    // No payroll records at all → everyone unpaid, but the late joiner must
+    // be excluded because they were never employed during Jul13→Aug13.
+    final payable = PayrollService.payableWorkersForPeriod(
+      workers,
+      const [],
+      month: aug13,
+      periodStart: jul13,
+      periodEnd: aug13,
+    );
+
+    expect(payable.map((w) => w['workerId']).toList(), isNot(contains('ayesha')));
+    expect(payable.length, others.length);
+  });
+
+  test('workerEmployedDuringPeriod: joining on period end IS employed', () {
+    final onBoundary = worker('edge')..['joiningDate'] = aug16;
+    final beforeBoundary = worker('early')..['joiningDate'] = jul16;
+    expect(PayrollService.workerEmployedDuringPeriod(onBoundary, aug16), isTrue);
+    expect(PayrollService.workerEmployedDuringPeriod(beforeBoundary, aug16), isTrue);
+    expect(PayrollService.workerEmployedDuringPeriod(worker('noDate'), aug16), isTrue);
+  });
+
   // ── Missing profile cycle fields (reported bug) ───────────────
 
   test('BUG) Missing profile fields + unpaid workers + Aug 17 -> Jul16-Aug16', () {

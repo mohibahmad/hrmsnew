@@ -684,7 +684,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool _matchesFilter(Map<String, dynamic> doc, String filter) {
     return switch (filter) {
       'All' => true,
-      'Pay' => doc['isPaid'] != true,
+      // A worker who joined after this pay cycle ended was never employed
+      // during the period, so they must not surface as Payable — the same
+      // rule the reminder popup enforces via workerEmployedDuringPeriod.
+      'Pay' => doc['isPaid'] != true && PayrollService.workerEmployedDuringPeriod(doc, _payPeriodEnd),
       'Paid' => doc['isPaid'] == true,
       'Today' => PayrollService.wasPaidOn(doc, DateTime.now()),
       _ => (doc['position'] ?? '').toString().toLowerCase().contains(filter.toLowerCase()),
@@ -1603,6 +1606,7 @@ if (day == 0) {
 
   Widget _buildEmployeeRow(Map<String, dynamic> doc) {
     final isPaid = doc['isPaid'] == true;
+    final isEmployedInPeriod = PayrollService.workerEmployedDuringPeriod(doc, _payPeriodEnd);
     final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
     final contactNo = (doc['phone'] ?? '').toString().trim().isEmpty
         ? (doc['contact'] ?? '').toString()
@@ -1675,9 +1679,13 @@ if (day == 0) {
               child: GestureDetector(
                 onTap: onRowTap,
                 child: Text(
-                  isPaid ? 'paid'.tr() : 'payable'.tr(),
+                  isPaid
+                      ? 'paid'.tr()
+                      : (isEmployedInPeriod ? 'payable'.tr() : '—'),
                   style: TextStyle(
-                    color: isPaid ? const Color(0xFF27AE60) : const Color(0xFFE74C3C),
+                    color: isPaid
+                        ? const Color(0xFF27AE60)
+                        : (isEmployedInPeriod ? const Color(0xFFE74C3C) : const Color(0xFF9CA3AF)),
                     fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display',
                   ),
                 ),
