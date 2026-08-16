@@ -1062,11 +1062,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           ),
           actions: [
             _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext, false)),
-            _desktopDialogButton(
-    label: 'Clear Pay Day',
-    onTap: () => Navigator.pop(dialogContext, 0),
-  ),
-
             _desktopDialogButton(label: 'ignore'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, true)),
           ],
         ),
@@ -1156,6 +1151,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             ),
             actions: [
               _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext)),
+              _desktopDialogButton(label: 'Clear Pay Day', onTap: () => Navigator.pop(dialogContext, 0)),
               _desktopDialogButton(label: 'save'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, selectedDay)),
             ],
           ),
