@@ -1425,16 +1425,16 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : size.width;
-    final maxPreviewHeight = (size.height * 0.9 - 70).clamp(160.0, 640.0);
-    final previewHeight = (size.height * 0.8).clamp(160.0, maxPreviewHeight).toDouble();
+    final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : (size.width * 0.92);
+    final maxPreviewHeight = (size.height * 0.7 - 70).clamp(160.0, 500.0);
+    final previewHeight = (size.height * 0.6).clamp(160.0, maxPreviewHeight).toDouble();
 
     final failedToLoadText = 'failed_to_load'.tr();
     final cleanTitle = cleanUploadedDocumentFileName(widget.label, fallback: 'document'.tr());
     final cleanFileName = cleanUploadedDocumentFileName(widget.url, fallback: 'document'.tr());
 
     final content = ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: size.height * 0.9),
+      constraints: BoxConstraints(maxHeight: size.height * 0.7),
       child: Container(
         width: previewWidth,
         decoration: BoxDecoration(
