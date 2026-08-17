@@ -1471,7 +1471,9 @@ if (day == 0) {
   }
 
   Widget _buildFilterTab(String filterKey, String displayLabel) {
-    final isSelected = _selectedFilter == filterKey;
+    final isSelected = filterKey == 'All'
+        ? _selectedFilter == 'All' || _selectedFilter == 'Pay' || _selectedFilter == 'Paid' || _selectedFilter == 'Today'
+        : _selectedFilter == filterKey;
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = filterKey),
       child: Container(
