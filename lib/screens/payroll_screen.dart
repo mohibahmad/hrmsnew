@@ -1157,11 +1157,19 @@ if (day == 0) {
     try {
       PayrollPeriod period;
       if (day != _salaryPayDay) {
-        final resolved = _resolveCurrentPayrollPeriod(
-          payDay: day,
-          advanceIfFullyPaid: false,
-        );
-        period = resolved;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final payDay = day.clamp(1, 28);
+        final payDayThisMonth = DateTime(now.year, now.month, payDay);
+        period = today.isBefore(payDayThisMonth)
+            ? PayrollPeriod(
+                start: DateTime(now.year, now.month - 1, payDay),
+                end: payDayThisMonth,
+              )
+            : PayrollPeriod(
+                start: payDayThisMonth,
+                end: DateTime(now.year, now.month + 1, payDay),
+              );
         FlashySnackBar.show(context, message: 'Salary Day updated! It will take effect starting from the next cycle.');
       } else {
         period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
