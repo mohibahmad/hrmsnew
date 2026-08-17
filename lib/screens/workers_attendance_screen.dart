@@ -2443,7 +2443,10 @@ class _WorkersAttendanceScreenState
                                               (selectedStatus == 'Leave' &&
                                                   reasonController.text
                                                       .trim()
-                                                      .isEmpty)
+                                                      .isEmpty) ||
+                                              (titleKey == 'edit_attendance' &&
+                                                  selectedStatus == initialStatus &&
+                                                  reasonController.text.trim() == initialReason.trim())
                                           ? null
                                           : () async {
                                               if (dialogIsSaving) return;

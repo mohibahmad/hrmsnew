@@ -1655,42 +1655,48 @@ class PayrollRunner {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 5,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFEEF2FF),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              '$filteredSelectedCount ${'selected'.tr()}',
-                                              style: const TextStyle(
-                                                color: Color(0xFF0247C4),
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                fontFamily: 'SF Pro Display',
+                                      Flexible(
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 5,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFEEF2FF),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '$filteredSelectedCount ${'selected'.tr()}',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF0247C4),
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            'processing_for_cycle'.tr(
-                                              namedArgs: {
-                                                'period': summary.periodLabel,
-                                              },
+                                            const SizedBox(width: 12),
+                                            Flexible(
+                                              child: Text(
+                                                'processing_for_cycle'.tr(
+                                                  namedArgs: {
+                                                    'period': summary.periodLabel,
+                                                  },
+                                                ),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF6B7280),
+                                                  fontSize: 13,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                            style: const TextStyle(
-                                              color: Color(0xFF6B7280),
-                                              fontSize: 13,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -2844,15 +2850,20 @@ class PayrollRunner {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: labelColor,
-              fontFamily: 'SF Pro Display',
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: labelColor,
+                fontFamily: 'SF Pro Display',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
               value,
