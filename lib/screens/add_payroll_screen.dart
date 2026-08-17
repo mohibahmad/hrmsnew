@@ -1302,59 +1302,52 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   }
 
   Widget _buildPayrollDataHeader() {
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildCancelButtonRow() {
     final hasRecord = widget.workerData['hasPayrollRecord'] == true;
     final showEditButtons = !widget.readOnly;
     final showCancelButton = hasRecord && _isPaidRecord;
+    if (!showCancelButton) return const SizedBox.shrink();
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Text(
-          '',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: _textDark,
+        if (showEditButtons)
+          _cancelPayrollButton(
+            onPressed: () async {
+              final confirmed = await DeleteDialog.show(
+                context: context,
+                title: 'cancel_payroll'.tr(),
+                content: 'cancel_payroll_confirm'.tr(
+                  namedArgs: {'name': _name},
+                ),
+                confirmButtonText: 'cancel_payroll',
+              );
+              if (confirmed) _handleCancelPayroll();
+            },
           ),
-        ),
-        Row(
-          children: [
-            if (showEditButtons && showCancelButton)
-              _cancelPayrollButton(
-                onPressed: () async {
-                  final confirmed = await DeleteDialog.show(
-                    context: context,
-                    title: 'cancel_payroll'.tr(),
-                    content: 'cancel_payroll_confirm'.tr(
-                      namedArgs: {'name': _name},
-                    ),
-                    confirmButtonText: 'cancel_payroll',
-                  );
-                  if (confirmed) _handleCancelPayroll();
-                },
-              ),
-            if (showCancelButton && widget.readOnly)
-              _cancelPayrollButton(
-                onPressed: () async {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
-                    showGuestRestrictionDialog(context);
-                    return;
-                  }
-                  final confirmed = await DeleteDialog.show(
-                    context: context,
-                    title: 'cancel_payroll'.tr(),
-                    content: 'cancel_payroll_confirm'.tr(
-                      namedArgs: {'name': _name},
-                    ),
-                    confirmButtonText: 'cancel_payroll',
-                  );
-                  if (confirmed) _handleCancelPayroll();
-                },
-              ),
-          ],
-        ),
+        if (!showEditButtons)
+          _cancelPayrollButton(
+            onPressed: () async {
+              final isGuest =
+                  _authService.currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
+              final confirmed = await DeleteDialog.show(
+                context: context,
+                title: 'cancel_payroll'.tr(),
+                content: 'cancel_payroll_confirm'.tr(
+                  namedArgs: {'name': _name},
+                ),
+                confirmButtonText: 'cancel_payroll',
+              );
+              if (confirmed) _handleCancelPayroll();
+            },
+          ),
       ],
     );
   }
@@ -1578,6 +1571,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [_buildProcessPayButton()],
           ),
+          const SizedBox(height: 12),
+          _buildCancelButtonRow(),
           const SizedBox(height: 24),
         ],
       ),
