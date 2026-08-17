@@ -79,7 +79,7 @@ class TimeOffExportService {
     return buffer.toString();
   }
 
-  static Future<bool> exportCsv({
+  static Future<String?> exportCsv({
     required List<Map<String, dynamic>> records,
     String fileName = 'time_off_records.csv',
   }) async {
@@ -94,7 +94,7 @@ class TimeOffExportService {
       bytes: bytes,
     );
 
-    if (result == null || result.toString().trim().isEmpty) return false;
+    if (result == null || result.toString().trim().isEmpty) return null;
 
     var outputPath = result.toString().trim();
     if (!outputPath.toLowerCase().endsWith('.csv')) {
@@ -103,7 +103,7 @@ class TimeOffExportService {
 
     await File(outputPath).writeAsString(content, flush: true);
     await FileOpener.open(outputPath);
-    return true;
+    return outputPath;
   }
 
   static Future<Uint8List> generatePdfReport({

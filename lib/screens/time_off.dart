@@ -2595,18 +2595,19 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               '${DateFormat('dd MMM yyyy').format(_customDateRange!.end)}'
         : _recordsPeriodFilter;
 
-    final fileName =
+    final defaultFileName =
         'time_off_${periodLabel.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')}.csv';
 
-    final success = await TimeOffExportService.exportCsv(
+    final savedPath = await TimeOffExportService.exportCsv(
       records: records,
-      fileName: fileName,
+      fileName: defaultFileName,
     );
 
-    if (success && mounted) {
+    if (savedPath != null && mounted) {
+      final savedName = savedPath.split('/').last;
       FlashySnackBar.show(
         context,
-        message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
+        message: 'file_saved_and_opened'.tr(namedArgs: {'file': savedName}),
       );
     }
   }

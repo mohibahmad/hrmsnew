@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pdfx/pdfx.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers.dart';
@@ -349,6 +350,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   static const List<String> _cvAllowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'doc', 'docx'];
 
   bool _isUploading = false;
+  String? _uploadingField;
   Uint8List? _frontIdBytes;
   String? _frontIdName;
   Uint8List? _backIdBytes;
@@ -548,7 +550,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       return;
     }
 
-    setState(() => _isUploading = true);
+    setState(() { _isUploading = true; _uploadingField = field; });
     String? newlyUploadedUrl;
 
     try {
@@ -620,7 +622,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       }
       if (mounted) FlashySnackBar.show(context, message: 'upload_failed'.tr(namedArgs: {'error': _documentErrorMessage(error)}), isError: true);
     } finally {
-      if (mounted) setState(() => _isUploading = false);
+      if (mounted) setState(() { _isUploading = false; _uploadingField = null; });
     }
   }
 
@@ -744,8 +746,6 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               ),
             ),
             const SizedBox(height: 32),
-            if (_isUploading)
-              const Center(child: CircularProgressIndicator(color: Color(0xFF0247C4))),
           ],
         ),
       ),
@@ -774,7 +774,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               _buildIdFieldHeader('upload_front_side'.tr(), 'frontId', _existingFrontId, _frontIdBytes, _frontIdName),
               const SizedBox(height: 12),
               _buildIdUploadBox(
-                label: 'upload_front_id_hint'.tr(), bytes: _frontIdBytes,
+                label: 'upload_front_id_hint'.tr(), field: 'frontId', bytes: _frontIdBytes,
                 fileName: _frontIdName, existingUrl: _existingFrontId,
                 onTap: () => _pickFile('frontId'),
               ),
@@ -782,7 +782,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               _buildIdFieldHeader('upload_back_side'.tr(), 'backId', _existingBackId, _backIdBytes, _backIdName),
               const SizedBox(height: 12),
               _buildIdUploadBox(
-                label: 'upload_back_id_hint'.tr(), bytes: _backIdBytes,
+                label: 'upload_back_id_hint'.tr(), field: 'backId', bytes: _backIdBytes,
                 fileName: _backIdName, existingUrl: _existingBackId,
                 onTap: () => _pickFile('backId'),
               ),
@@ -903,7 +903,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildIdUploadBox({
-    required String label, Uint8List? bytes, String? fileName, String? existingUrl, VoidCallback? onTap,
+    required String label, required String field, Uint8List? bytes, String? fileName, String? existingUrl, VoidCallback? onTap,
   }) {
     final hasFile = bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
     final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
@@ -911,7 +911,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     final isPdf = cleanName.endsWith('.pdf') || cleanUrl.endsWith('.pdf') || cleanUrl.startsWith('data:application/pdf');
     final decodedDataImage = existingUrl == null ? null : _decodeDataUrl(existingUrl);
 
-    return GestureDetector(
+    final boxContent = GestureDetector(
       onTap: hasFile
           ? () => _showImagePreviewDialog(context, bytes: bytes, url: existingUrl, isPdf: isPdf)
           : onTap,
@@ -967,6 +967,24 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             : _buildIdPlaceholder(label, false),
       ),
     );
+
+    if (_uploadingField == field) {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          height: _idPreviewHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
+          ),
+        ),
+      );
+    }
+
+    return boxContent;
   }
 
   Widget _buildIdPlaceholder(String label, bool hasFile) {
@@ -983,6 +1001,21 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildCvUpload() {
+    if (_uploadingField == 'cv') {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          width: double.infinity,
+          height: 270,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
+          ),
+        ),
+      );
+    }
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1051,6 +1084,21 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildCvPreview() {
+    if (_uploadingField == 'cv') {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          width: double.infinity,
+          height: 270,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
+          ),
+        ),
+      );
+    }
     final cvUrl = _existingCv;
     final detectedName = (_cvName == null || _cvName!.trim().isEmpty) ? _cleanFileName(cvUrl ?? '') : _cvName!.trim();
     final lower = detectedName.toLowerCase();
