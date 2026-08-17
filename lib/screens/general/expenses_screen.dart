@@ -506,6 +506,21 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     required bool isSaving,
     required VoidCallback onSave,
   }) {
+    const buttonTextStyle = TextStyle(
+      color: Color(0xFFFFFFFF),
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      fontFamily: 'SF Pro Display',
+    );
+    // Measure the label so the loading spinner swaps in at the exact same
+    // width. Otherwise the button shrinks when saving starts and (being
+    // right-aligned) visibly jumps.
+    final textWidth = (TextPainter(
+      text: TextSpan(text: buttonText, style: buttonTextStyle),
+      textDirection: Directionality.of(ctx),
+    )..layout())
+        .width;
+
     return Row(
       children: [
         Expanded(
@@ -527,6 +542,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0247C4),
+                disabledBackgroundColor: const Color(0xFF0247C4),
+                disabledForegroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -534,9 +551,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               onPressed: isSaving ? null : onSave,
               child: isSaving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(buttonText,
-                      style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                  ? SizedBox(
+                      width: textWidth,
+                      height: 20,
+                      child: const Center(
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                      ),
+                    )
+                  : Text(buttonText, style: buttonTextStyle),
             ),
           ),
         ),
