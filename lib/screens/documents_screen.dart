@@ -675,7 +675,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       barrierLabel: 'close'.tr(),
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (ctx, _, _) => _FullScreenDocumentViewer(url: url, label: label, isImage: isImage, isPdf: isPdf, isDoc: isDoc, pdfBytes: pdfBytes),
+      pageBuilder: (ctx, _, _) => _FullScreenDocumentViewer(url: url, label: label, isImage: isImage, isPdf: isPdf, isDoc: isDoc, pdfBytes: pdfBytes, heightFactor: 0.8),
       transitionBuilder: (ctx, anim, _, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
         final scale = Tween<double>(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
@@ -1369,6 +1369,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   final bool isDoc;
   final Uint8List? pdfBytes;
   final Uint8List? imageBytes;
+  final double heightFactor;
 
   const _FullScreenDocumentViewer({
     required this.url,
@@ -1378,6 +1379,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
     this.isDoc = false,
     this.pdfBytes,
     this.imageBytes,
+    this.heightFactor = 0.6,
   });
 
   @override
@@ -1426,15 +1428,15 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : (size.width * 0.92);
-    final maxPreviewHeight = (size.height * 0.7 - 70).clamp(160.0, 500.0);
-    final previewHeight = (size.height * 0.6).clamp(160.0, maxPreviewHeight).toDouble();
+    final maxPreviewHeight = (size.height * widget.heightFactor + 0.2 - 70).clamp(160.0, 600.0);
+    final previewHeight = (size.height * (widget.heightFactor + 0.15)).clamp(160.0, maxPreviewHeight).toDouble();
 
     final failedToLoadText = 'failed_to_load'.tr();
     final cleanTitle = cleanUploadedDocumentFileName(widget.label, fallback: 'document'.tr());
     final cleanFileName = cleanUploadedDocumentFileName(widget.url, fallback: 'document'.tr());
 
     final content = ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: size.height * 0.7),
+      constraints: BoxConstraints(maxHeight: size.height * (widget.heightFactor + 0.1)),
       child: Container(
         width: previewWidth,
         decoration: BoxDecoration(
