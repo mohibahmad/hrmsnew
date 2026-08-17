@@ -1161,7 +1161,7 @@ if (day == 0) {
         final today = DateTime(now.year, now.month, now.day);
         final payDay = day.clamp(1, 28);
         final payDayThisMonth = DateTime(now.year, now.month, payDay);
-        period = today.isBefore(payDayThisMonth)
+        period = !today.isAfter(payDayThisMonth)
             ? PayrollPeriod(
                 start: DateTime(now.year, now.month - 1, payDay),
                 end: payDayThisMonth,
