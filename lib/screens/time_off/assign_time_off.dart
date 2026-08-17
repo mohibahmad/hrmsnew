@@ -1236,6 +1236,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Future<void> _handleSave() async {
     if (widget.viewOnly || _isLoading || !_hasUnsavedChanges) return;
 
+    if (_deselectedDates.isNotEmpty && _selectedDates.isEmpty) {
+      await _saveDeselectedLeaves();
+      return;
+    }
+
     _stashCurrentDraft();
 
     if (_pendingDrafts.isNotEmpty) {
@@ -1559,6 +1564,114 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       'Medical Leave' => 'medicalLeave',
       _ => '',
     };
+  }
+
+  Future<void> _saveDeselectedLeaves() async {
+    setState(() => _isLoading = true);
+    try {
+      final workerId = _resolveWorkerId();
+      if (workerId.isEmpty) throw StateError('Missing worker id');
+
+      final normType = TimeOffService.normalizeLeaveType(_timeOffType);
+      final affectedRecords = <String, Map<String, dynamic>>{};
+      for (final d in _deselectedDates) {
+        final leave = TimeOffService.activeLeaveForWorker(
+          _selectedWorker!,
+          _timeoffRecords,
+          onDate: d,
+        );
+        if (leave == null) continue;
+        final leaveType = TimeOffService.normalizeLeaveType(
+            (leave['action'] ?? leave['type']).toString());
+        if (leaveType != normType) continue;
+        final rid = (leave['id'] ?? '').toString();
+        if (rid.isEmpty) continue;
+        affectedRecords.putIfAbsent(rid, () => leave);
+      }
+
+      for (final entry in affectedRecords.entries) {
+        final recordId = entry.key;
+        final record = entry.value;
+        final oldDates = TimeOffService.selectedDatesForRecord(record)
+            .map(_dateOnly)
+            .toSet();
+        final removeDates = _deselectedDates.map(_dateOnly).toSet();
+        final remainingDates = oldDates.difference(removeDates);
+
+        if (remainingDates.isEmpty) {
+          if (_isGuest) {
+            final idx = DummyData.timeoff.indexWhere(
+                (r) => (r['id'] ?? '').toString() == recordId);
+            if (idx != -1) DummyData.timeoff.removeAt(idx);
+          } else {
+            await _firestore.cancelTimeOffWithWorkerBalance(
+              timeOffId: recordId,
+              workerId: workerId,
+              fallbackRecord: record,
+            );
+          }
+        } else {
+          final sortedDates = remainingDates.toList()..sort();
+          final updatedRecord = Map<String, dynamic>.from(record);
+          updatedRecord['selectedDates'] =
+              sortedDates.map(_dateOnlyString).toList();
+          updatedRecord['startDate'] = _dateOnlyString(sortedDates.first);
+          updatedRecord['endDate'] = _dateOnlyString(sortedDates.last);
+          updatedRecord['requestedDays'] = sortedDates.length;
+
+          if (_isGuest) {
+            final idx = DummyData.timeoff.indexWhere(
+                (r) => (r['id'] ?? '').toString() == recordId);
+            if (idx != -1) DummyData.timeoff[idx] = updatedRecord;
+          } else {
+            await _firestore.saveTimeOffWithWorkerBalance(
+              timeOffId: recordId,
+              record: updatedRecord,
+              workerId: workerId,
+              leaveType: _timeOffType,
+              requestedDays: sortedDates.length,
+            );
+          }
+        }
+      }
+
+      if (!mounted) return;
+      await _loadTimeoffForSelectedWorker();
+      if (!mounted) return;
+
+      setState(() {
+        _deselectedDates.clear();
+        _editingRecord = null;
+        _editingId = null;
+        _selectedDates.clear();
+        _startDate = DateTime.now();
+        _endDate = DateTime.now();
+        _notesController.clear();
+        _timeOffType = 'Annual Leave';
+        _invalidateDateTypeMap();
+        _markFormClean();
+      });
+
+      FlashySnackBar.show(
+        context,
+        message: 'update_time_off_success'.tr(namedArgs: {
+          'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
+        }),
+      );
+      widget.onBack();
+    } on PastTimeOffEditException {
+      if (mounted) {
+        FlashySnackBar.show(context,
+            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+      }
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(context,
+            message: 'assign_time_off_failed'.tr(), isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleCancelTimeOff() async {
