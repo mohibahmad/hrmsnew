@@ -45,6 +45,7 @@ class CalendarDayCell extends StatelessWidget {
   final bool isSelected;
   final bool isDisabled;
   final VoidCallback? onTap;
+  final double cellAspectRatio;
 
   const CalendarDayCell({
     super.key,
@@ -52,19 +53,22 @@ class CalendarDayCell extends StatelessWidget {
     this.isSelected = false,
     this.isDisabled = false,
     this.onTap,
+    this.cellAspectRatio = 1.0,
   });
 
   @override
   Widget build(BuildContext context) {
     if (day.isEmpty) {
-      return const Expanded(child: AspectRatio(aspectRatio: 1, child: SizedBox()));
+      return Expanded(
+        child: AspectRatio(aspectRatio: cellAspectRatio, child: const SizedBox()),
+      );
     }
 
     const selectedBg = Color(0xFF0247C4);
 
     return Expanded(
       child: AspectRatio(
-        aspectRatio: 1,
+        aspectRatio: cellAspectRatio,
         child: GestureDetector(
           onTap: isDisabled ? null : onTap,
           child: Container(
@@ -102,6 +106,7 @@ class CalendarGrid extends StatelessWidget {
   final ValueChanged<int> onDaySelected;
   final bool disablePastDays;
   final double spacing;
+  final double cellAspectRatio;
 
   const CalendarGrid({
     super.key,
@@ -110,6 +115,7 @@ class CalendarGrid extends StatelessWidget {
     required this.onDaySelected,
     this.disablePastDays = false,
     this.spacing = 6,
+    this.cellAspectRatio = 1.0,
   });
 
   @override
@@ -128,7 +134,7 @@ class CalendarGrid extends StatelessWidget {
       for (int j = 0; j < 7; j++) {
         final index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(const CalendarDayCell(day: ''));
+          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio));
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
           final cellDate = DateTime(date.year, date.month, day);
@@ -138,10 +144,11 @@ class CalendarGrid extends StatelessWidget {
             isSelected: selectedDay != null && day == selectedDay,
             isDisabled: isPast,
             onTap: isPast ? null : () => onDaySelected(day),
+            cellAspectRatio: cellAspectRatio,
           ));
           currentDay++;
         } else {
-          rowChildren.add(const CalendarDayCell(day: ''));
+          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio));
         }
         if (j < 6) rowChildren.add(SizedBox(width: spacing));
       }
@@ -161,6 +168,8 @@ class ModalCalendar extends StatelessWidget {
   final ValueChanged<DateTime> onMonthChanged;
   final bool disablePastDays;
   final bool showBorder;
+  final double cellAspectRatio;
+  final double spacing;
 
   const ModalCalendar({
     super.key,
@@ -170,6 +179,8 @@ class ModalCalendar extends StatelessWidget {
     required this.onMonthChanged,
     this.disablePastDays = false,
     this.showBorder = true,
+    this.cellAspectRatio = 1.0,
+    this.spacing = 6,
   });
 
   @override
@@ -183,17 +194,17 @@ class ModalCalendar extends StatelessWidget {
     final weekdays = Row(
       children: [
         WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Colors.red),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_mon'.tr(), color: const Color(0xFF0247C4)),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_tue'.tr(), color: const Color(0xFF0247C4)),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_wed'.tr(), color: const Color(0xFF0247C4)),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_thu'.tr(), color: const Color(0xFF0247C4)),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_fri'.tr(), color: const Color(0xFF4CAF50)),
-        SizedBox(width: 8),
+        SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_sat'.tr(), color: const Color(0xFF0247C4)),
       ],
     );
@@ -240,6 +251,8 @@ class ModalCalendar extends StatelessWidget {
           selectedDay: selectedDay,
           onDaySelected: onDaySelected,
           disablePastDays: disablePastDays,
+          cellAspectRatio: cellAspectRatio,
+          spacing: spacing,
         ),
       ],
     );

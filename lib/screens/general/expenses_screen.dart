@@ -437,7 +437,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               backgroundColor: Colors.white,
               elevation: 10,
               child: Container(
-                width: 650,
+                width: 730,
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -823,6 +823,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       selectedDay: selectedDay,
       onDaySelected: onDaySelected,
       onMonthChanged: onMonthChanged,
+      spacing: 8,
     );
   }
 
