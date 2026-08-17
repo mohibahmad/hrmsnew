@@ -204,15 +204,9 @@ class ModalCalendar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: isAtStart
-                  ? null
-                  : () => onMonthChanged(
-                      DateTime(calendarDate.year, calendarDate.month - 1, 1)),
-              child: Icon(
-                Icons.chevron_left,
-                size: 20,
-                color: isAtStart ? Colors.grey.shade300 : Colors.black,
-              ),
+              onTap: () => onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month - 1, 1)),
+              child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
             ),
             const SizedBox(width: 12),
             Text(
@@ -226,9 +220,15 @@ class ModalCalendar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             GestureDetector(
-              onTap: () => onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month + 1, 1)),
-              child: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+              onTap: isAtStart
+                  ? null
+                  : () => onMonthChanged(
+                      DateTime(calendarDate.year, calendarDate.month + 1, 1)),
+              child: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: isAtStart ? Colors.grey.shade300 : Colors.black,
+              ),
             ),
           ],
         ),
