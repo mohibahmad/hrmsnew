@@ -437,8 +437,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               backgroundColor: Colors.white,
               elevation: 10,
               child: Container(
-                width: 600,
-                padding: const EdgeInsets.all(24),
+                width: 650,
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,29 +507,38 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     required VoidCallback onSave,
   }) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          icon: const Icon(Icons.close, color: Colors.black, size: 20),
-          onPressed: () => Navigator.of(ctx).pop(),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.black, size: 20),
+              onPressed: () => Navigator.of(ctx).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ),
         ),
         Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0247C4),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            minimumSize: const Size(0, 32),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0247C4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                minimumSize: const Size(80, 32),
+              ),
+              onPressed: isSaving ? null : onSave,
+              child: isSaving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(buttonText,
+                      style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+            ),
           ),
-          onPressed: isSaving ? null : onSave,
-          child: isSaving
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text(buttonText,
-                  style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
         ),
       ],
     );
@@ -729,6 +738,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     bool isAmount = false,
     String? prefixText,
   }) {
+    const fieldStyle = TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display');
+    final textField = TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLength: maxLength,
+      inputFormatters: isAmount
+          ? [
+              FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
+              LengthLimitingTextInputFormatter(18),
+              const ThousandsSeparatorInputFormatter(),
+            ]
+          : maxLength != null
+              ? [LengthLimitingTextInputFormatter(maxLength)]
+              : const <TextInputFormatter>[],
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Colors.grey),
+        border: InputBorder.none,
+        counterText: '',
+        isDense: true,
+        contentPadding: EdgeInsets.zero,
+      ),
+      style: fieldStyle,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -739,31 +773,18 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            maxLength: maxLength,
-            inputFormatters: isAmount
-                ? [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
-                    LengthLimitingTextInputFormatter(18),
-                    const ThousandsSeparatorInputFormatter(),
-                  ]
-                : maxLength != null
-                    ? [LengthLimitingTextInputFormatter(maxLength)]
-                    : const <TextInputFormatter>[],
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: const TextStyle(color: Colors.grey),
-              border: InputBorder.none,
-              counterText: '',
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              prefixText: prefixText,
-              prefixStyle: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
-            ),
-            style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
-          ),
+          // Render the prefix (e.g. currency symbol) as a static widget so it
+          // stays visible even when the field is empty and not focused.
+          child: prefixText == null
+              ? textField
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(prefixText, style: fieldStyle),
+                    const SizedBox(width: 4),
+                    Expanded(child: textField),
+                  ],
+                ),
         ),
       ],
     );
