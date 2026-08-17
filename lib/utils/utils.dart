@@ -1711,16 +1711,34 @@ class AppDateUtils {
     }
   }
 
+  /// Effective end of a period for attendance/time-off statistics.
+  ///
+  /// Rule: `effectiveEndDate = min(selectedRangeEnd, today)`. Future dates
+  /// (e.g. approved Time Off that hasn't happened yet) must NOT be counted in
+  /// statistics before they occur, even when the selected range ends in the
+  /// future (Last 7/30 Days, Last 3/6 Months, custom ranges, etc.).
+  static DateTime effectivePeriodEnd(String period, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final rawEnd = periodEnd(period, now);
+    final normalizedEnd = DateTime(rawEnd.year, rawEnd.month, rawEnd.day);
+    return normalizedEnd.isAfter(today) ? today : normalizedEnd;
+  }
+
+  /// True when [date] falls within [period]'s start and its effective end
+  /// (`min(periodEnd, today)`). Shares the future-date exclusion rule so every
+  /// caller aggregates with the same `date >= start && date <= today` cutoff.
+  static bool isDateWithinEffectivePeriod(DateTime date, String period, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final day = DateTime(date.year, date.month, date.day);
+    final start = periodStart(period, current);
+    final end = effectivePeriodEnd(period, current);
+    return !day.isBefore(start) && !day.isAfter(end);
+  }
+
   static bool isDateWithinPeriod(String dateStr, String period) {
     final date = parseDateString(dateStr);
     if (date == null) return false;
-
-    final now = DateTime.now();
-    final start = periodStart(period, now);
-    final end = periodEnd(period, now);
-
-    final day = DateTime(date.year, date.month, date.day);
-    return !day.isBefore(start) && !day.isAfter(end);
+    return isDateWithinEffectivePeriod(date, period);
   }
 
   static bool isTimestampWithinPeriod(dynamic createdAt, String period) {
@@ -1729,12 +1747,7 @@ class AppDateUtils {
     final date = dateFromValue(createdAt);
     if (date == null) return false;
 
-    final now = DateTime.now();
-    final start = periodStart(period, now);
-    final end = periodEnd(period, now);
-
-    final day = DateTime(date.year, date.month, date.day);
-    return !day.isBefore(start) && !day.isAfter(end);
+    return isDateWithinEffectivePeriod(date, period);
   }
 
   static DateTime? dateFromValue(dynamic value) {

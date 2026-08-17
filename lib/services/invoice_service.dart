@@ -44,17 +44,20 @@ class InvoiceService {
     String? companyLogoUrl,
     Uint8List? companyLogoBytes,
     Uint8List? companyStampBytes,
+    Uint8List? fontBytes,
     String paymentMethod = 'Company Payroll',
     String workerId = '',
+    Uint8List? employeeImageBytes,
   }) async {
     final detectedCurrency = _displayCurrency(currency.isEmpty ? _detectCurrency(salary) : currency);
     final pdf = pw.Document();
 
-    final font = await _loadFont();
+    final font = await _loadFont(fontBytes);
     final theme = _createTheme(font);
 
     final logoImage = await _loadLogo(companyLogoBytes, companyLogoUrl);
     final stampImage = await _loadStamp(companyStampBytes, companyStampImageUrl);
+    final employeeImage = await _loadEmployeeImage(employeeImageBytes);
 
     final now = DateTime.now();
     final datePrefix = _periodDatePrefix(payPeriod);
@@ -81,6 +84,7 @@ class InvoiceService {
         build: (context) => _buildContent(
           logoImage: logoImage,
           stampImage: stampImage,
+          employeeImage: employeeImage,
           companyName: companyName,
           companyAddress: companyAddress,
           companyEmail: companyEmail,
@@ -120,11 +124,37 @@ class InvoiceService {
     return pdf.save();
   }
 
+  static Future<pw.MemoryImage?> _loadEmployeeImage(Uint8List? bytes) async {
+    if (bytes == null || bytes.isEmpty) return null;
+    try {
+      return pw.MemoryImage(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static String _getDeductibleLeaveDays(String unpaidLeaves, String leaves) {
     return unpaidLeaves.trim().isNotEmpty ? unpaidLeaves.trim() : leaves;
   }
 
-  static Future<pw.Font?> _loadFont() async => PdfHelpers.loadFont();
+  static pw.Font? _cachedParsedFont;
+
+  static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
+    if (fontBytes != null) {
+      // Parsing the ~6MB SF-Pro.ttf is the single most expensive step in PDF
+      // generation, so parse it once per isolate and reuse it for every
+      // invoice instead of paying the cost once per worker.
+      if (_cachedParsedFont != null) return _cachedParsedFont;
+      try {
+        final font = pw.Font.ttf(
+          fontBytes.buffer.asByteData(fontBytes.offsetInBytes, fontBytes.lengthInBytes),
+        );
+        _cachedParsedFont = font;
+        return font;
+      } catch (_) {}
+    }
+    return PdfHelpers.loadFont();
+  }
   static pw.ThemeData _createTheme(pw.Font? font) => PdfHelpers.buildTheme(font);
 
   static Future<pw.MemoryImage?> _loadLogo(Uint8List? companyLogoBytes, String? companyLogoUrl) async {
@@ -144,6 +174,7 @@ class InvoiceService {
   static List<pw.Widget> _buildContent({
     required pw.MemoryImage? logoImage,
     required pw.MemoryImage? stampImage,
+    required pw.MemoryImage? employeeImage,
     required String companyName,
     required String companyAddress,
     required String companyEmail,
@@ -177,7 +208,7 @@ class InvoiceService {
     required String paymentMethod,
   }) {
     return [
-      _buildHeader(logoImage, companyName),
+      _buildHeader(logoImage, companyName, employeeImage),
       pw.SizedBox(height: 32),
       _buildInvoiceInfo(invoiceNumber, now),
       pw.SizedBox(height: 38),
@@ -191,7 +222,7 @@ class InvoiceService {
     ];
   }
 
-  static pw.Widget _buildHeader(pw.MemoryImage? logoImage, String companyName) {
+  static pw.Widget _buildHeader(pw.MemoryImage? logoImage, String companyName, pw.MemoryImage? employeeImage) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -205,7 +236,23 @@ class InvoiceService {
             pw.Text(companyName.isEmpty ? 'HRMS' : companyName, style: pw.TextStyle(fontSize: 23, color: PdfColorPalette.navy)),
           ],
         ),
-        pw.Text(PdfHelpers.translate('payroll_invoice_title', 'PAYROLL INVOICE'), style: pw.TextStyle(fontSize: 21, color: PdfColorPalette.appBlue, fontWeight: pw.FontWeight.normal)),
+        pw.Row(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            if (employeeImage != null) ...[
+              pw.Container(
+                width: 44,
+                height: 44,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColorPalette.border, width: 1),
+                ),
+                child: pw.Image(employeeImage, fit: pw.BoxFit.cover),
+              ),
+              pw.SizedBox(width: 10),
+            ],
+            pw.Text(PdfHelpers.translate('payroll_invoice_title', 'PAYROLL INVOICE'), style: pw.TextStyle(fontSize: 21, color: PdfColorPalette.appBlue, fontWeight: pw.FontWeight.normal)),
+          ],
+        ),
       ],
     );
   }

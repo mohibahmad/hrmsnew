@@ -1,27 +1,38 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
+import 'package:csv/csv.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/dummy_data.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/invoice_service.dart';
-import '../services/payroll_service.dart';
-import '../services/preferences_service.dart';
-import '../services/salary_day_scheduler.dart';
-import '../utils/utils.dart';
-import '../widgets/amount_text.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/invoice_service.dart';
+import '../../services/payroll_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/salary_day_scheduler.dart';
+import '../../utils/image_loader.dart';
+import '../../utils/utils.dart';
+import '../../widgets/amount_text.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/notification_bell.dart';
 import 'add_payroll_screen.dart';
+
+String _generateCsvString(List<List<dynamic>> rows) {
+  return '\ufeff${const CsvEncoder().convert(rows)}';
+}
 
 enum _PayrollReminderAction { remindLater, ignore, viewPayable }
 
@@ -93,13 +104,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Timer? _attendanceDebounce;
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
-
-                                  bool get _isCurrentCycleDue {
-    if (_salaryPayDay == null) return false;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dueDate = DateTime(_payPeriodEnd.year, _payPeriodEnd.month, _payPeriodEnd.day);
-    return !today.isBefore(dueDate);   }
 
   bool get isPayrollReminderDataReady => _workersLoaded && _payrollLoaded && _salaryPayDay != null;
 
@@ -669,6 +673,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _handlePayAllForMonth(DateTime payrollMonth) async {
     if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty) return;
     setState(() => _isRunningPayroll = true);
+    // Progress ("Sending payroll..." -> "Generating invoices...") is shown as
+    // a FlashySnackBar by PayrollRunner, so no snackbar is started here.
     try {
       final summary = await PayrollRunner().payAll(
         context,
@@ -678,6 +684,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(context, message: 'payroll_run_complete'.tr(namedArgs: {'count': '${summary.successCount}'}));
+      } else if (mounted) {
+        FlashySnackBar.dismiss();
       }
     } catch (error) {
       if (mounted) {
@@ -687,7 +695,17 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         FlashySnackBar.show(context, message: msg, isError: true);
       }
     } finally {
-      if (mounted) setState(() => _isRunningPayroll = false);
+      if (mounted) {
+        setState(() {
+          _isRunningPayroll = false;
+          // Guest mode has no Firestore stream, so reload the paid records
+          // from DummyData to keep the list + previous-cycle dropdown in sync.
+          if (_isGuest) {
+            _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
+            _combinePayroll();
+          }
+        });
+      }
     }
   }
 
@@ -881,9 +899,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         await PreferencesService.snoozePayrollReminder(window.suppressionKey, now: now);
         if (mounted) setState(() => _selectedFilter = 'All');
       case _PayrollReminderAction.ignore:
-        if (await _confirmAndAdvanceOverdueCycle(window)) {
-          await PreferencesService.ignorePayrollReminder(window.suppressionKey);
-        }
+        // Ignoring only stops the reminder from nagging. It must NOT advance
+        // the pay period — the cycle moves forward on its own (in
+        // _reconcilePayrollPeriod) only once EVERY worker is paid.
+        await PreferencesService.ignorePayrollReminder(window.suppressionKey);
         if (mounted) setState(() => _selectedFilter = 'All');
       case _PayrollReminderAction.viewPayable:
                                 if (mounted) {
@@ -990,58 +1009,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
   }
 
-  Future<bool> _confirmAndAdvanceOverdueCycle(PayrollReminderWindow reminderWindow) async {
-    if (!mounted || _salaryPayDay == null) return false;
-
-    final confirmed = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: 'ConfirmPayrollOverdueIgnore',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (_, _, _) => const SizedBox(),
-      transitionBuilder: (dialogContext, animation, _, _) => _buildBlurDialog(
-        dialogContext: dialogContext,
-        animation: animation,
-        builder: (_) => _desktopDialogShell(
-          dialogContext: dialogContext,
-          title: 'overdue_payroll'.tr(),
-          width: 500,
-          content: const Text(
-            'The current workers will remain payable. The payroll cycle will move to the next pay period. Do you want to continue?',
-            style: TextStyle(color: Color(0xFF334155), fontSize: 14, height: 1.45, fontFamily: 'SF Pro Display'),
-          ),
-          actions: [
-            _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext, false)),
-            _desktopDialogButton(label: 'ignore'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, true)),
-          ],
-        ),
-      ),
-    );
-
-    if (confirmed != true || !mounted) return false;
-
-    final next = PayrollService.nextPayDayPeriod(PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd), _salaryPayDay!);
-    await _firestore.updateUserProfile({
-      'payrollCycleStart': next.start.toIso8601String(),
-      'payrollCycleEnd': next.end.toIso8601String(),
-      'payrollCycleAdvancedAt': DateTime.now().toIso8601String(),
-      'payrollCyclePreviousDueDate': reminderWindow.dueDate.toIso8601String(),
-    });
-    await PreferencesService.ignorePayrollReminder(reminderWindow.suppressionKey);
-
-    if (!mounted) return true;
-    setState(() {
-      _payPeriodStart = next.start;
-      _payPeriodEnd = next.end;
-      _payrollMonth = DateTime(next.end.year, next.end.month, 1);
-      _selectedFilter = 'All';
-      _combinePayroll();
-    });
-    _scheduleAttendanceFetch();
-    return true;
-  }
-
   Future<void> _showSetPayDayDialog() async {
     if (_isGuest) { showGuestRestrictionDialog(context); return; }
 
@@ -1102,7 +1069,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             ),
             actions: [
               _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext)),
-              _desktopDialogButton(label: 'Clear Pay Day', onTap: () => Navigator.pop(dialogContext, 0)),
+              // Clear Pay Day only makes sense when a pay day is already set.
+              if (_salaryPayDay != null)
+                _desktopDialogButton(label: 'Clear Pay Day', onTap: () => Navigator.pop(dialogContext, 0)),
               _desktopDialogButton(label: 'save'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, selectedDay)),
             ],
           ),
@@ -1222,8 +1191,9 @@ if (day == 0) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildPayPeriodBar(),
+                  const SizedBox(height: 16),
                   _buildSearchBar(),
-                  const SizedBox(height: 10),
                   const SizedBox(height: 10),
                   _buildFilterTabs(),
                   const SizedBox(height: 20),
@@ -1268,6 +1238,421 @@ if (day == 0) {
     );
   }
 
+  Widget _buildPayPeriodBar() {
+    final periodText = _payPeriodLabelFor(_payrollMonth);
+    final hasCurrentPayable = _currentPayablePayrollWorkers.isNotEmpty;
+    final payAllEnabled = !_isRunningPayroll && hasCurrentPayable;
+
+    return Row(
+      children: [
+        Builder(
+          builder: (anchorContext) => MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => _showPaidWorkersDropdown(anchorContext),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    periodText,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF000000)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Spacer(),
+        MouseRegion(
+          cursor: payAllEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: GestureDetector(
+            onTap: payAllEnabled
+                ? () {
+                    if (_isGuest) { showGuestRestrictionDialog(context); return; }
+                    _handlePayAll();
+                  }
+                : null,
+            child: Container(
+              height: 43,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF27AE60).withValues(alpha: payAllEnabled ? 1 : 0.4),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isRunningPayroll)
+                    const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFFFFF)))
+                  else
+                    SvgPicture.asset('assets/payroll_icon.svg', width: 18, height: 18, colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
+                  const SizedBox(width: 8),
+                  Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _showSetPayDayDialog,
+            child: Container(
+              height: 43,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0247C4),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFFFFFFFF)),
+                  const SizedBox(width: 8),
+                  Text(
+                    _payDayButtonLabel(),
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _handleExportPayroll,
+            child: Container(
+              height: 43,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    'assets/share1.svg',
+                    width: 18,
+                    height: 18,
+                    colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Export',
+                    style: TextStyle(
+                      color: Color(0xFF0247C4),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Merges a paid payroll record with its worker profile (name, position,
+  /// avatar) so it can be shown in the previous-cycle dialog or exported.
+  Map<String, dynamic>? _paidWorkerRecord(Map<String, dynamic> record) {
+    if (!PayrollService.isPayrollRecordPaid(record)) return null;
+    Map<String, dynamic> worker = const {};
+    final recordId = (record['workerId'] ?? '').toString().trim();
+    final recordEmail = (record['email'] ?? '').toString().trim().toLowerCase();
+    if (recordId.isNotEmpty || recordEmail.isNotEmpty) {
+      for (final w in _workersList) {
+        final wId = (w['workerId'] ?? w['id'] ?? '').toString().trim();
+        final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
+        if ((wId.isNotEmpty && recordId.isNotEmpty && wId == recordId) ||
+            (wEmail.isNotEmpty && recordEmail.isNotEmpty && wEmail == recordEmail)) {
+          worker = w;
+          break;
+        }
+      }
+    }
+    return {...record, if (worker.isNotEmpty) ...worker};
+  }
+
+  /// Every paid payroll record across all cycles (merged with worker profile).
+  List<Map<String, dynamic>> _allPaidWorkers() {
+    return _rawPayrollDocs
+        .map(_paidWorkerRecord)
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  String _csvAmount(dynamic value) {
+    final amount = PayrollService.extractSalary((value ?? 0).toString());
+    return amount == amount.roundToDouble()
+        ? amount.toStringAsFixed(0)
+        : amount.toStringAsFixed(2);
+  }
+
+  String _recordPeriodText(Map<String, dynamic> record) {
+    final start = AppDateUtils.dateFromValue(record['payPeriodStart']);
+    final end = AppDateUtils.dateFromValue(record['payPeriodEnd']);
+    if (start != null && end != null) {
+      return PayrollService.formatPayPeriodRange(start, end);
+    }
+    // Current-cycle combined records may not carry saved period dates.
+    return PayrollService.formatPayPeriodRange(_payPeriodStart, _payPeriodEnd);
+  }
+
+  Future<void> _handleExportPayroll() async {
+    // Everything: every paid record across all cycles, plus the current
+    // cycle's unpaid/payable workers — a full payroll dump.
+    final paidWorkers = _allPaidWorkers();
+    final unpaidCurrent = _payrollDocs.where((doc) {
+      if (doc['isPaid'] == true || doc['hasPaidPayrollRecord'] == true) return false;
+      final status = (doc['status'] ?? '').toString().trim().toLowerCase();
+      return status != 'paid';
+    }).toList();
+
+    final allRecords = [...paidWorkers, ...unpaidCurrent];
+    if (allRecords.isEmpty) {
+      FlashySnackBar.show(context, message: 'No payroll data to export yet.');
+      return;
+    }
+
+    try {
+      final rows = <List<dynamic>>[
+        [
+          'Name',
+          'Position',
+          'Pay Period',
+          'Status',
+          'Paid On',
+          'Salary',
+          'Total Work Days',
+          'Absents',
+          'Leaves',
+          'Overtime',
+          'Absent Deduction',
+          'Leave Deduction',
+          'Other Deduction',
+          'Total Deductions',
+          'Net Salary',
+          'Currency',
+        ],
+      ];
+
+      for (final worker in allRecords) {
+        final name = (worker['name'] ?? '').toString().trim();
+        final position = (worker['position'] ?? '').toString().trim();
+        final totalWorkDays = (worker['totalWorkDays'] ?? 0).toString();
+        final absents = (worker['absents'] ?? 0).toString();
+        final leaves = (worker['leaves'] ?? 0).toString();
+        final overtime = _csvAmount(worker['overtimeAmount']);
+        final absentDeduction = _csvAmount(worker['absentDeduction']);
+        final leaveDeduction = _csvAmount(worker['leaveDeduction']);
+        final customDeduction = _csvAmount(worker['customDeduction']);
+        final totalDeductions = _csvAmount(
+          (PayrollService.extractSalary((worker['absentDeduction'] ?? 0).toString())) +
+          (PayrollService.extractSalary((worker['leaveDeduction'] ?? 0).toString())) +
+          (PayrollService.extractSalary((worker['customDeduction'] ?? 0).toString())),
+        );
+        final salary = _csvAmount(worker['salary']);
+        final netSalary = _csvAmount(
+          worker['netSalary'] ?? worker['netSalaryFormatted'] ?? worker['salaryAfterDeduction'],
+        );
+        final isPaid = PayrollService.isPayrollRecordPaid(worker);
+        final paidDate = PayrollService.payrollPaymentDate(worker);
+        final paidOn = paidDate == null ? '' : DateFormat('yyyy-MM-dd').format(paidDate);
+        final currencyCode = (_companyCurrency.isNotEmpty
+                ? _companyCurrency
+                : (worker['currency'] ?? '').toString())
+            .trim();
+
+        rows.add([
+          name,
+          position,
+          _recordPeriodText(worker),
+          isPaid ? 'Paid' : 'Unpaid',
+          paidOn,
+          salary,
+          totalWorkDays,
+          absents,
+          leaves,
+          overtime,
+          absentDeduction,
+          leaveDeduction,
+          customDeduction,
+          totalDeductions,
+          netSalary,
+          currencyCode,
+        ]);
+      }
+
+      final csvString = await compute(_generateCsvString, rows);
+      final csvBytes = Uint8List.fromList(utf8.encode(csvString));
+      final fileName = 'paid_workers_export_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+
+      final outputFile = await FilePicker.saveFile(
+        dialogTitle: 'Export Paid Workers (All Cycles)',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: csvBytes,
+      );
+
+      if (outputFile == null) return;
+      await File(outputFile).writeAsBytes(csvBytes);
+
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'CSV exported: $fileName');
+        unawaited(FileOpener.open(outputFile));
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'Failed to export CSV: $e', isError: true);
+      }
+    }
+  }
+
+  /// Pay periods shown in the dropdown: every cycle that has paid records
+  /// (most recent first), each with its paid count. An empty cycle created by
+  /// a pay-day change must not appear here — a new period only enters the
+  /// dropdown once workers are actually paid in it.
+  List<({PayrollPeriod period, String label, int paidCount})> _payPeriodOptions() {
+    final map = <String, ({PayrollPeriod period, int paidCount})>{};
+
+    for (final worker in _allPaidWorkers()) {
+      final start = AppDateUtils.dateFromValue(worker['payPeriodStart']);
+      final end = AppDateUtils.dateFromValue(worker['payPeriodEnd']);
+      if (start == null || end == null) continue;
+      final period = PayrollPeriod(start: start, end: end);
+      final key = '${PayrollService.periodDateKey(start)}_${PayrollService.periodDateKey(end)}';
+      final existing = map[key];
+      map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
+    }
+
+    // Fallback: when no paid period carries date fields yet (no payroll run or
+    // legacy records), show the current cycle so the dropdown is never empty.
+    if (map.isEmpty) {
+      final selected = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+      map['${PayrollService.periodDateKey(selected.start)}_${PayrollService.periodDateKey(selected.end)}'] = (
+        period: selected,
+        paidCount: 0,
+      );
+    }
+
+    final options = map.values.toList()
+      ..sort((a, b) => b.period.end.compareTo(a.period.end));
+    return options
+        .map(
+          (o) => (
+            period: o.period,
+            label: PayrollService.formatPayPeriodRange(o.period.start, o.period.end),
+            paidCount: o.paidCount,
+          ),
+        )
+        .toList();
+  }
+
+  /// Opens a dropdown (anchored to the pay-period label) listing the available
+  /// pay periods; selecting one switches the payroll list below to that cycle.
+  Future<void> _showPaidWorkersDropdown(BuildContext anchor) async {
+    final options = _payPeriodOptions();
+    final selectedKey = '${PayrollService.periodDateKey(_payPeriodStart)}_${PayrollService.periodDateKey(_payPeriodEnd)}';
+
+    final overlay = Overlay.of(context);
+    final overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    final overlaySize = overlayBox?.size ?? MediaQuery.of(context).size;
+    final box = anchor.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final anchorRect = Rect.fromPoints(
+      box.localToGlobal(Offset.zero, ancestor: overlay.context.findRenderObject()),
+      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay.context.findRenderObject()),
+    );
+
+    final selected = await showMenu<({PayrollPeriod period, String label, int paidCount})>(
+      context: context,
+      // Open just below the date label (with a small gap) instead of on top of it.
+      position: RelativeRect.fromRect(anchorRect.translate(0, anchorRect.height + 6), Offset.zero & overlaySize),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
+      ),
+      color: const Color(0xFFFFFFFF),
+      elevation: 4,
+      items: [
+        for (final option in options)
+          PopupMenuItem(
+            value: option,
+            height: 44,
+            child: Row(
+              children: [
+                Icon(
+                  '${PayrollService.periodDateKey(option.period.start)}_${PayrollService.periodDateKey(option.period.end)}' == selectedKey
+                      ? Icons.check_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 16,
+                  color: '${PayrollService.periodDateKey(option.period.start)}_${PayrollService.periodDateKey(option.period.end)}' == selectedKey
+                      ? const Color(0xFF0247C4)
+                      : const Color(0xFF9CA3AF),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    option.label,
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                  ),
+                ),
+                if (option.paidCount > 0) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${option.paidCount}',
+                      style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+
+    if (selected == null || !mounted) return;
+    // Switch the main payroll list to the selected cycle (no popup).
+    setState(() {
+      _payPeriodStart = selected.period.start;
+      _payPeriodEnd = selected.period.end;
+      _payrollMonth = DateTime(selected.period.end.year, selected.period.end.month, 1);
+      _selectedFilter = 'All';
+      _combinePayroll();
+    });
+    _scheduleAttendanceFetch();
+  }
+
   Widget _buildSearchBar() {
     return Container(
       height: 50,
@@ -1308,60 +1693,11 @@ if (day == 0) {
   }
 
   Widget _buildListHeader() {
-    final hasCurrentPayable = _currentPayablePayrollWorkers.isNotEmpty;
-
     return Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('pay_roll_list'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
-              const SizedBox(height: 5),
-              Text(
-                'current_pay_period_label'.tr(namedArgs: {'period': _payPeriodLabelFor(_payrollMonth)}),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF667085), fontFamily: 'SF Pro Display'),
-              ),
-            ],
-          ),
+          child: Text('pay_roll_list'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
         ),
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: ElevatedButton.icon(
-            onPressed: _showSetPayDayDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0247C4), foregroundColor: const Color(0xFFFFFFFF),
-              minimumSize: const Size(32, 50), padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), elevation: 0,
-            ),
-            icon: const Icon(Icons.calendar_month_rounded, size: 21, color: Color(0xFFFFFFFF)),
-            label: Text(_payDayButtonLabel(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
-          ),
-        ),
-        if (_isCurrentCycleDue)
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ElevatedButton.icon(
-              onPressed: _isRunningPayroll || !hasCurrentPayable
-                  ? null
-                  : () {
-                      if (_isGuest) { showGuestRestrictionDialog(context); return; }
-                      _handlePayAll();
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF27AE60),
-                disabledBackgroundColor: const Color(0xFF27AE60).withValues(alpha: 0.4),
-                foregroundColor: const Color(0xFFFFFFFF),
-                disabledForegroundColor: const Color(0xFFFFFFFF).withValues(alpha: 0.7),
-                minimumSize: const Size(32, 50), padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), elevation: 0,
-              ),
-              icon: _isRunningPayroll
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFFFFF)))
-                  : SvgPicture.asset('assets/payroll_icon.svg', width: 22, height: 22, colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
-              label: Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
-            ),
-          ),
         _buildFilterDropdown(),
       ],
     );
@@ -1655,11 +1991,42 @@ if (day == 0) {
     );
   }
 
+  Future<Map<String, int>> _attendanceCountsForRecord(Map<String, dynamic> data) async {
+    final workerId = (data['workerId'] ?? data['id'] ?? '').toString().trim();
+    final email = (data['email'] ?? '').toString().trim();
+    final start = AppDateUtils.dateFromValue(data['payPeriodStart']) ?? _payPeriodStart;
+    final end = AppDateUtils.dateFromValue(data['payPeriodEnd']) ?? _payPeriodEnd;
+
+    if (email.isEmpty && workerId.isEmpty) {
+      return PayrollService.attendanceCounts(data);
+    }
+
+    try {
+      final month = DateTime(end.year, end.month, 1);
+      final fresh = await _firestore.getWorkerMonthlyAttendance(
+        email,
+        workerId: workerId,
+        month: month,
+        startDate: start,
+        endDate: end,
+        preFetchedRecords: _liveAttendanceRecords,
+      );
+      return {
+        'absents': fresh['absents'] ?? 0,
+        'paidLeaves': fresh['paidLeaves'] ?? 0,
+        'unpaidLeaves': fresh['unpaidLeaves'] ?? 0,
+        'leaves': fresh['leaves'] ?? 0,
+      };
+    } catch (_) {
+      return PayrollService.attendanceCounts(data);
+    }
+  }
+
   Future<void> _downloadPayrollInvoice(Map<String, dynamic> data) async {
     if (!mounted) return;
     FlashySnackBar.show(context, message: 'generating_invoices'.tr());
     try {
-      final counts = PayrollService.attendanceCounts(data);
+      final counts = await _attendanceCountsForRecord(data);
       final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
       final absents = (counts['absents'] ?? 0).toString();
       final paidLeaves = (counts['paidLeaves'] ?? 0).toString();
@@ -1700,6 +2067,22 @@ if (day == 0) {
       Map<String, dynamic> companyProfile = const {};
       try { companyProfile = await _firestore.getUserProfile() ?? const {}; } catch (_) {}
 
+      Uint8List? employeeImageBytes;
+      final profileImageSource = (data['profileImage'] ?? '').toString();
+      if (profileImageSource.trim().isNotEmpty) {
+        try {
+          final rawImage = await ImageLoader.load(
+            source: profileImageSource,
+            maxSizeBytes: 10 * 1024 * 1024,
+            timeout: const Duration(seconds: 5),
+            convertToPng: false,
+          );
+          if (rawImage != null && rawImage.isNotEmpty) {
+            employeeImageBytes = compressImageBytes(rawImage, maxWidth: 256, quality: 80);
+          }
+        } catch (_) {}
+      }
+
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: (data['name'] ?? '').toString(),
         email: (data['email'] ?? '').toString(),
@@ -1729,6 +2112,7 @@ if (day == 0) {
         companyLogoUrl: (companyProfile['profilePic'] ?? '').toString(),
         invoiceNo: (data['invoiceNo'] ?? data['invoiceNumber'] ?? '').toString(),
         workerId: (data['workerId'] ?? data['id'] ?? '').toString(),
+        employeeImageBytes: employeeImageBytes,
       );
 
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
@@ -1744,12 +2128,61 @@ if (day == 0) {
     }
   }
 
-  void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index) async {
+  /// The true current pay cycle (computed from today + salary pay day), which
+  /// stays stable even when the user views an older cycle via the dropdown.
+  PayrollPeriod _trueCurrentPayrollCycle() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final payDay = _salaryPayDay;
+    if (payDay == null) {
+      return PayrollPeriod(
+        start: PayrollService.payPeriodStart(now),
+        end: PayrollService.payPeriodEnd(now),
+      );
+    }
+    final normalized = payDay.clamp(1, 28);
+    final lastDayThisMonth = DateTime(now.year, now.month + 1, 0).day;
+    final lastDayPrevMonth = DateTime(now.year, now.month, 0).day;
+    final lastDayNextMonth = DateTime(now.year, now.month + 2, 0).day;
+    final payDayThisMonth = DateTime(now.year, now.month, normalized.clamp(1, lastDayThisMonth));
+    if (today.isAfter(payDayThisMonth)) {
+      return PayrollPeriod(
+        start: payDayThisMonth,
+        end: DateTime(now.year, now.month + 1, normalized.clamp(1, lastDayNextMonth)),
+      );
+    }
+    return PayrollPeriod(
+      start: DateTime(now.year, now.month - 1, normalized.clamp(1, lastDayPrevMonth)),
+      end: payDayThisMonth,
+    );
+  }
+
+  /// Whether the given payroll record belongs to the current pay cycle — only
+  /// those can be edited; older (completed) cycles are read-only.
+  bool _recordInCurrentPayrollCycle(Map<String, dynamic> data) {
+    final current = _trueCurrentPayrollCycle();
+    final start = AppDateUtils.dateFromValue(data['payPeriodStart']);
+    final end = AppDateUtils.dateFromValue(data['payPeriodEnd']);
+    if (start != null && end != null && start.isBefore(end)) {
+      return PayrollService.payrollPeriodsEqual(PayrollPeriod(start: start, end: end), current);
+    }
+    // Records without saved period dates: compare against the displayed period.
+    // This only matches the current cycle when the user hasn't switched to a
+    // past cycle via the dropdown.
+    return PayrollService.payrollPeriodsEqual(
+      PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+      current,
+    );
+  }
+
+  void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index, {bool readOnly = false}) async {
+    final isPaidRecord = data['isPaid'] == true || data['hasPaidPayrollRecord'] == true || (data['status'] ?? '').toString().trim().toLowerCase() == 'paid';
+    final canEdit = !readOnly && !isPaidRecord && _recordInCurrentPayrollCycle(data);
     final name = (data['name'] ?? '').toString();
     final email = (data['email'] ?? '').toString();
     final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
-    final absents = (data['absents'] ?? '0').toString();
-    final attendanceCounts = PayrollService.attendanceCounts(data);
+    final attendanceCounts = await _attendanceCountsForRecord(data);
+    final absents = (attendanceCounts['absents'] ?? 0).toString();
     final paidLeaves = (attendanceCounts['paidLeaves'] ?? 0).toString();
     final deductionLeaveDays = (attendanceCounts['unpaidLeaves'] ?? 0).toString();
     final rawAbsentDeduction = (data['absentDeduction'] ?? '0').toString();
@@ -1873,24 +2306,25 @@ if (day == 0) {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () async {
-                            final confirmed = await DeleteDialog.show(
-                              context: context,
-                              title: 'edit_payroll'.tr(),
-                              content: 'edit_paid_payroll_confirm'.tr(),
-                              confirmButtonText: 'yes',
-                            );
-                            if (confirmed && ctx.mounted) Navigator.of(ctx).pop('edit');
-                          },
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10, right: 4),
-                              child: SvgPicture.asset('assets/edit_icon.svg', height: 20, width: 20, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                        if (canEdit)
+                          GestureDetector(
+                            onTap: () async {
+                              final confirmed = await DeleteDialog.show(
+                                context: context,
+                                title: 'edit_payroll'.tr(),
+                                content: 'edit_paid_payroll_confirm'.tr(),
+                                confirmButtonText: 'yes',
+                              );
+                              if (confirmed && ctx.mounted) Navigator.of(ctx).pop('edit');
+                            },
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10, right: 4),
+                                child: SvgPicture.asset('assets/edit_icon.svg', height: 20, width: 20, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                              ),
                             ),
                           ),
-                        ),
                         const SizedBox(width: 2),
                         _PayrollInvoiceShareButton(onShare: () => _downloadPayrollInvoice(data)),
                       ],

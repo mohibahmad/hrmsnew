@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -15,15 +15,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image/image.dart' as img;
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
-import '../services/upload_service.dart';
-import '../utils/utils.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/upload_service.dart';
+import '../../utils/utils.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/notification_bell.dart';
 
 const int _maxProfileImageBytes = 10 * 1024 * 1024;
 const int _maxCompanyStampBytes = 5 * 1024 * 1024;

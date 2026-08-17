@@ -3,25 +3,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
-import '../widgets/clickable_gesture_detector.dart';
+import '../../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
-import '../services/biometric_service.dart';
-import '../services/error_reporter.dart';
-import '../utils/utils.dart';
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
-import '../utils/auth_widgets.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/biometric_service.dart';
+import '../../services/error_reporter.dart';
+import '../../utils/utils.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
+import '../../utils/auth_widgets.dart';
 
 import 'forgot_password_screen.dart';
-import 'home_screen.dart';
-import '../shared/app_constants.dart';
+import '../general/home_screen.dart';
+import '../../shared/app_constants.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

@@ -16,13 +16,26 @@ class PdfHelpers {
     }
   }
 
+  static pw.Font? _cachedFont;
+
   static Future<pw.Font?> loadFont() async {
+    
+    if (_cachedFont != null) return _cachedFont;
     try {
       final fontData = await (_fontDataFuture ??= _loadFontData());
-      return fontData != null ? pw.Font.ttf(fontData) : null;
+      final font = fontData != null ? pw.Font.ttf(fontData) : null;
+      _cachedFont = font;
+      return font;
     } catch (_) {
       return null;
     }
+  }
+
+   
+  static Future<Uint8List?> loadFontBytes() async {
+    final data = await (_fontDataFuture ??= _loadFontData());
+    if (data == null) return null;
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
 
   static pw.ThemeData buildTheme(pw.Font? font) {

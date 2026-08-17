@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'package:csv/csv.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -13,25 +13,25 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../providers.dart';
-import '../services/attendance_report_service.dart';
-import '../services/attendance_service.dart';
-import '../services/auth_service.dart';
-import '../services/dummy_data.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/time_off_service.dart';
-import '../utils/utils.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/custom_timeframe_dropdown.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/attendance_report_service.dart';
+import '../../services/attendance_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/time_off_service.dart';
+import '../../utils/utils.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/custom_timeframe_dropdown.dart';
+import '../../widgets/notification_bell.dart';
 import 'workers_attendance_screen.dart';
 
 const Color _kPrimaryBlue = AppColors.buttonBlue;
 const Color _kBgGray = AppColors.bgGrayLight;
 const Color _kTextDark = AppColors.black;
 const Color _kGreenPresent = AppColors.presentGreen;
-const Color _kRedAbsent = AppColors.absentRed;
+const Color _kRedAbsent = Color(0xFFF13E5B);
 const Color _kOrangeLeave = AppColors.leaveOrange;
 
 String _generateCsvString(List<List<dynamic>> rows) {
@@ -282,7 +282,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     if (_workersLoaded && _attendanceLoaded) _isLoading = false;
 
     final countable = _selectedTimeframe == 'Today' ? _attendanceDocs : periodAttendance;
-    final counts = AttendanceService.countRecordsByStatus(countable, _timeOffRecords);
+    final counts = AttendanceService.countRecordsByStatus(
+      countable,
+      _timeOffRecords,
+      period: _selectedTimeframe,
+      referenceDate: DateTime.now(),
+    );
     _presentCount = counts['present'] ?? 0;
     _absentCount = counts['absent'] ?? 0;
     _leaveCount = counts['leave'] ?? 0;
@@ -950,10 +955,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         child: ValueListenableBuilder<List<Map<String, dynamic>>>(
           valueListenable: notifier,
           builder: (_, filteredRecords, _) {
-            final totalDays = filteredRecords.length;
-            final absents = filteredRecords.where((d) => d['status'] == 'Absent').length;
-            final leaves = filteredRecords.where((d) => d['status'] == 'Leave').length;
-            final presents = filteredRecords.where((d) => d['status'] == 'Present').length;
+            final now = DateTime.now();
+            final range = AttendanceReportService.rangeForPeriod(previewPeriod, referenceDate: now);
+            final filteredForRange = filteredRecords.where((record) {
+              final recordDate = AttendanceReportService.recordDateForRecord(record);
+              if (recordDate == null) return false;
+              final day = DateTime(recordDate.year, recordDate.month, recordDate.day);
+              return !day.isBefore(range.start) && !day.isAfter(range.end);
+            }).toList();
+
+            final totalDays = filteredForRange.length;
+            final absents = filteredForRange.where((d) => d['status'] == 'Absent').length;
+            final leaves = filteredForRange.where((d) => d['status'] == 'Leave').length;
+            final presents = filteredForRange.where((d) => d['status'] == 'Present').length;
             final percentage = totalDays > 0 ? (presents / totalDays) * 100 : 0.0;
 
             return WorkerAttendancePreviewCard(
@@ -963,7 +977,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               absents: absents,
               leaves: leaves,
               percentage: percentage,
-              workerRecords: filteredRecords,
+              workerRecords: filteredForRange,
               period: previewPeriod,
             );
           },
@@ -1712,7 +1726,7 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
   static const Color _lightGreenBg = Color(0xFFE4F9E8);
   static const Color _darkGreen = Color(0xFF00C853);
   static const Color _lightRedBg = Color(0xFFFCE9EA);
-  static const Color _darkRed = Color(0xFFFF1717);
+  static const Color _darkRed = Color(0xFFF13E5B);
   static const Color _lightOrangeBg = Color(0xFFFEF0E2);
   static const Color _darkOrange = Color(0xFFFF8A00);
 

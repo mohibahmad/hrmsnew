@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -17,15 +17,15 @@ import 'package:pdfx/pdfx.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/dummy_data.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/upload_service.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/notification_bell.dart';
-import 'add_worker_flow.dart' show DocPreview, PdfPagePreview;
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/upload_service.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/notification_bell.dart';
+import '../workers/add_worker_flow.dart' show DocPreview, PdfPagePreview;
 
 class DocumentsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

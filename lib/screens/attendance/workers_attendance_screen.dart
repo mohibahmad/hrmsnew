@@ -1,27 +1,27 @@
 import 'dart:async';
 
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
-import '../widgets/clickable_gesture_detector.dart';
+import '../../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
-import '../services/attendance_service.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/dummy_data.dart';
-import '../services/time_off_service.dart';
-import '../services/preferences_service.dart';
-import '../widgets/sidebar_widget.dart';
+import '../../services/auth_service.dart';
+import '../../services/attendance_service.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/time_off_service.dart';
+import '../../services/preferences_service.dart';
+import '../../widgets/sidebar_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
-import '../utils/utils.dart' as app_date_utils;
-import '../widgets/notification_bell.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
+import '../../providers.dart';
+import '../../utils/utils.dart' as app_date_utils;
+import '../../widgets/notification_bell.dart';
+import '../auth/login_screen.dart';
+import '../general/home_screen.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);

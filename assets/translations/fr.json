@@ -1269,6 +1269,7 @@
   "payroll_run_complete": "Paie terminée ! {count} travailleurs traités.",
   "all_workers_already_paid": "Tous les travailleurs ont déjà été payés pour cette période.",
   "processing_payroll": "Traitement de la paie, veuillez patienter...",
+  "sending_payroll": "Envoi de la paie...",
   "payroll_success_count": "{count} Réussis",
   "run_payroll_now": "Exécuter la Paie Maintenant",
   "select_date_range": "Sélectionner la Plage de Dates",
@@ -1502,5 +1503,6 @@
   "biometric_locked_out": "Trop de tentatives échouées. Veuillez réessayer plus tard.",
   "biometric_permanently_locked_out": "L'authentification biométrique est définitivement verrouillée. Veuillez utiliser votre mot de passe pour vous connecter.",
   "file_downloaded_successfully": "Fichier téléchargé avec succès.",
-  "could_not_download_file": "Impossible de télécharger le fichier. Veuillez réessayer."
+  "could_not_download_file": "Impossible de télécharger le fichier. Veuillez réessayer.",
+  "paid_workers": "Employés Payés"
 }

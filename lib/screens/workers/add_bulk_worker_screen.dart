@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
@@ -13,20 +13,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../models/worker.dart';
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/bulk_worker_csv_service.dart';
-import '../services/bulk_worker_media_service.dart';
-import '../services/dummy_data.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/time_off_service.dart';
-import '../services/upload_service.dart';
-import '../utils/utils.dart';
-import '../widgets/bulk_worker_edit_dialog.dart';
-import '../widgets/notification_bell.dart';
-import '../widgets/unsaved_changes_dialog.dart';
+import '../../models/worker.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/bulk_worker_csv_service.dart';
+import '../../services/bulk_worker_media_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/time_off_service.dart';
+import '../../services/upload_service.dart';
+import '../../utils/utils.dart';
+import '../../widgets/bulk_worker_edit_dialog.dart';
+import '../../widgets/notification_bell.dart';
+import '../../widgets/unsaved_changes_dialog.dart';
 
 class UploadProgress {
   final String phase;

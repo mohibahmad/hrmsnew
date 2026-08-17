@@ -1,5 +1,5 @@
 import 'dart:ui';
-import '../utils/ui_helpers.dart';
+import '../../utils/ui_helpers.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,15 +10,15 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
-import '../shared/app_constants.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../services/preferences_service.dart';
+import '../../shared/app_constants.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/notification_bell.dart';
 import 'home_screen.dart';
-import 'login_screen.dart';
+import '../auth/login_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

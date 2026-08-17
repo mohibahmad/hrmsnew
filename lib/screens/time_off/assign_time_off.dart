@@ -1,24 +1,24 @@
 import 'dart:async';
 import 'dart:ui' as ui;
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
-import '../widgets/unsaved_changes_dialog.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
+import '../../widgets/unsaved_changes_dialog.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/dummy_data.dart';
-import '../services/error_reporter.dart';
-import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
-import '../services/time_off_service.dart';
-import '../utils/utils.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/error_reporter.dart';
+import '../../services/firestore_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/time_off_service.dart';
+import '../../utils/utils.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/notification_bell.dart';
 
 class AssignTimeOffScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;
@@ -455,6 +455,18 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
       _calendarMonth2 =
           DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+
+      // Only jump to the current month when starting fresh (no dates yet).
+      // When editing an existing record the calendar must open on the
+      // record's own month — even if it's in the past.
+      if (_selectedDates.isEmpty) {
+        final now = DateTime.now();
+        final currentMonth = DateTime(now.year, now.month, 1);
+        if (_calendarMonth.isBefore(currentMonth)) {
+          _calendarMonth = currentMonth;
+          _calendarMonth2 = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+        }
+      }
     }
   }
 
@@ -962,6 +974,17 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
       _calendarMonth2 =
           DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+
+      // Same rule as _resetFormFields: keep the record's own month when it
+      // has dates; only clamp to the current month when starting fresh.
+      if (_selectedDates.isEmpty) {
+        final now = DateTime.now();
+        final currentMonth = DateTime(now.year, now.month, 1);
+        if (_calendarMonth.isBefore(currentMonth)) {
+          _calendarMonth = currentMonth;
+          _calendarMonth2 = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+        }
+      }
     }
 
     _invalidateDateTypeMap();

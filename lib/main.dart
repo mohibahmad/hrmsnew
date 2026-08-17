@@ -14,8 +14,8 @@ import 'package:window_manager/window_manager.dart';
 import 'providers.dart';
 
 import 'firebase_options.dart';
-import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/auth/splash_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/dummy_data.dart';

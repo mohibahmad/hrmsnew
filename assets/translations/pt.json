@@ -1279,6 +1279,7 @@
   "payroll_run_complete": "Folha de pagamento concluída! {count} trabalhadores processados.",
   "all_workers_already_paid": "Todos os trabalhadores já foram pagos para este período.",
   "processing_payroll": "Processando folha de pagamento, aguarde...",
+  "sending_payroll": "Enviando folha de pagamento...",
   "payroll_success_count": "{count} Bem-sucedidos",
   "run_payroll_now": "Executar Folha de Pagamento Agora",
   "select_date_range": "Selecionar Intervalo de Datas",
@@ -1502,5 +1503,6 @@
   "biometric_locked_out": "Muitas tentativas falharam. Por favor, tente novamente mais tarde.",
   "biometric_permanently_locked_out": "A autenticação biométrica está bloqueada permanentemente. Por favor, use sua senha para fazer login.",
   "file_downloaded_successfully": "Arquivo baixado com sucesso.",
-  "could_not_download_file": "Não foi possível baixar o arquivo. Por favor, tente novamente."
+  "could_not_download_file": "Não foi possível baixar o arquivo. Por favor, tente novamente.",
+  "paid_workers": "Trabalhadores Pagos"
 }

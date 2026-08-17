@@ -1672,8 +1672,24 @@ class FirestoreService {
         });
       }
       if (workerBalanceUpdate != null) transaction.update(workerRef, workerBalanceUpdate);
-      for (final snapshot in attendanceSnapshots.values) {
+      // Cancelling a Time Off must never auto-restore attendance to "Present".
+      // Removing a leave only proves the leave is gone - it does NOT prove the
+      // employee showed up. Safe professional flow:
+      //   - Future dates: leave removal has no effect on attendance at all.
+      //   - Today/past dates: the linked attendance record is removed so the
+      //     day becomes "Not Marked" and HR decides Present/Absent manually.
+      //     (The system does not preserve the pre-leave status, so assuming
+      //     "Present" would be an unfounded assumption.)
+      final today = DateTime.now();
+      final normalizedToday = DateTime(today.year, today.month, today.day);
+      for (final entry in attendanceSnapshots.entries) {
+        final snapshot = entry.value;
         if (!snapshot.exists) continue;
+
+        // Future leave removed -> nothing in Attendance.
+        final attendanceDate = AppDateUtils.dateFromValue(entry.key);
+        if (attendanceDate != null && attendanceDate.isAfter(normalizedToday)) continue;
+
         final attendance = (snapshot.data() as Map<String, dynamic>?) ?? const {};
         final source = (attendance['source'] ?? '').toString();
         final linkedId = (attendance['timeOffId'] ?? '').toString().trim();
@@ -1684,40 +1700,16 @@ class FirestoreService {
           continue;
         }
 
-        if (isMissingDocument) {
-                                                  final status = (attendance['status'] ?? '').toString().trim().toLowerCase();
-          final attendanceShowsLeave = {'leave', 'onleave', 'on leave', 'l'}.contains(status) || source == 'auto_leave';
-          if (!attendanceShowsLeave) continue;
-          if (source == 'auto_leave') {
-            transaction.delete(snapshot.reference);
-          } else {
-            transaction.set(
-              snapshot.reference,
-              {
-                'status': 'Present',
-                'type': FieldValue.delete(),
-                'desc': FieldValue.delete(),
-                'timeOffId': FieldValue.delete(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              },
-              SetOptions(merge: true),
-            );
-          }
-          continue;
-        }
+        final status = (attendance['status'] ?? '').toString().trim().toLowerCase();
+        final attendanceShowsLeave = {'leave', 'onleave', 'on leave', 'l'}.contains(status) || source == 'auto_leave';
 
-                                                if (!isLinkedToThisTimeOff) continue;
-        transaction.set(
-          snapshot.reference,
-          {
-            'status': 'Present',
-            'type': FieldValue.delete(),
-            'desc': FieldValue.delete(),
-            'timeOffId': FieldValue.delete(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        final shouldClearLeave = isLinkedToThisTimeOff ||
+            (isMissingDocument && attendanceShowsLeave);
+        if (!shouldClearLeave) continue;
+
+        // Today/past leave removed -> "Not Marked": delete the record so HR
+        // re-marks Present/Absent manually instead of assuming Present.
+        transaction.delete(snapshot.reference);
       }
     });
   }

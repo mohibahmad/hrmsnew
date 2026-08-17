@@ -240,10 +240,12 @@ class AttendanceService {
 
   static Map<String, int> countRecordsByStatus(
     List<Map<String, dynamic>> records,
-    List<Map<String, dynamic>> timeOffRecords,
-  ) {
+    List<Map<String, dynamic>> timeOffRecords, {
+    String? period,
+    DateTime? referenceDate,
+  }) {
     final latestByKey = <String, Map<String, dynamic>>{};
-    final now = DateTime.now();
+    final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     for (final record in records) {
@@ -261,10 +263,12 @@ class AttendanceService {
           : 'record:$recordId';
 
       final recordDate = AppDateUtils.attendanceRecordDate(record);
-
       if (recordDate != null) {
         final day = DateTime(recordDate.year, recordDate.month, recordDate.day);
         if (day.isAfter(today)) continue;
+        if (period != null && !AppDateUtils.isDateWithinEffectivePeriod(day, period, now: now)) {
+          continue;
+        }
       }
 
       final dayKey = recordDate == null ? 'undated:$recordId' : _dateKey(recordDate);
@@ -282,9 +286,14 @@ class AttendanceService {
 
     for (final record in latestByKey.values) {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
+      final withinPeriod = recordDate == null ||
+          (period == null || AppDateUtils.isDateWithinEffectivePeriod(recordDate, period, now: now));
+      if (!withinPeriod) continue;
 
       final isOnLeave = recordDate != null &&
-          TimeOffService.isWorkerOnLeave(record, timeOffRecords, onDate: recordDate);
+          !recordDate.isAfter(today) &&
+          TimeOffService.isWorkerOnLeave(record, timeOffRecords, onDate: recordDate) &&
+          (period == null || AppDateUtils.isDateWithinEffectivePeriod(recordDate, period, now: now));
 
       final status = normalizedAttendanceStatus(record);
 

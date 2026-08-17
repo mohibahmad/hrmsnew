@@ -1281,6 +1281,7 @@
   "payroll_run_complete": "¡Nómina completada! {count} trabajadores procesados.",
   "all_workers_already_paid": "Todos los trabajadores ya han sido pagados para este período.",
   "processing_payroll": "Procesando nómina, por favor espera...",
+  "sending_payroll": "Enviando nómina...",
   "payroll_success_count": "{count} Exitosos",
   "run_payroll_now": "Ejecutar Nómina Ahora",
   "select_date_range": "Seleccionar Rango de Fechas",
@@ -1502,5 +1503,6 @@
   "biometric_locked_out": "Demasiados intentos fallidos. Por favor, inténtelo más tarde.",
   "biometric_permanently_locked_out": "La autenticación biométrica está bloqueada permanentemente. Por favor, use su contraseña para iniciar sesión.",
   "file_downloaded_successfully": "Archivo descargado exitosamente.",
-  "could_not_download_file": "No se pudo descargar el archivo. Por favor, inténtelo de nuevo."
+  "could_not_download_file": "No se pudo descargar el archivo. Por favor, inténtelo de nuevo.",
+  "paid_workers": "Trabajadores Pagados"
 }

@@ -496,7 +496,6 @@
   "no_time_off_records": "No time off record found",
   "no_records_named_filter": "No time off records found for \"{name}\".",
   "no_records_selected_filter": "No time off records found for the selected filter.",
-  "custom_range": "Custom Range",
   "no_time_off": "No Time Off",
   "no_time_off_record_to_delete": "No time off record to delete",
   "time_off": "Time Off",
@@ -1152,6 +1151,7 @@
   "payroll_run_complete": "Payroll run complete! {count} workers processed.",
   "all_workers_already_paid": "All workers have already been paid for this period.",
   "processing_payroll": "Processing payroll, please wait...",
+  "sending_payroll": "Sending payroll...",
   "no_results": "No results",
   "payroll_auto_triggered": "Today is salary day! Review the payroll run below.",
   "payroll_auto_triggered_title": "Salary Day Payroll",
@@ -1506,5 +1506,6 @@
   "biometric_locked_out": "Too many failed attempts. Please try again later.",
   "biometric_permanently_locked_out": "Biometric authentication is permanently locked. Please use your password to log in.",
   "file_downloaded_successfully": "File downloaded successfully.",
-  "could_not_download_file": "Could not download file. Please try again."
+  "could_not_download_file": "Could not download file. Please try again.",
+  "paid_workers": "Paid Workers"
 }

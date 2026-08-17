@@ -1,7 +1,7 @@
 import 'dart:async';
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
-import '../utils/calendar_widgets.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
+import '../../utils/calendar_widgets.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -9,16 +9,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../services/dummy_data.dart';
-import '../services/firestore_service.dart';
-import '../services/payroll_service.dart';
-import '../services/preferences_service.dart';
-import '../utils/utils.dart';
-import '../widgets/clickable_gesture_detector.dart';
-import '../widgets/custom_timeframe_dropdown.dart';
-import '../widgets/notification_bell.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/firestore_service.dart';
+import '../../services/payroll_service.dart';
+import '../../services/preferences_service.dart';
+import '../../utils/utils.dart';
+import '../../widgets/clickable_gesture_detector.dart';
+import '../../widgets/custom_timeframe_dropdown.dart';
+import '../../widgets/notification_bell.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

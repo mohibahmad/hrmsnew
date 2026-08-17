@@ -136,11 +136,10 @@ class DashboardChartService {
   }
 
   static bool isDateWithinPeriod(DateTime date, String period, {DateTime? now}) {
-    final currentValue = now ?? DateTime.now();
-    final start = AppDateUtils.periodStart(period, currentValue);
-    final end = AppDateUtils.periodEnd(period, currentValue);
-    final target = _dateOnly(date);
-    return !target.isBefore(_dateOnly(start)) && !target.isAfter(_dateOnly(end));
+    // Shared future-date exclusion rule: effectiveEnd = min(periodEnd, today),
+    // so approved Time Off in the future is never counted in attendance/leave
+    // statistics before those dates occur.
+    return AppDateUtils.isDateWithinEffectivePeriod(date, period, now: now);
   }
 
   static List<Map<String, dynamic>> leaveDaysForPeriod({

@@ -79,7 +79,7 @@ class AttendanceReportService {
       _ => today,
     };
 
-    final end = switch (normalized) {
+    final rawEnd = switch (normalized) {
       'Today' => today,
       'Week' => start.add(const Duration(days: 6)),
       'Month' => DateTime(today.year, today.month + 1, 0),
@@ -88,6 +88,11 @@ class AttendanceReportService {
       'All Time' => DateTime(2099, 12, 31),
       _ => today,
     };
+
+    // Shared future-date exclusion rule: effectiveEnd = min(rangeEnd, today),
+    // so approved Time Off in the future is never counted in attendance
+    // statistics before those dates occur.
+    final end = rawEnd.isAfter(today) ? today : DateTime(rawEnd.year, rawEnd.month, rawEnd.day);
 
     return AttendanceDateRange(start: start, end: end);
   }

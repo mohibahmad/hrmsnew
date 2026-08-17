@@ -1,25 +1,25 @@
-import '../utils/ui_helpers.dart';
-import '../utils/helpers.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/helpers.dart';
 
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
-import '../widgets/clickable_gesture_detector.dart';
+import '../../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
-import '../services/dummy_data.dart';
-import '../services/preferences_service.dart';
-import '../utils/utils.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../services/dummy_data.dart';
+import '../../services/preferences_service.dart';
+import '../../utils/utils.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
-import '../widgets/unsaved_changes_dialog.dart';
-import '../widgets/notification_bell.dart';
-import '../widgets/amount_text.dart';
-import '../services/worker_profile_service.dart';
+import '../../widgets/unsaved_changes_dialog.dart';
+import '../../widgets/notification_bell.dart';
+import '../../widgets/amount_text.dart';
+import '../../services/worker_profile_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../../providers.dart';
 
 String? _safeOptionalString(dynamic value) {
   if (value is! String) return null;

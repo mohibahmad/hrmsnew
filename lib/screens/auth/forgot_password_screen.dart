@@ -3,12 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../utils/ui_helpers.dart';
-import '../utils/auth_widgets.dart';
+import '../../utils/ui_helpers.dart';
+import '../../utils/auth_widgets.dart';
 
-import '../providers.dart';
-import '../services/auth_service.dart';
-import '../shared/app_constants.dart';
+import '../../providers.dart';
+import '../../services/auth_service.dart';
+import '../../shared/app_constants.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});

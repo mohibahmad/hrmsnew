@@ -6,10 +6,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+// ignore: implementation_imports
+import 'package:easy_localization/src/localization.dart' show Localization;
+// ignore: implementation_imports
+import 'package:easy_localization/src/translations.dart' show Translations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/utils.dart';
+import '../utils/pdf_helpers.dart';
+import '../utils/image_loader.dart';
 import 'dart:io';
 import 'firestore_service.dart';
 import 'payroll_service.dart';
@@ -31,6 +37,163 @@ Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
   final encoded = ZipEncoder().encode(archive);
   if (encoded.isEmpty) throw StateError('ZIP encoding failed');
   return Uint8List.fromList(encoded);
+}
+
+String _formatDayCount(num value) {
+  final numeric = value.toDouble();
+  return numeric == numeric.roundToDouble()
+      ? numeric.toStringAsFixed(0)
+      : numeric.toStringAsFixed(1);
+}
+
+String _invoiceMoney(double amount, String currency) {
+  if (!amount.isFinite || amount <= 0) return '0';
+  final value = PayrollService.formatFullNumber(amount);
+  return currency.trim().isEmpty ? value : '${currency.trim()} $value';
+}
+
+Future<Map<String, dynamic>> _loadLocaleTranslations(String languageCode) async {
+  try {
+    final jsonStr = await rootBundle.loadString(
+      'assets/translations/$languageCode.json',
+    );
+    final decoded = jsonDecode(jsonStr);
+    if (decoded is Map<String, dynamic>) return decoded;
+    return const {};
+  } catch (_) {
+    return const {};
+  }
+}
+
+/// Generates several payroll invoice PDFs inside one background isolate.
+/// All inputs travel through [argsList] as sendable values so the isolate
+/// never touches rootBundle, the network or Flutter bindings. The shared
+/// ~6MB font is parsed once per isolate (cached in InvoiceService) and reused
+/// for every invoice in the batch, instead of re-parsing it per worker.
+Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
+  List<Map<String, Object?>> argsList,
+) async {
+  final files = <Map<String, Object>>[];
+  for (final args in argsList) {
+    try {
+      files.add(await _generatePayrollInvoiceFile(args));
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceGeneration');
+    }
+  }
+  return files;
+}
+
+/// Generates a single payroll invoice PDF inside a background isolate.
+/// All inputs travel through [args] as sendable values so the isolate never
+/// touches rootBundle, the network or Flutter bindings.
+Future<Map<String, Object>> _generatePayrollInvoiceFile(
+  Map<String, Object?> args,
+) async {
+  final index = args['index']! as int;
+  final workerId = (args['workerId'] ?? '') as String;
+  final workerName = (args['workerName'] ?? '') as String;
+  final email = (args['email'] ?? '') as String;
+  final position = (args['position'] ?? '') as String;
+  final salary = (args['salary'] ?? '') as String;
+  final salaryType = (args['salaryType'] ?? 'Monthly') as String;
+  final totalWorkDays = (args['totalWorkDays'] ?? '') as String;
+  final absents = args['absents']! as int;
+  final halfDays = args['halfDays']! as int;
+  final leaves = args['leaves']! as int;
+  final paidLeaves = args['paidLeaves']! as int;
+  final unpaidLeaves = args['unpaidLeaves']! as int;
+  final overtimeAmount = (args['overtimeAmount'] ?? '0') as String;
+  final prorationFactor = (args['prorationFactor'] ?? 1.0) as double;
+  final absentDeduction = (args['absentDeduction'] ?? '') as String;
+  final leaveDeduction = (args['leaveDeduction'] ?? '') as String;
+  final customDeduction = (args['customDeduction'] ?? '') as String;
+  final currency = (args['currency'] ?? CurrencyUtils.defaultCode) as String;
+  final periodDisplay = (args['periodDisplay'] ?? '') as String;
+  final payPeriod = (args['payPeriod'] ?? '') as String;
+  final fontBytes = args['fontBytes'] as Uint8List?;
+  final companyLogoBytes = args['companyLogoBytes'] as Uint8List?;
+  final companyStampBytes = args['companyStampBytes'] as Uint8List?;
+  final companyName = (args['companyName'] ?? 'HRMS') as String;
+  final companyAddress = (args['companyAddress'] ?? '') as String;
+  final companyEmail = (args['companyEmail'] ?? '') as String;
+  final companyPhone = (args['companyPhone'] ?? '') as String;
+  final companyId = (args['companyId'] ?? '') as String;
+  final locale = (args['locale'] ?? 'en') as String;
+  final translations =
+      (args['translations'] ?? const <String, dynamic>{}) as Map<String, dynamic>;
+  final employeeImageBytes = args['employeeImageBytes'] as Uint8List?;
+
+  // Seed easy_localization so invoice labels stay localized inside the isolate.
+  try {
+    Localization.load(
+      Locale(locale),
+      translations: Translations(translations),
+      useFallbackTranslationsForEmptyResources: true,
+    );
+  } catch (_) {}
+
+  final enteredSalary = PayrollService.extractSalary(salary);
+  final rawSalary =
+      salaryType.trim().toLowerCase() == 'annual' ? enteredSalary / 12 : enteredSalary;
+  final workDays = int.tryParse(totalWorkDays) ?? 30;
+  final absentEquivalent = absents + (halfDays * 0.5);
+  final overtimeAmt = PayrollService.extractSalary(overtimeAmount);
+
+  final grossSalary = rawSalary * prorationFactor;
+  final absentDeductionTotal = PayrollService.extractSalary(absentDeduction);
+  final leaveDeductionTotal = PayrollService.extractSalary(leaveDeduction);
+  final totalDeductions =
+      PayrollService.extractSalary(customDeduction) +
+      absentDeductionTotal +
+      leaveDeductionTotal;
+  final netSalary = (grossSalary + overtimeAmt - totalDeductions).clamp(0.0, double.infinity);
+  final currencySymbol = PayrollService.getCurrencySymbol(currency);
+
+  final pdfBytes = await InvoiceService.generatePayrollInvoice(
+    employeeName: workerName,
+    email: email,
+    position: position,
+    payPeriod: periodDisplay,
+    totalWorkDays: totalWorkDays,
+    absents: _formatDayCount(absentEquivalent),
+    leaves: leaves.toString(),
+    paidLeaves: paidLeaves.toString(),
+    unpaidLeaves: unpaidLeaves.toString(),
+    overtimeAmount: _invoiceMoney(overtimeAmt, currencySymbol),
+    salary: salary,
+    dailyRate: _invoiceMoney(
+      workDays > 0 ? grossSalary / workDays : 0.0,
+      currencySymbol,
+    ),
+    grossPay: _invoiceMoney(grossSalary, currencySymbol),
+    overtimePay: _invoiceMoney(overtimeAmt, currencySymbol),
+    absentDeduction: _invoiceMoney(absentDeductionTotal, currencySymbol),
+    leaveDeduction: _invoiceMoney(leaveDeductionTotal, currencySymbol),
+    totalDeductions: _invoiceMoney(totalDeductions, currencySymbol),
+    netSalary: _invoiceMoney(netSalary, currencySymbol),
+    currency: currencySymbol,
+    companyName: companyName,
+    companyAddress: companyAddress,
+    companyEmail: companyEmail,
+    companyPhone: companyPhone,
+    companyId: companyId,
+    companyLogoBytes: companyLogoBytes,
+    companyStampBytes: companyStampBytes,
+    workerId: workerId,
+    fontBytes: fontBytes,
+    employeeImageBytes: employeeImageBytes,
+  );
+
+  final sanitizedName = workerName
+      .replaceAll(RegExp(r'[^\w\s]'), '')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), '_');
+  final safeName = sanitizedName.isNotEmpty ? sanitizedName : 'worker_${index + 1}';
+  return <String, Object>{
+    'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
+    'bytes': pdfBytes,
+  };
 }
 
 class AutoPayrollResult {
@@ -729,31 +892,39 @@ class PayrollRunner {
         results: selectedResults,
         periodLabel: summary.periodLabel,
       );
-      
+
+      // The dialog closes as soon as the user confirms, so progress is shown
+      // as a FlashySnackBar ("Sending payroll..." -> "Generating invoices...")
+      // instead of a spinner inside the dialog.
       if (!context.mounted) return null;
-      FlashySnackBar.show(context, message: 'processing_payroll'.tr());
-      
+      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
       try {
         await _commitPayrollRun(committedSummary, isGuest, context, periodStart: periodStart, periodEnd: periodEnd);
       } catch (error, stackTrace) {
         if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
+        FlashySnackBar.dismiss();
         if (context.mounted) {
           final msg = error is StateError && error.message.isNotEmpty ? error.message : (error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
           FlashySnackBar.show(context, message: msg, isError: true);
         }
         return null;
       }
-
       if (committedSummary.successCount >= 1 && context.mounted) {
+        FlashySnackBar.show(context, message: 'generating_invoices'.tr(), isLoading: true);
         final paidResults = committedSummary.results.where((r) => r.success).toList();
         await _generateAndSaveZip(context, paidResults, committedSummary.periodLabel, companyProfile, periodStart: periodStart, periodEnd: periodEnd);
       }
+      // If no ZIP was saved (e.g. the user cancelled the save dialog), the
+      // loading toast would stay up forever — clear it.
+      FlashySnackBar.dismiss();
     } else {
       if (!context.mounted) return null;
+      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
       try {
         await _commitPayrollRun(committedSummary, isGuest, context, periodStart: periodStart, periodEnd: periodEnd);
       } catch (error, stackTrace) {
         if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
+        FlashySnackBar.dismiss();
         if (context.mounted) {
           final msg = error is StateError && error.message.isNotEmpty ? error.message : (error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
           FlashySnackBar.show(context, message: msg, isError: true);
@@ -762,9 +933,13 @@ class PayrollRunner {
       }
 
       if (committedSummary.successCount >= 1 && context.mounted) {
+        FlashySnackBar.show(context, message: 'generating_invoices'.tr(), isLoading: true);
         final paidResults = committedSummary.results.where((r) => r.success).toList();
         await _generateAndSaveZip(context, paidResults, committedSummary.periodLabel, companyProfile, periodStart: periodStart, periodEnd: periodEnd);
       }
+      // If no ZIP was saved (e.g. the user cancelled the save dialog), the
+      // loading toast would stay up forever — clear it.
+      FlashySnackBar.dismiss();
     }
 
     if (context.mounted && autoMode) {
@@ -1008,9 +1183,12 @@ class PayrollRunner {
   }) async {
     if (selected.isEmpty) return;
 
-    if (context.mounted) {
-      FlashySnackBar.show(context, message: 'generating_invoices'.tr());
-    }
+    // Read locale before any async gap so translations are seeded correctly in
+    // the background isolates used for parallel generation.
+    final locale = context.locale.languageCode;
+
+    // Invoice generation progress is shown inside the Pay All dialog, so no
+    // snackbar is needed here.
 
     try {
       final now = DateTime.now();
@@ -1026,66 +1204,72 @@ class PayrollRunner {
       final companyLogoBytes = sharedAssets[0];
       final companyStampBytes = sharedAssets[1];
 
-      Future<Map<String, Object>> generateInvoice(int index, AutoPayrollResult r) async {
-        final enteredSalary = PayrollService.extractSalary(r.salary);
-        final rawSalary = r.salaryType.trim().toLowerCase() == 'annual' ? enteredSalary / 12 : enteredSalary;
-        final workDays = int.tryParse(r.totalWorkDays) ?? 30;
-        final absentsInt = r.absents;
-        final absentEquivalent = absentsInt + (r.halfDays * 0.5);
-        final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
+      // Pre-load everything the background isolates need so they never touch
+      // rootBundle, the network or Flutter bindings.
+      final fontBytes = await PdfHelpers.loadFontBytes();
+      final translations = await _loadLocaleTranslations(locale);
 
-        final grossSalary = rawSalary * r.prorationFactor;
-        final absentDeductionTotal = PayrollService.extractSalary(r.absentDeduction);
-        final leaveDeductionTotal = PayrollService.extractSalary(r.leaveDeduction);
-        final totalDeductions = PayrollService.extractSalary(r.customDeduction) + absentDeductionTotal + leaveDeductionTotal;
-        final netSalary = (grossSalary + overtimeAmt - totalDeductions).clamp(0.0, double.infinity);
-        final currency = PayrollService.getCurrencySymbol(r.currency);
-
-        final pdfBytes = await InvoiceService.generatePayrollInvoice(
-          employeeName: r.workerName,
-          email: r.email,
-          position: r.position,
-          payPeriod: periodDisplay,
-          totalWorkDays: r.totalWorkDays,
-          absents: _formatDayCount(absentEquivalent),
-          leaves: r.leaves.toString(),
-          paidLeaves: r.paidLeaves.toString(),
-          unpaidLeaves: r.unpaidLeaves.toString(),
-          overtimeAmount: _invoiceMoney(overtimeAmt, currency),
-          salary: r.salary,
-          dailyRate: _invoiceMoney(workDays > 0 ? grossSalary / workDays : 0.0, currency),
-          grossPay: _invoiceMoney(grossSalary, currency),
-          overtimePay: _invoiceMoney(overtimeAmt, currency),
-          absentDeduction: _invoiceMoney(absentDeductionTotal, currency),
-          leaveDeduction: _invoiceMoney(leaveDeductionTotal, currency),
-          totalDeductions: _invoiceMoney(totalDeductions, currency),
-          netSalary: _invoiceMoney(netSalary, currency),
-          currency: currency,
-          companyName: CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']),
-          companyAddress: (companyProfile['address'] ?? '').toString(),
-          companyEmail: (companyProfile['email'] ?? '').toString(),
-          companyPhone: (companyProfile['phone'] ?? '').toString(),
-          companyId: (companyProfile['companyId'] ?? '').toString(),
-          companyLogoBytes: companyLogoBytes,
-          companyStampBytes: companyStampBytes,
-          workerId: r.workerId,
-        );
-
-        final sanitizedName = r.workerName.replaceAll(RegExp(r'[^\w\s]'), '').trim().replaceAll(RegExp(r'\s+'), '_');
-        final safeName = sanitizedName.isNotEmpty ? sanitizedName : 'worker_${index + 1}';
-        return <String, Object>{
-          'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
-          'bytes': pdfBytes,
-        };
-      }
+      final companyName = CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']);
+      final companyAddress = (companyProfile['address'] ?? '').toString();
+      final companyEmail = (companyProfile['email'] ?? '').toString();
+      final companyPhone = (companyProfile['phone'] ?? '').toString();
+      final companyId = (companyProfile['companyId'] ?? '').toString();
 
       final successful = selected.where((result) => result.success).toList();
+      if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
-      const maxParallelPdfs = 10;
-      for (var start = 0; start < successful.length; start += maxParallelPdfs) {
-        final end = (start + maxParallelPdfs).clamp(0, successful.length).toInt();
-        final generated = await Future.wait(List.generate(end - start, (offset) => generateInvoice(start + offset, successful[start + offset])));
-        invoiceFiles.addAll(generated);
+      // PDF rendering is CPU-bound, so run it in parallel isolates (one per
+      // core). Each isolate renders a whole chunk of workers and reuses the
+      // shared font + logo/stamp bytes, so we don't pay the isolate spawn +
+      // 6MB font parse cost once per worker.
+      final maxParallel = (Platform.numberOfProcessors - 1).clamp(2, 8).toInt();
+      final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
+      final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
+      // Pre-load every worker's profile photo on the main isolate so the
+      // background render isolates never touch the network or rootBundle.
+      final profileImages = await Future.wait(
+        successful.map((r) => _loadWorkerProfileImage(r.imageUrl)),
+      );
+      for (var index = 0; index < successful.length; index++) {
+        final r = successful[index];
+        chunks[index % chunkCount].add(<String, Object?>{
+          'index': index,
+          'workerId': r.workerId,
+          'workerName': r.workerName,
+          'email': r.email,
+          'position': r.position,
+          'salary': r.salary,
+          'salaryType': r.salaryType,
+          'totalWorkDays': r.totalWorkDays,
+          'absents': r.absents,
+          'halfDays': r.halfDays,
+          'leaves': r.leaves,
+          'paidLeaves': r.paidLeaves,
+          'unpaidLeaves': r.unpaidLeaves,
+          'overtimeAmount': r.overtimeAmount,
+          'prorationFactor': r.prorationFactor,
+          'absentDeduction': r.absentDeduction,
+          'leaveDeduction': r.leaveDeduction,
+          'customDeduction': r.customDeduction,
+          'currency': r.currency,
+          'periodDisplay': periodDisplay,
+          'payPeriod': payPeriod,
+          'fontBytes': fontBytes,
+          'companyLogoBytes': companyLogoBytes,
+          'companyStampBytes': companyStampBytes,
+          'companyName': companyName,
+          'companyAddress': companyAddress,
+          'companyEmail': companyEmail,
+          'companyPhone': companyPhone,
+          'companyId': companyId,
+          'locale': locale,
+          'translations': translations,
+          'employeeImageBytes': profileImages[index],
+        });
+      }
+      final chunkResults = await Future.wait(chunks.map(_generateInvoiceChunkInBackground));
+      for (final files in chunkResults) {
+        invoiceFiles.addAll(files);
       }
       if (invoiceFiles.isEmpty) return;
 
@@ -1116,6 +1300,42 @@ class PayrollRunner {
       if (context.mounted) {
         FlashySnackBar.show(context, message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$e'}), isError: true);
       }
+    }
+  }
+
+  /// Runs one chunk of invoice PDF generations in a single background isolate.
+  /// Returns an empty list on failure so a single bad worker doesn't abort the
+  /// whole batch.
+  Future<List<Map<String, Object>>> _generateInvoiceChunkInBackground(
+    List<Map<String, Object?>> chunkArgs,
+  ) async {
+    try {
+      return await compute(_generatePayrollInvoiceBatch, chunkArgs);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceGeneration');
+      return const [];
+    }
+  }
+
+  /// Loads a worker's profile photo on the main isolate so it can be embedded
+  /// in the invoice PDF. The background render isolates can't touch the
+  /// network or rootBundle, so the bytes must be pre-loaded here (same as the
+  /// company logo/stamp) and passed through the isolate args.
+  Future<Uint8List?> _loadWorkerProfileImage(String? url) async {
+    final source = (url ?? '').trim();
+    if (source.isEmpty) return null;
+    try {
+      final bytes = await ImageLoader.load(
+        source: source,
+        maxSizeBytes: 10 * 1024 * 1024,
+        timeout: const Duration(seconds: 5),
+        convertToPng: false,
+      );
+      if (bytes == null || bytes.isEmpty) return null;
+      // Keep the PDF small: the header photo box is 44x44.
+      return compressImageBytes(bytes, maxWidth: 256, quality: 80);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -1347,10 +1567,12 @@ class PayrollRunner {
                         )
                         .length;
 
-                    return Dialog(
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    return PopScope(
+                      canPop: true,
+                      child: Dialog(
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Center(
                         child: Container(
                           width: dialogWidth,
@@ -2457,10 +2679,11 @@ class PayrollRunner {
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
+            ),
             ),
           ],
         );
@@ -3202,17 +3425,6 @@ class PayrollRunner {
   int _intValue(dynamic value) {
     if (value is num) return value.toInt();
     return int.tryParse((value ?? '0').toString()) ?? 0;
-  }
-
-  String _formatDayCount(num value) {
-    final numeric = value.toDouble();
-    return numeric == numeric.roundToDouble() ? numeric.toStringAsFixed(0) : numeric.toStringAsFixed(1);
-  }
-
-  String _invoiceMoney(double amount, String currency) {
-    if (!amount.isFinite || amount <= 0) return '0';
-    final value = PayrollService.formatFullNumber(amount);
-    return currency.trim().isEmpty ? value : '${currency.trim()} $value';
   }
 
   String _zeroAmount(String salary) {

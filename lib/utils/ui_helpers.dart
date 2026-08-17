@@ -7,8 +7,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers.dart';
-import '../screens/login_screen.dart';
-import '../screens/pricing_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../screens/general/pricing_screen.dart';
 import '../services/preferences_service.dart';
 
 Widget _blurDialogTransition(
@@ -647,6 +647,7 @@ Future<void> _requestReview() async {
 }
 class FlashySnackBar {
   static OverlayEntry? _currentEntry;
+  static bool _currentIsLoading = false;
   static String? _lastMessageKey;
   static DateTime? _lastMessageTime;
 
@@ -657,13 +658,14 @@ class FlashySnackBar {
     required String message,
     String? title,
     bool isError = false,
+    bool isLoading = false,
     int? maxLines = 3,
     Duration displayDuration = const Duration(seconds: 4),
   }) {
     if (!context.mounted) return;
 
     final routeName = ModalRoute.of(context)?.settings.name;
-    final messageKey = '$isError:$title:$message:${routeName ?? ''}';
+    final messageKey = '$isError:$isLoading:$title:$message:${routeName ?? ''}';
     final now = DateTime.now();
     final isDuplicate =
         _lastMessageKey == messageKey &&
@@ -687,6 +689,7 @@ class FlashySnackBar {
         message: message,
         title: title,
         isError: isError,
+        isLoading: isLoading,
         maxLines: maxLines,
         onDismiss: () {
           if (entry.mounted) {
@@ -698,14 +701,31 @@ class FlashySnackBar {
     );
 
     _currentEntry = entry;
+    _currentIsLoading = isLoading;
     overlay.insert(entry);
 
-    Future.delayed(displayDuration, () {
-      if (entry.mounted) {
-        if (_currentEntry == entry) _currentEntry = null;
-        entry.remove();
-      }
-    });
+    // Loading toasts stay visible (replaced by the next toast) so the user
+    // sees continuous progress during long operations.
+    if (!isLoading) {
+      Future.delayed(displayDuration, () {
+        if (entry.mounted) {
+          if (_currentEntry == entry) _currentEntry = null;
+          entry.remove();
+        }
+      });
+    }
+  }
+
+  /// Removes the currently visible toast if it is still a loading toast.
+  /// Safe to call after an operation ends early; a success/error toast that
+  /// replaced the loading one is left untouched.
+  static void dismiss() {
+    if (!_currentIsLoading) return;
+    final entry = _currentEntry;
+    if (entry != null && entry.mounted) {
+      _currentEntry = null;
+      entry.remove();
+    }
   }
 }
 
@@ -713,6 +733,7 @@ class _FlashySnackBarBody extends StatefulWidget {
   final String message;
   final String? title;
   final bool isError;
+  final bool isLoading;
   final int? maxLines;
   final VoidCallback onDismiss;
 
@@ -720,6 +741,7 @@ class _FlashySnackBarBody extends StatefulWidget {
     required this.message,
     this.title,
     required this.isError,
+    this.isLoading = false,
     required this.maxLines,
     required this.onDismiss,
   });
@@ -815,17 +837,26 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         color: const Color(0xFFFFFFFF).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: widget.isError
-                          ? const Icon(
-                              Icons.error_outline,
-                              color: Color(0xFFFFFFFF),
-                              size: 22,
+                      child: widget.isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Color(0xFFFFFFFF),
+                              ),
                             )
-                          : const Icon(
-                              Icons.check_circle_outline,
-                              color: Color(0xFFFFFFFF),
-                              size: 22,
-                            ),
+                          : widget.isError
+                              ? const Icon(
+                                  Icons.error_outline,
+                                  color: Color(0xFFFFFFFF),
+                                  size: 22,
+                                )
+                              : const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Color(0xFFFFFFFF),
+                                  size: 22,
+                                ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -837,6 +868,8 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                             widget.title ??
                                 (widget.isError
                                     ? 'error_title'.tr()
+                                    : widget.isLoading
+                                    ? 'loading'.tr()
                                     : 'success'.tr()),
                             softWrap: true,
                             maxLines: 2,
