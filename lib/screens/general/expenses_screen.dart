@@ -438,7 +438,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               elevation: 10,
               child: Container(
                 width: 730,
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,7 +467,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         Navigator.of(ctx).pop();
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 14),
                     _buildDialogFields(
                       categoryController: categoryController,
                       amountController: amountController,
