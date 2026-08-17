@@ -310,7 +310,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF000000).withValues(alpha: 0.15),

@@ -824,6 +824,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       onDaySelected: onDaySelected,
       onMonthChanged: onMonthChanged,
       spacing: 8,
+      selectedColor: const Color(0xFFFF0004),
     );
   }
 
