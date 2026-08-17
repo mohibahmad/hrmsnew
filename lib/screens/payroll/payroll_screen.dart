@@ -2176,8 +2176,10 @@ if (day == 0) {
   }
 
   void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index, {bool readOnly = false}) async {
-    final isPaidRecord = data['isPaid'] == true || data['hasPaidPayrollRecord'] == true || (data['status'] ?? '').toString().trim().toLowerCase() == 'paid';
-    final canEdit = !readOnly && !isPaidRecord && _recordInCurrentPayrollCycle(data);
+    // Paid records in the current cycle are editable too (the edit flow asks
+    // for confirmation and re-opens payroll with the paid data); only older
+    // cycles stay read-only.
+    final canEdit = !readOnly && _recordInCurrentPayrollCycle(data);
     final name = (data['name'] ?? '').toString();
     final email = (data['email'] ?? '').toString();
     final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();

@@ -489,6 +489,7 @@
   "time_off_dates_overlap": "Uma ou mais datas selecionadas já têm licença aprovada para este funcionário.",
   "past_time_off_edit_blocked": "Datas passadas não podem ser selecionadas para folga.",
   "date_already_has_leave": "Esta data já tem licença atribuída.",
+  "time_off_date_already_assigned": "Esta data já tem folga atribuída.",
   "non_working_day_message": "A marcação de presença não está disponível em feriados",
   "holiday_name_hint": "Dia do Trabalho",
   "time_off_list": "Lista de Folgas",

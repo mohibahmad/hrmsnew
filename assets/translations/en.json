@@ -489,6 +489,7 @@
   "time_off_dates_overlap": "One or more selected dates already have approved time off for this worker.",
   "past_time_off_edit_blocked": "Past dates cannot be selected for time off.",
   "date_already_has_leave": "This date already has leave assigned.",
+  "time_off_date_already_assigned": "This date already has time off assigned.",
   "non_working_day_message": "Attendance marking is not available on holidays",
   "holiday_name_hint": "Labour Day",
   "time_off_list": "Time Off",

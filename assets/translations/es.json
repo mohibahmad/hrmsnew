@@ -489,6 +489,7 @@
   "time_off_dates_overlap": "Una o más fechas seleccionadas ya tienen un permiso aprobado para este empleado.",
   "past_time_off_edit_blocked": "No se pueden seleccionar fechas pasadas para el tiempo libre.",
   "date_already_has_leave": "Esta fecha ya tiene permiso asignado.",
+  "time_off_date_already_assigned": "Esta fecha ya tiene tiempo libre asignado.",
   "non_working_day_message": "El marcado de asistencia no está disponible en días feriados",
   "holiday_name_hint": "Día del Trabajo",
   "time_off_list": "Lista de Tiempo Libre",

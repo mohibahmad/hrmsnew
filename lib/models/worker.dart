@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../utils/utils.dart';
 
+// -----------------------------------------------------------------------------
+// SAFE PARSER UTILITY
+// -----------------------------------------------------------------------------
 class SafeParser {
   SafeParser._();
 
-  static String asString(dynamic value) {
-    return (value?.toString() ?? '').trim();
-  }
+  static String asString(dynamic value) => (value?.toString() ?? '').trim();
 
   static String? asStringOrNull(dynamic value) {
     final result = asString(value);
@@ -17,22 +17,16 @@ class SafeParser {
   static num? asNumber(dynamic value) {
     if (value == null) return null;
     if (value is num) return value;
-
     final text = value.toString().trim().replaceAll(',', '');
     return num.tryParse(text);
   }
 
   static double? asDouble(dynamic value) {
     final number = asNumber(value);
-    if (number == null) return null;
-    if (!number.isFinite) return null;
-    return number.toDouble();
+    return (number != null && number.isFinite) ? number.toDouble() : null;
   }
 
-  static int? asInt(dynamic value) {
-    final number = asNumber(value);
-    return number?.toInt();
-  }
+  static int? asInt(dynamic value) => asNumber(value)?.toInt();
 
   static bool? asBool(dynamic value) {
     if (value == null) return null;
@@ -40,40 +34,26 @@ class SafeParser {
     if (value is num) return value != 0;
 
     final text = value.toString().trim().toLowerCase();
-
-    if (text == 'true' || text == '1' || text == 'yes') {
-      return true;
-    }
-
-    if (text == 'false' || text == '0' || text == 'no') {
-      return false;
-    }
-
+    if (['true', '1', 'yes'].contains(text)) return true;
+    if (['false', '0', 'no'].contains(text)) return false;
     return null;
   }
 
   static DateTime? asDateTime(dynamic value) {
     if (value == null) return null;
-
-    if (value is Timestamp) {
-      return value.toDate().toUtc();
-    }
-
-    if (value is DateTime) {
-      return value.toUtc();
-    }
-
+    if (value is Timestamp) return value.toDate().toUtc();
+    if (value is DateTime) return value.toUtc();
     return DateTime.tryParse(value.toString().trim())?.toUtc();
   }
 
   static DateTime? asDateOnly(dynamic value) {
     final dateTime = asDateTime(value);
     if (dateTime == null) return null;
-
     return DateTime.utc(dateTime.year, dateTime.month, dateTime.day);
   }
 }
 
+// Extension to make mapping beautifully crisp
 extension SafeParserExtension on Object? {
   String get asString => SafeParser.asString(this);
   String? get asStringOrNull => SafeParser.asStringOrNull(this);
@@ -85,33 +65,24 @@ extension SafeParserExtension on Object? {
   DateTime? get asDateOnly => SafeParser.asDateOnly(this);
 }
 
+// -----------------------------------------------------------------------------
+// FIRESTORE MAP EXTENSION
+// -----------------------------------------------------------------------------
 extension FieldAdder on Map<String, dynamic> {
+  // Deep-sixed 'isDate' because it was unused. Kept only what is needed.
   void addField(
     String key,
     dynamic value,
     bool forUpdate, {
-    bool isDate = false,
     bool isTimestamp = false,
   }) {
     if (value == null) {
-      if (forUpdate) {
-        this[key] = FieldValue.delete();
-      }
-      return;
-    }
-
-    if (isDate && value is DateTime) {
-      final year = value.year.toString().padLeft(4, '0');
-      final month = value.month.toString().padLeft(2, '0');
-      final day = value.day.toString().padLeft(2, '0');
-      this[key] = '$year-$month-$day';
+      if (forUpdate) this[key] = FieldValue.delete();
       return;
     }
 
     if (isTimestamp && value is DateTime) {
-      this[key] = Timestamp.fromDate(
-        DateTime(value.year, value.month, value.day),
-      );
+      this[key] = Timestamp.fromDate(DateTime(value.year, value.month, value.day));
       return;
     }
 
@@ -119,33 +90,25 @@ extension FieldAdder on Map<String, dynamic> {
   }
 }
 
+// -----------------------------------------------------------------------------
+// WORKER MODEL
+// -----------------------------------------------------------------------------
 String _normalizeWorkerStatus(dynamic value) {
   final raw = value?.toString().trim() ?? '';
-
-  if (raw.isEmpty) {
-    return 'Active';
-  }
+  if (raw.isEmpty) return 'Active';
 
   switch (raw.toLowerCase()) {
-    case 'active':
-      return 'Active';
-    case 'inactive':
-      return 'Inactive';
-    case 'suspended':
-      return 'Suspended';
+    case 'active': return 'Active';
+    case 'inactive': return 'Inactive';
+    case 'suspended': return 'Suspended';
     case 'onleave':
     case 'on leave':
     case 'on_leave':
-    case 'on-leave':
-      return 'OnLeave';
-    case 'terminated':
-      return 'Terminated';
-    case 'archived':
-      return 'Archived';
-    case 'deleted':
-      return 'Deleted';
-    default:
-      return raw;
+    case 'on-leave': return 'OnLeave';
+    case 'terminated': return 'Terminated';
+    case 'archived': return 'Archived';
+    case 'deleted': return 'Deleted';
+    default: return raw;
   }
 }
 
@@ -161,9 +124,12 @@ class Worker {
   final String? gender;
   final String? address;
   final String? relationshipStatus;
-  final String? type1;
+  
+  // Renamed from type1 & type2 for clean HRMS understanding
+  final String? workType;       
   final String? position;
-  final String? type2;
+  final String? attendanceType; 
+  
   final String? experienceLevel;
   final String? education;
   final String? salaryType;
@@ -200,9 +166,9 @@ class Worker {
     this.gender,
     this.address,
     this.relationshipStatus,
-    this.type1,
+    this.workType,
     this.position,
-    this.type2,
+    this.attendanceType,
     this.experienceLevel,
     this.education,
     this.salaryType,
@@ -229,81 +195,54 @@ class Worker {
   });
 
   factory Worker.fromMap(Map<String, dynamic> data, {String? id}) {
-    final rawSalary =
-        SafeParser.asDouble(data['salaryAmount']) ??
-        SafeParser.asDouble(data['salary']);
-
-    final salaryAmount = rawSalary != null && rawSalary < 0 ? null : rawSalary;
-
-    final rawCurrency = SafeParser.asStringOrNull(data['currency']);
-    final currency = rawCurrency == null
-        ? null
-        : CurrencyUtils.normalize(rawCurrency);
+    // Notice how clean the parsing is now using the extension!
+    final rawSalary = data['salaryAmount'].asDouble ?? data['salary'].asDouble;
+    final salaryAmount = (rawSalary != null && rawSalary >= 0) ? rawSalary : null;
+    final rawCurrency = data['currency'].asStringOrNull;
 
     return Worker(
-      id: id ?? SafeParser.asStringOrNull(data['id']),
-      name: SafeParser.asString(data['name']),
-      fatherName: SafeParser.asStringOrNull(data['fatherName']),
-      email: SafeParser.asStringOrNull(data['email']),
-      phone: SafeParser.asStringOrNull(data['phone'] ?? data['contact']),
-      nationalId: SafeParser.asStringOrNull(
-        data['nationalId'] ?? data['cnic'],
-      ),
-      religion: SafeParser.asStringOrNull(data['religion']),
-      dob: SafeParser.asDateOnly(data['dob']),
-      gender: SafeParser.asStringOrNull(data['gender']),
-      address: SafeParser.asStringOrNull(data['address']),
-      relationshipStatus: SafeParser.asStringOrNull(
-        data['relationshipStatus'],
-      ),
-      type1: SafeParser.asStringOrNull(data['type1'] ?? data['workType']),
-      position: SafeParser.asStringOrNull(data['position'] ?? data['role']),
-      type2: SafeParser.asStringOrNull(
-        data['type2'] ?? data['attendanceType'],
-      ),
-      experienceLevel: SafeParser.asStringOrNull(data['experienceLevel']),
-      education: SafeParser.asStringOrNull(data['education']),
-      salaryType: SafeParser.asStringOrNull(data['salaryType']),
-      currency: currency,
+      id: id ?? data['id'].asStringOrNull,
+      name: data['name'].asString,
+      fatherName: data['fatherName'].asStringOrNull,
+      email: data['email'].asStringOrNull,
+      phone: (data['phone'] ?? data['contact']).asStringOrNull,
+      nationalId: (data['nationalId'] ?? data['cnic']).asStringOrNull,
+      religion: data['religion'].asStringOrNull,
+      dob: data['dob'].asDateOnly,
+      gender: data['gender'].asStringOrNull,
+      address: data['address'].asStringOrNull,
+      relationshipStatus: data['relationshipStatus'].asStringOrNull,
+      workType: (data['type1'] ?? data['workType']).asStringOrNull,
+      position: (data['position'] ?? data['role']).asStringOrNull,
+      attendanceType: (data['type2'] ?? data['attendanceType']).asStringOrNull,
+      experienceLevel: data['experienceLevel'].asStringOrNull,
+      education: data['education'].asStringOrNull,
+      salaryType: data['salaryType'].asStringOrNull,
+      currency: rawCurrency == null ? null : CurrencyUtils.normalize(rawCurrency),
       salaryAmount: salaryAmount,
-      leavePolicy: SafeParser.asStringOrNull(data['leavePolicy']),
-      annualLeaves: SafeParser.asInt(data['annualLeaves']),
-      sickLeaves: SafeParser.asInt(data['sickLeaves']),
-      casualLeaves: SafeParser.asInt(data['casualLeaves']),
-      medicalLeaves: SafeParser.asInt(data['medicalLeaves']),
-      availableAnnualLeaves: SafeParser.asInt(data['availableAnnualLeaves']),
-      availableSickLeaves: SafeParser.asInt(data['availableSickLeaves']),
-      availableCasualLeaves: SafeParser.asInt(data['availableCasualLeaves']),
-      availableMedicalLeaves: SafeParser.asInt(data['availableMedicalLeaves']),
-      leavesUsed: SafeParser.asInt(data['leavesUsed']),
-      joiningDate: SafeParser.asDateOnly(
-        data['joiningDate'] ?? data['dateOfJoining'],
-      ),
-      profileImage: SafeParser.asStringOrNull(data['profileImage']),
-      frontId: SafeParser.asStringOrNull(
-        data['idFront'] ??
-            data['frontId'] ??
-            data['front_id'] ??
-            data['id_front'],
-      ),
-      backId: SafeParser.asStringOrNull(
-        data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back'],
-      ),
-      cv: SafeParser.asStringOrNull(data['cv']),
-      createdAt: SafeParser.asDateTime(data['createdAt']),
-      payrollInitialized:
-          SafeParser.asBool(
-            data['payroll_initialized'] ?? data['payrollInitialized'],
-          ) ??
-          false,
+      leavePolicy: data['leavePolicy'].asStringOrNull,
+      annualLeaves: data['annualLeaves'].asInt,
+      sickLeaves: data['sickLeaves'].asInt,
+      casualLeaves: data['casualLeaves'].asInt,
+      medicalLeaves: data['medicalLeaves'].asInt,
+      availableAnnualLeaves: data['availableAnnualLeaves'].asInt,
+      availableSickLeaves: data['availableSickLeaves'].asInt,
+      availableCasualLeaves: data['availableCasualLeaves'].asInt,
+      availableMedicalLeaves: data['availableMedicalLeaves'].asInt,
+      leavesUsed: data['leavesUsed'].asInt,
+      joiningDate: (data['joiningDate'] ?? data['dateOfJoining']).asDateOnly,
+      profileImage: data['profileImage'].asStringOrNull,
+      frontId: (data['idFront'] ?? data['frontId'] ?? data['front_id'] ?? data['id_front']).asStringOrNull,
+      backId: (data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back']).asStringOrNull,
+      cv: data['cv'].asStringOrNull,
+      createdAt: data['createdAt'].asDateTime,
+      payrollInitialized: (data['payroll_initialized'] ?? data['payrollInitialized']).asBool ?? false,
       status: _normalizeWorkerStatus(data['status']),
     );
   }
 
   Map<String, dynamic> toMap({bool forUpdate = false}) {
-    final map = <String, dynamic>{
-      'name': name.trim(),
-    };
+    final map = <String, dynamic>{'name': name.trim()};
 
     void addNumberField(String key, num? value) {
       if (value != null && value.isFinite) {
@@ -321,14 +260,14 @@ class Worker {
     map.addField('gender', gender, forUpdate);
     map.addField('address', address, forUpdate);
     map.addField('relationshipStatus', relationshipStatus, forUpdate);
-    map.addField('type1', type1, forUpdate);
+    map.addField('workType', workType, forUpdate); // Renamed mapping
     map.addField('position', position, forUpdate);
-    map.addField('type2', type2, forUpdate);
+    map.addField('attendanceType', attendanceType, forUpdate); // Renamed mapping
     map.addField('experienceLevel', experienceLevel, forUpdate);
     map.addField('education', education, forUpdate);
     map.addField('salaryType', salaryType, forUpdate);
     map.addField('profileImage', profileImage, forUpdate);
-                    map.addField('frontId', frontId, forUpdate);
+    map.addField('frontId', frontId, forUpdate);
     map.addField('backId', backId, forUpdate);
     map.addField('cv', cv, forUpdate);
     map.addField('status', status, forUpdate);
@@ -355,11 +294,7 @@ class Worker {
     map.addField('joiningDate', joiningDate, forUpdate, isTimestamp: true);
 
     if (!forUpdate) {
-      if (createdAt != null) {
-        map['createdAt'] = Timestamp.fromDate(createdAt!);
-      } else {
-        map['createdAt'] = FieldValue.serverTimestamp();
-      }
+      map['createdAt'] = createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp();
     }
 
     map['payroll_initialized'] = payrollInitialized ?? true;
@@ -379,9 +314,9 @@ class Worker {
     String? gender,
     String? address,
     String? relationshipStatus,
-    String? type1,
+    String? workType,
     String? position,
-    String? type2,
+    String? attendanceType,
     String? experienceLevel,
     String? education,
     String? salaryType,
@@ -418,9 +353,9 @@ class Worker {
       gender: gender ?? this.gender,
       address: address ?? this.address,
       relationshipStatus: relationshipStatus ?? this.relationshipStatus,
-      type1: type1 ?? this.type1,
+      workType: workType ?? this.workType,
       position: position ?? this.position,
-      type2: type2 ?? this.type2,
+      attendanceType: attendanceType ?? this.attendanceType,
       experienceLevel: experienceLevel ?? this.experienceLevel,
       education: education ?? this.education,
       salaryType: salaryType ?? this.salaryType,
@@ -431,13 +366,10 @@ class Worker {
       sickLeaves: sickLeaves ?? this.sickLeaves,
       casualLeaves: casualLeaves ?? this.casualLeaves,
       medicalLeaves: medicalLeaves ?? this.medicalLeaves,
-      availableAnnualLeaves:
-          availableAnnualLeaves ?? this.availableAnnualLeaves,
+      availableAnnualLeaves: availableAnnualLeaves ?? this.availableAnnualLeaves,
       availableSickLeaves: availableSickLeaves ?? this.availableSickLeaves,
-      availableCasualLeaves:
-          availableCasualLeaves ?? this.availableCasualLeaves,
-      availableMedicalLeaves:
-          availableMedicalLeaves ?? this.availableMedicalLeaves,
+      availableCasualLeaves: availableCasualLeaves ?? this.availableCasualLeaves,
+      availableMedicalLeaves: availableMedicalLeaves ?? this.availableMedicalLeaves,
       leavesUsed: leavesUsed ?? this.leavesUsed,
       joiningDate: joiningDate ?? this.joiningDate,
       profileImage: profileImage ?? this.profileImage,

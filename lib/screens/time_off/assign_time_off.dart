@@ -194,6 +194,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   Map<DateTime, String>? _cachedDateToTypeMap;
   bool _dateToTypeMapDirty = true;
+  final Set<DateTime> _deselectedDates = {};
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
@@ -387,6 +388,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   void _resetFormFields() {
     _pendingDrafts.clear();
+    _deselectedDates.clear();
     _invalidateDateTypeMap();
     final source = _editingRecord ?? _selectedWorker;
     _hasTypeChanged = false;
@@ -599,8 +601,24 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
     }
 
+    int deselectedSavedForType = 0;
+    for (final d in _deselectedDates) {
+      final leave = TimeOffService.activeLeaveForWorker(
+        _selectedWorker!,
+        _timeoffRecords,
+        onDate: d,
+      );
+      if (leave != null &&
+          TimeOffService.normalizeLeaveType(
+                  (leave['action'] ?? leave['type']).toString()) ==
+              normType) {
+        deselectedSavedForType++;
+      }
+    }
+
     return projectedTimeOffBalance(
-        availableDays: base, requestedDays: currentlySelected);
+        availableDays: base + deselectedSavedForType,
+        requestedDays: currentlySelected);
   }
 
   int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
@@ -658,13 +676,29 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   int get _summaryRequestedDays {
     if (_selectedWorker == null) return 0;
     if (_isAggregateOverview) return _selectedDaysCount;
-    return TimeOffService.projectedAssignedDaysForEditingRecord(
+    final normType = TimeOffService.normalizeLeaveType(_timeOffType);
+    int deselectedSavedCount = 0;
+    for (final d in _deselectedDates) {
+      final leave = TimeOffService.activeLeaveForWorker(
+        _selectedWorker!,
+        _timeoffRecords,
+        onDate: d,
+      );
+      if (leave != null &&
+          TimeOffService.normalizeLeaveType(
+                  (leave['action'] ?? leave['type']).toString()) ==
+              normType) {
+        deselectedSavedCount++;
+      }
+    }
+    final projected = TimeOffService.projectedAssignedDaysForEditingRecord(
       _selectedWorkerForService,
       _timeoffRecords,
       _timeOffType,
       _editingRecord,
       _selectedDaysCount,
     );
+    return (projected - deselectedSavedCount).clamp(0, projected);
   }
 
   int get _remainingDaysAfterRequest {
@@ -961,6 +995,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _selectedDates = TimeOffService.selectedDatesForRecord(record)
         .map(_dateOnly)
         .toSet();
+    _deselectedDates.clear();
     _notesController.text = (record['notes'] ?? '').toString();
 
     if (_selectedDates.isEmpty) {
@@ -1010,6 +1045,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _hasTypeChanged = true;
       _editingRecord = null;
       _editingId = null;
+      _deselectedDates.clear();
 
       final draft = _pendingDrafts[_draftKeyFor(null, normalizedType)];
       if (draft != null) {
@@ -1058,6 +1094,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     if (isRemoving) {
       setState(() {
         _selectedDates.remove(selectedDate);
+        _deselectedDates.add(selectedDate);
         for (final draft in _pendingDrafts.values) {
           draft.selectedDates.remove(selectedDate);
         }
@@ -1092,11 +1129,27 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
 
       if (existingLeave != null) {
+        final existingType = TimeOffService.normalizeLeaveType(
+            (existingLeave['action'] ?? existingLeave['type']).toString());
+        final currentType = TimeOffService.normalizeLeaveType(_timeOffType);
+        if (existingType != currentType) {
+          return;
+        }
+        if (_editingId == null || _editingId == _timeOffRecordId(existingLeave)) {
+          setState(() {
+            _deselectedDates.add(selectedDate);
+            _hasDateSelectionChanged = true;
+            _invalidateDateTypeMap();
+            _syncSelectionBounds();
+          });
+          return;
+        }
         if (!mounted) return;
         _stashCurrentDraft();
         setState(() {
           _applyEditingRecord(existingLeave, preserveCalendarMonth: true);
           _selectedDates.remove(selectedDate);
+          _deselectedDates.add(selectedDate);
           _hasDateSelectionChanged = true;
           _invalidateDateTypeMap();
           _syncSelectionBounds();
@@ -1115,6 +1168,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     setState(() {
       _selectedDates.add(selectedDate);
+      _deselectedDates.remove(selectedDate);
       _hasDateSelectionChanged = true;
       _invalidateDateTypeMap();
       _syncSelectionBounds();
@@ -1138,6 +1192,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _isAggregateOverview = false;
       _applyEditingRecord(owningRecord, preserveCalendarMonth: true);
       _selectedDates.remove(selectedDate);
+      _deselectedDates.add(selectedDate);
       _hasDateSelectionChanged = true;
       _invalidateDateTypeMap();
       _syncSelectionBounds();
@@ -2537,7 +2592,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final isSelectedInSession = activeSessionType != null;
 
     Map<String, dynamic>? savedLeave;
-    if (!isSelectedInSession && date != null && _selectedWorker != null) {
+    if (!isSelectedInSession &&
+        !_deselectedDates.contains(cellDate) &&
+        date != null &&
+        _selectedWorker != null) {
       savedLeave = TimeOffService.activeLeaveForWorker(
         _selectedWorker!,
         _timeoffRecords,

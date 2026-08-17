@@ -489,6 +489,7 @@
   "time_off_dates_overlap": "Une ou plusieurs dates sélectionnées ont déjà un congé approuvé pour cet employé.",
   "past_time_off_edit_blocked": "Les dates passées ne peuvent pas être sélectionnées pour un congé.",
   "date_already_has_leave": "Cette date a déjà un congé assigné.",
+  "time_off_date_already_assigned": "Cette date a déjà un congé attribué.",
   "non_working_day_message": "Le marquage de présence n'est pas disponible les jours fériés",
   "holiday_name_hint": "Fête du Travail",
   "time_off_list": "Liste des congés",
