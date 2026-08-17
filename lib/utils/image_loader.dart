@@ -10,9 +10,7 @@ import 'package:image/image.dart' as img;
 class ImageLoader {
   const ImageLoader._();
 
-  /// Loads image bytes from any source (data URI, HTTP URL, file path, or asset).
-  /// Returns null if loading fails or bytes are invalid.
-  static Future<Uint8List?> load({
+      static Future<Uint8List?> load({
     required String? source,
     int maxSizeBytes = 5 * 1024 * 1024,
     Duration timeout = const Duration(seconds: 15),
@@ -51,33 +49,27 @@ class ImageLoader {
     }
   }
 
-  /// Validates image bytes by checking magic bytes (PNG, JPEG, GIF, WEBP, BMP).
-  static bool isValidImageBytes(Uint8List bytes) {
+    static bool isValidImageBytes(Uint8List bytes) {
     if (bytes.lengthInBytes < 4) return false;
 
-    // PNG (8-byte header)
-    if (bytes.lengthInBytes >= 8 &&
+        if (bytes.lengthInBytes >= 8 &&
         bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E &&
         bytes[3] == 0x47 && bytes[4] == 0x0D && bytes[5] == 0x0A &&
         bytes[6] == 0x1A && bytes[7] == 0x0A) {
       return true;
     }
 
-    // JPEG
-    if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
+        if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
 
-    // GIF
-    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
+        if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
 
-    // WEBP (RIFF....WEBP)
-    if (bytes.lengthInBytes >= 12) {
+        if (bytes.lengthInBytes >= 12) {
       final riff = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
       final webp = ascii.decode(bytes.sublist(8, 12), allowInvalid: true);
       if (riff == 'RIFF' && webp == 'WEBP') return true;
     }
 
-    // BMP
-    if (bytes[0] == 0x42 && bytes[1] == 0x4D) return true;
+        if (bytes[0] == 0x42 && bytes[1] == 0x4D) return true;
 
     return false;
   }

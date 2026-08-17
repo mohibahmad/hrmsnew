@@ -156,12 +156,7 @@ class AttendanceReportService {
 
       final key = _dateKey(date);
 
-      // A "Leave" attendance record must always be kept, even when it is not
-      // backed by an active Time Off record (e.g. a manual Attendance leave or
-      // an Attendance-created leave whose Time Off document is missing).
-      // Otherwise the worker is wrongly dropped from the report, their leave
-      // is omitted, and the summary "On Leave" count is under-reported.
-
+                              
       final existing = recordsByDay[key];
       if (existing == null || _isNewer(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);

@@ -302,8 +302,7 @@ class PreferencesService {
     current.day + 1,
   );
 
-  // Remove old legacy 7-day snoozes.
-  if (until.isAfter(nextMidnight)) {
+    if (until.isAfter(nextMidnight)) {
     await prefs.remove(key);
     return false;
   }

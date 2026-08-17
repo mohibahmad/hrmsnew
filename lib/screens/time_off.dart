@@ -1002,13 +1002,15 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Row(
           children: [
-            for (final f in allFilters)
+            for (int i = 0; i < allFilters.length; i++) ...[
               _buildTabItem(
-                f,
-                f == 'All'
+                allFilters[i],
+                allFilters[i] == 'All'
                     ? 'all_filter'.tr()
-                    : LocalizationHelper.localizePosition(f),
+                    : LocalizationHelper.localizePosition(allFilters[i]),
               ),
+              if (i < allFilters.length - 1) Container(width: 1, height: 20, color: Colors.grey.shade300),
+            ],
           ],
         ),
       ),

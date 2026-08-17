@@ -1079,12 +1079,7 @@ class Validators {
         .join(' ');
   }
 
-  /// Derives a human-friendly display name from an email address.
-  ///
-  /// Takes the part before '@' and converts separators ('.', '_', '-') into
-  /// spaces with proper capitalization, e.g. 'mohib.hrms@x.com' -> 'Mohib Hrms'.
-  /// Returns an empty string when no local part is available.
-  static String nameFromEmail(String? email) {
+            static String nameFromEmail(String? email) {
     final value = email?.trim() ?? '';
     final atIndex = value.indexOf('@');
     if (atIndex <= 0) return '';
@@ -1339,19 +1334,14 @@ class WorkerIdentity {
     return null;
   }
 
-  /// Normalizes a worker's primary id, preferring `workerId` over `id`.
-  static String normalizeId(Map<String, dynamic> value) {
+    static String normalizeId(Map<String, dynamic> value) {
     final workerId = (value['workerId'] ?? '').toString().trim();
     return workerId.isNotEmpty
         ? workerId
         : (value['id'] ?? '').toString().trim();
   }
 
-  /// Matches a record (attendance/time-off/payroll) against a worker.
-  ///
-  /// A record's own `workerId` always takes precedence. Email and name are
-  /// only consulted when the record carries no id.
-  static bool recordsMatch(
+          static bool recordsMatch(
     Map<String, dynamic> record,
     Map<String, dynamic> worker, {
     bool allowName = true,
@@ -1375,9 +1365,7 @@ class WorkerIdentity {
     return recordName.isNotEmpty && recordName == workerName;
   }
 
-  /// True when [first] (a record) and [second] (a worker) match by id or
-  /// email, where either match is sufficient on its own.
-  static bool matchesByIdOrEmail(
+      static bool matchesByIdOrEmail(
     Map<String, dynamic> first,
     Map<String, dynamic> second,
   ) {
@@ -1396,9 +1384,7 @@ class WorkerIdentity {
         recordEmail == workerEmail;
   }
 
-  /// True when [first] and [second] identify the same worker, preferring id
-  /// when both carry one and falling back to email.
-  static bool samePerson(
+      static bool samePerson(
     Map<String, dynamic> first,
     Map<String, dynamic> second,
   ) {
@@ -1411,8 +1397,7 @@ class WorkerIdentity {
     return firstEmail.isNotEmpty && firstEmail == secondEmail;
   }
 
-  /// Returns the first worker in [workers] matching [target] by id or email.
-  static Map<String, dynamic>? findMatchingWorker(
+    static Map<String, dynamic>? findMatchingWorker(
     Map<String, dynamic> target,
     Iterable<Map<String, dynamic>> workers,
   ) {
@@ -1422,9 +1407,7 @@ class WorkerIdentity {
     return null;
   }
 
-  /// True when [record] matches [worker] by name and that name belongs to
-  /// exactly one candidate in [candidates].
-  static bool recordsMatchByUniqueName(
+      static bool recordsMatchByUniqueName(
     Map<String, dynamic> record,
     Map<String, dynamic> worker,
     Iterable<Map<String, dynamic>> candidates,

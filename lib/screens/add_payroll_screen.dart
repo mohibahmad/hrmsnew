@@ -105,7 +105,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     vertical: 16,
   );
   static const EdgeInsets _appBarPadding = EdgeInsets.symmetric(horizontal: 40);
-  static const EdgeInsets _scrollPadding = EdgeInsets.all(32);
+  static const EdgeInsets _scrollPadding = EdgeInsets.only(left: 32, right: 32, top: 4, bottom: 32);
   static const EdgeInsets _cardPadding = EdgeInsets.all(32);
   static const EdgeInsets _bannerPadding = EdgeInsets.all(24);
   static const EdgeInsets _breakdownPadding = EdgeInsets.all(16);
@@ -1220,6 +1220,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   _buildAppBar(),
                   Expanded(
                     child: SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
                       padding: _scrollPadding,
                       child: Center(
                         child: ConstrainedBox(
@@ -1228,7 +1229,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildPayrollDataHeader(),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 2),
                               _buildEmployeeBanner(),
                               const SizedBox(height: 12),
                               _buildDetailsCard(),
@@ -1303,8 +1304,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   Widget _buildPayrollDataHeader() {
     final hasRecord = widget.workerData['hasPayrollRecord'] == true;
     final showEditButtons = !widget.readOnly;
-    final showSaveButton =
-        showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
     final showCancelButton = hasRecord && _isPaidRecord;
 
     return Row(
@@ -1354,51 +1353,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   if (confirmed) _handleCancelPayroll();
                 },
               ),
-            if (showSaveButton) ...[
-              if (hasRecord) const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _isSaving || _isCancellingPayroll
-                    ? null
-                    : () {
-                        final isGuest =
-                            _authService.currentUser?.isAnonymous ?? false;
-                        if (isGuest) {
-                          showGuestRestrictionDialog(context);
-                          return;
-                        }
-                        _handleSave();
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _saveBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 18,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        _isPaidRecord
-                            ? (_hasUnsavedChanges
-                                  ? 'save_correction'.tr()
-                                  : 'save'.tr())
-                            : 'process_payroll'.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-              ),
-            ],
           ],
         ),
       ],
@@ -1619,11 +1573,54 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
             _buildCalcBreakdown(cr),
             const SizedBox(height: 16),
           ],
-          const Divider(color: _borderLight, thickness: 1),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [_buildProcessPayButton()],
+          ),
           const SizedBox(height: 24),
         ],
       ),
     );
+  }
+
+  Widget _buildProcessPayButton() {
+    final showEditButtons = !widget.readOnly;
+    final showSaveButton = showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
+
+    if (!showSaveButton) return const SizedBox.shrink();
+
+    return ElevatedButton(
+        onPressed: _isSaving || _isCancellingPayroll
+            ? null
+            : () {
+                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  showGuestRestrictionDialog(context);
+                  return;
+                }
+                _handleSave();
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _saveBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: _isSaving
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : Text(
+                _isPaidRecord
+                    ? (_hasUnsavedChanges ? 'save_correction'.tr() : 'save'.tr())
+                    : 'process_payroll'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+      );
   }
 
   Widget _buildInput(

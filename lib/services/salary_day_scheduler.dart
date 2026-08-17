@@ -356,9 +356,7 @@ class PayrollRunner {
             ErrorReporter.report(e, st, context: 'PayrollRunnerCompanyCurrency');
             return <String, dynamic>{};
           }),
-          // Fresh, server-first reads so "Pay All" always uses the latest
-          // Firebase state instead of a cached snapshot.
-          () async {
+                              () async {
           try {
             return await firestoreService.getPayrollOnce();
           } catch (error, stackTrace) {
@@ -584,15 +582,7 @@ class PayrollRunner {
   }
 
   double _calculateProrationFactor(Map<String, dynamic> worker, DateTime periodStart, DateTime periodEnd) {
-    // Monthly salary is paid for the full pay period for every worker who is
-    // employed during it. The rest of the app (Add Payroll, Payroll Detail,
-    // invoice generation) never prorates by calendar day, so prorating here
-    // is inconsistent and produced absurd nets — e.g. a 1.8k base became
-    // 168.75 for a worker hired a few days before the pay-day cycle ends
-    // (3 active days / 32-day cycle). Attendance/leave deductions below still
-    // apply normally. A joining date after the period ends is filtered out by
-    // the payable-worker check before this runs.
-    return 1.0;
+                                    return 1.0;
   }
 
   AutoPayrollResult _createErrorResult(Map<String, dynamic> worker, String workerId, String name, String email, 
@@ -645,10 +635,7 @@ class PayrollRunner {
     return true;
   }
 
-  // Recomputed the Payroll Run Review data from the latest Firebase state so
-  // a live change (attendance marked, salary edited, time off changed, a new
-  // worker added...) is reflected in the open Pay All dialog immediately.
-  Future<PayrollRunSummary> _recomputeLiveSummary({
+        Future<PayrollRunSummary> _recomputeLiveSummary({
     required BuildContext context,
     required PayrollRunSummary summary,
     required bool isGuest,
@@ -1149,6 +1136,7 @@ class PayrollRunner {
 
     String searchQuery = '';
     String positionFilter = 'All';
+    bool showOnlyAbsences = false;
     Set<int> selectedIndices = {};
     int? activeDetailIndex;
     final Map<int, TextEditingController> overtimeControllers = {};
@@ -1177,9 +1165,7 @@ class PayrollRunner {
     }
     final allPositions = positionNormalizer.values.toList()..sort();
 
-    // Live preview: reflect Firebase changes (workers, attendance, time off)
-    // in this dialog as soon as they happen.
-    final firestoreService =
+            final firestoreService =
         ProviderScope.containerOf(context).read(firestoreServiceProvider);
     final reviewedStart =
         periodStart ?? PayrollService.payPeriodStart(DateTime.now());
@@ -1216,9 +1202,7 @@ class PayrollRunner {
         if (!liveAlive) return;
         dialogSetState?.call(() {
           if (refreshed.results.length != summary.results.length || !_sameReviewResults(refreshed.results, summary.results)) {
-            // Keep the user's checkbox selection and open worker detail
-            // aligned by worker identity across the live refresh.
-            final previousSelected = selectedIndices
+                                    final previousSelected = selectedIndices
                 .map((i) =>
                     i >= 0 && i < summary.results.length ? _reviewWorkerKey(summary.results[i]) : '')
                 .where((k) => k.isNotEmpty)
@@ -1326,6 +1310,10 @@ class PayrollRunner {
                                 positionFilter.toLowerCase().trim(),
                           )
                           .toList();
+                    }
+
+                    if (showOnlyAbsences) {
+                      posFiltered = posFiltered.where((r) => r.absents > 0).toList();
                     }
 
                     final filteredResults = searchQuery.isEmpty
@@ -1554,7 +1542,10 @@ class PayrollRunner {
                                             selected: positionFilter == 'All',
                                             onSelected: (_) {
                                               setDialogState(
-                                                () => positionFilter = 'All',
+                                                () {
+                                                  positionFilter = 'All';
+                                                  showOnlyAbsences = false;
+                                                },
                                               );
                                             },
                                             selectedColor: const Color(
@@ -1603,7 +1594,10 @@ class PayrollRunner {
                                                 selected: positionFilter == pos,
                                                 onSelected: (_) {
                                                   setDialogState(
-                                                    () => positionFilter = pos,
+                                                    () {
+                                                      positionFilter = pos;
+                                                      showOnlyAbsences = false;
+                                                    },
                                                   );
                                                 },
                                                 selectedColor: const Color(
@@ -1698,107 +1692,148 @@ class PayrollRunner {
                                           ),
                                         ],
                                       ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          setDialogState(() {
-                                            final filteredIndices =
-                                                filteredResults
-                                                    .map(
-                                                      (r) => summary.results
-                                                          .indexOf(r),
-                                                    )
-                                                    .toSet();
-                                            final allFilteredSelected =
-                                                filteredIndices.every(
-                                                  (i) => selectedIndices
-                                                      .contains(i),
-                                                );
-                                            if (allFilteredSelected) {
-                                              selectedIndices.removeAll(
-                                                filteredIndices,
-                                              );
-                                            } else {
-                                              selectedIndices.addAll(
-                                                filteredIndices,
-                                              );
-                                            }
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 7,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                filteredResults.every(
-                                                  (r) =>
-                                                      selectedIndices.contains(
-                                                        summary.results.indexOf(
-                                                          r,
-                                                        ),
-                                                      ),
-                                                )
-                                                ? const Color(0xFFFEE2E2)
-                                                : const Color(0xFFEEF2FF),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                showOnlyAbsences = !showOnlyAbsences;
+                                                if (showOnlyAbsences) positionFilter = 'All';
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: showOnlyAbsences ? const Color(0xFF0C51C1) : const Color(0xFFEEF2FF),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    showOnlyAbsences ? Icons.filter_alt : Icons.filter_alt_off,
+                                                    size: 14,
+                                                    color: showOnlyAbsences ? const Color(0xFFFFFFFF) : const Color(0xFF0247C4),
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    'with_absences'.tr(),
+                                                    style: TextStyle(
+                                                      color: showOnlyAbsences ? const Color(0xFFFFFFFF) : const Color(0xFF0247C4),
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontFamily: 'SF Pro Display',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                filteredResults.every(
-                                                      (r) => selectedIndices
-                                                          .contains(
-                                                            summary.results
-                                                                .indexOf(r),
-                                                          ),
-                                                    )
-                                                    ? Icons.deselect
-                                                    : Icons.select_all,
-                                                size: 15,
+                                          const SizedBox(width: 6),
+                                          GestureDetector(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                final filteredIndices =
+                                                    filteredResults
+                                                        .map(
+                                                          (r) => summary.results
+                                                              .indexOf(r),
+                                                        )
+                                                        .toSet();
+                                                final allFilteredSelected =
+                                                    filteredIndices.every(
+                                                      (i) => selectedIndices
+                                                          .contains(i),
+                                                    );
+                                                if (allFilteredSelected) {
+                                                  selectedIndices.removeAll(
+                                                    filteredIndices,
+                                                  );
+                                                } else {
+                                                  selectedIndices.addAll(
+                                                    filteredIndices,
+                                                  );
+                                                }
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
                                                 color:
                                                     filteredResults.every(
-                                                      (r) => selectedIndices
-                                                          .contains(
-                                                            summary.results
-                                                                .indexOf(r),
-                                                          ),
-                                                    )
-                                                    ? const Color(0xFFEF4444)
-                                                    : const Color(0xFF0247C4),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                filteredResults.every(
-                                                      (r) => selectedIndices
-                                                          .contains(
-                                                            summary.results
-                                                                .indexOf(r),
-                                                          ),
-                                                    )
-                                                    ? 'deselect_all'.tr()
-                                                    : 'select_all'.tr(),
-                                                style: TextStyle(
-                                                  color:
-                                                      filteredResults.every(
-                                                        (r) => selectedIndices
-                                                            .contains(
-                                                              summary.results
-                                                                  .indexOf(r),
+                                                      (r) =>
+                                                          selectedIndices.contains(
+                                                            summary.results.indexOf(
+                                                              r,
                                                             ),
-                                                      )
-                                                      ? const Color(0xFFEF4444)
-                                                      : const Color(0xFF0247C4),
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontFamily: 'SF Pro Display',
+                                                          ),
+                                                    )
+                                                    ? const Color(0xFFFEE2E2)
+                                                    : const Color(0xFFEEF2FF),
+                                                borderRadius: BorderRadius.circular(
+                                                  8,
                                                 ),
                                               ),
-                                            ],
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    filteredResults.every(
+                                                          (r) => selectedIndices
+                                                              .contains(
+                                                                summary.results
+                                                                    .indexOf(r),
+                                                              ),
+                                                        )
+                                                        ? Icons.deselect
+                                                        : Icons.select_all,
+                                                    size: 14,
+                                                    color:
+                                                        filteredResults.every(
+                                                          (r) => selectedIndices
+                                                              .contains(
+                                                                summary.results
+                                                                    .indexOf(r),
+                                                              ),
+                                                        )
+                                                        ? const Color(0xFFEF4444)
+                                                        : const Color(0xFF0247C4),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    filteredResults.every(
+                                                          (r) => selectedIndices
+                                                              .contains(
+                                                                summary.results
+                                                                    .indexOf(r),
+                                                              ),
+                                                        )
+                                                        ? 'deselect_all'.tr()
+                                                        : 'select_all'.tr(),
+                                                    style: TextStyle(
+                                                      color:
+                                                          filteredResults.every(
+                                                            (r) => selectedIndices
+                                                                .contains(
+                                                                  summary.results
+                                                                      .indexOf(r),
+                                                                ),
+                                                          )
+                                                          ? const Color(0xFFEF4444)
+                                                          : const Color(0xFF0247C4),
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontFamily: 'SF Pro Display',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -2709,7 +2744,7 @@ class PayrollRunner {
                     final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
                     _recalcOvertime(
                       result,
-                      clean.isEmpty ? '0' : clean,
+                      clean,
                       () {},
                     );
                   }
@@ -2985,7 +3020,7 @@ class PayrollRunner {
     if (!controllers.containsKey(controllerKey)) {
       final cleanText = r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '');
       controllers[controllerKey] = TextEditingController(
-        text: cleanText.isEmpty ? '0' : cleanText,
+        text: cleanText,
       );
     }
     final controller = controllers[controllerKey]!;
@@ -3007,7 +3042,7 @@ class PayrollRunner {
               final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
               _recalcOvertime(
                 r,
-                clean.isEmpty ? '0' : clean,
+                clean,
                 () => setDialogState(() {}),
               );
             },
@@ -3015,7 +3050,7 @@ class PayrollRunner {
               final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
               _recalcOvertime(
                 r,
-                clean.isEmpty ? '0' : clean,
+                clean,
                 () => setDialogState(() {}),
               );
             },
@@ -3075,7 +3110,7 @@ class PayrollRunner {
               final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
               _recalcOvertime(
                 r,
-                clean.isEmpty ? '0' : clean,
+                clean,
                 () => setDialogState(() {}),
               );
             },

@@ -1,15 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/payroll_service.dart';
 
-// Regression suite: payroll-cycle resolution (Salary Pay Day = 16).
-//
-// Guards the fixed business rules:
-//   * never advance before the payday boundary
-//   * advance EXACTLY ONE period, and only when every eligible worker of the
-//     current cycle is Paid at/after the boundary
-//   * never drift backwards through historical/cancelled records
-//   * idempotent across repeated Firestore listener emissions
-//   * attendance changes never move the payroll cycle
 void main() {
   const payDay = 16;
 
@@ -139,9 +130,7 @@ void main() {
 
     final backdated =
         resolve(workers: workers4, records: records, referenceDate: DateTime(2026, 5, 20));
-    // May 20 is after the May 16 payday, so the cycle containing it is
-    // May16-Jun16 — returned exactly, never several periods back.
-    expect(PayrollService.periodDateKey(backdated.start), '2026-05-16');
+            expect(PayrollService.periodDateKey(backdated.start), '2026-05-16');
     expect(PayrollService.periodDateKey(backdated.end), '2026-06-16');
 
     final backdatedAgain =
@@ -180,8 +169,7 @@ void main() {
     expect(payable, isEmpty);
   });
 
-  // ---- Overdue & Ignore regression tests (Cases H–O) ----
-
+  
   Map<String, dynamic> unpaidRecord({
     required String workerId,
     required DateTime start,
@@ -199,8 +187,7 @@ void main() {
         'salaryAmount': 1000,
       };
 
-  // -- Case M: Ignore exact advance (Pay Day = 8) --
-  test('M) Ignore on overdue Jul8-Aug8 -> advance exactly to Aug8-Sep8', () {
+    test('M) Ignore on overdue Jul8-Aug8 -> advance exactly to Aug8-Sep8', () {
     const pd = 8;
     final jul8 = DateTime(2026, 7, 8);
     final aug8 = DateTime(2026, 8, 8);
@@ -218,15 +205,13 @@ void main() {
 
     final ws = ['a', 'b'].map(w).toList();
 
-    // Simulate the Ignore handler: manually advance to next cycle
-    final overdueCycle = PayrollPeriod(start: jul8, end: aug8);
+        final overdueCycle = PayrollPeriod(start: jul8, end: aug8);
     final nextCycle = PayrollService.nextPayDayPeriod(overdueCycle, pd);
 
     expect(PayrollService.periodDateKey(nextCycle.start), '2026-08-08');
     expect(PayrollService.periodDateKey(nextCycle.end), '2026-09-08');
 
-    // After Ignore, resolver with persisted = nextCycle should return nextCycle
-    final p = PayrollService.resolveCurrentPayrollPeriod(
+        final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: ws,
       payrollRecords: [],
       payDay: pd,
@@ -237,8 +222,7 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-09-08');
   });
 
-  // -- Case N: Ignore idempotency --
-  test('N) After Ignore, resolver is idempotent across repeated calls', () {
+    test('N) After Ignore, resolver is idempotent across repeated calls', () {
     const pd = 16;
     final nextCycle = PayrollPeriod(start: aug16, end: sep16);
 
@@ -269,12 +253,10 @@ void main() {
     expect(PayrollService.periodDateKey(r1.end), '2026-09-16');
   });
 
-  // -- Overdue detection: day after payday with unpaid workers --
-  test('H/O) Aug 17 with unpaid workers from Jul16-Aug16 -> stay Jul16-Aug16 (overdue)', () {
+    test('H/O) Aug 17 with unpaid workers from Jul16-Aug16 -> stay Jul16-Aug16 (overdue)', () {
     final records = [
       paidRecord(workerId: 'w1', start: jul16, end: aug16),
-      // w2, w3, w4 are unpaid — no records for Jul16-Aug16
-    ];
+          ];
     final persisted = PayrollPeriod(start: jul16, end: aug16);
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
@@ -287,8 +269,7 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-08-16');
   });
 
-  // -- Overdue: all paid on payday + 1 day -> advance --
-  test('Aug 17 with ALL paid Jul16-Aug16 -> advance to Aug16-Sep16', () {
+    test('Aug 17 with ALL paid Jul16-Aug16 -> advance to Aug16-Sep16', () {
     final persisted = PayrollPeriod(start: jul16, end: aug16);
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
@@ -301,13 +282,11 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-09-16');
   });
 
-  // -- Overdue persists for multiple days --
-  test('Aug 23 with unpaid Jul16-Aug16 -> still Jul16-Aug16 (overdue)', () {
+    test('Aug 23 with unpaid Jul16-Aug16 -> still Jul16-Aug16 (overdue)', () {
     final records = [
       paidRecord(workerId: 'w1', start: jul16, end: aug16),
       paidRecord(workerId: 'w2', start: jul16, end: aug16),
-      // w3, w4 unpaid
-    ];
+          ];
     final persisted = PayrollPeriod(start: jul16, end: aug16);
 
     for (int day = 17; day <= 23; day++) {
@@ -325,10 +304,8 @@ void main() {
     }
   });
 
-  // -- After Ignore: old overdue popup must not reappear --
-  test('O) After Ignore to Aug16-Sep16, stale Jul16-Aug16 is not restored', () {
-    // After Ignore, persisted = Aug16-Sep16
-    final afterIgnore = PayrollPeriod(start: aug16, end: sep16);
+    test('O) After Ignore to Aug16-Sep16, stale Jul16-Aug16 is not restored', () {
+        final afterIgnore = PayrollPeriod(start: aug16, end: sep16);
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
       payrollRecords: paidAll4(),
@@ -336,13 +313,11 @@ void main() {
       referenceDate: DateTime(2026, 8, 17),
       persistedCycle: afterIgnore,
     );
-    // Should stay on Aug16-Sep16, NOT revert to Jul16-Aug16
-    expect(PayrollService.periodDateKey(p.start), '2026-08-16');
+        expect(PayrollService.periodDateKey(p.start), '2026-08-16');
     expect(PayrollService.periodDateKey(p.end), '2026-09-16');
   });
 
-  // -- Pay Day 8 overdue + Ignore idempotency --
-  test('N2) Pay Day 8: Ignore Jul8-Aug8 -> Aug8-Sep8, rebuild stays Sep8', () {
+    test('N2) Pay Day 8: Ignore Jul8-Aug8 -> Aug8-Sep8, rebuild stays Sep8', () {
     const pd = 8;
     final jul8 = DateTime(2026, 7, 8);
     final aug8 = DateTime(2026, 8, 8);
@@ -388,12 +363,8 @@ void main() {
     expect(PayrollService.payrollPeriodsEqual(r2, r3), isTrue);
   });
 
-  // ── Employment-period filter: worker joining after the cycle end must not
-  //    appear as Payable (same rule the reminder popup enforces).
-  test('Late joiner (after period end) is NOT payable for the cycle', () {
-    // Mirrors the reported bug: joining Aug 14 while the pay-day-13 cycle is
-    // Jul 13 → Aug 13. The worker was never employed during the period.
-    const pd = 13;
+      test('Late joiner (after period end) is NOT payable for the cycle', () {
+            const pd = 13;
     final jul13 = DateTime(2026, 7, 13);
     final aug13 = DateTime(2026, 8, 13);
 
@@ -411,9 +382,7 @@ void main() {
     final others = [w('w2'), w('w3'), w('w4')];
     final workers = [lateJoiner, ...others];
 
-    // No payroll records at all → everyone unpaid, but the late joiner must
-    // be excluded because they were never employed during Jul13→Aug13.
-    final payable = PayrollService.payableWorkersForPeriod(
+            final payable = PayrollService.payableWorkersForPeriod(
       workers,
       const [],
       month: aug13,
@@ -423,6 +392,16 @@ void main() {
 
     expect(payable.map((w) => w['workerId']).toList(), isNot(contains('ayesha')));
     expect(payable.length, others.length);
+
+            final excluded = PayrollService.excludedLateJoinersForPeriod(
+      workers,
+      const [],
+      month: aug13,
+      periodStart: jul13,
+      periodEnd: aug13,
+    );
+    expect(excluded.map((w) => w['workerId']).toList(), contains('ayesha'));
+    expect(excluded.length, 1);
   });
 
   test('workerEmployedDuringPeriod: joining on period end IS employed', () {
@@ -433,28 +412,19 @@ void main() {
     expect(PayrollService.workerEmployedDuringPeriod(worker('noDate'), aug16), isTrue);
   });
 
-  // ── Missing profile cycle fields (reported bug) ───────────────
-
+  
   test('BUG) Missing profile fields + unpaid workers + Aug 17 -> Jul16-Aug16', () {
-    // Simulates: Pay Day = 16, today = Aug 17, profile has NO
-    // payrollCycleStart/payrollCycleEnd, all 4 workers still payable.
-    // The resolver must return Jul 16 → Aug 16 (overdue), NOT
-    // Aug 16 → Sep 16.
-    final p = PayrollService.resolveCurrentPayrollPeriod(
+                    final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
-      payrollRecords: const [], // No records = all workers payable
-      payDay: payDay,
+      payrollRecords: const [],       payDay: payDay,
       referenceDate: DateTime(2026, 8, 17),
-      persistedCycle: null, // Profile fields missing
-    );
+      persistedCycle: null,     );
     expect(PayrollService.periodDateKey(p.start), '2026-07-16');
     expect(PayrollService.periodDateKey(p.end), '2026-08-16');
   });
 
   test('BUG) Missing profile fields + partial paid + Aug 17 -> Jul16-Aug16', () {
-    // 2/4 workers paid for Jul16→Aug16, profile fields missing.
-    // Must still return Jul16→Aug16 (overdue).
-    final records = [
+            final records = [
       paidRecord(workerId: 'w1', start: jul16, end: aug16),
       paidRecord(workerId: 'w2', start: jul16, end: aug16),
     ];
@@ -469,13 +439,10 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-08-16');
   });
 
-  // -- App start: persisted overdue cycle must keep _payPeriodEnd on the due
-  // date so the reminder/overdue popup window (offset -3..+7) still fires.
-  test('App start Aug 20 with persisted Jul16-Aug16 overdue -> stays Jul16-Aug16', () {
+      test('App start Aug 20 with persisted Jul16-Aug16 overdue -> stays Jul16-Aug16', () {
     final records = [
       paidRecord(workerId: 'w1', start: jul16, end: aug16),
-      // w2, w3, w4 unpaid
-    ];
+          ];
     final persisted = PayrollPeriod(start: jul16, end: aug16);
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
@@ -489,9 +456,7 @@ void main() {
   });
 
   test('BUG) Missing profile fields + ALL paid + Aug 17 -> advance to Aug16-Sep16', () {
-    // All 4 workers paid for Jul16→Aug16, profile fields missing.
-    // Previous cycle is fully paid, so advance to Aug16→Sep16.
-    final p = PayrollService.resolveCurrentPayrollPeriod(
+            final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
       payrollRecords: paidAll4(),
       payDay: payDay,

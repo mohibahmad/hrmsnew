@@ -226,8 +226,7 @@ class FirestoreService {
   CollectionReference? get _holidays => _userDoc?.collection('hrms_holidays');
   CollectionReference? get _notifications => _userDoc?.collection('hrms_notifications');
 
-  // ==================== USER PROFILE METHODS ====================
-
+  
   Future<void> createUserProfile({required String username, required String email, required String phone}) async {
     final user = AuthService.instance.currentUser;
     if (user == null || user.isAnonymous || user.uid == 'guest_uid' || user.uid.startsWith('guest_')) return;
@@ -316,8 +315,7 @@ class FirestoreService {
     return doc.snapshots().map((snap) => snap.data() as Map<String, dynamic>?);
   }
 
-  // ==================== WORKER METHODS ====================
-
+  
   Future<String> addWorker(Map<String, dynamic> worker) async {
     Validators.validateWorker(worker);
     final coll = _workers;
@@ -373,10 +371,7 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) return BulkWorkerResult(imported: 0, skipped: workersList.length);
 
-    // Duplicate detection needs the set of identities already stored. When the
-    // caller has them cached (e.g. from the bulk-add validation pass) we reuse
-    // them to avoid downloading the whole collection a second time.
-    final emails = <String>{...?existingEmails};
+                final emails = <String>{...?existingEmails};
     final nationalIds = <String>{...?existingNationalIds};
 
     if (existingEmails == null || existingNationalIds == null) {
@@ -426,11 +421,7 @@ class FirestoreService {
     int count = 0;
     if (validWorkers.isNotEmpty) {
       count = validWorkers.length;
-      // Small batches with full concurrency beat a few large ones: on slower
-      // uplinks a 400-op commit is a much longer single round trip, while many
-      // small parallel commits all finish around the same time. The bulk-add
-      // notification write overlaps with the commits instead of waiting for them.
-      const batchSize = 100;
+                              const batchSize = 100;
       final pending = <Future<void>>[_notifyBulkWorkersAdded(count)];
       for (var i = 0; i < validWorkers.length; i += batchSize) {
         final chunk = validWorkers.sublist(i, (i + batchSize).clamp(0, validWorkers.length));
@@ -760,8 +751,7 @@ class FirestoreService {
     return WorkerIdentity.duplicateField(<String, dynamic>{'email': email, 'nationalId': nationalId}, existingWorkers, excludeId: excludeId);
   }
 
-  // ==================== EXPENSE METHODS ====================
-
+  
   Future<String> addExpense(Map<String, dynamic> expense) async {
     Validators.validateExpense(expense);
     final coll = _expenses;
@@ -909,8 +899,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  // ==================== ATTENDANCE METHODS ====================
-
+  
   Future<String> addAttendanceRecord(Map<String, dynamic> record) async {
     Validators.validateAttendance(record);
     final coll = _attendance;
@@ -1335,8 +1324,7 @@ class FirestoreService {
         .get();
   }
 
-  // ==================== PAYROLL METHODS ====================
-
+  
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
     Validators.validatePayroll(record);
     final coll = _payroll;
@@ -1576,8 +1564,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).get();
   }
 
-  // ==================== TIME OFF METHODS ====================
-
+  
   Future<String> addTimeOffRecord(Map<String, dynamic> record) async {
     Validators.validateTimeOff(record);
     final coll = _timeoff;
@@ -1632,12 +1619,7 @@ class FirestoreService {
 
       Map<String, dynamic> timeOffData;
       if (isMissingDocument) {
-        // The Time Off document is already gone (e.g. an Attendance-created
-        // leave whose Time Off record was removed elsewhere, or a synthesized
-        // attendance-derived record). Reconcile from the record the user is
-        // looking at so we never try to update/delete a document that no
-        // longer exists. Without context there is nothing to reconcile.
-        if (fallbackRecord == null) {
+                                                if (fallbackRecord == null) {
           throw StateError('Time off record does not exist');
         }
         timeOffData = fallbackRecord;
@@ -1664,18 +1646,13 @@ class FirestoreService {
         for (final date in oldDates) {
           final key = _timeOffDateKey(date);
           if (isMissingDocument) {
-            // The owning document id may even be a synthesized attendance id,
-            // so clear any leftover lock on the date instead of matching ids.
-            dateLocks.remove(key);
+                                    dateLocks.remove(key);
           } else if (dateLocks[key]?.toString() == timeOffId) {
             dateLocks.remove(key);
           }
         }
 
-        // The missing document is already absent from `currentTimeOffRecords`,
-        // so the recomputed balance restores its days exactly once (a second
-        // reconcile recomputes the same deterministic result).
-
+                        
         final recordsAfterCancellation = currentTimeOffRecords.where((record) => record['id']?.toString() != timeOffId).map(Map<String, dynamic>.from).toList()..add({...timeOffData, 'id': timeOffId, 'status': 'Cancelled'});
         final workerWithId = {...workerData, 'id': workerId, 'workerId': workerId};
         workerBalanceUpdate = TimeOffService.canonicalWorkerLeaveFields(workerWithId, remainingBalances: TimeOffService.remainingBalancesFromAssignedRecords(workerWithId, recordsAfterCancellation));
@@ -1708,11 +1685,7 @@ class FirestoreService {
         }
 
         if (isMissingDocument) {
-          // There is no Time Off document left to match against; this
-          // attendance record is what kept the leave visible, so remove its
-          // leave state (and clear the dangling `timeOffId`) unless the
-          // worker was genuinely present that day.
-          final status = (attendance['status'] ?? '').toString().trim().toLowerCase();
+                                                  final status = (attendance['status'] ?? '').toString().trim().toLowerCase();
           final attendanceShowsLeave = {'leave', 'onleave', 'on leave', 'l'}.contains(status) || source == 'auto_leave';
           if (!attendanceShowsLeave) continue;
           if (source == 'auto_leave') {
@@ -1733,12 +1706,7 @@ class FirestoreService {
           continue;
         }
 
-        // A leave created from the Attendance screen (`source: 'manual'`)
-        // links its attendance record back to this time off record via
-        // `timeOffId`. Clear the leave state on that record so Attendance stops
-        // showing the worker on leave and Time Off does not re-synthesize the
-        // leave from the attendance record on reopen.
-        if (!isLinkedToThisTimeOff) continue;
+                                                if (!isLinkedToThisTimeOff) continue;
         transaction.set(
           snapshot.reference,
           {
@@ -2086,8 +2054,7 @@ class FirestoreService {
     return await coll.where('workerId', isEqualTo: workerId).get();
   }
 
-  // ==================== ASSET METHODS ====================
-
+  
   Future<String> addAsset(Map<String, dynamic> asset) async {
     final canonicalAsset = _canonicalAssetReturnFields(asset);
     Validators.validateAsset(canonicalAsset);
@@ -2137,8 +2104,7 @@ class FirestoreService {
     return await coll.orderBy('createdAt', descending: true).limit(limit).get();
   }
 
-  // ==================== HOLIDAY METHODS ====================
-
+  
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
     final canonicalHoliday = _canonicalHolidayFields(holiday, forUpdate: false);
     Validators.validateHoliday(canonicalHoliday);
@@ -2197,8 +2163,7 @@ class FirestoreService {
     }, SetOptions(merge: true));
   }
 
-  // ==================== DUMMY DATA METHODS ====================
-
+  
   Future<void> seedDummyDataForUser({
     required String uid,
     required String displayName,
@@ -2290,8 +2255,7 @@ class FirestoreService {
     if (count % 500 != 0) await batch.commit();
   }
 
-  // ==================== NOTIFICATION METHODS ====================
-
+  
   Future<void> addNotification(Map<String, dynamic> notification) async {
     final coll = _notifications;
     if (coll == null) return;

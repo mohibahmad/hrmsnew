@@ -689,9 +689,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           final isDragRemoving = selectionBeforeDrag.contains(dragAnchorDate);
                           final start = dragAnchorDate!.isBefore(current) ? dragAnchorDate! : current;
                           final end = dragAnchorDate!.isAfter(current) ? dragAnchorDate! : current;
-                          // Never let a drag select (or preview) future dates;
-                          // the picker stays usable, only future days are excluded.
-                          final safeStart = start.isAfter(today) ? today : start;
+                                                                              final safeStart = start.isAfter(today) ? today : start;
                           final safeEnd = end.isAfter(today) ? today : end;
                           for (var d = safeStart; !d.isAfter(safeEnd); d = d.add(const Duration(days: 1))) {
                             isDragRemoving ? selectedDates.remove(d) : selectedDates.add(d);
@@ -706,9 +704,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                             final exists = selectedDates.any(
                               (d) => d.year == date.year && d.month == date.month && d.day == date.day,
                             );
-                            // Ignore taps that would ADD a future date (removing
-                            // one is harmless); future dates are simply not selectable.
-                            if (isFuture && !exists) return;
+                                                                                    if (isFuture && !exists) return;
                             exists
                                 ? selectedDates.removeWhere(
                                     (d) => d.year == date.year && d.month == date.month && d.day == date.day)
@@ -776,10 +772,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
-      // A report that reaches into the future is always empty (no attendance
-      // exists for future dates) and misleads users into thinking data is
-      // missing. Custom is the only range a user can push past today.
-      final reportNow = DateTime.now();
+                        final reportNow = DateTime.now();
       final reportToday = DateTime(
         reportNow.year,
         reportNow.month,

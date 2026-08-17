@@ -468,9 +468,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildFilterTab('All', 'all_filter'.tr()),
-            for (final p in positionsToShow)
-              _buildFilterTab(p, LocalizationHelper.localizePosition(p)),
+            for (int i = 0; i <= positionsToShow.length; i++) ...[
+              _buildFilterTab(i == 0 ? 'All' : positionsToShow[i - 1], i == 0 ? 'all_filter'.tr() : LocalizationHelper.localizePosition(positionsToShow[i - 1])),
+              if (i < positionsToShow.length) Container(width: 1, height: 20, color: Colors.grey.shade300),
+            ],
           ],
         ),
       ),

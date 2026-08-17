@@ -78,30 +78,7 @@ class PayrollService {
       periodDateKey(a.start) == periodDateKey(b.start) &&
       periodDateKey(a.end) == periodDateKey(b.end);
 
-  /// Resolves the company's single source of truth for the CURRENT payroll
-  /// cycle, following the fixed business rules:
-  ///
-  ///  * The current cycle is the pay day cycle that contains today (on payday
-  ///    itself this is the cycle ENDING today; the next day it is the cycle
-  ///    that just started).
-  ///  * Before the payday boundary the cycle is NEVER advanced.
-  ///  * At/after the boundary the cycle advances EXACTLY ONE period, and only
-  ///    when every eligible worker of that cycle already has a Paid payroll
-  ///    record (no remaining payable workers).
-  ///  * If some workers are still payable at/after the boundary the cycle
-  ///    STAYS (overdue) — it is never moved backwards and never skipped.
-  ///  * After payday, if the immediately previous cycle still has unpaid
-  ///    workers, the cycle remains OVERDUE — even when the persisted cycle
-  ///    fields are missing from the profile.  This prevents
-  ///    `payDayPeriodContaining` from automatically jumping into the next
-  ///    cycle the day after payday.
-  ///  * An explicit Ignore/Confirm advance (persisted = next) is always
-  ///    honoured and never reverted by the overdue check.
-  ///  * A persisted cycle is honoured only when it equals the current cycle
-  ///    or the immediate next cycle (a single confirmed advance).  An
-  ///    old/stale persisted cycle can never drag the company backwards or
-  ///    jump it forward more than once.
-  static PayrollPeriod resolveCurrentPayrollPeriod({
+                                                static PayrollPeriod resolveCurrentPayrollPeriod({
     required List<Map<String, dynamic>> workersList,
     required List<Map<String, dynamic>> payrollRecords,
     required int payDay,
@@ -127,19 +104,9 @@ class PayrollService {
       } else if (payrollPeriodsEqual(persistedCycle, next)) {
         anchor = next;
       }
-      // Persisted that matches neither base nor next is stale and ignored.
-    }
+          }
 
-    // ── Overdue previous-cycle detection ──────────────────────────────
-    // When today is after the current month's payday AND the immediately
-    // previous cycle (ending on base.start) still has unpaid workers, the
-    // cycle is OVERDUE and must stay on that previous period.  This runs
-    // when anchor is null (no valid persisted cycle — e.g. profile fields
-    // are missing or stale) so the overdue state is detected even without
-    // a persisted cycle.  When anchor IS set (persisted matches base or
-    // next) the persisted cycle is honoured and the check is skipped —
-    // this prevents reverting an explicit Ignore/Confirm advance.
-    final currentMonthPayday = _payDayInMonth(
+                                        final currentMonthPayday = _payDayInMonth(
       DateTime(today.year, today.month, 1), normalizedPayDay);
 
     if (anchor == null && today.isAfter(currentMonthPayday)) {
@@ -149,10 +116,7 @@ class PayrollService {
         normalizedPayDay,
       );
 
-      // Guard: skip if ALL payroll records have payPeriodEnd strictly
-      // after the previous cycle — they belong to a future period and
-      // carry no signal about the previous cycle's paid state.
-      final allRecordsAfterPrevCycle = payrollRecords.isNotEmpty &&
+                        final allRecordsAfterPrevCycle = payrollRecords.isNotEmpty &&
           payrollRecords.every((record) {
         final savedEnd = _parseDate(record['payPeriodEnd']);
         return savedEnd != null && savedEnd.isAfter(prevCycleEnd);
@@ -170,10 +134,7 @@ class PayrollService {
         );
 
         if (prevPayable.isNotEmpty) {
-          // Previous cycle is overdue.  Honour the anchor: if it is the
-          // next cycle (explicit Ignore/Confirm), keep it — never revert
-          // an explicit advance.
-          if (anchor != null && payrollPeriodsEqual(anchor, next)) {
+                                        if (anchor != null && payrollPeriodsEqual(anchor, next)) {
             return anchor;
           }
           return PayrollPeriod(start: prevCycleStart, end: prevCycleEnd);
@@ -191,19 +152,15 @@ class PayrollService {
       periodEnd: base.end,
     );
 
-    // Before the payday boundary: never advance early (#10).
-    if (today.isBefore(base.end)) return anchor ?? base;
+        if (today.isBefore(base.end)) return anchor ?? base;
 
-    // Boundary reached.
-    if (!advanceIfFullyPaid || payable.isNotEmpty) {
-      // Still due — stay on the same (possibly overdue) cycle (#12),
-      // or keep the single confirmed advance (#13).
-      return anchor ?? base;
+        if (payable.isNotEmpty) return base;
+
+        if (!advanceIfFullyPaid) {
+                  return anchor ?? base;
     }
 
-    // Everyone payable in this cycle is Paid and the boundary has been
-    // reached -> advance exactly ONE cycle (#11).
-    return next;
+            return next;
   }
 
   static String payrollPeriodLabel(DateTime month) => '${month.year}-${pad2(month.month)}';
@@ -260,9 +217,7 @@ class PayrollService {
         worker['isPaid'] != true &&
         workerEmployedDuringPeriod(worker, effectivePeriodEnd)
     ).toList();
-  }
-
-  static List<Map<String, dynamic>> payableWorkersForPeriod(
+  }  static List<Map<String, dynamic>> payableWorkersForPeriod(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
     required DateTime month,
@@ -280,6 +235,32 @@ class PayrollService {
       periodStart: periodStart,
       periodEnd: periodEnd,
     ).where((worker) =>
+        extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0
+    ).toList();
+
+  }
+
+          static List<Map<String, dynamic>> excludedLateJoinersForPeriod(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    required DateTime month,
+    bool allowUndatedRecords = false,
+    String? companyCurrency,
+    DateTime? periodStart,
+    DateTime? periodEnd,
+  }) {
+    final effectivePeriodEnd = periodEnd ?? payPeriodEnd(month);
+    return combinePayroll(
+      workersList,
+      rawPayrollDocs,
+      month: month,
+      allowUndatedRecords: allowUndatedRecords,
+      companyCurrency: companyCurrency,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
+    ).where((worker) =>
+        worker['isPaid'] != true &&
+        !workerEmployedDuringPeriod(worker, effectivePeriodEnd) &&
         extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0
     ).toList();
   }

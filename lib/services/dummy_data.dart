@@ -202,9 +202,7 @@ class DummyData {
     }
   }
 
-  /// Persists only the workers collection. Used by bulk import, which only
-  /// mutates workers — avoids re-serializing every collection on large imports.
-  static Future<void> saveWorkersToPrefs() async {
+      static Future<void> saveWorkersToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('workers', json.encode(_toJsonSafe(workers)));
   }

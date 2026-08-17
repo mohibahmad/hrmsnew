@@ -328,11 +328,7 @@ class Worker {
     map.addField('education', education, forUpdate);
     map.addField('salaryType', salaryType, forUpdate);
     map.addField('profileImage', profileImage, forUpdate);
-    // ID images are read and written app-wide under `frontId`/`backId`;
-    // `fromMap` still accepts the legacy `idFront`/`idBack` keys for docs
-    // written before the rename, so emitting the canonical keys keeps every
-    // reader (bulk media uploader, documents screen, edit flow) working.
-    map.addField('frontId', frontId, forUpdate);
+                    map.addField('frontId', frontId, forUpdate);
     map.addField('backId', backId, forUpdate);
     map.addField('cv', cv, forUpdate);
     map.addField('status', status, forUpdate);

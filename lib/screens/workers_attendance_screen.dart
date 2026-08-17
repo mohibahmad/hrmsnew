@@ -1993,14 +1993,7 @@ class _WorkersAttendanceScreenState
 
           int availableLeaveAllowanceForType(String type) {
             final normType = TimeOffService.normalizeLeaveType(type);
-            // The attendance currently being edited already consumes one day of
-            // this leave type. Report the balance exactly as it will be after
-            // unselecting it: compute the remaining days while EXCLUDING the
-            // current linked record. This restores the day exactly once here,
-            // matching the single restoration later performed on save. A blind
-            // "+1" would restore it a second time when the current record is not
-            // (yet) present in the local records, inflating the balance by one.
-            final isCurrentLeave =
+                                                                                                final isCurrentLeave =
                 todayRecord['status'] == 'Leave' &&
                 TimeOffService.normalizeLeaveType(initialType) == normType;
             if (isCurrentLeave) {
@@ -2015,10 +2008,7 @@ class _WorkersAttendanceScreenState
                   excludingRecordId: linkedTimeOffId,
                 );
               }
-              // Legacy attendance leaves may exist without a stored timeOffId.
-              // Fall back to the active record covering today so the current day
-              // is still excluded exactly once.
-              final now = DateTime.now();
+                                                        final now = DateTime.now();
               final currentRecord = TimeOffService.activeLeaveForWorker(
                 workerData,
                 _timeOffRecords,

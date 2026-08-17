@@ -230,10 +230,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   if (embeddedSources.isNotEmpty) {
     onProgress?.call(0, totalMedia, 'uploading_embedded');
 
-    // Downscale/compress raster images (base64 photos) in background isolates
-    // first — a 3 MB phone photo becomes ~150-400 KB, so the parallel uploads
-    // finish in seconds instead of tens of seconds.
-    final embeddedFiles = await _prepareUploadFiles(embeddedSources);
+                final embeddedFiles = await _prepareUploadFiles(embeddedSources);
 
     final embedResults = await uploadBatch(embeddedFiles);
 
@@ -326,9 +323,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   return prepared;
 }
 
-/// Compresses a list of embedded media files in parallel background isolates
-/// (bounded concurrency so low-end devices don't get flooded with isolates).
-/// PDFs/DOCs and already-small images are returned unchanged.
 Future<List<UploadFile>> _prepareUploadFiles(
   List<({
     int workerIndex,
@@ -363,9 +357,6 @@ Future<List<UploadFile>> _prepareUploadFiles(
   return results.cast<UploadFile>();
 }
 
-/// Best-effort image compression. Returns null when the file should be
-/// uploaded unchanged (non-raster, too large to decode safely, decode error,
-/// or already small).
 Future<Uint8List?> _compressForUpload(
   Uint8List bytes,
   String mimeType,
@@ -377,9 +368,7 @@ Future<Uint8List?> _compressForUpload(
       normalizedMime != 'image/png') {
     return null;
   }
-  // Guard against pathological inputs: decoding a giant file into pixels can
-  // exhaust memory. Files over this size keep their original bytes.
-  if (bytes.length > 8 * 1024 * 1024) return null;
+      if (bytes.length > 8 * 1024 * 1024) return null;
 
   try {
     return await compute(
@@ -410,8 +399,7 @@ Uint8List? _compressWorkerImage(
     final longestSide =
         decoded.width > decoded.height ? decoded.width : decoded.height;
 
-    // Already small — keep the original bytes (no quality loss, no wasted time).
-    if (longestSide <= maxDimension && bytes.length <= 350 * 1024) return null;
+        if (longestSide <= maxDimension && bytes.length <= 350 * 1024) return null;
 
     final scale = longestSide > maxDimension
         ? maxDimension / longestSide

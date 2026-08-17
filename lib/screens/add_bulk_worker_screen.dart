@@ -98,9 +98,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     _authSubscription = _authService.authStateChanges.listen((_) {
       _clearIdentityCache();
     });
-    // Warm the duplicate-check cache while the user picks a CSV so the parse
-    // step never stalls on a full workers download.
-    _loadExistingIdentitySets().ignore();
+            _loadExistingIdentitySets().ignore();
   }
 
   @override
@@ -214,9 +212,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Future<({Set<String> emails, Set<String> nationalIds})>
   _loadExistingIdentitySets() async {
-    // Cache once per screen session (even when empty) so Save All never
-    // re-downloads the whole workers collection to check duplicates.
-    if (_identityCacheLoaded) {
+            if (_identityCacheLoaded) {
       return (emails: _cachedEmails, nationalIds: _cachedNationalIds);
     }
 
@@ -640,10 +636,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       if (isGuest) {
         DummyData.loadFromPrefs();
       }
-      // The workers list re-subscribes to its own stream when this screen
-      // closes, so re-listening here would only trigger a redundant full
-      // collection download right after saving.
-
+                  
       if (!keepInvalidWorkers) {
         widget.onBack?.call();
       }
@@ -788,9 +781,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     final acceptedWorkers = <Map<String, dynamic>>[];
     int guestSkippedDuplicates = 0;
 
-    // Set-based duplicate detection keeps this O(n) instead of O(n²) for
-    // large imports (a fresh combined list was rebuilt and scanned per row).
-    final knownEmails = <String>{};
+            final knownEmails = <String>{};
     final knownNationalIds = <String>{};
     for (final w in existingWorkers) {
       final e = WorkerIdentity.normalizeEmail(w['email']);
@@ -815,8 +806,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       acceptedWorkers.add(worker);
     }
 
-    // Build the merged list once instead of O(n) `insert(0)` shifts.
-    final nowMicros = DateTime.now().microsecondsSinceEpoch;
+        final nowMicros = DateTime.now().microsecondsSinceEpoch;
     final newWorkers = <Map<String, dynamic>>[
       for (var i = 0; i < acceptedWorkers.length; i++)
         {...acceptedWorkers[i], 'id': 'dummy_${nowMicros}_$i'},
@@ -825,9 +815,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       ..clear()
       ..addAll([...newWorkers.reversed, ...existingWorkers]);
 
-    // Only workers changed during bulk import — skip re-serializing the
-    // other demo collections.
-    await DummyData.saveWorkersToPrefs();
+            await DummyData.saveWorkersToPrefs();
 
     return _SaveResult(
       importedCount: acceptedWorkers.length,
