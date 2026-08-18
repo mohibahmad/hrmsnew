@@ -410,7 +410,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               elevation: 10,
               child: Container(
                 width: 450,
-                padding: const EdgeInsets.fromLTRB(24, 13, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,13 +424,16 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           constraints: const BoxConstraints(),
                         ),
                         const Spacer(),
-                        Text(
-                          'add_asset'.tr(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Text(
+                            'add_asset'.tr(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF000000),
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
                         ),
                         const Spacer(),
@@ -600,7 +603,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         Text(
                           'worker_name'.tr(),
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
@@ -756,7 +759,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         Text(
                           'has_been_returned'.tr(),
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
@@ -779,12 +782,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       ],
                     ),
                     if (isReturned) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       _buildModalDatePicker(
                         ctx,
                         'returned_date'.tr(),
                         _formatDate(returnedDate),
-                        Colors.red,
+                        const Color(0xFFFF0004),
                         () => _showCupertinoDatePicker(
                           context: ctx,
                           initialDate: returnedDate,
@@ -835,7 +838,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               elevation: 10,
               child: Container(
                 width: 450,
-                padding: const EdgeInsets.fromLTRB(24, 13, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1057,7 +1060,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         Text(
                           'has_been_returned'.tr(),
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
@@ -1080,12 +1083,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       ],
                     ),
                     if (isReturned) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       _buildModalDatePicker(
                         ctx,
                         'returned_date'.tr(),
                         _formatDate(returnedDate),
-                        Colors.red,
+                        const Color(0xFFFF0004),
                         () => _showCupertinoDatePicker(
                           context: ctx,
                           initialDate: returnedDate,
@@ -1119,7 +1122,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
@@ -1232,7 +1235,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
@@ -1278,7 +1281,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     required String title,
     required ValueChanged<DateTime> onDateSelected,
   }) {
-    DateTime selected = initialDate;
+    DateTime min =
+        DateTime(minimumDate.year, minimumDate.month, minimumDate.day);
+    DateTime max =
+        DateTime(maximumDate.year, maximumDate.month, maximumDate.day);
+    if (min.isAfter(max)) {
+      final tmp = min;
+      min = max;
+      max = tmp;
+    }
+    DateTime selected =
+        DateTime(initialDate.year, initialDate.month, initialDate.day);
+    if (selected.isBefore(min)) selected = min;
+    if (selected.isAfter(max)) selected = max;
 
     showGeneralDialog(
       context: context,
@@ -1344,10 +1359,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             height: 200,
                             child: CupertinoDatePicker(
                               mode: CupertinoDatePickerMode.date,
-                              initialDateTime: initialDate,
-                              minimumDate: minimumDate,
-                              maximumDate: maximumDate,
-                              onDateTimeChanged: (newDate) => setPickerState(() => selected = newDate),
+                              initialDateTime: selected,
+                              minimumDate: min,
+                              maximumDate: max,
+                              onDateTimeChanged: (newDate) => setPickerState(
+                                () => selected = DateTime(newDate.year, newDate.month, newDate.day),
+                              ),
                             ),
                           ),
                           Container(
@@ -1742,7 +1759,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: data.isReturned ? Colors.green : Colors.red,
+                  color: data.isReturned ? Colors.green : const Color(0xFFFF0004),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -1839,13 +1856,13 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   'assets/delete_icon.svg',
                   width: 16,
                   height: 16,
-                  colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(const Color(0xFFFF0004), BlendMode.srcIn),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'delete'.tr(),
                   style: const TextStyle(
-                    color: Colors.red,
+                    color: const Color(0xFFFF0004),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'SF Pro Display',
