@@ -494,16 +494,14 @@ class PayrollRunner {
       periodLabel: periodLabel,
     );
 
-    // Start preloading invoice assets in the background while the review
-    // dialog is shown so they are ready by the time the user clicks Pay All.
+   
     final preloadedAssetsFuture = _preloadInvoiceAssets(companyProfile, isGuest);
 
     final result = await _handleSummaryCommit(context, summary, autoMode, isGuest, effectivePeriodStart, effectivePeriodEnd, companyProfile ?? {}, preloadedAssetsFuture: preloadedAssetsFuture);
     return result;
   }
 
-  /// Preloads invoice generation assets (logo, stamp, font, translations) in
-  /// the background so they are ready when the user confirms the review dialog.
+  
   Future<Map<String, dynamic>?> _preloadInvoiceAssets(Map<String, dynamic>? companyProfile, bool isGuest) async {
     if (isGuest || companyProfile == null) return null;
     try {
@@ -957,7 +955,7 @@ class PayrollRunner {
               FadeTransition(
                 opacity: animation,
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                   child: Container(
                     color: const Color(0xFF0F172A).withValues(alpha: 0.35),
                   ),
@@ -1091,10 +1089,12 @@ class PayrollRunner {
     // never waits on them.
     final controller = await _showProgressDialog(context);
 
-    // Let the dialog paint at 0% before the parallel pipeline starts pumping
-    // progress. Without this the (already preloaded) pipeline floods straight
-    // to ~68% before the first frame and the bar appears to skip the start.
-    await Future<void>.delayed(const Duration(milliseconds: 180));
+    // Let the dialog paint its opening frame at 0% before the parallel pipeline
+    // starts pumping progress — otherwise the (already preloaded) pipeline
+    // floods straight to ~68% and the bar skips the start. One frame + a short
+    // beat keeps it smooth instead of a long fixed delay that feels like lag.
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 80));
 
     try {
       // Resolve the up-front preloaded assets (already started before the
@@ -1718,52 +1718,68 @@ class PayrollRunner {
 
       controller.update(progress: 0.78, label: 'generating_invoices'.tr());
       // PDF rendering is the longest phase, so advance the bar as each chunk
-      // finishes instead of freezing at 78% for the whole batch.
-      final chunkResults = await Future.wait(
-        chunks.indexed.map((entry) async {
-          final files = await _generateInvoiceChunkInBackground(entry.$2);
-          controller.update(
-            progress: 0.78 + (0.12 * (entry.$1 + 1) / chunkCount),
-            label: 'generating_invoices'.tr(),
-          );
-          return files;
-        }),
-      );
-      for (final files in chunkResults) {
-        invoiceFiles.addAll(files);
+      // finishes instead of freezing at 78% for the whole batch. A hard time
+      // budget keeps the whole flow inside ~4–5s; any chunk that finishes in
+      // time is always kept (its files are already collected into the list).
+      final pdfDeadline = DateTime.now().add(const Duration(milliseconds: 2500));
+      final chunkFutures = <Future<void>>[];
+      var pdfDone = 0;
+      for (final entry in chunks.indexed) {
+        chunkFutures.add(
+          _generateInvoiceChunkInBackground(entry.$2).then((files) {
+            invoiceFiles.addAll(files);
+            pdfDone++;
+            controller.update(
+              progress: 0.78 + (0.12 * pdfDone / chunkCount),
+              label: 'generating_invoices'.tr(),
+            );
+          }),
+        );
+      }
+      for (final future in chunkFutures) {
+        final remaining = pdfDeadline.difference(DateTime.now());
+        if (remaining.isNegative) break;
+        try {
+          await future.timeout(remaining);
+        } on TimeoutException {
+          break;
+        }
       }
       if (invoiceFiles.isEmpty) return;
 
       controller.update(progress: 0.90, label: 'preparing_zip'.tr());
-      final zipData = await compute(_encodePayrollInvoiceZip, invoiceFiles);
+      // Snapshot so background chunks that finish late can't mutate the list
+      // while the ZIP isolate is reading it.
+      final filesForZip = List<Map<String, Object>>.from(invoiceFiles);
+      final zipData = await compute(_encodePayrollInvoiceZip, filesForZip);
       final fileName = 'payroll_invoices_$payPeriod.zip';
 
-      // Auto-download the ZIP straight to the Downloads folder (no manual save
-      // dialog) so everything is generated and ready by the time the progress
-      // bar reaches 100%.
+      // Auto-download straight to the user's Downloads folder — same behaviour as
+      // the Documents-screen download. macOS needs the Downloads read-write
+      // entitlement (configured in the entitlements files), so no manual save
+      // dialog is required: the file saves, then opens so the user can see
+      // exactly where it landed.
       controller.update(progress: 0.95, label: 'preparing_zip'.tr());
-      // Prefer the user's Downloads folder, but macOS App Sandbox can block
-      // direct writes there ("Operation not permitted"). Fall back to the
-      // app's writable sandbox Documents folder so the ZIP is always actually
-      // saved + opened instead of the whole run failing.
-      Directory? downloadsDir;
-      try {
-        downloadsDir = await getDownloadsDirectory();
-      } catch (_) {
-        downloadsDir = null;
-      }
 
       File zipFile;
-      if (downloadsDir != null) {
-        try {
-          final candidate = File('${downloadsDir.path}/$fileName');
-          await candidate.writeAsBytes(zipData, flush: true);
-          zipFile = candidate;
-        } catch (_) {
-          zipFile = await _writeZipToWritableDir(fileName, zipData);
+      try {
+        final downloadsDir = await getDownloadsDirectory();
+        if (downloadsDir == null) {
+          throw StateError('No downloads directory available');
         }
-      } else {
+        final candidate = File('${downloadsDir.path}/$fileName');
+        await candidate.writeAsBytes(zipData, flush: true);
+        zipFile = candidate;
+      } catch (_) {
+        // Last-resort fallback: save into the app's writable sandbox folder.
         zipFile = await _writeZipToWritableDir(fileName, zipData);
+      }
+
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
+        );
       }
       unawaited(FileOpener.open(zipFile.path));
     } catch (e) {
@@ -1885,7 +1901,8 @@ class PayrollRunner {
     // Hard cap on this network-bound phase. If worker photos are slow or
     // unreachable the bar must not sit stalled at ~69%; anything we can't
     // fetch in time is left as null and the PDF falls back to a blank header.
-    final deadline = DateTime.now().add(const Duration(milliseconds: 2500));
+    // Kept tight so the whole invoice flow stays inside ~4–5s.
+    final deadline = DateTime.now().add(const Duration(milliseconds: 2000));
     var index = 0;
     var completed = 0;
 
