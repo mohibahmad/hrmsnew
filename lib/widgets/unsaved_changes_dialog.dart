@@ -95,16 +95,13 @@ class UnsavedChangesDialog {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context, false),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF1F5F9),
-                                foregroundColor: const Color(0xFF0F172A),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                              style: ButtonStyle(
+                                elevation: WidgetStateProperty.all(0),
+                                backgroundColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                                foregroundColor: WidgetStateProperty.all(const Color(0xFF0F172A)),
+                                padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 18)),
+                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                shadowColor: WidgetStateProperty.all(Colors.transparent),
                               ),
                               child: Text(
                                 'cancel'.tr(),
@@ -120,16 +117,13 @@ class UnsavedChangesDialog {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(context, true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEF4444),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                              style: ButtonStyle(
+                                elevation: WidgetStateProperty.all(0),
+                                backgroundColor: WidgetStateProperty.all(const Color(0xFFEF4444)),
+                                foregroundColor: WidgetStateProperty.all(Colors.white),
+                                padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 18)),
+                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                shadowColor: WidgetStateProperty.all(Colors.transparent),
                               ),
                               child: Text(
                                 'discard'.tr(),

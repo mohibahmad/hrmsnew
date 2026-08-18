@@ -22,7 +22,7 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
   final Color leftPanelBlue = const Color(0xFF0B4DB7);
   final Color cardLightBlue = const Color(0xFFDBE7F9);
 
-  int _selectedPlanIndex = 0;
+  int _selectedPlanIndex = 1;
   bool _isSaving = false;
 
   late AuthService _authService;
