@@ -435,8 +435,31 @@ class FileOpener {
     try {
       final file = File(filePath);
       if (!await file.exists()) return;
-      await OpenFile.open(filePath);
-    } catch (_) {}
+      final result = await OpenFile.open(filePath);
+      // open_file returns a result object instead of throwing. If the file
+      // couldn't actually be opened (error / not found / sandbox path), fall
+      // back to revealing it in the file manager so the user still sees where
+      // it was saved.
+      if (result.type == ResultType.error ||
+          result.type == ResultType.fileNotFound) {
+        await _revealInFileManager(file);
+      }
+    } catch (_) {
+      try {
+        await _revealInFileManager(File(filePath));
+      } catch (_) {}
+    }
+  }
+
+  /// Shows the file in Finder / Explorer so the download location is obvious.
+  static Future<void> _revealInFileManager(File file) async {
+    if (Platform.isMacOS) {
+      await Process.run('open', ['-R', file.path]);
+    } else if (Platform.isWindows) {
+      await Process.run('explorer', ['/select,', file.path]);
+    } else if (Platform.isLinux) {
+      await Process.run('xdg-open', [file.parent.path]);
+    }
   }
 }
 class LeaveBalanceHelper {

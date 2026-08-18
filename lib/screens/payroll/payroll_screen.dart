@@ -1703,6 +1703,31 @@ if (day == 0) {
       );
     }
 
+    // Always include the period the user is currently viewing, so the active
+    // (running) cycle can never be missing from the dropdown or appear
+    // unselected even when resolution edge-cases disagree with it.
+    final displayedPeriod = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+    final displayedKey = '${PayrollService.periodDateKey(displayedPeriod.start)}_${PayrollService.periodDateKey(displayedPeriod.end)}';
+    if (!map.containsKey(displayedKey)) {
+      map[displayedKey] = (period: displayedPeriod, paidCount: 0);
+    }
+
+    // Always include the true cycle containing "today" (the one actually
+    // running right now). The resolution logic can land on an overdue previous
+    // cycle or a persisted one, so this guarantees the real running cycle is
+    // never missing from the dropdown — especially after an app restart.
+    final runningDay = _salaryPayDay;
+    if (runningDay != null && runningDay >= 1 && runningDay <= 28) {
+      final running = PayrollService.payDayPeriodContaining(
+        DateTime.now(),
+        runningDay.clamp(1, 28),
+      );
+      final runningKey = '${PayrollService.periodDateKey(running.start)}_${PayrollService.periodDateKey(running.end)}';
+      if (!map.containsKey(runningKey)) {
+        map[runningKey] = (period: running, paidCount: 0);
+      }
+    }
+
     // When the current cycle is fully paid (nothing left to pay), surface
     // the next upcoming cycle too, otherwise the dropdown would only show the
     // just-completed cycle and the next cycle would appear to be missing.

@@ -58,6 +58,12 @@ class DialogController {
   void Function(void Function())? _setState;
   double _progress = 0;
   String _label = '';
+  DateTime _lastLabelChangeAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Each status label ("Sending payroll...", "Generating invoices...", ...)
+  // stays visible for at least this long so the text changes smoothly instead
+  // of flashing through phases in a few hundred milliseconds.
+  static const Duration minLabelDwell = Duration(milliseconds: 650);
 
   double get progress => _progress;
   String get label => _label;
@@ -66,11 +72,17 @@ class DialogController {
     // Progress must only ever move forward: with commit + invoice generation
     // running in parallel, racing writers would otherwise push the bar
     // backwards. Values that are behind the current progress are ignored.
-    if (progress > _progress) {
-      _progress = progress;
-      _label = label;
-      _setState?.call(() {});
+    if (!(progress > _progress)) return;
+    _progress = progress;
+    if (label != _label) {
+      final force = progress >= 1.0;
+      final elapsed = DateTime.now().difference(_lastLabelChangeAt);
+      if (force || elapsed >= minLabelDwell) {
+        _label = label;
+        _lastLabelChangeAt = DateTime.now();
+      }
     }
+    _setState?.call(() {});
   }
 
   /// Forces progress + label to a specific value regardless of direction.
@@ -813,7 +825,7 @@ class PayrollRunner {
   }
 
   double _calculateProrationFactor(Map<String, dynamic> worker, DateTime periodStart, DateTime periodEnd) {
-                                    return 1.0;
+   return 1.0;
   }
 
   AutoPayrollResult _createErrorResult(Map<String, dynamic> worker, String workerId, String name, String email, 
@@ -944,10 +956,10 @@ class PayrollRunner {
         barrierDismissible: false,
         barrierLabel: 'PayrollProgress',
         barrierColor: Colors.transparent,
-        transitionDuration: const Duration(milliseconds: 250),
+        transitionDuration: const Duration(milliseconds: 350),
         pageBuilder: (_, _, _) => const SizedBox(),
         transitionBuilder: (ctx, animation, _, _) {
-          final curve = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+          final curve = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -955,9 +967,9 @@ class PayrollRunner {
               FadeTransition(
                 opacity: animation,
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: Container(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -986,14 +998,31 @@ class PayrollRunner {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  controller.label.isNotEmpty ? controller.label : 'sending_payroll'.tr(),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0F172A),
-                                    fontFamily: 'SF Pro Display',
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 300),
+                                  switchInCurve: Curves.easeOutCubic,
+                                  switchOutCurve: Curves.easeInCubic,
+                                  transitionBuilder: (child, animation) =>
+                                      FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.0, 0.15),
+                                            end: Offset.zero,
+                                          ).animate(animation),
+                                          child: child,
+                                        ),
+                                      ),
+                                  child: Text(
+                                    controller.label.isNotEmpty ? controller.label : 'sending_payroll'.tr(),
+                                    key: ValueKey(controller.label),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0F172A),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -1115,11 +1144,8 @@ class PayrollRunner {
         periodStart: periodStart,
         periodEnd: periodEnd,
       ));
-
-      // Run the DB commit (network-bound) and the invoice + ZIP generation
-      // (CPU-bound, in background isolates) concurrently so the whole "Pay
-      // all" flow finishes as fast as possible instead of sequentially.
-      await Future.wait<void>([
+ 
+       await Future.wait<void>([
         _commitPayrollRun(
           committedSummary,
           isGuest,
@@ -1144,7 +1170,7 @@ class PayrollRunner {
 
       // Done (100%)
       controller.update(progress: 1.0, label: 'payroll_completed'.tr());
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 600));
     } catch (error, stackTrace) {
       if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
       if (context.mounted) {
@@ -1420,13 +1446,9 @@ class PayrollRunner {
     required DateTime periodEnd,
   }) async {
     if (selected.isEmpty) return;
-
-    // Read locale before any async gap so translations are seeded correctly in
-    // the background isolates used for parallel generation.
+ 
     final locale = context.locale.languageCode;
-
-    // Invoice generation progress is shown inside the Pay All dialog, so no
-    // snackbar is needed here.
+ 
 
     try {
       final now = DateTime.now();
@@ -1541,10 +1563,7 @@ class PayrollRunner {
     }
   }
 
-  /// Wraps `_generateAndSaveZipWithProgress` (which runs in parallel with the
-  /// DB commit) so that an invoice/ZIP failure never fails the whole "Pay all"
-  /// run — the payroll records are already committed at that point. Errors are
-  /// logged and shown as a snackbar, leaving the main progress untouched.
+ 
   Future<void> _generateAndSaveZipSafe(
     BuildContext context,
     List<AutoPayrollResult> paidResults,
@@ -1578,10 +1597,7 @@ class PayrollRunner {
     }
   }
 
-  /// Same as [_generateAndSaveZip] but updates a [DialogController] with
-  /// progress instead of showing snackbars.  Optionally accepts [preloadedAssets]
-  /// (logo bytes, stamp bytes, font bytes, translations) that were loaded
-  /// during the review dialog so those network + rootBundle calls are skipped.
+ 
   Future<void> _generateAndSaveZipWithProgress(
     BuildContext context,
     List<AutoPayrollResult> selected,
@@ -1672,9 +1688,7 @@ class PayrollRunner {
 
       controller.update(progress: 0.72, label: 'generating_invoices'.tr());
 
-      // Spread PDF rendering across up to 8 isolates on multi-core machines so
-      // large batches (100 workers) finish faster; each isolate parses its own
-      // copy of the font.
+   
       final maxParallel = (Platform.numberOfProcessors).clamp(2, 8).toInt();
       final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
@@ -1717,11 +1731,7 @@ class PayrollRunner {
       }
 
       controller.update(progress: 0.78, label: 'generating_invoices'.tr());
-      // PDF rendering is the longest phase, so advance the bar as each chunk
-      // finishes instead of freezing at 78% for the whole batch. A hard time
-      // budget keeps the whole flow inside ~4–5s; any chunk that finishes in
-      // time is always kept (its files are already collected into the list).
-      final pdfDeadline = DateTime.now().add(const Duration(milliseconds: 2500));
+     
       final chunkFutures = <Future<void>>[];
       var pdfDone = 0;
       for (final entry in chunks.indexed) {
@@ -1736,16 +1746,29 @@ class PayrollRunner {
           }),
         );
       }
+      // Wait for all chunks to finish. Use a per-chunk timeout so a single
+      // stuck isolate can't block the whole flow. Each chunk gets 5s — since
+      // they run in parallel the total wait stays well under that.
+      const perChunkTimeout = Duration(seconds: 5);
       for (final future in chunkFutures) {
-        final remaining = pdfDeadline.difference(DateTime.now());
-        if (remaining.isNegative) break;
         try {
-          await future.timeout(remaining);
+          await future.timeout(perChunkTimeout);
         } on TimeoutException {
-          break;
+          // Skip this chunk but continue awaiting the rest so we collect as
+          // many invoices as possible.
+          continue;
         }
       }
-      if (invoiceFiles.isEmpty) return;
+      if (invoiceFiles.isEmpty) {
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'failed_to_generate_zip'.tr(namedArgs: {'error': 'Invoice generation timed out'}),
+            isError: true,
+          );
+        }
+        return;
+      }
 
       controller.update(progress: 0.90, label: 'preparing_zip'.tr());
       // Snapshot so background chunks that finish late can't mutate the list
@@ -1754,11 +1777,10 @@ class PayrollRunner {
       final zipData = await compute(_encodePayrollInvoiceZip, filesForZip);
       final fileName = 'payroll_invoices_$payPeriod.zip';
 
-      // Auto-download straight to the user's Downloads folder — same behaviour as
-      // the Documents-screen download. macOS needs the Downloads read-write
-      // entitlement (configured in the entitlements files), so no manual save
-      // dialog is required: the file saves, then opens so the user can see
-      // exactly where it landed.
+      // Auto-download straight to the user's Downloads folder when the platform
+      // allows it (macOS needs the Downloads read-write entitlement, which is
+      // configured in the entitlements files). If that write is blocked, fall
+      // back to a native save dialog so the ZIP still lands somewhere visible.
       controller.update(progress: 0.95, label: 'preparing_zip'.tr());
 
       File zipFile;
@@ -1771,8 +1793,27 @@ class PayrollRunner {
         await candidate.writeAsBytes(zipData, flush: true);
         zipFile = candidate;
       } catch (_) {
-        // Last-resort fallback: save into the app's writable sandbox folder.
-        zipFile = await _writeZipToWritableDir(fileName, zipData);
+        final result = await FilePicker.saveFile(
+          dialogTitle: 'save_payroll_invoices_zip'.tr(),
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: ['zip'],
+          bytes: zipData,
+        );
+        if (result == null) {
+          // User cancelled the save dialog — write to the app sandbox folder
+          // and reveal it in the file manager so the run still completes and
+          // the user can find the file.
+          zipFile = await _writeZipToWritableDir(fileName, zipData);
+        } else {
+          final saved = File(result);
+          final exists = await saved.exists();
+          final savedLength = exists ? await saved.length() : 0;
+          if (!exists || savedLength != zipData.length) {
+            await saved.writeAsBytes(zipData, flush: true);
+          }
+          zipFile = saved;
+        }
       }
 
       if (context.mounted) {
@@ -2092,25 +2133,22 @@ class PayrollRunner {
       barrierDismissible: true,
       barrierLabel: 'PayrollReviewDialog',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curve = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutBack,
+          curve: Curves.easeOutCubic,
         );
         return Stack(
           fit: StackFit.expand,
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 10 * animation.value,
-                sigmaY: 10 * animation.value,
-              ),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
                 color: const Color(
                   0xFF0F172A,
-                ).withValues(alpha: 0.35 * animation.value),
+                ).withValues(alpha: 0.45 * animation.value),
               ),
             ),
             FadeTransition(
