@@ -372,36 +372,46 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.black, size: 20),
-                  onPressed: isSaving ? null : onClose,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                Text(dialogTitle,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0247C4),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    minimumSize: const Size(0, 32),
+            SizedBox(
+              height: 36,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                      onPressed: isSaving ? null : onClose,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ),
-                  onPressed: isSaving ? null : onSave,
-                  child: isSaving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text('save'.tr(),
-                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
-                ),
-              ],
+                  Text(dialogTitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0247C4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: const Size(0, 32),
+                      ),
+                      onPressed: isSaving ? null : onSave,
+                      child: isSaving
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text('save'.tr(),
+                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             Text('holiday_name'.tr(),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
             const SizedBox(height: 6),
             Container(
               height: 38,
@@ -712,6 +722,8 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       onDaySelected: onDaySelected,
       onMonthChanged: onMonthChanged,
       disablePastDays: true,
+      disablePastMonths: true,
+      allowFutureMonths: true,
       showBorder: false,
       spacing: 10,
       cellAspectRatio: 1.12,

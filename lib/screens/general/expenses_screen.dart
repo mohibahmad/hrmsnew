@@ -657,32 +657,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       return null;
     }
 
-    if (amt > 999999999) {
-      FlashySnackBar.show(context, message: 'amount_cannot_exceed_max'.tr(), isError: true);
-      return null;
-    }
-
-    if (initialData == null) {
-      try {
-        final policies = await _firestore.getPolicies();
-        final expPolicy = policies.where((p) => p['typeId'] == 'Expense Policy').toList();
-        if (expPolicy.isNotEmpty) {
-          final maxLimit = double.tryParse(expPolicy.first['maxExpenseLimitPerClaim']?.toString() ?? '500.0') ?? 500.0;
-          if (!mounted) return null;
-          if (amt > maxLimit) {
-            FlashySnackBar.show(
-              context,
-              message: 'expense_claim_exceeds_limit'.tr(namedArgs: {
-                'maxLimit': formatMoney(maxLimit, CurrencyUtils.symbolFor(_currencyCode)),
-              }),
-              isError: true,
-            );
-            return null;
-          }
-        }
-      } catch (_) {}
-    }
-
     final date = DateTime(calendarDate.year, calendarDate.month, selectedDay);
     return {'date': date, 'category': category, 'amount': amt, 'name': description, 'description': description};
   }
@@ -768,7 +742,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       inputFormatters: isAmount
           ? [
               FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
-              LengthLimitingTextInputFormatter(18),
+              LengthLimitingTextInputFormatter(11),
               const ThousandsSeparatorInputFormatter(),
             ]
           : maxLength != null
@@ -824,6 +798,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       onDaySelected: onDaySelected,
       onMonthChanged: onMonthChanged,
       spacing: 8,
+      cellAspectRatio: 1.0,
       selectedColor: const Color(0xFFFF0004),
       cellBorderRadius: BorderRadius.circular(6),
     );

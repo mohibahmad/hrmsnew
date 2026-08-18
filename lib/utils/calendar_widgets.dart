@@ -177,6 +177,8 @@ class ModalCalendar extends StatelessWidget {
   final ValueChanged<int> onDaySelected;
   final ValueChanged<DateTime> onMonthChanged;
   final bool disablePastDays;
+  final bool disablePastMonths;
+  final bool allowFutureMonths;
   final bool showBorder;
   final Radius weekdayBorderRadius;
   final double cellAspectRatio;
@@ -191,6 +193,8 @@ class ModalCalendar extends StatelessWidget {
     required this.onDaySelected,
     required this.onMonthChanged,
     this.disablePastDays = false,
+    this.disablePastMonths = false,
+    this.allowFutureMonths = false,
     this.showBorder = true,
     this.weekdayBorderRadius = const Radius.circular(3),
     this.cellAspectRatio = 1.0,
@@ -231,9 +235,16 @@ class ModalCalendar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: () => onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month - 1, 1)),
-              child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              onTap: disablePastMonths && isAtStart
+                  ? null
+                  : () => onMonthChanged(
+                      DateTime(calendarDate.year, calendarDate.month - 1, 1)),
+              child: Icon(
+                Icons.chevron_left,
+                size: 20,
+                color:
+                    disablePastMonths && isAtStart ? Colors.grey.shade300 : Colors.black,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
@@ -247,14 +258,15 @@ class ModalCalendar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             GestureDetector(
-              onTap: isAtStart
+              onTap: !allowFutureMonths && isAtStart
                   ? null
                   : () => onMonthChanged(
                       DateTime(calendarDate.year, calendarDate.month + 1, 1)),
               child: Icon(
                 Icons.chevron_right,
                 size: 20,
-                color: isAtStart ? Colors.grey.shade300 : Colors.black,
+                color:
+                    !allowFutureMonths && isAtStart ? Colors.grey.shade300 : Colors.black,
               ),
             ),
           ],
