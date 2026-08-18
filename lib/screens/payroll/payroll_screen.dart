@@ -2216,7 +2216,12 @@ if (day == 0) {
     final name = (data['name'] ?? '').toString();
     final email = (data['email'] ?? '').toString();
     final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
-    final attendanceCounts = await _attendanceCountsForRecord(data);
+    // Paid records already store attendance counts — use them directly
+    // to avoid a slow Firestore / preFetchedRecords lookup.
+    final isPaidRecord = data['isPaid'] == true || (data['status'] ?? '').toString().toLowerCase() == 'paid';
+    final attendanceCounts = isPaidRecord
+        ? PayrollService.attendanceCounts(data)
+        : await _attendanceCountsForRecord(data);
     final absents = (attendanceCounts['absents'] ?? 0).toString();
     final paidLeaves = (attendanceCounts['paidLeaves'] ?? 0).toString();
     final deductionLeaveDays = (attendanceCounts['unpaidLeaves'] ?? 0).toString();
