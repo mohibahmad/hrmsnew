@@ -104,7 +104,7 @@ class PayrollService {
       } else if (payrollPeriodsEqual(persistedCycle, next)) {
         anchor = next;
       }
-          }
+    }
 
                                         final currentMonthPayday = _payDayInMonth(
       DateTime(today.year, today.month, 1), normalizedPayDay);

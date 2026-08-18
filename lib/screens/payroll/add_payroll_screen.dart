@@ -378,7 +378,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       setState(() => _hasUnsavedChanges = changed);
     }
   }
-
   void _normalizeAbsentDeduction({required int absentDays}) {
     if (absentDays <= 0) {
       if (_absentDeductionCtrl.text.isNotEmpty) {
@@ -883,7 +882,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     await DummyData.saveToPrefs();
     if (mounted) setState(() {});
   }
-
   String _editableAmountValue(dynamic value) {
     final text = (value ?? '').toString().trim();
     return PayrollService.extractSalary(text) == 0 ? '' : text;

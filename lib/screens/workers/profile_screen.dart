@@ -1112,8 +1112,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        width: 30,
-                        height: 30,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
@@ -1790,8 +1790,9 @@ class ProfilePreviewDialog extends StatelessWidget {
                       'profile_preview'.tr(),
                       style: const TextStyle(
                         color: _kWhite,
-                        fontSize: 20,
+                        fontSize: 19,
                         fontFamily: _kFontFamily,
+                        fontWeight: FontWeight.w500
                       ),
                     ),
                     Align(

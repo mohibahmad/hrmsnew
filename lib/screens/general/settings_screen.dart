@@ -172,10 +172,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: Text('reset_password'.tr(),
                                   style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
                             ),
-                            IconButton(
-                              onPressed: isSending ? null : () => Navigator.of(dialogContext).pop(),
-                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
-                            ),
                           ],
                         ),
                       ),
@@ -210,11 +206,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF004FDE), width: 1.5)),
+                                errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFEF4444))),
+                                focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5)),
+                                errorStyle: const TextStyle(fontSize: 12, color: Color(0xFFEF4444)),
                               ),
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
                               validator: (value) {
                                 final email = value?.trim() ?? '';
                                 if (email.isEmpty) return 'email_required'.tr();
-                                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) return 'email_invalid'.tr();
+                                if (!RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$').hasMatch(email)) return 'email_invalid'.tr();
                                 return null;
                               },
                             ),

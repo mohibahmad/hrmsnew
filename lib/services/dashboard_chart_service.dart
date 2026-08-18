@@ -136,9 +136,7 @@ class DashboardChartService {
   }
 
   static bool isDateWithinPeriod(DateTime date, String period, {DateTime? now}) {
-    // Shared future-date exclusion rule: effectiveEnd = min(periodEnd, today),
-    // so approved Time Off in the future is never counted in attendance/leave
-    // statistics before those dates occur.
+   
     return AppDateUtils.isDateWithinEffectivePeriod(date, period, now: now);
   }
 

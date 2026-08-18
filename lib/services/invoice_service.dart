@@ -141,9 +141,7 @@ class InvoiceService {
 
   static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
     if (fontBytes != null) {
-      // Parsing the ~6MB SF-Pro.ttf is the single most expensive step in PDF
-      // generation, so parse it once per isolate and reuse it for every
-      // invoice instead of paying the cost once per worker.
+      
       if (_cachedParsedFont != null) return _cachedParsedFont;
       try {
         final font = pw.Font.ttf(

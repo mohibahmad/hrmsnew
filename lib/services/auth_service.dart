@@ -243,7 +243,6 @@ class AuthService {
       rethrow;
     }
   }
-
   Future<UserCredential?> signInWithApple() async {
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
@@ -302,7 +301,6 @@ class AuthService {
     await PreferencesService.clear(
       preserveBiometricCredentials: preserveBiometricLogin || isGuest,
     );
-
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
   }

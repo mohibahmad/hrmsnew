@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'dart:ui';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
-
 import 'package:csv/csv.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
@@ -13,7 +12,6 @@ import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
 import '../../providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
@@ -233,7 +231,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return _resolveCurrentPayrollPeriod(
       payDay: payDay,
       persisted: _persistedCycleFromProfile(profile, payDay, referenceDate: referenceDate),
-      advanceIfFullyPaid: false,
+      advanceIfFullyPaid: true,
     );
   }
 
@@ -261,6 +259,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       payDay: _salaryPayDay,
       persisted: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
     );
+    // Never go backward: if the resolution landed on a past cycle
+    // (e.g. after a pay-day change shifted the window), keep advancing
+    // until the resolved period ends at or after the current one.
+    while (resolved.end.isBefore(_payPeriodEnd)) {
+      resolved = PayrollService.nextPayDayPeriod(resolved, _salaryPayDay!);
+    }
     if (!mounted) return;
 
                                             final now = DateTime.now();
@@ -673,8 +677,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _handlePayAllForMonth(DateTime payrollMonth) async {
     if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty) return;
     setState(() => _isRunningPayroll = true);
-    // Progress ("Sending payroll..." -> "Generating invoices...") is shown as
-    // a FlashySnackBar by PayrollRunner, so no snackbar is started here.
+    // Show immediate feedback so the UI doesn't feel frozen while heavy
+    // payroll computation runs on the main isolate.
+    FlashySnackBar.dismiss();
+    if (mounted) {
+      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
+    }
     try {
       final summary = await PayrollRunner().payAll(
         context,
@@ -735,10 +743,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
   }
 
-  /// When everyone in the current period has been paid, immediately move to the
-  /// next cycle instead of staying on the (now completed) one until its payday
-  /// passes. Without this, the user would have to pick the next cycle manually
-  /// from the dropdown every time.
+  
   Future<void> _advanceCycleIfAllPaid() async {
     if (_isGuest || !mounted) return;
 
@@ -809,9 +814,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return false;
   }
 
-  /// Next period after [current]. Uses the configured salary pay day when
-  /// present, otherwise falls back to plain calendar-month cycles.
-  PayrollPeriod _nextCycleAfter(PayrollPeriod current, int? payDay) {
+  
+   PayrollPeriod _nextCycleAfter(PayrollPeriod current, int? payDay) {
     if (payDay != null && payDay >= 1 && payDay <= 28) {
       return PayrollService.nextPayDayPeriod(current, payDay.clamp(1, 28));
     }
@@ -1268,20 +1272,13 @@ if (day == 0) {
     try {
       PayrollPeriod period;
       if (day != _salaryPayDay) {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
         final payDay = day.clamp(1, 28);
-        final payDayThisMonth = DateTime(now.year, now.month, payDay);
-        period = !today.isAfter(payDayThisMonth)
-            ? PayrollPeriod(
-                start: DateTime(now.year, now.month - 1, payDay),
-                end: payDayThisMonth,
-              )
-            : PayrollPeriod(
-                start: payDayThisMonth,
-                end: DateTime(now.year, now.month + 1, payDay),
-              );
-        FlashySnackBar.show(context, message: 'Salary Day updated! It will take effect starting from the next cycle.');
+        period = _resolveCurrentPayrollPeriod(
+          payDay: payDay,
+          persisted: null,
+          advanceIfFullyPaid: true,
+        );
+        FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       } else {
         period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
         FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
@@ -1433,9 +1430,24 @@ if (day == 0) {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_isRunningPayroll)
-                    const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFFFFF)))
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFFFFFFF),
+                      ),
+                    )
                   else
-                    SvgPicture.asset('assets/payroll_icon.svg', width: 18, height: 18, colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
+                    SvgPicture.asset(
+                      'assets/payroll_icon.svg',
+                      width: 18,
+                      height: 18,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFFFFFFFF),
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   const SizedBox(width: 8),
                   Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
                 ],
@@ -1674,10 +1686,7 @@ if (day == 0) {
     }
   }
 
-  /// Pay periods shown in the dropdown: every cycle that has paid records
-  /// (most recent first), each with its paid count, plus the current
-  /// (running) cycle so it is always visible even before any worker is paid
-  /// in it.
+   
   List<({PayrollPeriod period, String label, int paidCount})> _payPeriodOptions() {
     final map = <String, ({PayrollPeriod period, int paidCount})>{};
 
@@ -1712,28 +1721,15 @@ if (day == 0) {
       map[displayedKey] = (period: displayedPeriod, paidCount: 0);
     }
 
-    // Always include the true cycle containing "today" (the one actually
-    // running right now). The resolution logic can land on an overdue previous
-    // cycle or a persisted one, so this guarantees the real running cycle is
-    // never missing from the dropdown — especially after an app restart.
-    final runningDay = _salaryPayDay;
-    if (runningDay != null && runningDay >= 1 && runningDay <= 28) {
-      final running = PayrollService.payDayPeriodContaining(
-        DateTime.now(),
-        runningDay.clamp(1, 28),
-      );
-      final runningKey = '${PayrollService.periodDateKey(running.start)}_${PayrollService.periodDateKey(running.end)}';
-      if (!map.containsKey(runningKey)) {
-        map[runningKey] = (period: running, paidCount: 0);
-      }
-    }
 
-    // When the current cycle is fully paid (nothing left to pay), surface
-    // the next upcoming cycle too, otherwise the dropdown would only show the
-    // just-completed cycle and the next cycle would appear to be missing.
+
+    // Surface the next cycle ONLY when every worker in the current cycle
+    // has been paid. Do NOT show it when the payable list is simply empty
+    // (e.g. no workers exist yet or all have zero salary) — that would leak
+    // a phantom future cycle into the dropdown.
     final payDay = _salaryPayDay;
     if (payDay != null && payDay >= 1 && payDay <= 28) {
-      final currentPayable = PayrollService.payableWorkersForPeriod(
+      final allCycleWorkers = PayrollService.combinePayroll(
         _workersList,
         _rawPayrollDocs,
         month: DateTime(currentCycle.end.year, currentCycle.end.month, 1),
@@ -1741,7 +1737,9 @@ if (day == 0) {
         periodStart: currentCycle.start,
         periodEnd: currentCycle.end,
       );
-      if (currentPayable.isEmpty) {
+      final allPaid = allCycleWorkers.isNotEmpty &&
+          allCycleWorkers.every((w) => w['isPaid'] == true);
+      if (allPaid) {
         final nextCycle = PayrollService.nextPayDayPeriod(
           currentCycle,
           payDay.clamp(1, 28),
@@ -2350,22 +2348,18 @@ if (day == 0) {
     );
   }
 
-  /// Whether the given payroll record belongs to the current pay cycle — only
-  /// those can be edited; older (completed) cycles are read-only.
   bool _recordInCurrentPayrollCycle(Map<String, dynamic> data) {
-    final current = _trueCurrentPayrollCycle();
+    final active = _trueCurrentPayrollCycle();
+    final displayedCycle = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+    if (!PayrollService.payrollPeriodsEqual(displayedCycle, active)) {
+      return false;
+    }
     final start = AppDateUtils.dateFromValue(data['payPeriodStart']);
     final end = AppDateUtils.dateFromValue(data['payPeriodEnd']);
     if (start != null && end != null && start.isBefore(end)) {
-      return PayrollService.payrollPeriodsEqual(PayrollPeriod(start: start, end: end), current);
+      return PayrollService.payrollPeriodsEqual(PayrollPeriod(start: start, end: end), active);
     }
-    // Records without saved period dates: compare against the displayed period.
-    // This only matches the current cycle when the user hasn't switched to a
-    // past cycle via the dropdown.
-    return PayrollService.payrollPeriodsEqual(
-      PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
-      current,
-    );
+    return false;
   }
 
   void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index, {bool readOnly = false}) async {

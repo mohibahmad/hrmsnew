@@ -153,10 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _checkProfileExistsOrLogout();
-      await _loadPremiumStatus();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitialProfile());
   }
 
   @override
@@ -230,55 +227,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   static double _parseNumToDouble(dynamic value) => _parseAmount(value).toDouble();
 
-  Future<void> _loadPremiumStatus() async {
-    bool isPremium = false;
-    String currencyCode = _currencyCode;
-    final user = _authService.currentUser;
-
-    if (user != null && !user.isAnonymous) {
-      try {
-        final profile = await _firestore.getUserProfileOrThrow();
-        isPremium = profile?['isPremium'] == true;
-        currencyCode = CurrencyUtils.normalize(profile?['currency']);
-        await PreferencesService.setPremium(isPremium);
-      } catch (e, st) {
-        ErrorReporter.report(e, st, context: 'loadPremiumStatus');
-        isPremium = PreferencesService.cachedIsPremium;
-      }
-    }
-
-    if (mounted) setState(() { _isPremium = isPremium; _currencyCode = currencyCode; });
-  }
-
-  Future<void> _checkProfileExistsOrLogout() async {
+  Future<void> _loadInitialProfile() async {
     final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
+
+    Map<String, dynamic>? profile;
     try {
-      final profile = await _firestore.getUserProfileOrThrow();
-      if (profile == null) {
-        await _authService.signOut();
-        if (mounted) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-        }
-      }
+      profile = await _firestore.getUserProfileOrThrow();
     } catch (e, st) {
-      ErrorReporter.report(e, st, context: 'checkProfileExistsOrLogout');
+      ErrorReporter.report(e, st, context: 'loadInitialProfile');
+      return;
+    }
+
+    if (!mounted) return;
+
+    if (profile == null) {
+      await _authService.signOut();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
+      return;
+    }
+
+    final profilePic = profile['profilePic']?.toString().trim() ?? '';
+    AuthService.profilePicNotifier.value = profilePic.isEmpty ? null : profilePic;
+
+    final isPremium = profile['isPremium'] == true;
+    final currencyCode = CurrencyUtils.normalize(profile['currency']);
+    await PreferencesService.setPremium(isPremium);
+
+    if (mounted && (_isPremium != isPremium || _currencyCode != currencyCode)) {
+      setState(() { _isPremium = isPremium; _currencyCode = currencyCode; });
     }
   }
 
   Future<void> _restoreProfilePic(User? currentUser) async {
-    if (currentUser != null && !currentUser.isAnonymous) {
-      try {
-        final profile = await _firestore.getUserProfile();
-        if (mounted) {
-          final pic = profile?['profilePic'];
-          AuthService.profilePicNotifier.value = (pic != null && pic.toString().isNotEmpty) ? pic.toString() : null;
-        }
-      } catch (_) {
-        AuthService.profilePicNotifier.value = null;
-      }
-      return;
-    }
+    if (currentUser != null && !currentUser.isAnonymous) return;
 
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
     AuthService.profilePicNotifier.value = (cachedUrl != null && cachedUrl.isNotEmpty) ? cachedUrl : null;
@@ -360,8 +344,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _initialWorkersLoaded = true;
       _initialExpensesLoaded = true;
       _initialPayrollLoaded = true;
-
-      _recalculateDummyTotals(_selectedPeriod);
     });
     _maybeMarkDashboardReady();
   }
@@ -374,7 +356,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _dashboardReady = true);
+    setState(() {
+      if (_isGuest) {
+        _recalculateDummyTotals(_selectedPeriod);
+      } else {
+        _recalculateSumsForPeriod(_selectedPeriod);
+      }
+      _dashboardReady = true;
+    });
   }
 
   List<Map<String, dynamic>> _buildGuestHolidays() {
@@ -469,7 +458,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersDocs = list;
         _workersLoaded = true;
-        _recalculateSumsForPeriod(_selectedPeriod);
+        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+          _recalculateSumsForPeriod(_selectedPeriod);
+        }
       });
       _initialWorkersLoaded = true;
       _maybeMarkDashboardReady();
@@ -500,7 +491,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final data = doc.data() as Map<String, dynamic>?;
           return {...?data, 'id': doc.id, 'amount': _parseAmount(data?['amount'])};
         }).toList();
-        _recalculateSumsForPeriod(_selectedPeriod);
+        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+          _recalculateSumsForPeriod(_selectedPeriod);
+        }
       });
       _initialExpensesLoaded = true;
       _maybeMarkDashboardReady();
@@ -514,7 +507,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final netSalary = _resolvePayrollNetSalary(data);
           return {...?data, 'id': doc.id, 'netSalary': netSalary};
         }).toList();
-        _recalculateSumsForPeriod(_selectedPeriod);
+        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+          _recalculateSumsForPeriod(_selectedPeriod);
+        }
       });
       _initialPayrollLoaded = true;
       _maybeMarkDashboardReady();

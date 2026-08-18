@@ -645,6 +645,32 @@ Future<void> _requestReview() async {
     }
   } catch (_) {}
 }
+class FlashySnackBarProgressController {
+  VoidCallback? _dismiss;
+  VoidCallback? _setState;
+  double _progress = 0;
+  String _label = '';
+  OverlayEntry? _entry;
+
+  double get progress => _progress;
+  String get label => _label;
+
+  /// True while the progress snackbar overlay entry is still mounted.
+  bool get isActive => _entry?.mounted ?? false;
+
+  /// In-place update: just change the values and trigger a rebuild of
+  /// the existing widget instead of destroying + recreating the overlay.
+  void update({required double progress, required String label}) {
+    _progress = progress;
+    _label = label;
+    _setState?.call();
+  }
+
+  void dismiss() {
+    _dismiss?.call();
+  }
+}
+
 class FlashySnackBar {
   static OverlayEntry? _currentEntry;
   static bool _currentIsLoading = false;
@@ -714,6 +740,58 @@ class FlashySnackBar {
         }
       });
     }
+  }
+
+  /// Shows a progress snackbar that can be updated via the returned controller.
+  /// Unlike [show], this snackbar stays visible until [FlashySnackBarProgressController.dismiss]
+  /// is called.
+  static FlashySnackBarProgressController showProgress(
+    BuildContext context, {
+    required String message,
+    required double progress,
+    String? title,
+    String? subtitle,
+  }) {
+    final controller = FlashySnackBarProgressController();
+    controller._progress = progress;
+    controller._label = message;
+    if (!context.mounted) return controller;
+
+    if (_currentEntry != null && _currentEntry!.mounted) {
+      _currentEntry!.remove();
+    }
+    _currentEntry = null;
+    _currentIsLoading = false;
+
+    final overlay = Overlay.of(context);
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _FlashySnackBarProgressBody(
+        controller: controller,
+        title: title,
+        subtitle: subtitle,
+        onDismiss: () {
+          if (entry.mounted) {
+            _currentEntry = null;
+            entry.remove();
+          }
+        },
+      ),
+    );
+
+    _currentEntry = entry;
+    overlay.insert(entry);
+    controller._entry = entry;
+
+    // Wire up the controller so update() can trigger in-place rebuilds.
+    controller._dismiss = () {
+      if (_currentEntry == entry && entry.mounted) {
+        _currentEntry = null;
+        entry.remove();
+      }
+    };
+
+    return controller;
   }
 
   /// Removes the currently visible toast if it is still a loading toast.
@@ -908,6 +986,214 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlashySnackBarProgressBody extends StatefulWidget {
+  final FlashySnackBarProgressController controller;
+  final String? title;
+  final String? subtitle;
+  final VoidCallback onDismiss;
+
+  const _FlashySnackBarProgressBody({
+    required this.controller,
+    this.title,
+    this.subtitle,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_FlashySnackBarProgressBody> createState() => _FlashySnackBarProgressBodyState();
+}
+
+class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slideAnimation;
+  late final Animation<double> _fadeAnimation;
+
+  FlashySnackBarProgressController get _pc => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wire up the controller so it can trigger in-place rebuilds.
+    _pc._setState = () {
+      if (mounted) setState(() {});
+    };
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _pc._setState = null;
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 16,
+      right: 24,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 360),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0247C4), Color(0xFF4A7FE0)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.20),
+                  width: 1,
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF).withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Color(0xFFFFFFFF),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _pc.label.isNotEmpty ? _pc.label : 'loading'.tr(),
+                              softWrap: true,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                                height: 1.2,
+                              ),
+                            ),
+                            if (widget.subtitle != null) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                widget.subtitle!,
+                                softWrap: true,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Color(0xFFFFFFFF).withValues(alpha: 0.70),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '${(_pc.progress * 100).toInt()}%',
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF).withValues(alpha: 0.85),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.onDismiss,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFFFFFFFF).withValues(alpha: 0.30),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: _pc.progress),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        value: value > 0 ? value : null,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xFFFFFFFF).withValues(alpha: 0.22),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFFFFFFFF),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

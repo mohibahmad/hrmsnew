@@ -202,7 +202,6 @@ class AttendanceService {
             : workerName.isNotEmpty
             ? workerName
             : index.toString();
-
         combined.add({
           'id': 'norecord_$id',
           'workerId': workerId,
@@ -247,7 +246,6 @@ class AttendanceService {
     final latestByKey = <String, Map<String, dynamic>>{};
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-
     for (final record in records) {
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = WorkerIdentity.normalizeEmail(record['email']);
@@ -305,7 +303,6 @@ class AttendanceService {
         absent++;
       }
     }
-
     return {'present': present, 'absent': absent, 'leave': leave};
   }
 }

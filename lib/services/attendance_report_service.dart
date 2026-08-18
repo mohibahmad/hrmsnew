@@ -233,7 +233,6 @@ class AttendanceReportService {
     final leaveName = (leave['name'] ?? leave['workerName'] ?? '').toString().trim().toLowerCase();
     return workerName.isNotEmpty && workerName == leaveName;
   }
-
   static WorkerAttendanceSnapshot snapshotForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -249,7 +248,6 @@ class AttendanceReportService {
       ),
     );
   }
-
   static String _dateKey(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'

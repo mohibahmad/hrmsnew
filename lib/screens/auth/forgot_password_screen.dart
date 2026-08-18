@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/ui_helpers.dart';
 import '../../utils/auth_widgets.dart';
-
 import '../../providers.dart';
 import '../../services/auth_service.dart';
 import '../../shared/app_constants.dart';
@@ -118,7 +117,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ),
     );
   }
-
   Widget _buildDesktopPanel() {
     return Container(
       color: const Color(0xFF165CDB),

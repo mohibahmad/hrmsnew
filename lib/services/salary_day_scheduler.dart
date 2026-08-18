@@ -53,12 +53,14 @@ String _invoiceMoney(double amount, String currency) {
   return currency.trim().isEmpty ? value : '${currency.trim()} $value';
 }
 
-/// Simple controller to update a progress dialog from outside its builder.
+/// Simple controller to update a progress snackbar from outside its builder.
 class DialogController {
-  void Function(void Function())? _setState;
+  FlashySnackBarProgressController? _snackBarController;
   double _progress = 0;
   String _label = '';
   DateTime _lastLabelChangeAt = DateTime.fromMillisecondsSinceEpoch(0);
+  BuildContext? _context;
+  bool _closed = false;
 
   // Each status label ("Sending payroll...", "Generating invoices...", ...)
   // stays visible for at least this long so the text changes smoothly instead
@@ -68,40 +70,93 @@ class DialogController {
   double get progress => _progress;
   String get label => _label;
 
-  void update({required double progress, required String label}) {
+  void _init(BuildContext context, {double initialProgress = 0, String initialLabel = ''}) {
+    _context = context;
+    _progress = initialProgress;
+    _label = initialLabel;
+    _snackBarController = FlashySnackBar.showProgress(
+      context,
+      message: initialLabel,
+      progress: initialProgress,
+      subtitle: 'creating_payroll_pdfs'.tr(),
+    );
+  }
+
+  void update({required double progress, required String label, bool forceLabel = false}) {
+    // Late updates (e.g. a background chunk finishing after the flow ended)
+    // must never resurrect a dismissed snackbar.
+    if (_closed) return;
     // Progress must only ever move forward: with commit + invoice generation
     // running in parallel, racing writers would otherwise push the bar
     // backwards. Values that are behind the current progress are ignored.
     if (!(progress > _progress)) return;
     _progress = progress;
     if (label != _label) {
-      final force = progress >= 1.0;
+      final force = progress >= 1.0 || forceLabel;
       final elapsed = DateTime.now().difference(_lastLabelChangeAt);
       if (force || elapsed >= minLabelDwell) {
         _label = label;
         _lastLabelChangeAt = DateTime.now();
       }
     }
-    _setState?.call(() {});
+    // Re-create the snackbar with updated progress/label since the body
+    // doesn't have a live setState wired up — we replace the overlay entry.
+    _refreshSnackBar();
   }
 
   /// Forces progress + label to a specific value regardless of direction.
   /// Used for the error/reset state, which [update] would otherwise ignore
   /// (0 is never greater than current progress).
   void reset({required double progress, required String label}) {
+    if (_closed) return;
     _progress = progress;
     _label = label;
-    _setState?.call(() {});
+    _refreshSnackBar();
+  }
+
+  void _refreshSnackBar() {
+    if (_closed) return;
+    final ctx = _context;
+    if (ctx == null || !ctx.mounted) return;
+    final existing = _snackBarController;
+    // If the existing snackbar is still visible, update it in-place
+    // (no destroy + recreate — avoids the expensive overlay churn that
+    // caused jank and crashes during fast progress updates).
+    if (existing != null && existing.isActive) {
+      existing.update(progress: _progress, label: _label);
+      return;
+    }
+    // First call or previous entry was removed: create a new one.
+    _snackBarController = FlashySnackBar.showProgress(
+      ctx,
+      message: _label,
+      progress: _progress,
+      subtitle: 'creating_payroll_pdfs'.tr(),
+    );
+  }
+
+  void dismiss() {
+    if (_closed) return;
+    _closed = true;
+    _snackBarController?.dismiss();
+    _snackBarController = null;
   }
 }
 
+final Map<String, Map<String, dynamic>> _translationsCache = {};
+
 Future<Map<String, dynamic>> _loadLocaleTranslations(String languageCode) async {
+  final cached = _translationsCache[languageCode];
+  if (cached != null) return cached;
   try {
     final jsonStr = await rootBundle.loadString(
       'assets/translations/$languageCode.json',
     );
     final decoded = jsonDecode(jsonStr);
-    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map<String, dynamic>) {
+      _translationsCache[languageCode] = decoded;
+      return decoded;
+    }
     return const {};
   } catch (_) {
     return const {};
@@ -132,7 +187,7 @@ Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
 @pragma('vm:entry-point')
 List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
   return [
-    for (final bytes in images) compressImageBytes(bytes, maxWidth: 256, quality: 80),
+    for (final bytes in images) compressImageBytes(bytes, maxWidth: 128, quality: 60),
   ];
 }
 
@@ -177,10 +232,13 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
   final employeeImageBytes = args['employeeImageBytes'] as Uint8List?;
 
   // Seed easy_localization so invoice labels stay localized inside the isolate.
+  // Translations must be wrapped in a locale-keyed map ({locale: flatMap})
+  // otherwise easy_localization treats every key as a nested locale name
+  // and none of the actual translation keys are found.
   try {
     Localization.load(
       Locale(locale),
-      translations: Translations(translations),
+      translations: Translations({locale: translations}),
       useFallbackTranslationsForEmptyResources: true,
     );
   } catch (_) {}
@@ -943,139 +1001,11 @@ class PayrollRunner {
     }
   }
 
-  /// Shows a modal progress dialog that blocks interaction until dismissed.
+  /// Shows a progress snackbar that blocks interaction until dismissed.
   /// Returns the [DialogController] so callers can update progress / label.
   Future<DialogController> _showProgressDialog(BuildContext context) async {
     final controller = DialogController();
-    // Push the dialog WITHOUT awaiting its dismissal future. `showGeneralDialog`
-    // only completes when the dialog is popped, so awaiting it here would block
-    // the caller forever and the progress bar would stay stuck at 0%.
-    unawaited(
-      showGeneralDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierLabel: 'PayrollProgress',
-        barrierColor: Colors.transparent,
-        transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (_, _, _) => const SizedBox(),
-        transitionBuilder: (ctx, animation, _, _) {
-          final curve = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // Blurred + dimmed backdrop covering the whole screen.
-              FadeTransition(
-                opacity: animation,
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                  child: Container(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-              FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: curve,
-                  child: Center(
-                    child: StatefulBuilder(
-                      builder: (context, setDialogState) {
-                        controller._setState = setDialogState;
-                        final isDone = controller.progress >= 1.0;
-                        return Dialog(
-                          backgroundColor: Colors.transparent,
-                          elevation: 0,
-                          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Container(
-                            width: 360,
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 32, offset: const Offset(0, 12))],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  switchInCurve: Curves.easeOutCubic,
-                                  switchOutCurve: Curves.easeInCubic,
-                                  transitionBuilder: (child, animation) =>
-                                      FadeTransition(
-                                        opacity: animation,
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.0, 0.15),
-                                            end: Offset.zero,
-                                          ).animate(animation),
-                                          child: child,
-                                        ),
-                                      ),
-                                  child: Text(
-                                    controller.label.isNotEmpty ? controller.label : 'sending_payroll'.tr(),
-                                    key: ValueKey(controller.label),
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF0F172A),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: TweenAnimationBuilder<double>(
-                                          tween: Tween<double>(end: controller.progress),
-                                          duration: const Duration(milliseconds: 500),
-                                          curve: Curves.easeOutCubic,
-                                          builder: (context, value, _) => LinearProgressIndicator(
-                                            value: value > 0 ? value : null,
-                                            minHeight: 10,
-                                            backgroundColor: const Color(0xFFE5E7EB),
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              isDone ? const Color(0xFF16A34A) : const Color(0xFF004FDE),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    SizedBox(
-                                      width: 40,
-                                      child: Text(
-                                        '${(controller.progress * 100).toInt()}%',
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: isDone ? const Color(0xFF16A34A) : const Color(0xFF64748B),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    controller._init(context, initialLabel: 'sending_payroll'.tr());
     return controller;
   }
 
@@ -1177,11 +1107,11 @@ class PayrollRunner {
         controller.reset(progress: 0, label: error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
         await Future.delayed(const Duration(seconds: 2));
       }
-      if (context.mounted) Navigator.of(context).pop();
+      controller.dismiss();
       return null;
     }
 
-    if (context.mounted) Navigator.of(context).pop();
+    controller.dismiss();
     return committedSummary;
   }
 
@@ -1353,7 +1283,16 @@ class PayrollRunner {
       throw StateError('Not all payroll records could be saved');
     }
 
-    controller?.update(progress: 0.40, label: 'sending_payroll'.tr());
+    // Real Firebase result: show the actual number of records Firestore
+    // confirmed as saved (not an estimate).
+    controller?.update(
+      progress: 0.40,
+      label: 'saving_payroll_records'.tr(namedArgs: {
+        'saved': '$payrollCount',
+        'total': '${payrollRecords.length}',
+      }),
+      forceLabel: true,
+    );
     try {
       await firestoreService.upsertBulkPayrollExpenses(expenseRecords);
     } catch (error) {
@@ -1361,7 +1300,14 @@ class PayrollRunner {
       rethrow;
     }
 
-    controller?.update(progress: 0.48, label: 'sending_payroll'.tr());
+    controller?.update(
+      progress: 0.48,
+      label: 'saving_payroll_records'.tr(namedArgs: {
+        'saved': '$payrollCount',
+        'total': '${payrollRecords.length}',
+      }),
+      forceLabel: true,
+    );
     return payrollCount;
   }
 
@@ -1457,17 +1403,16 @@ class PayrollRunner {
 
       final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
       final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
-      final sharedAssets = await Future.wait<Uint8List?>([
+      final allAssets = await Future.wait<Object?>([
         InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
         InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+        PdfHelpers.loadFontBytes(),
+        _loadLocaleTranslations(locale),
       ]);
-      final companyLogoBytes = sharedAssets[0];
-      final companyStampBytes = sharedAssets[1];
-
-      // Pre-load everything the background isolates need so they never touch
-      // rootBundle, the network or Flutter bindings.
-      final fontBytes = await PdfHelpers.loadFontBytes();
-      final translations = await _loadLocaleTranslations(locale);
+      final companyLogoBytes = allAssets[0] as Uint8List?;
+      final companyStampBytes = allAssets[1] as Uint8List?;
+      final fontBytes = allAssets[2] as Uint8List?;
+      final translations = allAssets[3] as Map<String, dynamic>;
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']);
       final companyAddress = (companyProfile['address'] ?? '').toString();
@@ -1482,7 +1427,7 @@ class PayrollRunner {
       // core). Each isolate renders a whole chunk of workers and reuses the
       // shared font + logo/stamp bytes, so we don't pay the isolate spawn +
       // 6MB font parse cost once per worker.
-      final maxParallel = (Platform.numberOfProcessors - 1).clamp(2, 4).toInt();
+      final maxParallel = (Platform.numberOfProcessors * 2).clamp(4, 12).toInt();
       final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
       // Pre-load every worker's profile photo on the main isolate so the
@@ -1637,14 +1582,16 @@ class PayrollRunner {
         controller.update(progress: 0.58, label: 'generating_invoices'.tr());
         final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
         final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
-        final sharedAssets = await Future.wait<Uint8List?>([
+        final allAssets = await Future.wait<Object?>([
           InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
           InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+          PdfHelpers.loadFontBytes(),
+          _loadLocaleTranslations(locale),
         ]);
-        companyLogoBytes = sharedAssets[0];
-        companyStampBytes = sharedAssets[1];
-        fontBytes = await PdfHelpers.loadFontBytes();
-        translations = await _loadLocaleTranslations(locale);
+        companyLogoBytes = allAssets[0] as Uint8List?;
+        companyStampBytes = allAssets[1] as Uint8List?;
+        fontBytes = allAssets[2] as Uint8List?;
+        translations = allAssets[3] as Map<String, dynamic>;
       }
 
       controller.update(progress: 0.65, label: 'generating_invoices'.tr());
@@ -1689,7 +1636,7 @@ class PayrollRunner {
       controller.update(progress: 0.72, label: 'generating_invoices'.tr());
 
    
-      final maxParallel = (Platform.numberOfProcessors).clamp(2, 8).toInt();
+      final maxParallel = (Platform.numberOfProcessors * 2).clamp(4, 12).toInt();
       final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
       for (var index = 0; index < successful.length; index++) {
@@ -1739,9 +1686,15 @@ class PayrollRunner {
           _generateInvoiceChunkInBackground(entry.$2).then((files) {
             invoiceFiles.addAll(files);
             pdfDone++;
+            // Real progress: how many PDF batches have actually been rendered
+            // by the background isolates so far.
             controller.update(
               progress: 0.78 + (0.12 * pdfDone / chunkCount),
-              label: 'generating_invoices'.tr(),
+              label: 'generating_invoices_progress'.tr(namedArgs: {
+                'done': '$pdfDone',
+                'total': '$chunkCount',
+              }),
+              forceLabel: true,
             );
           }),
         );
@@ -1749,7 +1702,7 @@ class PayrollRunner {
       // Wait for all chunks to finish. Use a per-chunk timeout so a single
       // stuck isolate can't block the whole flow. Each chunk gets 5s — since
       // they run in parallel the total wait stays well under that.
-      const perChunkTimeout = Duration(seconds: 5);
+      const perChunkTimeout = Duration(seconds: 10);
       for (final future in chunkFutures) {
         try {
           await future.timeout(perChunkTimeout);
@@ -1770,7 +1723,7 @@ class PayrollRunner {
         return;
       }
 
-      controller.update(progress: 0.90, label: 'preparing_zip'.tr());
+      controller.update(progress: 0.90, label: 'preparing_zip'.tr(), forceLabel: true);
       // Snapshot so background chunks that finish late can't mutate the list
       // while the ZIP isolate is reading it.
       final filesForZip = List<Map<String, Object>>.from(invoiceFiles);
@@ -1873,12 +1826,12 @@ class PayrollRunner {
       final bytes = await ImageLoader.load(
         source: source,
         maxSizeBytes: 2 * 1024 * 1024,
-        timeout: const Duration(seconds: 5),
+        timeout: const Duration(seconds: 2),
         convertToPng: false,
       );
       if (bytes == null || bytes.isEmpty) return null;
       // Keep the PDF small: the header photo box is 44x44.
-      return compressImageBytes(bytes, maxWidth: 256, quality: 80);
+      return compressImageBytes(bytes, maxWidth: 128, quality: 60);
     } catch (_) {
       return null;
     }
@@ -1894,7 +1847,7 @@ class PayrollRunner {
       return await ImageLoader.load(
         source: source,
         maxSizeBytes: 2 * 1024 * 1024,
-        timeout: const Duration(seconds: 5),
+        timeout: const Duration(seconds: 2),
         convertToPng: false,
       );
     } catch (_) {
@@ -1942,8 +1895,8 @@ class PayrollRunner {
     // Hard cap on this network-bound phase. If worker photos are slow or
     // unreachable the bar must not sit stalled at ~69%; anything we can't
     // fetch in time is left as null and the PDF falls back to a blank header.
-    // Kept tight so the whole invoice flow stays inside ~4–5s.
-    final deadline = DateTime.now().add(const Duration(milliseconds: 2000));
+    // Kept tight so the whole invoice flow stays inside ~3s.
+    final deadline = DateTime.now().add(const Duration(milliseconds: 1000));
     var index = 0;
     var completed = 0;
 
