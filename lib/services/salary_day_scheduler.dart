@@ -1222,7 +1222,7 @@ class PayrollRunner {
       // core). Each isolate renders a whole chunk of workers and reuses the
       // shared font + logo/stamp bytes, so we don't pay the isolate spawn +
       // 6MB font parse cost once per worker.
-      final maxParallel = (Platform.numberOfProcessors - 1).clamp(2, 8).toInt();
+      final maxParallel = (Platform.numberOfProcessors - 1).clamp(2, 4).toInt();
       final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
       // Pre-load every worker's profile photo on the main isolate so the
@@ -1313,7 +1313,16 @@ class PayrollRunner {
       return await compute(_generatePayrollInvoiceBatch, chunkArgs);
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceGeneration');
-      return const [];
+      // Fall back to generating on the main isolate so the export still
+      // completes even if the background isolate was killed (e.g. by a hot
+      // restart, app exit or memory pressure). Slower, but never aborts
+      // the whole batch.
+      try {
+        return await _generatePayrollInvoiceBatch(chunkArgs);
+      } catch (fallbackError, fallbackStack) {
+        ErrorReporter.report(fallbackError, fallbackStack, context: 'PayrollInvoiceGenerationFallback');
+        return const [];
+      }
     }
   }
 

@@ -1564,9 +1564,9 @@ if (day == 0) {
   }
 
   /// Pay periods shown in the dropdown: every cycle that has paid records
-  /// (most recent first), each with its paid count. An empty cycle created by
-  /// a pay-day change must not appear here — a new period only enters the
-  /// dropdown once workers are actually paid in it.
+  /// (most recent first), each with its paid count, plus the current
+  /// (running) cycle so it is always visible even before any worker is paid
+  /// in it.
   List<({PayrollPeriod period, String label, int paidCount})> _payPeriodOptions() {
     final map = <String, ({PayrollPeriod period, int paidCount})>{};
 
@@ -1580,12 +1580,14 @@ if (day == 0) {
       map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
     }
 
-    // Fallback: when no paid period carries date fields yet (no payroll run or
-    // legacy records), show the current cycle so the dropdown is never empty.
-    if (map.isEmpty) {
-      final selected = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
-      map['${PayrollService.periodDateKey(selected.start)}_${PayrollService.periodDateKey(selected.end)}'] = (
-        period: selected,
+    // Always include the true current (running) cycle so the user can see
+    // it even when viewing a previous cycle and no workers have been paid
+    // in the current cycle yet.
+    final currentCycle = _trueCurrentPayrollCycle();
+    final currentKey = '${PayrollService.periodDateKey(currentCycle.start)}_${PayrollService.periodDateKey(currentCycle.end)}';
+    if (!map.containsKey(currentKey)) {
+      map[currentKey] = (
+        period: currentCycle,
         paidCount: 0,
       );
     }
