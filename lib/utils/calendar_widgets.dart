@@ -47,6 +47,7 @@ class CalendarDayCell extends StatelessWidget {
   final VoidCallback? onTap;
   final double cellAspectRatio;
   final Color selectedColor;
+  final BorderRadius cellBorderRadius;
 
   const CalendarDayCell({
     super.key,
@@ -56,6 +57,7 @@ class CalendarDayCell extends StatelessWidget {
     this.onTap,
     this.cellAspectRatio = 1.0,
     this.selectedColor = const Color(0xFF0247C4),
+    this.cellBorderRadius = const BorderRadius.all(Radius.circular(3)),
   });
 
   @override
@@ -79,7 +81,7 @@ class CalendarDayCell extends StatelessWidget {
                 color: isSelected ? selectedColor : Colors.grey.shade300,
                 width: 1,
               ),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: cellBorderRadius,
             ),
             child: Text(
               day,
@@ -108,6 +110,7 @@ class CalendarGrid extends StatelessWidget {
   final double spacing;
   final double cellAspectRatio;
   final Color selectedColor;
+  final BorderRadius cellBorderRadius;
 
   const CalendarGrid({
     super.key,
@@ -118,6 +121,7 @@ class CalendarGrid extends StatelessWidget {
     this.spacing = 6,
     this.cellAspectRatio = 1.0,
     this.selectedColor = const Color(0xFF0247C4),
+    this.cellBorderRadius = const BorderRadius.all(Radius.circular(3)),
   });
 
   @override
@@ -136,7 +140,7 @@ class CalendarGrid extends StatelessWidget {
       for (int j = 0; j < 7; j++) {
         final index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio, selectedColor: selectedColor));
+          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio, selectedColor: selectedColor, cellBorderRadius: cellBorderRadius));
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
           final cellDate = DateTime(date.year, date.month, day);
@@ -148,10 +152,11 @@ class CalendarGrid extends StatelessWidget {
             onTap: isPast ? null : () => onDaySelected(day),
             cellAspectRatio: cellAspectRatio,
             selectedColor: selectedColor,
+            cellBorderRadius: cellBorderRadius,
           ));
           currentDay++;
         } else {
-          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio, selectedColor: selectedColor));
+          rowChildren.add(CalendarDayCell(day: '', cellAspectRatio: cellAspectRatio, selectedColor: selectedColor, cellBorderRadius: cellBorderRadius));
         }
         if (j < 6) rowChildren.add(SizedBox(width: spacing));
       }
@@ -174,6 +179,7 @@ class ModalCalendar extends StatelessWidget {
   final double cellAspectRatio;
   final double spacing;
   final Color selectedColor;
+  final BorderRadius cellBorderRadius;
 
   const ModalCalendar({
     super.key,
@@ -186,6 +192,7 @@ class ModalCalendar extends StatelessWidget {
     this.cellAspectRatio = 1.0,
     this.spacing = 6,
     this.selectedColor = const Color(0xFF0247C4),
+    this.cellBorderRadius = const BorderRadius.all(Radius.circular(3)),
   });
 
   @override
@@ -259,6 +266,7 @@ class ModalCalendar extends StatelessWidget {
           cellAspectRatio: cellAspectRatio,
           spacing: spacing,
           selectedColor: selectedColor,
+          cellBorderRadius: cellBorderRadius,
         ),
       ],
     );

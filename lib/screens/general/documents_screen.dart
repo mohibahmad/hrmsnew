@@ -51,6 +51,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   bool _isLoading = false;
   StreamSubscription? _workersSub;
   Map<String, dynamic>? _editingWorker;
+  bool _editingShimmer = false;
+  Timer? _editingShimmerTimer;
 
   late final AuthService _authService;
   late final FirestoreService _firestore;
@@ -92,6 +94,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   void dispose() {
     _workersSub?.cancel();
+    _editingShimmerTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -113,13 +116,21 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         _buildHeader(),
         Expanded(
           child: _editingWorker != null
-              ? _EditDocumentsPage(
-                  worker: _editingWorker!,
-                  onDocumentsUpdated: () => setState(() {}),
-                  onBack: () => setState(() => _editingWorker = null),
-                  onNotificationTap: widget.onNotificationTap,
-                  onProfileTap: widget.onProfileTap,
-                )
+              ? _editingShimmer
+                  ? _buildEditPageShimmer()
+                  : _EditDocumentsPage(
+                      worker: _editingWorker!,
+                      onDocumentsUpdated: () => setState(() {}),
+                      onBack: () {
+                        _editingShimmerTimer?.cancel();
+                        setState(() {
+                          _editingWorker = null;
+                          _editingShimmer = false;
+                        });
+                      },
+                      onNotificationTap: widget.onNotificationTap,
+                      onProfileTap: widget.onProfileTap,
+                    )
               : _buildWorkerList(),
         ),
       ],
@@ -271,7 +282,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             showGuestRestrictionDialog(context);
             return;
           }
-          setState(() => _editingWorker = worker);
+          setState(() {
+            _editingWorker = worker;
+            _editingShimmer = true;
+          });
+          _editingShimmerTimer?.cancel();
+          _editingShimmerTimer = Timer(const Duration(milliseconds: 1500), () {
+            if (mounted) setState(() => _editingShimmer = false);
+          });
         },
         child: Container(
           decoration: BoxDecoration(
@@ -322,6 +340,99 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _shimmerBlock({double? width, required double height}) => Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+      );
+
+  Widget _shimmerBox({double? width, required double height}) => Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: _shimmerBlock(width: width, height: height),
+      );
+
+  Widget _buildEditPageShimmer() {
+    return Container(
+      color: const Color(0xFFF8F9FA),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _shimmerBox(width: 220, height: 24),
+            const SizedBox(height: 24),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 1, child: _editShimmerColumn(isCvColumn: false)),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 1, child: _editShimmerColumn(isCvColumn: true)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _editShimmerColumn({required bool isCvColumn}) {
+    if (isCvColumn) {
+      // Mirrors the real CV section: label + one upload box that fills the rest.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 36,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _shimmerBox(width: 120, height: 16),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(child: _shimmerBox(height: double.infinity)),
+        ],
+      );
+    }
+
+    // Mirrors the real ID Card section: label + container with two upload boxes.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 36,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _shimmerBox(width: 120, height: 16),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F3F6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _shimmerBox(height: 32),
+              const SizedBox(height: 12),
+              _shimmerBox(height: _EditDocumentsPageState._idPreviewHeight),
+              const SizedBox(height: 12),
+              _shimmerBox(height: 32),
+              const SizedBox(height: 12),
+              _shimmerBox(height: _EditDocumentsPageState._idPreviewHeight),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -897,7 +1008,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ),
         ),
         const SizedBox(height: 16),
-        hasCv ? Expanded(child: _buildCvPreview()) : Expanded(child: _buildCvUpload()),
+        (hasCv && _uploadingField != 'cv')
+            ? Expanded(child: _buildCvPreview())
+            : Expanded(child: _buildCvUpload()),
       ],
     );
   }
@@ -1001,22 +1114,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildCvUpload() {
-    if (_uploadingField == 'cv') {
-      return Shimmer.fromColors(
-        baseColor: Colors.grey.shade300,
-        highlightColor: Colors.grey.shade100,
-        child: Container(
-          width: double.infinity,
-          height: 270,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
-          ),
-        ),
-      );
-    }
-    return Container(
+    final uploadBox = Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F6),
@@ -1081,24 +1179,19 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         ],
       ),
     );
-  }
 
-  Widget _buildCvPreview() {
     if (_uploadingField == 'cv') {
       return Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
-        child: Container(
-          width: double.infinity,
-          height: 270,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
-          ),
-        ),
+        child: uploadBox,
       );
     }
+
+    return uploadBox;
+  }
+
+  Widget _buildCvPreview() {
     final cvUrl = _existingCv;
     final detectedName = (_cvName == null || _cvName!.trim().isEmpty) ? _cleanFileName(cvUrl ?? '') : _cvName!.trim();
     final lower = detectedName.toLowerCase();

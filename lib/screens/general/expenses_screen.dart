@@ -600,7 +600,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('expense_title'.tr(),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
                   const SizedBox(height: 8),
                   Container(
                     height: 215,
@@ -620,7 +620,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: InputBorder.none,
                       ),
-                      style: const TextStyle(fontSize: 14, color: Colors.black, fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 15, color: Colors.black, fontFamily: 'SF Pro Display'),
                     ),
                   ),
                 ],
@@ -760,7 +760,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     bool isAmount = false,
     String? prefixText,
   }) {
-    const fieldStyle = TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display');
+    const fieldStyle = TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display');
     final textField = TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -788,7 +788,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
         const SizedBox(height: 8),
         Container(
           height: 44,
@@ -825,6 +825,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       onMonthChanged: onMonthChanged,
       spacing: 8,
       selectedColor: const Color(0xFFFF0004),
+      cellBorderRadius: BorderRadius.circular(6),
     );
   }
 
