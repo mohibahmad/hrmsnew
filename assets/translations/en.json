@@ -1496,6 +1496,8 @@
   "payroll_overdue_days": "Payroll is {days} days overdue",
   "late_joiners_excluded": "Not included: {names} (joined after the pay period ended)",
   "ignore": "Ignore",
+  "confirm_ignore_payroll": "Skip Overdue Payroll?",
+  "confirm_ignore_payroll_message": "This will skip the current overdue payroll cycle and start the next one ({range}). Workers unpaid for this period will no longer appear in payroll. Continue?",
   "payroll_due_in_days": "Payroll is due in {days} days",
   "payroll_due_tomorrow": "Payroll is due tomorrow",
   "payroll_due_today": "Payroll is due today",

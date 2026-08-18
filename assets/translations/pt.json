@@ -1489,6 +1489,8 @@
   "payroll_overdue_days": "A folha de pagamento está {days} dias atrasada",
   "late_joiners_excluded": "Não incluídos: {names} (entraram após o fim do período de pagamento)",
   "ignore": "Ignorar",
+  "confirm_ignore_payroll": "Pular folha de pagamento atrasada?",
+  "confirm_ignore_payroll_message": "Isso pulará o ciclo de folha de pagamento atrasado atual e iniciará o próximo ({range}). Trabalhadores não pagos deste período não aparecerão mais na folha. Continuar?",
   "process_payroll": "Processar Folha de Pagamento",
   "go_to_payroll": "Ir para a Folha de Pagamento",
   "later": "Mais tarde",

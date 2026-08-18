@@ -1489,6 +1489,8 @@
   "payroll_overdue_days": "La nómina tiene {days} días de retraso",
   "late_joiners_excluded": "No incluidos: {names} (se unieron después de que terminó el período de pago)",
   "ignore": "Ignorar",
+  "confirm_ignore_payroll": "¿Omitir nómina vencida?",
+  "confirm_ignore_payroll_message": "Esto omitirá el ciclo de nómina vencido actual y comenzará el siguiente ({range}). Los trabajadores no pagados de este período ya no aparecerán en la nómina. ¿Continuar?",
   "process_payroll": "Procesar Nómina",
   "go_to_payroll": "Ir a Nómina",
   "later": "Más tarde",

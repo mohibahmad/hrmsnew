@@ -1489,6 +1489,8 @@
   "payroll_overdue_days": "La paie a {days} jours de retard",
   "late_joiners_excluded": "Non inclus : {names} (embauchés après la fin de la période de paie)",
   "ignore": "Ignorer",
+  "confirm_ignore_payroll": "Ignorer la paie en retard ?",
+  "confirm_ignore_payroll_message": "Cela ignorera le cycle de paie en retard actuel et démarrera le suivant ({range}). Les salariés non payés de cette période n'apparaîtront plus dans la paie. Continuer ?",
   "process_payroll": "Traiter la paie",
   "go_to_payroll": "Aller à la paie",
   "later": "Plus tard",

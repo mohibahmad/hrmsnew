@@ -899,11 +899,42 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         await PreferencesService.snoozePayrollReminder(window.suppressionKey, now: now);
         if (mounted) setState(() => _selectedFilter = 'All');
       case _PayrollReminderAction.ignore:
-        // Ignoring only stops the reminder from nagging. It must NOT advance
-        // the pay period — the cycle moves forward on its own (in
-        // _reconcilePayrollPeriod) only once EVERY worker is paid.
+        final nextPeriod = PayrollService.nextPayDayPeriod(
+          PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+          _salaryPayDay ?? window.dueDate.day,
+        );
+        final confirmed = await DeleteDialog.show(
+          context: context,
+          title: 'confirm_ignore_payroll'.tr(),
+          content: 'confirm_ignore_payroll_message'.tr(namedArgs: {
+            'range': PayrollService.formatPayPeriodRange(
+              nextPeriod.start,
+              nextPeriod.end,
+              locale: context.locale.toString(),
+            ),
+          }),
+          confirmButtonText: 'yes',
+        );
+        if (!confirmed || !mounted) break;
+        // Confirmed: skip the overdue cycle and start the next one. The
+        // ignored flag also prevents _reconcilePayrollPeriod from pulling
+        // the period back to the stale overdue cycle.
         await PreferencesService.ignorePayrollReminder(window.suppressionKey);
-        if (mounted) setState(() => _selectedFilter = 'All');
+        if (!_isGuest) {
+          await _firestore.updateUserProfile({
+            'payrollCycleStart': nextPeriod.start.toIso8601String(),
+            'payrollCycleEnd': nextPeriod.end.toIso8601String(),
+          });
+        }
+        if (!mounted) break;
+        setState(() {
+          _payPeriodStart = nextPeriod.start;
+          _payPeriodEnd = nextPeriod.end;
+          _payrollMonth = DateTime(nextPeriod.end.year, nextPeriod.end.month, 1);
+          _selectedFilter = 'All';
+          _combinePayroll();
+        });
+        _scheduleAttendanceFetch();
       case _PayrollReminderAction.viewPayable:
                                 if (mounted) {
           setState(() { _payrollMonth = window.payrollMonth; _selectedFilter = 'Pay'; _combinePayroll(); });
