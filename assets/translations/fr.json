@@ -809,6 +809,7 @@
   "email_is_required": "L'e-mail est requis",
   "enter_valid_email": "Entrez une adresse e-mail valide",
   "worker_name_required": "Le nom du travailleur est requis",
+  "please_select_valid_worker": "Veuillez sélectionner un travailleur valide dans la liste déroulante.",
   "expense_name_required": "Le nom de la dépense est requis",
   "expense_category_required": "La catégorie de dépense est requise",
   "valid_amount_required": "Un montant valide est requis",

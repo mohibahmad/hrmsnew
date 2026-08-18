@@ -814,6 +814,7 @@
   "email_is_required": "Email обязателен",
   "enter_valid_email": "Введите действительный адрес email",
   "worker_name_required": "Имя сотрудника обязательно",
+  "please_select_valid_worker": "Пожалуйста, выберите действительного сотрудника из выпадающего списка.",
   "expense_name_required": "Название расхода обязательно",
   "expense_category_required": "Категория расхода обязательна",
   "valid_amount_required": "Требуется допустимая сумма",

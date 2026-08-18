@@ -819,6 +819,7 @@
   "email_is_required": "O e-mail é obrigatório",
   "enter_valid_email": "Digite um endereço de e-mail válido",
   "worker_name_required": "O nome do trabalhador é obrigatório",
+  "please_select_valid_worker": "Por favor, selecione um trabalhador válido na lista suspensa.",
   "expense_name_required": "O nome da despesa é obrigatório",
   "expense_category_required": "A categoria da despesa é obrigatória",
   "valid_amount_required": "Um valor válido é obrigatório",

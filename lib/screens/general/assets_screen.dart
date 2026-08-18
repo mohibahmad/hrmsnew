@@ -324,6 +324,15 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       return false;
     }
 
+    if (!_workersMap.containsKey(selectedWorkerName.trim())) {
+      FlashySnackBar.show(
+        ctx,
+        message: 'please_select_valid_worker'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
     if (assetType.isEmpty) {
       FlashySnackBar.show(
         ctx,
@@ -401,13 +410,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               elevation: 10,
               child: Container(
                 width: 450,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 13, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
@@ -415,6 +423,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
+                        const Spacer(),
                         Text(
                           'add_asset'.tr(),
                           style: const TextStyle(
@@ -424,6 +433,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
+                        const Spacer(),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
@@ -825,13 +835,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               elevation: 10,
               child: Container(
                 width: 450,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 13, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
@@ -839,6 +848,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
+                        const Spacer(),
                         Text(
                           'edit_asset'.tr(),
                           style: const TextStyle(
@@ -848,6 +858,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
+                        const Spacer(),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),

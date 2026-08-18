@@ -823,6 +823,7 @@
   "email_is_required": "Email is required",
   "enter_valid_email": "Enter a valid email address",
   "worker_name_required": "Worker name is required",
+  "please_select_valid_worker": "Please select a valid worker from the dropdown.",
   "expense_name_required": "Expense name is required",
   "expense_category_required": "Expense category is required",
   "valid_amount_required": "A valid amount is required",

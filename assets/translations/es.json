@@ -819,6 +819,7 @@
   "email_is_required": "El correo es requerido",
   "enter_valid_email": "Ingresa una dirección de correo válida",
   "worker_name_required": "El nombre del trabajador es requerido",
+  "please_select_valid_worker": "Por favor seleccione un trabajador válido del menú desplegable.",
   "expense_name_required": "El nombre del gasto es requerido",
   "expense_category_required": "La categoría del gasto es requerida",
   "valid_amount_required": "Se requiere un monto válido",
