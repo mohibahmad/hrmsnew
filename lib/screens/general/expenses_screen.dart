@@ -243,7 +243,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _formatCurrency(double amount) {
     final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     if (amount.abs() >= 1e3) {
-      return CurrencyUtils.formatCompactLocale(amount, context.locale.toString(), symbol: symbol.trim());
+      return CurrencyUtils.formatCompactLocale(amount, context.locale.toString(), symbol: symbol);
     }
     try {
       return NumberFormat.currency(locale: context.locale.toString(), symbol: symbol, decimalDigits: 2).format(amount);
