@@ -1240,6 +1240,8 @@
   "apply": "Aplicar",
   "failed_to_load_worker_data": "Falha ao carregar dados do funcionário: {error}",
   "generating_invoices": "Gerando faturas...",
+  "preparing_zip": "Preparando ZIP...",
+  "payroll_completed": "Folha de pagamento concluída!",
   "save_payroll_invoices_zip": "Salvar ZIP de Faturas de Folha",
   "zip_saved": "ZIP salvo: {fileName}",
   "failed_to_generate_zip": "Falha ao gerar ZIP: {error}",

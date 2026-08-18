@@ -1230,6 +1230,8 @@
   "apply": "Appliquer",
   "failed_to_load_worker_data": "Échec du chargement des données: {error}",
   "generating_invoices": "Génération des factures...",
+  "preparing_zip": "Préparation du ZIP...",
+  "payroll_completed": "Paie terminée !",
   "save_payroll_invoices_zip": "Enregistrer ZIP des Factures de Paie",
   "zip_saved": "ZIP enregistré: {fileName}",
   "failed_to_generate_zip": "Échec de la génération ZIP: {error}",

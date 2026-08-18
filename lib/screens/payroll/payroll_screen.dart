@@ -684,6 +684,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(context, message: 'payroll_run_complete'.tr(namedArgs: {'count': '${summary.successCount}'}));
+        // The Firestore stream may lag a frame behind the commit, so refresh
+        // the in-memory records and reconcile the pay period — this is what
+        // advances the screen to the next unpaid cycle after one is fully paid.
+        await _refreshPayrollAfterCommit();
       } else if (mounted) {
         FlashySnackBar.dismiss();
       }
@@ -707,6 +711,113 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         });
       }
     }
+  }
+
+  /// After a successful "Pay all" commit, re-read the payroll records from
+  /// Firestore (the snapshot listener can lag behind the write) and re-run the
+  /// pay-period reconciliation so the app moves on to the next unpaid cycle
+  /// instead of staying on the just-completed one.
+  Future<void> _refreshPayrollAfterCommit() async {
+    if (_isGuest || !mounted) return;
+    try {
+      final snap = await _firestore.getPayrollOnce();
+      if (!mounted) return;
+      setState(() {
+        _rawPayrollDocs = snap.docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .toList();
+        _combinePayroll();
+      });
+      await _reconcilePayrollPeriod();
+      await _advanceCycleIfAllPaid();
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'refreshPayrollAfterCommit');
+    }
+  }
+
+  /// When everyone in the current period has been paid, immediately move to the
+  /// next cycle instead of staying on the (now completed) one until its payday
+  /// passes. Without this, the user would have to pick the next cycle manually
+  /// from the dropdown every time.
+  Future<void> _advanceCycleIfAllPaid() async {
+    if (_isGuest || !mounted) return;
+
+    // Only advance when the current period has nobody left to pay.
+    if (PayrollService.payableWorkersForPeriod(
+      _workersList,
+      _rawPayrollDocs,
+      month: _payrollMonth,
+      companyCurrency: _companyCurrency,
+      periodStart: _payPeriodStart,
+      periodEnd: _payPeriodEnd,
+    ).isNotEmpty) {
+      return;
+    }
+
+    final current = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+
+    // Guard against double-advance: only move on from a period that actually
+    // has paid records. A fresh (already-advanced) next period has none, so we
+    // never leap more than one cycle after a single Pay-All.
+    if (!_periodHasAnyPaidRecord(current)) return;
+
+    final next = _nextCycleAfter(current, _salaryPayDay);
+
+    // Already on the next cycle — nothing to do.
+    if (PayrollService.payrollPeriodsEqual(next, current)) return;
+
+    try {
+      await _firestore.updateUserProfile({
+        'payrollCycleStart': next.start.toIso8601String(),
+        'payrollCycleEnd': next.end.toIso8601String(),
+      });
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'advancePayrollCycle');
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _payPeriodStart = next.start;
+      _payPeriodEnd = next.end;
+      _payrollMonth = DateTime(next.end.year, next.end.month, 1);
+      _selectedFilter = 'All';
+      _combinePayroll();
+    });
+    _scheduleAttendanceFetch();
+  }
+
+  /// True when any saved record belongs to [period] (so we never advance from
+  /// a period that hasn't actually been paid yet).
+  bool _periodHasAnyPaidRecord(PayrollPeriod period) {
+    for (final record in _rawPayrollDocs) {
+      final isPaid = record['isPaid'] == true ||
+          record['hasPaidPayrollRecord'] == true ||
+          ['paid', 'completed', 'processed'].contains(
+              (record['status'] ?? '').toString().trim().toLowerCase());
+      if (!isPaid) continue;
+      final s = AppDateUtils.dateFromValue(record['payPeriodStart']);
+      final e = AppDateUtils.dateFromValue(record['payPeriodEnd']);
+      if (s != null &&
+          e != null &&
+          PayrollService.periodDateKey(s) ==
+              PayrollService.periodDateKey(period.start) &&
+          PayrollService.periodDateKey(e) ==
+              PayrollService.periodDateKey(period.end)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Next period after [current]. Uses the configured salary pay day when
+  /// present, otherwise falls back to plain calendar-month cycles.
+  PayrollPeriod _nextCycleAfter(PayrollPeriod current, int? payDay) {
+    if (payDay != null && payDay >= 1 && payDay <= 28) {
+      return PayrollService.nextPayDayPeriod(current, payDay.clamp(1, 28));
+    }
+    final nextStart = DateTime(current.end.year, current.end.month + 1, 1);
+    final nextEnd = PayrollService.payPeriodEnd(nextStart);
+    return PayrollPeriod(start: nextStart, end: nextEnd);
   }
 
   Widget _desktopDialogButton({required String label, required VoidCallback onTap, bool primary = false}) {
@@ -1592,6 +1703,31 @@ if (day == 0) {
       );
     }
 
+    // When the current cycle is fully paid (nothing left to pay), surface
+    // the next upcoming cycle too, otherwise the dropdown would only show the
+    // just-completed cycle and the next cycle would appear to be missing.
+    final payDay = _salaryPayDay;
+    if (payDay != null && payDay >= 1 && payDay <= 28) {
+      final currentPayable = PayrollService.payableWorkersForPeriod(
+        _workersList,
+        _rawPayrollDocs,
+        month: DateTime(currentCycle.end.year, currentCycle.end.month, 1),
+        companyCurrency: _companyCurrency,
+        periodStart: currentCycle.start,
+        periodEnd: currentCycle.end,
+      );
+      if (currentPayable.isEmpty) {
+        final nextCycle = PayrollService.nextPayDayPeriod(
+          currentCycle,
+          payDay.clamp(1, 28),
+        );
+        final nextKey = '${PayrollService.periodDateKey(nextCycle.start)}_${PayrollService.periodDateKey(nextCycle.end)}';
+        if (!map.containsKey(nextKey)) {
+          map[nextKey] = (period: nextCycle, paidCount: 0);
+        }
+      }
+    }
+
     final options = map.values.toList()
       ..sort((a, b) => b.period.end.compareTo(a.period.end));
     return options
@@ -2163,9 +2299,11 @@ if (day == 0) {
 
   /// The true current pay cycle (computed from today + salary pay day), which
   /// stays stable even when the user views an older cycle via the dropdown.
+  /// Mirrors the logic in [PayrollService.resolveCurrentPayrollPeriod] so that
+  /// when there are still unpaid workers in the previous cycle, the dropdown
+  /// shows that cycle as "current" rather than jumping ahead.
   PayrollPeriod _trueCurrentPayrollCycle() {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     final payDay = _salaryPayDay;
     if (payDay == null) {
       return PayrollPeriod(
@@ -2174,19 +2312,16 @@ if (day == 0) {
       );
     }
     final normalized = payDay.clamp(1, 28);
-    final lastDayThisMonth = DateTime(now.year, now.month + 1, 0).day;
-    final lastDayPrevMonth = DateTime(now.year, now.month, 0).day;
-    final lastDayNextMonth = DateTime(now.year, now.month + 2, 0).day;
-    final payDayThisMonth = DateTime(now.year, now.month, normalized.clamp(1, lastDayThisMonth));
-    if (today.isAfter(payDayThisMonth)) {
-      return PayrollPeriod(
-        start: payDayThisMonth,
-        end: DateTime(now.year, now.month + 1, normalized.clamp(1, lastDayNextMonth)),
-      );
-    }
-    return PayrollPeriod(
-      start: DateTime(now.year, now.month - 1, normalized.clamp(1, lastDayPrevMonth)),
-      end: payDayThisMonth,
+
+    // Use the same resolution logic as PayrollService so the dropdown and
+    // the rest of the app agree on which cycle is "current".
+    return PayrollService.resolveCurrentPayrollPeriod(
+      workersList: _workersList,
+      payrollRecords: _rawPayrollDocs,
+      payDay: normalized,
+      companyCurrency: _companyCurrency,
+      referenceDate: now,
+      advanceIfFullyPaid: false,
     );
   }
 

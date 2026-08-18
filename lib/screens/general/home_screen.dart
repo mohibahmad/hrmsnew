@@ -56,6 +56,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  // Stable instance so the fade-in only plays once (on first mount). If we
+  // created a new Tween on every build the dashboard would replay its 0→1 fade
+  // on each stream-driven setState, making content flicker instead of showing
+  // smooth.
+  static final Tween<double> _dashboardFadeTween = Tween<double>(begin: 0, end: 1);
+
   late int _selectedIndex;
   late int _selectedSubIndex;
 
@@ -81,6 +87,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _dashboardReady = false;
   bool _initialized = false;
   bool _workersLoaded = false;
+  bool _initialWorkersLoaded = false;
+  bool _initialExpensesLoaded = false;
+  bool _initialPayrollLoaded = false;
   bool _isGuest = false;
   bool _backToLoginInProgress = false;
 
@@ -143,10 +152,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (mounted) _handlePeriodChanged(_selectedPeriod);
       });
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _dashboardReady = true);
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkProfileExistsOrLogout();
@@ -352,9 +357,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _workersDocs = List<Map<String, dynamic>>.from(DummyData.workers);
       _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
       _workersLoaded = true;
+      _initialWorkersLoaded = true;
+      _initialExpensesLoaded = true;
+      _initialPayrollLoaded = true;
 
       _recalculateDummyTotals(_selectedPeriod);
     });
+    _maybeMarkDashboardReady();
+  }
+
+  void _maybeMarkDashboardReady() {
+    if (_dashboardReady) return;
+    if (!_initialWorkersLoaded ||
+        !_initialExpensesLoaded ||
+        !_initialPayrollLoaded) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _dashboardReady = true);
   }
 
   List<Map<String, dynamic>> _buildGuestHolidays() {
@@ -451,6 +471,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _workersLoaded = true;
         _recalculateSumsForPeriod(_selectedPeriod);
       });
+      _initialWorkersLoaded = true;
+      _maybeMarkDashboardReady();
     });
 
     _attendanceSub = _firestore.attendanceStream.listen((snap) {
@@ -480,6 +502,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }).toList();
         _recalculateSumsForPeriod(_selectedPeriod);
       });
+      _initialExpensesLoaded = true;
+      _maybeMarkDashboardReady();
     });
 
     _payrollSub = _firestore.payrollStream.listen((snap) {
@@ -492,6 +516,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }).toList();
         _recalculateSumsForPeriod(_selectedPeriod);
       });
+      _initialPayrollLoaded = true;
+      _maybeMarkDashboardReady();
     });
 
     _notifSub = _firestore.notificationsStream.listen((snap) {
@@ -872,7 +898,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     ? (_dashboardReady
                                           ? TweenAnimationBuilder<double>(
                                               key: ValueKey(stackIndex == 0),
-                                              tween: Tween<double>(begin: 0, end: 1),
+                                              tween: _dashboardFadeTween,
                                               duration: const Duration(milliseconds: 650),
                                               curve: Curves.easeOutQuart,
                                               builder: (context, value, child) => Opacity(

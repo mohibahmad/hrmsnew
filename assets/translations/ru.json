@@ -1232,6 +1232,8 @@
   "apply": "Применить",
   "failed_to_load_worker_data": "Ошибка загрузки данных работника: {error}",
   "generating_invoices": "Генерация счетов...",
+  "preparing_zip": "Подготовка ZIP...",
+  "payroll_completed": "Расчёт зарплаты завершён!",
   "save_payroll_invoices_zip": "Сохранить ZIP счетов зарплаты",
   "zip_saved": "ZIP сохранён: {fileName}",
   "failed_to_generate_zip": "Ошибка генерации ZIP: {error}",

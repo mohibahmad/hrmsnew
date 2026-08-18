@@ -1240,6 +1240,8 @@
   "apply": "Aplicar",
   "failed_to_load_worker_data": "Error al cargar datos del trabajador: {error}",
   "generating_invoices": "Generando facturas...",
+  "preparing_zip": "Preparando ZIP...",
+  "payroll_completed": "¡Nómina completada!",
   "save_payroll_invoices_zip": "Guardar ZIP de Facturas de Nómina",
   "zip_saved": "ZIP guardado: {fileName}",
   "failed_to_generate_zip": "Error al generar ZIP: {error}",

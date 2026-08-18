@@ -13,6 +13,7 @@ import 'package:easy_localization/src/translations.dart' show Translations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../utils/utils.dart';
 import '../utils/pdf_helpers.dart';
 import '../utils/image_loader.dart';
@@ -52,6 +53,36 @@ String _invoiceMoney(double amount, String currency) {
   return currency.trim().isEmpty ? value : '${currency.trim()} $value';
 }
 
+/// Simple controller to update a progress dialog from outside its builder.
+class DialogController {
+  void Function(void Function())? _setState;
+  double _progress = 0;
+  String _label = '';
+
+  double get progress => _progress;
+  String get label => _label;
+
+  void update({required double progress, required String label}) {
+    // Progress must only ever move forward: with commit + invoice generation
+    // running in parallel, racing writers would otherwise push the bar
+    // backwards. Values that are behind the current progress are ignored.
+    if (progress > _progress) {
+      _progress = progress;
+      _label = label;
+      _setState?.call(() {});
+    }
+  }
+
+  /// Forces progress + label to a specific value regardless of direction.
+  /// Used for the error/reset state, which [update] would otherwise ignore
+  /// (0 is never greater than current progress).
+  void reset({required double progress, required String label}) {
+    _progress = progress;
+    _label = label;
+    _setState?.call(() {});
+  }
+}
+
 Future<Map<String, dynamic>> _loadLocaleTranslations(String languageCode) async {
   try {
     final jsonStr = await rootBundle.loadString(
@@ -82,6 +113,15 @@ Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
     }
   }
   return files;
+}
+
+/// Compresses worker profile photos in a background isolate. Runs off the main
+/// isolate so image encoding doesn't block the UI during a payroll export.
+@pragma('vm:entry-point')
+List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
+  return [
+    for (final bytes in images) compressImageBytes(bytes, maxWidth: 256, quality: 80),
+  ];
 }
 
 /// Generates a single payroll invoice PDF inside a background isolate.
@@ -454,7 +494,37 @@ class PayrollRunner {
       periodLabel: periodLabel,
     );
 
-    return await _handleSummaryCommit(context, summary, autoMode, isGuest, effectivePeriodStart, effectivePeriodEnd, companyProfile ?? {});
+    // Start preloading invoice assets in the background while the review
+    // dialog is shown so they are ready by the time the user clicks Pay All.
+    final preloadedAssetsFuture = _preloadInvoiceAssets(companyProfile, isGuest);
+
+    final result = await _handleSummaryCommit(context, summary, autoMode, isGuest, effectivePeriodStart, effectivePeriodEnd, companyProfile ?? {}, preloadedAssetsFuture: preloadedAssetsFuture);
+    return result;
+  }
+
+  /// Preloads invoice generation assets (logo, stamp, font, translations) in
+  /// the background so they are ready when the user confirms the review dialog.
+  Future<Map<String, dynamic>?> _preloadInvoiceAssets(Map<String, dynamic>? companyProfile, bool isGuest) async {
+    if (isGuest || companyProfile == null) return null;
+    try {
+      final locale = Intl.defaultLocale ?? 'en';
+      final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
+      final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
+      final results = await Future.wait([
+        InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
+        InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+        PdfHelpers.loadFontBytes(),
+        _loadLocaleTranslations(locale),
+      ]);
+      return {
+        'logoBytes': results[0],
+        'stampBytes': results[1],
+        'fontBytes': results[2],
+        'translations': results[3],
+      };
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Map<String, dynamic>>> _loadWorkers(BuildContext context, bool isGuest, FirestoreService firestoreService) async {
@@ -863,6 +933,125 @@ class PayrollRunner {
     }
   }
 
+  /// Shows a modal progress dialog that blocks interaction until dismissed.
+  /// Returns the [DialogController] so callers can update progress / label.
+  Future<DialogController> _showProgressDialog(BuildContext context) async {
+    final controller = DialogController();
+    // Push the dialog WITHOUT awaiting its dismissal future. `showGeneralDialog`
+    // only completes when the dialog is popped, so awaiting it here would block
+    // the caller forever and the progress bar would stay stuck at 0%.
+    unawaited(
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: 'PayrollProgress',
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 250),
+        pageBuilder: (_, _, _) => const SizedBox(),
+        transitionBuilder: (ctx, animation, _, _) {
+          final curve = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Blurred + dimmed backdrop covering the whole screen.
+              FadeTransition(
+                opacity: animation,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: curve,
+                  child: Center(
+                    child: StatefulBuilder(
+                      builder: (context, setDialogState) {
+                        controller._setState = setDialogState;
+                        final isDone = controller.progress >= 1.0;
+                        return Dialog(
+                          backgroundColor: Colors.transparent,
+                          elevation: 0,
+                          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Container(
+                            width: 360,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 32, offset: const Offset(0, 12))],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  controller.label.isNotEmpty ? controller.label : 'sending_payroll'.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0F172A),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(end: controller.progress),
+                                          duration: const Duration(milliseconds: 500),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (context, value, _) => LinearProgressIndicator(
+                                            value: value > 0 ? value : null,
+                                            minHeight: 10,
+                                            backgroundColor: const Color(0xFFE5E7EB),
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              isDone ? const Color(0xFF16A34A) : const Color(0xFF004FDE),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        '${(controller.progress * 100).toInt()}%',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDone ? const Color(0xFF16A34A) : const Color(0xFF64748B),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    return controller;
+  }
+
   Future<PayrollRunSummary?> _handleSummaryCommit(
     BuildContext context,
     PayrollRunSummary summary,
@@ -870,8 +1059,9 @@ class PayrollRunner {
     bool isGuest,
     DateTime periodStart,
     DateTime periodEnd,
-    Map<String, dynamic> companyProfile,
-  ) async {
+    Map<String, dynamic> companyProfile, {
+    Future<Map<String, dynamic>?>? preloadedAssetsFuture,
+  }) async {
     var committedSummary = summary;
 
     if (!autoMode) {
@@ -892,61 +1082,115 @@ class PayrollRunner {
         results: selectedResults,
         periodLabel: summary.periodLabel,
       );
-
-      // The dialog closes as soon as the user confirms, so progress is shown
-      // as a FlashySnackBar ("Sending payroll..." -> "Generating invoices...")
-      // instead of a spinner inside the dialog.
-      if (!context.mounted) return null;
-      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
-      try {
-        await _commitPayrollRun(committedSummary, isGuest, context, periodStart: periodStart, periodEnd: periodEnd);
-      } catch (error, stackTrace) {
-        if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
-        FlashySnackBar.dismiss();
-        if (context.mounted) {
-          final msg = error is StateError && error.message.isNotEmpty ? error.message : (error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
-          FlashySnackBar.show(context, message: msg, isError: true);
-        }
-        return null;
-      }
-      if (committedSummary.successCount >= 1 && context.mounted) {
-        FlashySnackBar.show(context, message: 'generating_invoices'.tr(), isLoading: true);
-        final paidResults = committedSummary.results.where((r) => r.success).toList();
-        await _generateAndSaveZip(context, paidResults, committedSummary.periodLabel, companyProfile, periodStart: periodStart, periodEnd: periodEnd);
-      }
-      // If no ZIP was saved (e.g. the user cancelled the save dialog), the
-      // loading toast would stay up forever — clear it.
-      FlashySnackBar.dismiss();
-    } else {
-      if (!context.mounted) return null;
-      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
-      try {
-        await _commitPayrollRun(committedSummary, isGuest, context, periodStart: periodStart, periodEnd: periodEnd);
-      } catch (error, stackTrace) {
-        if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
-        FlashySnackBar.dismiss();
-        if (context.mounted) {
-          final msg = error is StateError && error.message.isNotEmpty ? error.message : (error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
-          FlashySnackBar.show(context, message: msg, isError: true);
-        }
-        return null;
-      }
-
-      if (committedSummary.successCount >= 1 && context.mounted) {
-        FlashySnackBar.show(context, message: 'generating_invoices'.tr(), isLoading: true);
-        final paidResults = committedSummary.results.where((r) => r.success).toList();
-        await _generateAndSaveZip(context, paidResults, committedSummary.periodLabel, companyProfile, periodStart: periodStart, periodEnd: periodEnd);
-      }
-      // If no ZIP was saved (e.g. the user cancelled the save dialog), the
-      // loading toast would stay up forever — clear it.
-      FlashySnackBar.dismiss();
     }
 
-    if (context.mounted && autoMode) {
-      FlashySnackBar.show(context, message: 'payroll_run_complete'.tr(namedArgs: {'count': '${committedSummary.successCount}'}));
+    if (!context.mounted) return null;
+    // Show the progress dialog immediately so the user sees feedback right
+    // away. The preloaded assets (started before the review dialog) are almost
+    // always ready by now; they are resolved inside the try below so the dialog
+    // never waits on them.
+    final controller = await _showProgressDialog(context);
+
+    // Let the dialog paint at 0% before the parallel pipeline starts pumping
+    // progress. Without this the (already preloaded) pipeline floods straight
+    // to ~68% before the first frame and the bar appears to skip the start.
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+
+    try {
+      // Resolve the up-front preloaded assets (already started before the
+      // review dialog) so both the DB commit and the invoice generation can
+      // use them without re-fetching.
+      controller.update(progress: 0.05, label: 'sending_payroll'.tr());
+      final preloadedAssets = preloadedAssetsFuture == null ? null : await preloadedAssetsFuture;
+
+      final paidResults = committedSummary.successCount >= 1
+          ? committedSummary.results.where((r) => r.success).toList()
+          : const <AutoPayrollResult>[];
+
+      // Fire notifications in the background — never on the critical path.
+      unawaited(_sendNotificationsInBackground(
+        committedSummary,
+        isGuest,
+        context,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+      ));
+
+      // Run the DB commit (network-bound) and the invoice + ZIP generation
+      // (CPU-bound, in background isolates) concurrently so the whole "Pay
+      // all" flow finishes as fast as possible instead of sequentially.
+      await Future.wait<void>([
+        _commitPayrollRun(
+          committedSummary,
+          isGuest,
+          context,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          controller: controller,
+        ).then<void>((_) {}),
+        paidResults.isEmpty
+            ? Future<void>.value()
+            : _generateAndSaveZipSafe(
+                context,
+                paidResults,
+                committedSummary.periodLabel,
+                companyProfile,
+                controller,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                preloadedAssets: preloadedAssets,
+              ),
+      ]);
+
+      // Done (100%)
+      controller.update(progress: 1.0, label: 'payroll_completed'.tr());
+      await Future.delayed(const Duration(milliseconds: 300));
+    } catch (error, stackTrace) {
+      if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
+      if (context.mounted) {
+        controller.reset(progress: 0, label: error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
+        await Future.delayed(const Duration(seconds: 2));
+      }
+      if (context.mounted) Navigator.of(context).pop();
+      return null;
     }
 
+    if (context.mounted) Navigator.of(context).pop();
     return committedSummary;
+  }
+
+  /// Sends payroll notifications in the background without blocking the UI.
+  Future<void> _sendNotificationsInBackground(
+    PayrollRunSummary summary,
+    bool isGuest,
+    BuildContext context, {
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) async {
+    try {
+      if (isGuest) return;
+      final firestoreService = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+      final notifications = <Map<String, dynamic>>[];
+      for (final r in summary.results.where((r) => r.success)) {
+        final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email.trim().toLowerCase();
+        if (payrollIdentity.isEmpty) continue;
+        final payrollKey = PayrollService.payrollKeyForPeriod(payrollIdentity, periodStart, periodEnd);
+        final effectiveWorkerName = r.workerName.trim().isNotEmpty ? r.workerName.trim() : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
+        final amount = r.netSalary;
+        notifications.add({
+          'notificationKey': 'payroll_$payrollKey',
+          'type': 'payroll_added',
+          'title': 'notif_title_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
+          'message': amount.isNotEmpty ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': amount, 'name': effectiveWorkerName}) : 'notif_msg_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
+          'data': {'name': effectiveWorkerName, 'amount': amount},
+        });
+      }
+      if (notifications.isNotEmpty) {
+        await firestoreService.addBulkNotifications(notifications);
+      }
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerNotifications');
+    }
   }
 
   void _showError(BuildContext context, String key, {Map<String, String>? namedArgs}) {
@@ -1006,17 +1250,24 @@ class PayrollRunner {
     BuildContext context, {
     required DateTime periodStart,
     required DateTime periodEnd,
+    DialogController? controller,
   }) async {
     if (isGuest) {
       return await _commitGuestPayroll(summary, periodStart, periodEnd);
     }
 
+    // Feed the progress bar as the commit progresses so it visibly fills up
+    // instead of sitting still and then jumping (0 → 10 → 20 → ... → 50).
+    controller?.update(progress: 0.10, label: 'sending_payroll'.tr());
+
     final firestoreService = ProviderScope.containerOf(context).read(firestoreServiceProvider);
     final successfulResults = summary.results.where((r) => r.success).toList();
     final payPeriodDate = periodEnd;
-    final latestPayrollSnapshot = await firestoreService.payrollStream.first.timeout(const Duration(seconds: 20));
+    final latestPayrollSnapshot = await firestoreService.getPayrollOnce();
     final latestPayrollRecords = latestPayrollSnapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id}).toList();
     
+    controller?.update(progress: 0.18, label: 'sending_payroll'.tr());
+
     final unpaidResults = successfulResults.where((result) {
       final isAlreadyPaid = latestPayrollRecords.any((record) => _isPaidPayrollForWorker(
         record: record,
@@ -1034,7 +1285,6 @@ class PayrollRunner {
 
     final payrollRecords = <Map<String, dynamic>>[];
     final expenseRecords = <Map<String, dynamic>>[];
-    final notifications = <Map<String, dynamic>>[];
 
     for (final r in unpaidResults) {
       final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email.trim().toLowerCase();
@@ -1066,25 +1316,18 @@ class PayrollRunner {
           'payrollKey': payrollKey,
         });
       }
-
-      final amount = r.netSalary;
-      notifications.add({
-        'notificationKey': 'payroll_$payrollKey',
-        'type': 'payroll_added',
-        'title': 'notif_title_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
-        'message': amount.isNotEmpty ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': amount, 'name': effectiveWorkerName}) : 'notif_msg_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
-        'data': {'name': effectiveWorkerName, 'amount': amount},
-      });
     }
 
     if (payrollRecords.isEmpty) return 0;
 
+    controller?.update(progress: 0.28, label: 'sending_payroll'.tr());
     final payrollCount = await firestoreService.addBulkPayrollRecords(payrollRecords);
     if (payrollCount != payrollRecords.length) {
       await _rollbackPayrollRecords(firestoreService, payrollRecords);
       throw StateError('Not all payroll records could be saved');
     }
 
+    controller?.update(progress: 0.40, label: 'sending_payroll'.tr());
     try {
       await firestoreService.upsertBulkPayrollExpenses(expenseRecords);
     } catch (error) {
@@ -1092,12 +1335,7 @@ class PayrollRunner {
       rethrow;
     }
 
-    try {
-      await firestoreService.addBulkNotifications(notifications);
-    } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerNotifications');
-    }
-
+    controller?.update(progress: 0.48, label: 'sending_payroll'.tr());
     return payrollCount;
   }
 
@@ -1303,6 +1541,247 @@ class PayrollRunner {
     }
   }
 
+  /// Wraps `_generateAndSaveZipWithProgress` (which runs in parallel with the
+  /// DB commit) so that an invoice/ZIP failure never fails the whole "Pay all"
+  /// run — the payroll records are already committed at that point. Errors are
+  /// logged and shown as a snackbar, leaving the main progress untouched.
+  Future<void> _generateAndSaveZipSafe(
+    BuildContext context,
+    List<AutoPayrollResult> paidResults,
+    String periodLabel,
+    Map<String, dynamic> companyProfile,
+    DialogController controller, {
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    Map<String, dynamic>? preloadedAssets,
+  }) async {
+    try {
+      await _generateAndSaveZipWithProgress(
+        context,
+        paidResults,
+        periodLabel,
+        companyProfile,
+        controller,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        preloadedAssets: preloadedAssets,
+      );
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceZip');
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$error'}),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  /// Same as [_generateAndSaveZip] but updates a [DialogController] with
+  /// progress instead of showing snackbars.  Optionally accepts [preloadedAssets]
+  /// (logo bytes, stamp bytes, font bytes, translations) that were loaded
+  /// during the review dialog so those network + rootBundle calls are skipped.
+  Future<void> _generateAndSaveZipWithProgress(
+    BuildContext context,
+    List<AutoPayrollResult> selected,
+    String periodLabel,
+    Map<String, dynamic> companyProfile,
+    DialogController controller, {
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    Map<String, dynamic>? preloadedAssets,
+  }) async {
+    if (selected.isEmpty) return;
+
+    final locale = context.locale.languageCode;
+
+    try {
+      final now = DateTime.now();
+      final payPeriod = periodLabel.isNotEmpty ? periodLabel : '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final periodDisplay = PayrollService.formatPayPeriodRange(periodStart, periodEnd);
+
+      // Use preloaded assets when available, otherwise fetch them now.
+      final Uint8List? companyLogoBytes;
+      final Uint8List? companyStampBytes;
+      final Uint8List? fontBytes;
+      final Map<String, dynamic> translations;
+
+      // Preloaded assets are only used when the required keys are present;
+      // otherwise (guest mode, failed preload, partial map) fall back to
+      // loading them here.
+      if (preloadedAssets != null &&
+          preloadedAssets['fontBytes'] is Uint8List &&
+          preloadedAssets['translations'] is Map<String, dynamic>) {
+        companyLogoBytes = preloadedAssets['logoBytes'] as Uint8List?;
+        companyStampBytes = preloadedAssets['stampBytes'] as Uint8List?;
+        fontBytes = preloadedAssets['fontBytes'] as Uint8List?;
+        translations = preloadedAssets['translations'] as Map<String, dynamic>;
+      } else {
+        controller.update(progress: 0.58, label: 'generating_invoices'.tr());
+        final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
+        final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
+        final sharedAssets = await Future.wait<Uint8List?>([
+          InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
+          InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+        ]);
+        companyLogoBytes = sharedAssets[0];
+        companyStampBytes = sharedAssets[1];
+        fontBytes = await PdfHelpers.loadFontBytes();
+        translations = await _loadLocaleTranslations(locale);
+      }
+
+      controller.update(progress: 0.65, label: 'generating_invoices'.tr());
+
+      final companyName = CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']);
+      final companyAddress = (companyProfile['address'] ?? '').toString();
+      final companyEmail = (companyProfile['email'] ?? '').toString();
+      final companyPhone = (companyProfile['phone'] ?? '').toString();
+      final companyId = (companyProfile['companyId'] ?? '').toString();
+
+      final successful = selected.where((result) => result.success).toList();
+      if (successful.isEmpty) return;
+      final invoiceFiles = <Map<String, Object>>[];
+
+      controller.update(progress: 0.68, label: 'generating_invoices'.tr());
+      // Fetch raw profile photos with bounded concurrency and nudge the bar
+      // forward as each downloads, so a large batch (e.g. 100 workers) doesn't
+      // freeze the progress bar during this phase.
+      final rawImages = await _loadProfileImagesWithProgress(
+        successful,
+        controller,
+        startProgress: 0.68,
+        endProgress: 0.72,
+      );
+      final imageIndexes = <int>[];
+      final rawToCompress = <Uint8List>[];
+      for (var i = 0; i < rawImages.length; i++) {
+        final bytes = rawImages[i];
+        if (bytes != null && bytes.isNotEmpty) {
+          imageIndexes.add(i);
+          rawToCompress.add(bytes);
+        }
+      }
+      final compressed = rawToCompress.isEmpty
+          ? const <Uint8List>[]
+          : await _compressImagesParallel(rawToCompress);
+      final profileImages = List<Uint8List?>.filled(successful.length, null);
+      for (var c = 0; c < imageIndexes.length; c++) {
+        profileImages[imageIndexes[c]] = compressed[c];
+      }
+
+      controller.update(progress: 0.72, label: 'generating_invoices'.tr());
+
+      // Spread PDF rendering across up to 8 isolates on multi-core machines so
+      // large batches (100 workers) finish faster; each isolate parses its own
+      // copy of the font.
+      final maxParallel = (Platform.numberOfProcessors).clamp(2, 8).toInt();
+      final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
+      final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
+      for (var index = 0; index < successful.length; index++) {
+        final r = successful[index];
+        chunks[index % chunkCount].add(<String, Object?>{
+          'index': index,
+          'workerId': r.workerId,
+          'workerName': r.workerName,
+          'email': r.email,
+          'position': r.position,
+          'salary': r.salary,
+          'salaryType': r.salaryType,
+          'totalWorkDays': r.totalWorkDays,
+          'absents': r.absents,
+          'halfDays': r.halfDays,
+          'leaves': r.leaves,
+          'paidLeaves': r.paidLeaves,
+          'unpaidLeaves': r.unpaidLeaves,
+          'overtimeAmount': r.overtimeAmount,
+          'prorationFactor': r.prorationFactor,
+          'absentDeduction': r.absentDeduction,
+          'leaveDeduction': r.leaveDeduction,
+          'customDeduction': r.customDeduction,
+          'currency': r.currency,
+          'periodDisplay': periodDisplay,
+          'payPeriod': payPeriod,
+          'fontBytes': fontBytes,
+          'companyLogoBytes': companyLogoBytes,
+          'companyStampBytes': companyStampBytes,
+          'companyName': companyName,
+          'companyAddress': companyAddress,
+          'companyEmail': companyEmail,
+          'companyPhone': companyPhone,
+          'companyId': companyId,
+          'locale': locale,
+          'translations': translations,
+          'employeeImageBytes': profileImages[index],
+        });
+      }
+
+      controller.update(progress: 0.78, label: 'generating_invoices'.tr());
+      // PDF rendering is the longest phase, so advance the bar as each chunk
+      // finishes instead of freezing at 78% for the whole batch.
+      final chunkResults = await Future.wait(
+        chunks.indexed.map((entry) async {
+          final files = await _generateInvoiceChunkInBackground(entry.$2);
+          controller.update(
+            progress: 0.78 + (0.12 * (entry.$1 + 1) / chunkCount),
+            label: 'generating_invoices'.tr(),
+          );
+          return files;
+        }),
+      );
+      for (final files in chunkResults) {
+        invoiceFiles.addAll(files);
+      }
+      if (invoiceFiles.isEmpty) return;
+
+      controller.update(progress: 0.90, label: 'preparing_zip'.tr());
+      final zipData = await compute(_encodePayrollInvoiceZip, invoiceFiles);
+      final fileName = 'payroll_invoices_$payPeriod.zip';
+
+      // Auto-download the ZIP straight to the Downloads folder (no manual save
+      // dialog) so everything is generated and ready by the time the progress
+      // bar reaches 100%.
+      controller.update(progress: 0.95, label: 'preparing_zip'.tr());
+      // Prefer the user's Downloads folder, but macOS App Sandbox can block
+      // direct writes there ("Operation not permitted"). Fall back to the
+      // app's writable sandbox Documents folder so the ZIP is always actually
+      // saved + opened instead of the whole run failing.
+      Directory? downloadsDir;
+      try {
+        downloadsDir = await getDownloadsDirectory();
+      } catch (_) {
+        downloadsDir = null;
+      }
+
+      File zipFile;
+      if (downloadsDir != null) {
+        try {
+          final candidate = File('${downloadsDir.path}/$fileName');
+          await candidate.writeAsBytes(zipData, flush: true);
+          zipFile = candidate;
+        } catch (_) {
+          zipFile = await _writeZipToWritableDir(fileName, zipData);
+        }
+      } else {
+        zipFile = await _writeZipToWritableDir(fileName, zipData);
+      }
+      unawaited(FileOpener.open(zipFile.path));
+    } catch (e) {
+      // Error is handled by the caller (progress dialog shows error state).
+      rethrow;
+    }
+  }
+
+  /// Writes the batch ZIP into the app's writable sandbox Documents folder and
+  /// returns the resulting file. Used as a safe fallback when direct writes to
+  /// the system Downloads folder are blocked (macOS App Sandbox).
+  Future<File> _writeZipToWritableDir(String fileName, Uint8List zipData) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final file = File('${docsDir.path}/$fileName');
+    await file.writeAsBytes(zipData, flush: true);
+    return file;
+  }
+
   /// Runs one chunk of invoice PDF generations in a single background isolate.
   /// Returns an empty list on failure so a single bad worker doesn't abort the
   /// whole batch.
@@ -1336,7 +1815,7 @@ class PayrollRunner {
     try {
       final bytes = await ImageLoader.load(
         source: source,
-        maxSizeBytes: 10 * 1024 * 1024,
+        maxSizeBytes: 2 * 1024 * 1024,
         timeout: const Duration(seconds: 5),
         convertToPng: false,
       );
@@ -1346,6 +1825,108 @@ class PayrollRunner {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Loads a worker's profile photo bytes only, without decoding/compressing
+  /// on the main isolate. Compression happens in a background isolate via
+  /// [_compressProfileImagesTask] so the UI thread stays responsive.
+  Future<Uint8List?> _loadWorkerProfileImageRaw(String? url) async {
+    final source = (url ?? '').trim();
+    if (source.isEmpty) return null;
+    try {
+      return await ImageLoader.load(
+        source: source,
+        maxSizeBytes: 2 * 1024 * 1024,
+        timeout: const Duration(seconds: 5),
+        convertToPng: false,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Compresses the fetched worker photos across several background isolates in
+  /// parallel (instead of one big single-isolate pass) so large batches shrink
+  /// the decode/encode time close to linearly on multi-core machines.
+  Future<List<Uint8List>> _compressImagesParallel(List<Uint8List> raw) async {
+    if (raw.isEmpty) return const [];
+    final cores = Platform.numberOfProcessors;
+    final chunks = cores <= 1 || raw.length < 8
+        ? 1
+        : (raw.length < 16 ? 2 : cores.clamp(2, 4));
+    if (chunks <= 1) return compute(_compressProfileImagesTask, raw);
+
+    final chunkSize = (raw.length / chunks).ceil();
+    final futures = <Future<List<Uint8List>>>[];
+    for (var i = 0; i < raw.length; i += chunkSize) {
+      final end = (i + chunkSize).clamp(0, raw.length);
+      futures.add(compute(_compressProfileImagesTask, raw.sublist(i, end)));
+    }
+    final results = await Future.wait(futures);
+    final flat = <Uint8List>[];
+    for (final r in results) {
+      flat.addAll(r);
+    }
+    return flat;
+  }
+
+  /// Loads worker profile photos with bounded concurrency while advancing the
+  /// progress bar through this phase. For large batches (e.g. 100 workers) the
+  /// old blanket `Future.wait` froze the bar at ~68% for the whole download,
+  /// which felt like the flow had "stalled".
+  Future<List<Uint8List?>> _loadProfileImagesWithProgress(
+    List<AutoPayrollResult> workers,
+    DialogController controller, {
+    required double startProgress,
+    required double endProgress,
+  }) async {
+    final results = List<Uint8List?>.filled(workers.length, null);
+    const pool = 12;
+    // Hard cap on this network-bound phase. If worker photos are slow or
+    // unreachable the bar must not sit stalled at ~69%; anything we can't
+    // fetch in time is left as null and the PDF falls back to a blank header.
+    final deadline = DateTime.now().add(const Duration(milliseconds: 2500));
+    var index = 0;
+    var completed = 0;
+
+    void report() {
+      if (workers.isEmpty) return;
+      controller.update(
+        progress: startProgress +
+            (endProgress - startProgress) * (completed / workers.length),
+        label: 'generating_invoices'.tr(),
+      );
+    }
+
+    while (index < workers.length) {
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining.isNegative) {
+        completed = workers.length;
+        report();
+        break;
+      }
+      final batch = <Future<void>>[];
+      for (var i = 0; i < pool && index < workers.length; i++, index++) {
+        final j = index;
+        batch.add(() async {
+          results[j] = await _loadWorkerProfileImageRaw(workers[j].imageUrl);
+          completed++;
+          if (completed % pool == 0 || completed == workers.length) {
+            report();
+          }
+        }());
+      }
+      try {
+        await Future.wait(batch).timeout(remaining);
+      } on TimeoutException {
+        // Don't stall the whole payroll on a slow photo — move on; the images
+        // that didn't arrive in time stay null (blank header).
+        completed = workers.length;
+        report();
+        break;
+      }
+    }
+    return results;
   }
 
   Future<List<AutoPayrollResult>?> _showReviewDialog(

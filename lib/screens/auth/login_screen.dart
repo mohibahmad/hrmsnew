@@ -229,7 +229,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isGuestLoading = true);
     try {
       await _authService.signInAnonymously();
-      await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         FlashySnackBar.show(
           context,

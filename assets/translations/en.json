@@ -1275,6 +1275,8 @@
   "apply": "Apply",
   "failed_to_load_worker_data": "Failed to load worker data: {error}",
   "generating_invoices": "Generating invoices...",
+  "preparing_zip": "Preparing ZIP...",
+  "payroll_completed": "Payroll completed!",
   "save_payroll_invoices_zip": "Save Payroll Invoices ZIP",
   "zip_saved": "ZIP saved: {fileName}",
   "failed_to_generate_zip": "Failed to generate ZIP: {error}",
