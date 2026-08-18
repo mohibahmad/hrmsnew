@@ -7,12 +7,14 @@ class WeekdayHeaderChip extends StatelessWidget {
   final String label;
   final Color color;
   final bool isExpanded;
+  final Radius borderRadius;
 
   const WeekdayHeaderChip({
     super.key,
     required this.label,
     required this.color,
     this.isExpanded = true,
+    this.borderRadius = const Radius.circular(3),
   });
 
   @override
@@ -23,7 +25,7 @@ class WeekdayHeaderChip extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.all(borderRadius),
       ),
       child: Text(
         shortLabel.toUpperCase(),
@@ -176,6 +178,7 @@ class ModalCalendar extends StatelessWidget {
   final ValueChanged<DateTime> onMonthChanged;
   final bool disablePastDays;
   final bool showBorder;
+  final Radius weekdayBorderRadius;
   final double cellAspectRatio;
   final double spacing;
   final Color selectedColor;
@@ -189,6 +192,7 @@ class ModalCalendar extends StatelessWidget {
     required this.onMonthChanged,
     this.disablePastDays = false,
     this.showBorder = true,
+    this.weekdayBorderRadius = const Radius.circular(3),
     this.cellAspectRatio = 1.0,
     this.spacing = 6,
     this.selectedColor = const Color(0xFF0247C4),
@@ -205,19 +209,19 @@ class ModalCalendar extends StatelessWidget {
 
     final weekdays = Row(
       children: [
-        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Colors.red),
+        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Colors.red, borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_mon'.tr(), color: const Color(0xFF0247C4)),
+        WeekdayHeaderChip(label: 'weekday_mon'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_tue'.tr(), color: const Color(0xFF0247C4)),
+        WeekdayHeaderChip(label: 'weekday_tue'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_wed'.tr(), color: const Color(0xFF0247C4)),
+        WeekdayHeaderChip(label: 'weekday_wed'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_thu'.tr(), color: const Color(0xFF0247C4)),
+        WeekdayHeaderChip(label: 'weekday_thu'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_fri'.tr(), color: const Color(0xFF4CAF50)),
+        WeekdayHeaderChip(label: 'weekday_fri'.tr(), color: const Color(0xFF4CAF50), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
-        WeekdayHeaderChip(label: 'weekday_sat'.tr(), color: const Color(0xFF0247C4)),
+        WeekdayHeaderChip(label: 'weekday_sat'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
       ],
     );
 

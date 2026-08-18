@@ -461,6 +461,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   static const List<String> _cvAllowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'doc', 'docx'];
 
   bool _isUploading = false;
+  String? _downloadingField;
   String? _uploadingField;
   Uint8List? _frontIdBytes;
   String? _frontIdName;
@@ -599,7 +600,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     }
   }
 
-  Future<void> _downloadFile(String? url, Uint8List? bytes, String defaultName) async {
+  Future<void> _downloadFile(String? url, Uint8List? bytes, String defaultName, {String? field}) async {
+    if (_downloadingField != null) return;
+    setState(() => _downloadingField = field);
     try {
       Uint8List? fileBytes = bytes;
 
@@ -635,6 +638,8 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       }
     } catch (_) {
       if (mounted) FlashySnackBar.show(context, message: 'could_not_download_file'.tr(), isError: true);
+    } finally {
+      if (mounted) setState(() => _downloadingField = null);
     }
   }
 
@@ -917,9 +922,10 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         const Spacer(),
         if (hasFile) ...[
           _buildIconButton(
-            onTap: () => _downloadFile(existingUrl, bytes, fileName ?? defaultName),
+            onTap: () => _downloadFile(existingUrl, bytes, fileName ?? defaultName, field: field),
             icon: Icons.file_download_outlined,
             label: 'download'.tr(),
+            isLoading: _downloadingField == field,
           ),
           const SizedBox(width: 8),
           _buildEditButton(onTap: () => _pickFile(field)),
@@ -928,7 +934,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildIconButton({required VoidCallback onTap, required IconData icon, required String label}) {
+  Widget _buildIconButton({required VoidCallback onTap, required IconData icon, required String label, bool isLoading = false}) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -942,7 +948,10 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.white, size: 16),
+              if (isLoading)
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              else
+                Icon(icon, color: Colors.white, size: 16),
               const SizedBox(width: 5),
               Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
             ],
@@ -987,14 +996,17 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               const Spacer(),
               if (hasCv) ...[
                 GestureDetector(
-                  onTap: () => _downloadFile(_existingCv, _cvBytes, _cvName ?? 'cv'),
+                  onTap: () => _downloadFile(_existingCv, _cvBytes, _cvName ?? 'cv', field: 'cv'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.file_download_outlined, color: Colors.white, size: 14),
+                        if (_downloadingField == 'cv')
+                          const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        else
+                          const Icon(Icons.file_download_outlined, color: Colors.white, size: 14),
                         const SizedBox(width: 4),
                         Text('download'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
                       ],
