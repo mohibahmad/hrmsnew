@@ -2391,8 +2391,8 @@ class _WorkersAttendanceScreenState
                                       decoration: InputDecoration.collapsed(
                                         hintText: 'enter_reason_hint'.tr(),
                                         hintStyle: TextStyle(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.38,
+                                          color: Colors.black.withOpacity(
+                                            0.38,
                                           ),
                                           fontSize: 13,
                                         ),

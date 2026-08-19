@@ -221,8 +221,8 @@ Widget buildSocialButton({
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: isLoading
-                  ? (textColor ?? const Color(0xFF000000)).withValues(
-                      alpha: 0.6,
+                  ? (textColor ?? const Color(0xFF000000)).withOpacity(
+                      0.6,
                     )
                   : null,
             ),

@@ -2259,8 +2259,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                             color:
                                                                 const Color(
                                                                   0xFFEF4444,
-                                                                ).withValues(
-                                                                  alpha: 0.2,
+                                                                ).withOpacity(
+                                                                  0.2,
                                                                 ),
                                                             blurRadius: 8,
                                                             offset:
@@ -3699,14 +3699,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                                     color: isSunday
                                                         ? const Color(
                                                             0xFFFF0004,
-                                                          ).withValues(
-                                                            alpha: 0.4,
+                                                          ).withOpacity(
+                                                            0.4,
                                                           )
                                                         : (isFriday
                                                               ? const Color(
                                                                   0xFF4AC000,
-                                                                ).withValues(
-                                                                  alpha: 0.4,
+                                                                ).withOpacity(
+                                                                  0.4,
                                                                 )
                                                               : Colors
                                                                     .grey

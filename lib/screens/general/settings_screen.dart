@@ -347,7 +347,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8))],
                 ),
                 child: Form(
                   key: deleteFormKey,
