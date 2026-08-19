@@ -726,7 +726,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       allowFutureMonths: true,
       showBorder: false,
       spacing: 10,
-      cellAspectRatio: 1.12,
+      cellAspectRatio: 1.09,
       cellBorderRadius: BorderRadius.circular(4),
       weekdayBorderRadius: const Radius.circular(4),
     );
