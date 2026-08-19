@@ -1892,7 +1892,11 @@ if (day == 0) {
           children: [
             for (int i = 0; i < filters.length; i++) ...[
               _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
-              if (i < filters.length - 1) Container(width: 1, height: 20, color: Colors.grey.shade300),
+              if (i < filters.length - 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Container(width: 1, height: 20, color: Colors.grey.shade300),
+                ),
             ],
           ],
         ),
@@ -1908,7 +1912,6 @@ if (day == 0) {
       onTap: () => setState(() => _selectedFilter = filterKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),

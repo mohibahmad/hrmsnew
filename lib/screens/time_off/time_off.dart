@@ -1009,7 +1009,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     ? 'all_filter'.tr()
                     : LocalizationHelper.localizePosition(allFilters[i]),
               ),
-              if (i < allFilters.length - 1) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+              if (i < allFilters.length - 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+                ),
             ],
           ],
         ),
@@ -1023,7 +1027,6 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       onTap: () => setState(() => _selectedTab = filterKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? _kBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(4),

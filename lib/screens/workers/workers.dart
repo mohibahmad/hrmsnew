@@ -470,7 +470,11 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           children: [
             for (int i = 0; i <= positionsToShow.length; i++) ...[
               _buildFilterTab(i == 0 ? 'All' : positionsToShow[i - 1], i == 0 ? 'all_filter'.tr() : LocalizationHelper.localizePosition(positionsToShow[i - 1])),
-              if (i < positionsToShow.length) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+              if (i < positionsToShow.length)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+                ),
             ],
           ],
         ),
@@ -1114,7 +1118,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       onTap: () => setState(() => _selectedFilter = filterKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: isSelected ? _kFilterSelected : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
