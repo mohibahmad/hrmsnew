@@ -39,7 +39,7 @@ class UnsavedChangesDialog {
                   padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF000000).withOpacity(0.15),
@@ -98,7 +98,7 @@ class UnsavedChangesDialog {
                                 backgroundColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                                 foregroundColor: WidgetStateProperty.all(const Color(0xFF0F172A)),
                                 padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 18)),
-                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
                                 shadowColor: WidgetStateProperty.all(Colors.transparent),
                               ),
                               child: Text(
@@ -119,7 +119,7 @@ class UnsavedChangesDialog {
                                 backgroundColor: WidgetStateProperty.all(const Color(0xFFEF4444)),
                                 foregroundColor: WidgetStateProperty.all(Colors.white),
                                 padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 18)),
-                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
                                 shadowColor: WidgetStateProperty.all(Colors.transparent),
                               ),
                               child: Text(
