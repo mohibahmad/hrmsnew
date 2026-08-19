@@ -625,10 +625,39 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   int get _availableDays => _availableDaysForType(_timeOffType);
 
+  bool get _isLimitExceeded {
+    if (_selectedWorker == null || !_usesPaidAllowance) return false;
+    final normType = TimeOffService.normalizeLeaveType(_timeOffType);
+    final base = _baseAvailableDays;
+
+    final dateTypeMap = _selectedDateToTypeMap;
+    int currentlySelected = 0;
+    for (final t in dateTypeMap.values) {
+      if (TimeOffService.normalizeLeaveType(t) == normType) {
+        currentlySelected++;
+      }
+    }
+
+    int deselectedSavedForType = 0;
+    for (final d in _deselectedDates) {
+      final leave = TimeOffService.activeLeaveForWorker(
+        _selectedWorker!,
+        _timeoffRecords,
+        onDate: d,
+      );
+      if (leave != null &&
+          TimeOffService.normalizeLeaveType(
+                  (leave['action'] ?? leave['type']).toString()) ==
+              normType) {
+        deselectedSavedForType++;
+      }
+    }
+
+    return currentlySelected > (base + deselectedSavedForType);
+  }
+
   bool get _requestedDaysExceedAvailable =>
-      !widget.viewOnly &&
-      _usesPaidAllowance &&
-      (_selectedDaysCount > _availableDays || _baseAvailableDays <= 0);
+      !widget.viewOnly && _isLimitExceeded;
 
   String get _localizedSelectedLeaveType {
     final normalized = TimeOffService.normalizeLeaveType(_timeOffType);
@@ -2265,10 +2294,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                       _isLoading ||
                       _isAggregateOverview ||
                       !_hasUnsavedChanges ||
-                      _selectedDaysCount == 0 ||
-                      (_usesPaidAllowance &&
-                          (_baseAvailableDays <= 0 ||
-                              _selectedDaysCount > _availableDays)))
+                      (_selectedDaysCount == 0 &&
+                          _editingId == null &&
+                          _deselectedDates.isEmpty) ||
+                      _requestedDaysExceedAvailable)
                   ? null
                   : () {
                       if (_isGuest) {
