@@ -78,7 +78,73 @@ class PayrollService {
       periodDateKey(a.start) == periodDateKey(b.start) &&
       periodDateKey(a.end) == periodDateKey(b.end);
 
-                                                static PayrollPeriod resolveCurrentPayrollPeriod({
+                                                static PayrollPeriod getNextFullMonthlyCycleAfter(DateTime anchor, int payDay) {
+    final normalizedPayDay = payDay.clamp(1, 28);
+    var candidateStart = DateTime(anchor.year, anchor.month, normalizedPayDay);
+    if (candidateStart.isBefore(anchor)) {
+      candidateStart = DateTime(anchor.year, anchor.month + 1, normalizedPayDay);
+    }
+    final candidateEnd = DateTime(candidateStart.year, candidateStart.month + 1, normalizedPayDay);
+    return PayrollPeriod(start: candidateStart, end: candidateEnd);
+  }
+
+  /// Returns the first occurrence of [payDay] strictly after [anchor].
+  static DateTime getNextPayDayAfter(DateTime anchor, int payDay) {
+    final normalizedPayDay = payDay.clamp(1, 28);
+    var candidate = DateTime(anchor.year, anchor.month, normalizedPayDay);
+    if (!candidate.isAfter(anchor)) {
+      candidate = DateTime(anchor.year, anchor.month + 1, normalizedPayDay);
+    }
+    return candidate;
+  }
+
+  /// Returns the latest SETTLED (fully paid) payroll cycle from records.
+  static PayrollPeriod? latestSettledPayrollCycle(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    String? companyCurrency,
+  }) {
+    final candidatePeriods = <String, PayrollPeriod>{};
+    for (final record in rawPayrollDocs) {
+      if (!isPayrollRecordPaid(record)) continue;
+      final start = _parseDate(record['payPeriodStart']);
+      final end = _parseDate(record['payPeriodEnd']);
+      if (start != null && end != null && start.isBefore(end)) {
+        final period = PayrollPeriod(
+          start: DateTime(start.year, start.month, start.day),
+          end: DateTime(end.year, end.month, end.day),
+        );
+        final key = '${periodDateKey(period.start)}_${periodDateKey(period.end)}';
+        candidatePeriods[key] = period;
+      }
+    }
+
+    if (candidatePeriods.isEmpty) return null;
+
+    PayrollPeriod? latestSettled;
+    for (final period in candidatePeriods.values) {
+      final unpaid = unpaidWorkersForPeriod(
+        workersList,
+        rawPayrollDocs,
+        month: DateTime(period.end.year, period.end.month, 1),
+        allowUndatedRecords: true,
+        companyCurrency: companyCurrency,
+        periodStart: period.start,
+        periodEnd: period.end,
+      );
+      final hasUnpaid = unpaid.any((worker) =>
+          extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0);
+
+      if (!hasUnpaid) {
+        if (latestSettled == null || period.end.isAfter(latestSettled.end)) {
+          latestSettled = period;
+        }
+      }
+    }
+    return latestSettled;
+  }
+
+  static PayrollPeriod resolveCurrentPayrollPeriod({
     required List<Map<String, dynamic>> workersList,
     required List<Map<String, dynamic>> payrollRecords,
     required int payDay,
@@ -91,12 +157,65 @@ class PayrollService {
     final today = DateTime(now.year, now.month, now.day);
     final normalizedPayDay = payDay.clamp(1, 28);
 
+    final lastPaid = latestSettledPayrollCycle(
+      workersList,
+      payrollRecords,
+      companyCurrency: companyCurrency,
+    );
+
+    if (lastPaid != null && !today.isBefore(lastPaid.start)) {
+      if (today.isBefore(lastPaid.end)) {
+        return lastPaid;
+      }
+      final nextCycle = getNextFullMonthlyCycleAfter(lastPaid.end, normalizedPayDay);
+
+      final nextUnpaid = unpaidWorkersForPeriod(
+        workersList,
+        payrollRecords,
+        month: DateTime(nextCycle.end.year, nextCycle.end.month, 1),
+        allowUndatedRecords: true,
+        companyCurrency: companyCurrency,
+        periodStart: nextCycle.start,
+        periodEnd: nextCycle.end,
+      );
+
+      final hasPayableNext = nextUnpaid.any((worker) =>
+          extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0);
+
+      if (hasPayableNext || !advanceIfFullyPaid) {
+        if (persistedCycle != null &&
+            persistedCycle.end.isAfter(persistedCycle.start) &&
+            persistedCycle.end.difference(lastPaid.end).inDays >= 20) {
+          final persistedUnpaid = unpaidWorkersForPeriod(
+            workersList,
+            payrollRecords,
+            month: DateTime(persistedCycle.end.year, persistedCycle.end.month, 1),
+            allowUndatedRecords: true,
+            companyCurrency: companyCurrency,
+            periodStart: persistedCycle.start,
+            periodEnd: persistedCycle.end,
+          );
+          if (persistedUnpaid.any((w) => extractSalary(currentSalaryDisplay(w, companyCurrency: companyCurrency)) > 0)) {
+            return persistedCycle;
+          }
+        }
+        return nextCycle;
+      } else {
+        final followingCycle = getNextFullMonthlyCycleAfter(nextCycle.end, normalizedPayDay);
+        if (persistedCycle != null &&
+            periodDateKey(persistedCycle.start) == periodDateKey(followingCycle.start) &&
+            periodDateKey(persistedCycle.end) == periodDateKey(followingCycle.end)) {
+          return persistedCycle;
+        }
+        return followingCycle;
+      }
+    }
+
     final base = normalizedPayDay <= 0
         ? PayrollPeriod(start: payPeriodStart(today), end: payPeriodEnd(today))
         : payDayPeriodContaining(today, normalizedPayDay);
     final next = nextPayDayPeriod(base, normalizedPayDay);
 
-    
     PayrollPeriod? anchor;
     if (persistedCycle != null) {
       if (payrollPeriodsEqual(persistedCycle, base)) {
@@ -106,7 +225,7 @@ class PayrollService {
       }
     }
 
-                                        final currentMonthPayday = _payDayInMonth(
+    final currentMonthPayday = _payDayInMonth(
       DateTime(today.year, today.month, 1), normalizedPayDay);
 
     if (anchor == null && today.isAfter(currentMonthPayday)) {
@@ -116,7 +235,7 @@ class PayrollService {
         normalizedPayDay,
       );
 
-                        final allRecordsAfterPrevCycle = payrollRecords.isNotEmpty &&
+      final allRecordsAfterPrevCycle = payrollRecords.isNotEmpty &&
           payrollRecords.every((record) {
         final savedEnd = _parseDate(record['payPeriodEnd']);
         return savedEnd != null && savedEnd.isAfter(prevCycleEnd);
@@ -134,7 +253,7 @@ class PayrollService {
         );
 
         if (prevPayable.isNotEmpty) {
-                                        if (anchor != null && payrollPeriodsEqual(anchor, next)) {
+          if (anchor != null && payrollPeriodsEqual(anchor, next)) {
             return anchor;
           }
           return PayrollPeriod(start: prevCycleStart, end: prevCycleEnd);
@@ -152,15 +271,15 @@ class PayrollService {
       periodEnd: base.end,
     );
 
-        if (today.isBefore(base.end)) return anchor ?? base;
+    if (today.isBefore(base.end)) return anchor ?? base;
 
-        if (payable.isNotEmpty) return base;
+    if (payable.isNotEmpty) return base;
 
-        if (!advanceIfFullyPaid) {
-                  return anchor ?? base;
+    if (!advanceIfFullyPaid) {
+      return anchor ?? base;
     }
 
-            return next;
+    return next;
   }
 
   static String payrollPeriodLabel(DateTime month) => '${month.year}-${pad2(month.month)}';

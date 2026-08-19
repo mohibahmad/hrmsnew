@@ -467,14 +467,69 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-09-16');
   });
 
-  test('PayDay change after cycle advance adapts cycle to new payDay without pulling backward', () {
-    final prevStart = DateTime(2026, 8, 14);
-    const newPayDay = 3;
+  test('Example 1) Last Paid Jul12-Aug12, PayDay 12->20 => Aug20-Sep20', () {
+    final jul12 = DateTime(2026, 7, 12);
+    final aug12 = DateTime(2026, 8, 12);
+    final records = [
+      paidRecord(workerId: 'w1', start: jul12, end: aug12),
+      paidRecord(workerId: 'w2', start: jul12, end: aug12),
+      paidRecord(workerId: 'w3', start: jul12, end: aug12),
+      paidRecord(workerId: 'w4', start: jul12, end: aug12),
+    ];
 
-    final adaptedStart = PayrollService.payDayPeriodContaining(prevStart, newPayDay).start;
-    final adaptedEnd = PayrollService.nextPayDayPeriod(PayrollPeriod(start: adaptedStart, end: adaptedStart), newPayDay).end;
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: records,
+      payDay: 20,
+      referenceDate: DateTime(2026, 8, 19),
+    );
 
-    expect(PayrollService.periodDateKey(adaptedStart), '2026-08-03');
-    expect(PayrollService.periodDateKey(adaptedEnd), '2026-09-03');
+    expect(PayrollService.periodDateKey(p.start), '2026-08-20');
+    expect(PayrollService.periodDateKey(p.end), '2026-09-20');
+  });
+
+  test('Example 2) Last Paid Jul12-Aug12, PayDay 12->9 => Sep9-Oct9', () {
+    final jul12 = DateTime(2026, 7, 12);
+    final aug12 = DateTime(2026, 8, 12);
+    final records = [
+      paidRecord(workerId: 'w1', start: jul12, end: aug12),
+      paidRecord(workerId: 'w2', start: jul12, end: aug12),
+      paidRecord(workerId: 'w3', start: jul12, end: aug12),
+      paidRecord(workerId: 'w4', start: jul12, end: aug12),
+    ];
+
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: records,
+      payDay: 9,
+      referenceDate: DateTime(2026, 8, 19),
+    );
+
+    expect(PayrollService.periodDateKey(p.start), '2026-09-09');
+    expect(PayrollService.periodDateKey(p.end), '2026-10-09');
+  });
+
+  test('Acceptance) Last Paid Jul12-Aug12, PayDay 12->11 with persisted Aug11-Sep11 => single current cycle Aug11-Sep11', () {
+    final jul12 = DateTime(2026, 7, 12);
+    final aug12 = DateTime(2026, 8, 12);
+    final aug11 = DateTime(2026, 8, 11);
+    final sep11 = DateTime(2026, 9, 11);
+    final records = [
+      paidRecord(workerId: 'w1', start: jul12, end: aug12),
+      paidRecord(workerId: 'w2', start: jul12, end: aug12),
+      paidRecord(workerId: 'w3', start: jul12, end: aug12),
+      paidRecord(workerId: 'w4', start: jul12, end: aug12),
+    ];
+
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: records,
+      payDay: 11,
+      referenceDate: DateTime(2026, 8, 19),
+      persistedCycle: PayrollPeriod(start: aug11, end: sep11),
+    );
+
+    expect(PayrollService.periodDateKey(p.start), '2026-08-11');
+    expect(PayrollService.periodDateKey(p.end), '2026-09-11');
   });
 }

@@ -1725,7 +1725,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     );
   }
 }
-
 class ProfilePreviewDialog extends StatelessWidget {
   final String businessName;
   final String companyId;

@@ -699,9 +699,20 @@ class PayrollRunner {
         PdfHelpers.loadFontBytes(),
         _loadLocaleTranslations(locale),
       ]);
+
+      final rawLogo = results[0] as Uint8List?;
+      final rawStamp = results[1] as Uint8List?;
+
+      final logoBytes = rawLogo != null && rawLogo.isNotEmpty
+          ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75)
+          : null;
+      final stampBytes = rawStamp != null && rawStamp.isNotEmpty
+          ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75)
+          : null;
+
       return {
-        'logoBytes': results[0],
-        'stampBytes': results[1],
+        'logoBytes': logoBytes,
+        'stampBytes': stampBytes,
         'fontBytes': results[2],
         'translations': results[3],
         'resolvedProfile': resolved,
@@ -1331,25 +1342,10 @@ class PayrollRunner {
         results: selectedResults,
         periodLabel: summary.periodLabel,
       );
-
-      // Give the review dialog close transition 180ms to complete smoothly
-      // before heavy progress overhead begins.
-      await Future<void>.delayed(const Duration(milliseconds: 180));
     }
 
     if (!context.mounted) return null;
-    // Show the progress dialog immediately so the user sees feedback right
-    // away. The preloaded assets (started before the review dialog) are almost
-    // always ready by now; they are resolved inside the try below so the dialog
-    // never waits on them.
     final controller = await _showProgressDialog(context);
-
-    // Let the dialog paint its opening frame at 0% before the parallel pipeline
-    // starts pumping progress — otherwise the (already preloaded) pipeline
-    // floods straight to ~68% and the bar skips the start. One frame + a short
-    // beat keeps it smooth instead of a long fixed delay that feels like lag.
-    await WidgetsBinding.instance.endOfFrame;
-    await Future<void>.delayed(const Duration(milliseconds: 80));
 
     try {
       // Resolve the up-front preloaded assets (already started before the
@@ -2079,8 +2075,14 @@ class PayrollRunner {
           PdfHelpers.loadFontBytes(),
           _loadLocaleTranslations(locale),
         ]);
-        companyLogoBytes = allAssets[0] as Uint8List?;
-        companyStampBytes = allAssets[1] as Uint8List?;
+        final rawLogo = allAssets[0] as Uint8List?;
+        final rawStamp = allAssets[1] as Uint8List?;
+        companyLogoBytes = rawLogo != null && rawLogo.isNotEmpty
+            ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75)
+            : null;
+        companyStampBytes = rawStamp != null && rawStamp.isNotEmpty
+            ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75)
+            : null;
         fontBytes = allAssets[2] as Uint8List?;
         translations = allAssets[3] as Map<String, dynamic>;
       }
