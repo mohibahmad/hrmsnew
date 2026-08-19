@@ -466,4 +466,15 @@ void main() {
     expect(PayrollService.periodDateKey(p.start), '2026-08-16');
     expect(PayrollService.periodDateKey(p.end), '2026-09-16');
   });
+
+  test('PayDay change after cycle advance adapts cycle to new payDay without pulling backward', () {
+    final prevStart = DateTime(2026, 8, 14);
+    const newPayDay = 3;
+
+    final adaptedStart = PayrollService.payDayPeriodContaining(prevStart, newPayDay).start;
+    final adaptedEnd = PayrollService.nextPayDayPeriod(PayrollPeriod(start: adaptedStart, end: adaptedStart), newPayDay).end;
+
+    expect(PayrollService.periodDateKey(adaptedStart), '2026-08-03');
+    expect(PayrollService.periodDateKey(adaptedEnd), '2026-09-03');
+  });
 }

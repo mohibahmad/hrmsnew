@@ -35,7 +35,7 @@ Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
     final bytes = file['bytes']! as Uint8List;
     archive.addFile(ArchiveFile(name, bytes.length, bytes));
   }
-  final encoded = ZipEncoder().encode(archive);
+  final encoded = ZipEncoder().encode(archive, level: 0);
   if (encoded.isEmpty) throw StateError('ZIP encoding failed');
   return Uint8List.fromList(encoded);
 }
@@ -235,6 +235,7 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
   // Translations must be wrapped in a locale-keyed map ({locale: flatMap})
   // otherwise easy_localization treats every key as a nested locale name
   // and none of the actual translation keys are found.
+  PdfHelpers.setIsolateTranslations(translations);
   try {
     Localization.load(
       Locale(locale),
@@ -565,19 +566,28 @@ class PayrollRunner {
     );
 
    
-    final preloadedAssetsFuture = _preloadInvoiceAssets(companyProfile, isGuest);
+    final preloadedAssetsFuture = _preloadInvoiceAssets(companyProfile, isGuest, firestore: firestoreService);
 
     final result = await _handleSummaryCommit(context, summary, autoMode, isGuest, effectivePeriodStart, effectivePeriodEnd, companyProfile ?? {}, preloadedAssetsFuture: preloadedAssetsFuture);
     return result;
   }
 
   
-  Future<Map<String, dynamic>?> _preloadInvoiceAssets(Map<String, dynamic>? companyProfile, bool isGuest) async {
-    if (isGuest || companyProfile == null) return null;
+  Future<Map<String, dynamic>?> _preloadInvoiceAssets(Map<String, dynamic>? companyProfile, bool isGuest, {FirestoreService? firestore}) async {
     try {
       final locale = Intl.defaultLocale ?? 'en';
-      final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
-      final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
+      final resolved = await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
+      final companyLogoUrl = (resolved['profilePicUrl'] ??
+              companyProfile?['profilePic'] ??
+              companyProfile?['profilePicUrl'] ??
+              companyProfile?['photoUrl'] ??
+              companyProfile?['companyLogoUrl'] ??
+              '').toString().trim();
+      final companyStampUrl = (resolved['companyStampUrl'] ??
+              companyProfile?['companyStampUrl'] ??
+              companyProfile?['stampUrl'] ??
+              companyProfile?['companyStamp'] ??
+              '').toString().trim();
       final results = await Future.wait([
         InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
         InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -589,6 +599,7 @@ class PayrollRunner {
         'stampBytes': results[1],
         'fontBytes': results[2],
         'translations': results[3],
+        'resolvedProfile': resolved,
       };
     } catch (_) {
       return null;
@@ -1039,6 +1050,10 @@ class PayrollRunner {
         results: selectedResults,
         periodLabel: summary.periodLabel,
       );
+
+      // Give the review dialog close transition 180ms to complete smoothly
+      // before heavy progress overhead begins.
+      await Future<void>.delayed(const Duration(milliseconds: 180));
     }
 
     if (!context.mounted) return null;
@@ -1401,8 +1416,20 @@ class PayrollRunner {
       final payPeriod = periodLabel.isNotEmpty ? periodLabel : '${now.year}-${now.month.toString().padLeft(2, '0')}';
       final periodDisplay = PayrollService.formatPayPeriodRange(periodStart, periodEnd);
 
-      final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
-      final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
+      final firestore = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+      final resolvedProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
+
+      final companyLogoUrl = (resolvedProfile['profilePicUrl'] ??
+              companyProfile['profilePic'] ??
+              companyProfile['profilePicUrl'] ??
+              companyProfile['photoUrl'] ??
+              companyProfile['companyLogoUrl'] ??
+              '').toString().trim();
+      final companyStampUrl = (resolvedProfile['companyStampUrl'] ??
+              companyProfile['companyStampUrl'] ??
+              companyProfile['stampUrl'] ??
+              companyProfile['companyStamp'] ??
+              '').toString().trim();
       final allAssets = await Future.wait<Object?>([
         InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
         InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -1414,11 +1441,13 @@ class PayrollRunner {
       final fontBytes = allAssets[2] as Uint8List?;
       final translations = allAssets[3] as Map<String, dynamic>;
 
-      final companyName = CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']);
-      final companyAddress = (companyProfile['address'] ?? '').toString();
-      final companyEmail = (companyProfile['email'] ?? '').toString();
-      final companyPhone = (companyProfile['phone'] ?? '').toString();
-      final companyId = (companyProfile['companyId'] ?? '').toString();
+      final companyName = CompanyProfileHelper.companyNameOrFallback(
+        resolvedProfile['companyName'] ?? companyProfile['businessName'] ?? companyProfile['companyName'],
+      );
+      final companyAddress = (resolvedProfile['address'] ?? companyProfile['address'] ?? '').toString();
+      final companyEmail = (resolvedProfile['email'] ?? companyProfile['email'] ?? '').toString();
+      final companyPhone = (resolvedProfile['phone'] ?? companyProfile['contact1'] ?? companyProfile['phone'] ?? '').toString();
+      final companyId = (resolvedProfile['companyId'] ?? companyProfile['companyId'] ?? companyProfile['businessId'] ?? '').toString();
 
       final successful = selected.where((result) => result.success).toList();
       if (successful.isEmpty) return;
@@ -1562,15 +1591,27 @@ class PayrollRunner {
       final payPeriod = periodLabel.isNotEmpty ? periodLabel : '${now.year}-${now.month.toString().padLeft(2, '0')}';
       final periodDisplay = PayrollService.formatPayPeriodRange(periodStart, periodEnd);
 
-      // Use preloaded assets when available, otherwise fetch them now.
+      final firestore = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+      final resolvedProfile = (preloadedAssets?['resolvedProfile'] as Map<String, dynamic>?) ??
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
+
       final Uint8List? companyLogoBytes;
       final Uint8List? companyStampBytes;
       final Uint8List? fontBytes;
       final Map<String, dynamic> translations;
 
-      // Preloaded assets are only used when the required keys are present;
-      // otherwise (guest mode, failed preload, partial map) fall back to
-      // loading them here.
+      final companyLogoUrl = (resolvedProfile['profilePicUrl'] ??
+              companyProfile['profilePic'] ??
+              companyProfile['profilePicUrl'] ??
+              companyProfile['photoUrl'] ??
+              companyProfile['companyLogoUrl'] ??
+              '').toString().trim();
+      final companyStampUrl = (resolvedProfile['companyStampUrl'] ??
+              companyProfile['companyStampUrl'] ??
+              companyProfile['stampUrl'] ??
+              companyProfile['companyStamp'] ??
+              '').toString().trim();
+
       if (preloadedAssets != null &&
           preloadedAssets['fontBytes'] is Uint8List &&
           preloadedAssets['translations'] is Map<String, dynamic>) {
@@ -1580,8 +1621,6 @@ class PayrollRunner {
         translations = preloadedAssets['translations'] as Map<String, dynamic>;
       } else {
         controller.update(progress: 0.58, label: 'generating_invoices'.tr());
-        final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
-        final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
         final allAssets = await Future.wait<Object?>([
           InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
           InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -1596,11 +1635,13 @@ class PayrollRunner {
 
       controller.update(progress: 0.65, label: 'generating_invoices'.tr());
 
-      final companyName = CompanyProfileHelper.companyNameOrFallback(companyProfile['companyName']);
-      final companyAddress = (companyProfile['address'] ?? '').toString();
-      final companyEmail = (companyProfile['email'] ?? '').toString();
-      final companyPhone = (companyProfile['phone'] ?? '').toString();
-      final companyId = (companyProfile['companyId'] ?? '').toString();
+      final companyName = CompanyProfileHelper.companyNameOrFallback(
+        resolvedProfile['companyName'] ?? companyProfile['businessName'] ?? companyProfile['companyName'],
+      );
+      final companyAddress = (resolvedProfile['address'] ?? companyProfile['address'] ?? '').toString();
+      final companyEmail = (resolvedProfile['email'] ?? companyProfile['email'] ?? '').toString();
+      final companyPhone = (resolvedProfile['phone'] ?? companyProfile['contact1'] ?? companyProfile['phone'] ?? '').toString();
+      final companyId = (resolvedProfile['companyId'] ?? companyProfile['companyId'] ?? companyProfile['businessId'] ?? '').toString();
 
       final successful = selected.where((result) => result.success).toList();
       if (successful.isEmpty) return;
@@ -1896,7 +1937,7 @@ class PayrollRunner {
     // unreachable the bar must not sit stalled at ~69%; anything we can't
     // fetch in time is left as null and the PDF falls back to a blank header.
     // Kept tight so the whole invoice flow stays inside ~3s.
-    final deadline = DateTime.now().add(const Duration(milliseconds: 1000));
+    final deadline = DateTime.now().add(const Duration(milliseconds: 5000));
     var index = 0;
     var completed = 0;
 

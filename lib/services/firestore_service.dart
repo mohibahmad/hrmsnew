@@ -1667,23 +1667,14 @@ class FirestoreService {
         }
 
                         
-        final recordsAfterCancellation = currentTimeOffRecords.where((record) => record['id']?.toString() != timeOffId).map(Map<String, dynamic>.from).toList()..add({...timeOffData, 'id': timeOffId, 'status': 'Cancelled'});
+        final recordsAfterCancellation = currentTimeOffRecords.where((record) => record['id']?.toString() != timeOffId).map(Map<String, dynamic>.from).toList();
         final workerWithId = {...workerData, 'id': workerId, 'workerId': workerId};
         workerBalanceUpdate = TimeOffService.canonicalWorkerLeaveFields(workerWithId, remainingBalances: TimeOffService.remainingBalancesFromAssignedRecords(workerWithId, recordsAfterCancellation));
         workerBalanceUpdate = {...workerBalanceUpdate, 'timeOffDateLocks': dateLocks};
       }
 
       if (!isMissingDocument) {
-        final oldDatesFormatted = oldDates.map(_timeOffDateKey).toList();
-        transaction.update(timeOffRef, {
-          'status': 'Cancelled',
-          'selectedDates': FieldValue.delete(),
-          'startDate': FieldValue.delete(),
-          'endDate': FieldValue.delete(),
-          if (oldDatesFormatted.isNotEmpty) 'originalSelectedDates': oldDatesFormatted,
-          'cancelledAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        transaction.delete(timeOffRef);
       }
       if (workerBalanceUpdate != null) transaction.update(workerRef, workerBalanceUpdate);
       // Cancelling a Time Off must never auto-restore attendance to "Present".

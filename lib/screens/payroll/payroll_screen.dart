@@ -205,22 +205,28 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     final savedEnd = AppDateUtils.dateFromValue(profile?['payrollCycleEnd']);
     final normalizedPayDay = payDay.clamp(1, 28);
 
-                    final referenceMonth = referenceDate?.month ?? 0;
+    final referenceMonth = referenceDate?.month ?? 0;
     final savedStartMonth = savedStart?.month ?? 0;
     final monthDifference = (savedStartMonth - referenceMonth).abs();
-            final isStaleByMonth = monthDifference > 1;
+    final isStaleByMonth = monthDifference > 1;
 
     if (savedStart != null &&
         savedEnd != null &&
         savedStart.isBefore(savedEnd) &&
-        savedStart.day == normalizedPayDay &&
-        savedEnd.day == normalizedPayDay &&
         savedEnd.difference(savedStart).inDays >= 25 &&
         savedEnd.difference(savedStart).inDays <= 35 &&
         !isStaleByMonth) {
+      if (savedStart.day == normalizedPayDay && savedEnd.day == normalizedPayDay) {
+        return PayrollPeriod(
+          start: DateTime(savedStart.year, savedStart.month, savedStart.day),
+          end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
+        );
+      }
+      final adaptedStart = PayrollService.payDayPeriodContaining(savedStart, normalizedPayDay).start;
+      final adaptedEnd = PayrollService.nextPayDayPeriod(PayrollPeriod(start: adaptedStart, end: adaptedStart), normalizedPayDay).end;
       return PayrollPeriod(
-        start: DateTime(savedStart.year, savedStart.month, savedStart.day),
-        end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
+        start: DateTime(adaptedStart.year, adaptedStart.month, adaptedStart.day),
+        end: DateTime(adaptedEnd.year, adaptedEnd.month, adaptedEnd.day),
       );
     }
     return null;
@@ -680,9 +686,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     // Show immediate feedback so the UI doesn't feel frozen while heavy
     // payroll computation runs on the main isolate.
     FlashySnackBar.dismiss();
-    if (mounted) {
-      FlashySnackBar.show(context, message: 'sending_payroll'.tr(), isLoading: true);
-    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
     try {
       final summary = await PayrollRunner().payAll(
         context,
@@ -1273,11 +1277,19 @@ if (day == 0) {
       PayrollPeriod period;
       if (day != _salaryPayDay) {
         final payDay = day.clamp(1, 28);
+        final currentAnchorStart = _payPeriodStart;
+        final adaptedStart = PayrollService.payDayPeriodContaining(currentAnchorStart, payDay).start;
+        final adaptedEnd = PayrollService.nextPayDayPeriod(PayrollPeriod(start: adaptedStart, end: adaptedStart), payDay).end;
+        final adaptedPersisted = PayrollPeriod(start: adaptedStart, end: adaptedEnd);
+
         period = _resolveCurrentPayrollPeriod(
           payDay: payDay,
-          persisted: null,
+          persisted: adaptedPersisted,
           advanceIfFullyPaid: true,
         );
+        while (period.end.isBefore(adaptedEnd)) {
+          period = PayrollService.nextPayDayPeriod(period, payDay);
+        }
         FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
       } else {
         period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);

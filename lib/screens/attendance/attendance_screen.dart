@@ -1489,6 +1489,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildFilterRow() {
+    final tabs = [
+      ('All', 'all_tab'.tr()),
+      ('Present', 'present_tab'.tr()),
+      ('Absent', 'absent_tab'.tr()),
+      ('Leaves', 'leaves_tab'.tr()),
+    ];
+
     return IntrinsicWidth(
       child: Container(
         padding: const EdgeInsets.all(6),
@@ -1496,10 +1503,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTab('All', 'all_tab'.tr()),
-            _buildTab('Present', 'present_tab'.tr()),
-            _buildTab('Absent', 'absent_tab'.tr()),
-            _buildTab('Leaves', 'leaves_tab'.tr()),
+            for (int i = 0; i < tabs.length; i++) ...[
+              _buildTab(tabs[i].$1, tabs[i].$2),
+              if (i < tabs.length - 1)
+                Container(
+                  width: 1,
+                  height: 16,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
+                ),
+            ],
           ],
         ),
       ),

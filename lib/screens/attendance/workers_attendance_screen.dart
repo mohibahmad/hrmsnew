@@ -2446,6 +2446,7 @@ class _WorkersAttendanceScreenState
                                                       .isEmpty) ||
                                               (titleKey == 'edit_attendance' &&
                                                   selectedStatus == initialStatus &&
+                                                  selectedLeaveType == initialType &&
                                                   reasonController.text.trim() == initialReason.trim())
                                           ? null
                                           : () async {

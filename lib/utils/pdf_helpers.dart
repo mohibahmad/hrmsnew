@@ -50,7 +50,25 @@ class PdfHelpers {
     return buildTheme(font);
   }
 
+  static Map<String, dynamic>? _isolateTranslations;
+
+  static void setIsolateTranslations(Map<String, dynamic> translations) {
+    _isolateTranslations = translations;
+  }
+
   static String translate(String key, String fallback, {Map<String, String>? namedArgs}) {
+    if (_isolateTranslations != null) {
+      var value = _isolateTranslations![key];
+      if (value is String && value.isNotEmpty) {
+        if (namedArgs != null) {
+          for (final entry in namedArgs.entries) {
+            value = value.replaceAll('{${entry.key}}', entry.value);
+          }
+        }
+        return value;
+      }
+      return fallback;
+    }
     final translated = key.tr(namedArgs: namedArgs).trim();
     return translated.isEmpty || translated == key ? fallback : translated;
   }

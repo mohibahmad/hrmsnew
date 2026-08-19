@@ -1181,7 +1181,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                     borderRadius: BorderRadius.circular(9),
                     child: TweenAnimationBuilder<double>(
                       tween: Tween<double>(end: _pc.progress),
-                      duration: const Duration(milliseconds: 500),
+                      duration: const Duration(milliseconds: 150),
                       curve: Curves.easeOutCubic,
                       builder: (context, value, _) => LinearProgressIndicator(
                         value: value > 0 ? value : null,

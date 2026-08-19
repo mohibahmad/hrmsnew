@@ -1754,20 +1754,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
     }
 
-    final oldDates = TimeOffService.selectedDatesForRecord(oldRecord);
-    final oldDatesFormatted = oldDates.map(_dateOnlyString).toList();
-    final cleanRecord = Map<String, dynamic>.from(oldRecord)
-      ..remove('selectedDates')
-      ..remove('startDate')
-      ..remove('endDate');
-
-    DummyData.timeoff[recordIndex] = {
-      ...cleanRecord,
-      'status': 'Cancelled',
-      if (oldDatesFormatted.isNotEmpty)
-        'originalSelectedDates': oldDatesFormatted,
-    };
-
+    DummyData.timeoff.removeAt(recordIndex);
     DummyData.saveToPrefs();
   }
 
@@ -1996,17 +1983,69 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   Widget _buildTitleRow() {
+    final workerName = (_selectedWorker?['name'] ?? '').toString().trim();
+    final workerPosition = (_selectedWorker?['position'] ?? '').toString().trim();
+    final profileImage = _selectedWorker?['profileImage']?.toString();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          'assign_time_off'.tr(),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (workerName.isNotEmpty) ...[
+              WorkerAvatar(
+                imageUrl: profileImage,
+                name: workerName,
+                size: 36,
+              ),
+              const SizedBox(width: 12),
+            ],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'assign_time_off'.tr(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    if (workerName.isNotEmpty) ...[
+                      Text(
+                        ' — $workerName',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0247C4),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (workerPosition.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    workerPosition,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
         ),
         const Spacer(),
         for (int i = 0; i < _legendTypes.length; i++) ...[

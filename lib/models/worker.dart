@@ -274,7 +274,9 @@ class Worker {
     if (status != null && status != 'Active') {
       map.addField('status', status, forUpdate);
     }
-    map.addField('leavePolicy', leavePolicy, forUpdate);
+    if (leavePolicy != null && leavePolicy != 'Standard') {
+      map.addField('leavePolicy', leavePolicy, forUpdate);
+    }
 
     if (currency != null) {
       map['currency'] = CurrencyUtils.normalize(currency);

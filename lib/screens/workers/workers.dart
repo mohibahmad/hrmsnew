@@ -470,7 +470,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           children: [
             for (int i = 0; i <= positionsToShow.length; i++) ...[
               _buildFilterTab(i == 0 ? 'All' : positionsToShow[i - 1], i == 0 ? 'all_filter'.tr() : LocalizationHelper.localizePosition(positionsToShow[i - 1])),
-              if (i < positionsToShow.length) Container(width: 1, height: 20, color: Colors.grey.shade300),
+              if (i < positionsToShow.length) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withValues(alpha: 0.5)),
             ],
           ],
         ),

@@ -1009,7 +1009,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     ? 'all_filter'.tr()
                     : LocalizationHelper.localizePosition(allFilters[i]),
               ),
-              if (i < allFilters.length - 1) Container(width: 1, height: 20, color: Colors.grey.shade300),
+              if (i < allFilters.length - 1) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withValues(alpha: 0.5)),
             ],
           ],
         ),
