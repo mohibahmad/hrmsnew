@@ -1141,7 +1141,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             decoration: BoxDecoration(
               color: isHighlighted ? selectedBg : Colors.transparent,
               border: Border.all(color: isHighlighted ? selectedBg : Colors.grey.shade300, width: 1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               day,

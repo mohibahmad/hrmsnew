@@ -2199,7 +2199,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   DateTime? _dateAtPosition(Offset position, DateTime monthDate) {
     const cellWidth = 48.0;
-    const cellHeight = 40.0;
+    const cellHeight = 48.0;
     const headerHeight = 30.0;
 
     final col = (position.dx / cellWidth).floor();
@@ -2272,7 +2272,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            mainAxisExtent: 40,
+            mainAxisExtent: 48,
           ),
           itemCount: totalCells,
           itemBuilder: (_, index) {
@@ -2297,7 +2297,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               margin: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 color: isSelected ? _kBlue : const Color(0xFFFAFAFA),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(
                   color: isSelected ? _kBlue : const Color(0xFFE2E8F0),
                 ),
@@ -2395,7 +2395,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -2429,7 +2429,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Listener(
                       onPointerDown: (e) {
                         dragAnchor = _dateAtPosition(
@@ -2513,7 +2513,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       },
                       child: _buildCalendarGrid(calendarDate, selectedDates),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerRight,
                       child: ElevatedButton(

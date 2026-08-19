@@ -1791,22 +1791,33 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               ),
             ),
           ),
-          SizedBox(
-            width: 120,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isTotal ? 15 : 13,
-                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
-                color: isTotal ? _darkBlue : _textDark,
+          if (detail != null) ...[
+            SizedBox(
+              width: 120,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: isTotal ? 15 : 13,
+                  fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+                  color: isTotal ? _darkBlue : _textDark,
+                ),
               ),
             ),
-          ),
-          if (detail != null)
             Expanded(
               child: Text(
                 detail,
                 style: const TextStyle(fontSize: 12, color: Color(0xFF000000)),
+              ),
+            ),
+          ] else
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: isTotal ? 15 : 13,
+                  fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+                  color: isTotal ? _darkBlue : _textDark,
+                ),
               ),
             ),
         ],

@@ -117,12 +117,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return _matchesFilter(doc, _selectedFilter);
     }).toList()
       ..sort((a, b) {
-        final isPaidA = a['isPaid'] == true ||
-            a['hasPaidPayrollRecord'] == true ||
-            (a['status'] ?? '').toString().toLowerCase() == 'paid';
-        final isPaidB = b['isPaid'] == true ||
-            b['hasPaidPayrollRecord'] == true ||
-            (b['status'] ?? '').toString().toLowerCase() == 'paid';
+        final isPaidA = PayrollService.isPayrollRecordPaid(a);
+        final isPaidB = PayrollService.isPayrollRecordPaid(b);
 
         if (isPaidA != isPaidB) {
           return isPaidA ? 1 : -1;
@@ -339,8 +335,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
         if (currency == _companyCurrency &&
             salaryPayDay == _salaryPayDay &&
-            PayrollService.periodDateKey(period.start) == PayrollService.periodDateKey(_payPeriodStart) &&
-            PayrollService.periodDateKey(period.end) == PayrollService.periodDateKey(_payPeriodEnd)) {
+            PayrollService.payrollPeriodsEqual(
+              period, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
           return;
         }
 
@@ -492,9 +488,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final futures = <Future<void>>[];
     for (final doc in _payrollDocs) {
-      final status = (doc['status'] ?? '').toString().trim().toLowerCase();
-      final isPaid = doc['isPaid'] == true || doc['hasPaidPayrollRecord'] == true || status == 'paid';
-      if (isPaid) continue;
+      if (PayrollService.isPayrollRecordPaid(doc)) continue;
 
       final email = (doc['email'] ?? '').toString();
       final workerId = (doc['workerId'] ?? doc['id'] ?? '').toString();
@@ -520,9 +514,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     DateTime month,
     int workingDays,
   ) async {
-    final status = (doc['status'] ?? '').toString().trim().toLowerCase();
-    final isPaid = doc['isPaid'] == true || doc['hasPaidPayrollRecord'] == true || status == 'paid';
-    if (isPaid) return;
+    if (PayrollService.isPayrollRecordPaid(doc)) return;
 
     try {
       Map<String, int> attendance;
@@ -575,8 +567,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   bool _requirePayableSalary(Map<String, dynamic> worker) {
-    final salary = PayrollService.extractSalary(PayrollService.currentSalaryDisplay(worker, companyCurrency: _companyCurrency));
-    if (salary > 0) return true;
+    if (PayrollService.hasPayableSalary(worker, companyCurrency: _companyCurrency)) return true;
     FlashySnackBar.show(context, message: 'please_enter_salary'.tr(), isError: true);
     return false;
   }
@@ -731,19 +722,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   bool _periodHasAnyPaidRecord(PayrollPeriod period) {
     for (final record in _rawPayrollDocs) {
-      final isPaid = record['isPaid'] == true ||
-          record['hasPaidPayrollRecord'] == true ||
-          ['paid', 'completed', 'processed'].contains(
-              (record['status'] ?? '').toString().trim().toLowerCase());
-      if (!isPaid) continue;
+      if (!PayrollService.isPayrollRecordPaid(record)) continue;
       final s = AppDateUtils.dateFromValue(record['payPeriodStart']);
       final e = AppDateUtils.dateFromValue(record['payPeriodEnd']);
-      if (s != null &&
-          e != null &&
-          PayrollService.periodDateKey(s) ==
-              PayrollService.periodDateKey(period.start) &&
-          PayrollService.periodDateKey(e) ==
-              PayrollService.periodDateKey(period.end)) {
+      if (s != null && e != null &&
+          PayrollService.payrollPeriodsEqual(
+              PayrollPeriod(start: s, end: e), period)) {
         return true;
       }
     }
@@ -1523,9 +1507,7 @@ if (day == 0) {
 
     final paidWorkers = _allPaidWorkers();
     final unpaidCurrent = _payrollDocs.where((doc) {
-      if (doc['isPaid'] == true || doc['hasPaidPayrollRecord'] == true) return false;
-      final status = (doc['status'] ?? '').toString().trim().toLowerCase();
-      return status != 'paid';
+      return !PayrollService.isPayrollRecordPaid(doc);
     }).toList();
 
     final allRecords = [...paidWorkers, ...unpaidCurrent];
@@ -1566,11 +1548,7 @@ if (day == 0) {
         final absentDeduction = _csvAmount(worker['absentDeduction']);
         final leaveDeduction = _csvAmount(worker['leaveDeduction']);
         final customDeduction = _csvAmount(worker['customDeduction']);
-        final totalDeductions = _csvAmount(
-          (PayrollService.extractSalary((worker['absentDeduction'] ?? 0).toString())) +
-          (PayrollService.extractSalary((worker['leaveDeduction'] ?? 0).toString())) +
-          (PayrollService.extractSalary((worker['customDeduction'] ?? 0).toString())),
-        );
+        final totalDeductions = _csvAmount(PayrollService.sumDeductions(worker));
         final salary = _csvAmount(worker['salary']);
         final netSalary = _csvAmount(
           worker['netSalary'] ?? worker['netSalaryFormatted'] ?? worker['salaryAfterDeduction'],
@@ -1639,14 +1617,14 @@ if (day == 0) {
       final end = AppDateUtils.dateFromValue(worker['payPeriodEnd']);
       if (start == null || end == null) continue;
       final period = PayrollPeriod(start: start, end: end);
-      final key = '${PayrollService.periodDateKey(start)}_${PayrollService.periodDateKey(end)}';
+      final key = PayrollService.periodKeyPair(start, end);
 
       final existing = map[key];
       map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
     }
 
     final currentCycle = _trueCurrentPayrollCycle();
-    final currentKey = '${PayrollService.periodDateKey(currentCycle.start)}_${PayrollService.periodDateKey(currentCycle.end)}';
+    final currentKey = PayrollService.periodKeyPair(currentCycle.start, currentCycle.end);
     if (!map.containsKey(currentKey)) {
       map[currentKey] = (
         period: currentCycle,
@@ -1655,7 +1633,7 @@ if (day == 0) {
     }
 
     final selectedCycle = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
-    final selectedKey = '${PayrollService.periodDateKey(selectedCycle.start)}_${PayrollService.periodDateKey(selectedCycle.end)}';
+    final selectedKey = PayrollService.periodKeyPair(selectedCycle.start, selectedCycle.end);
     if (!map.containsKey(selectedKey)) {
       map[selectedKey] = (
         period: selectedCycle,
@@ -1668,7 +1646,7 @@ if (day == 0) {
     return options
         .map(
           (o) {
-            final key = '${PayrollService.periodDateKey(o.period.start)}_${PayrollService.periodDateKey(o.period.end)}';
+            final key = PayrollService.periodKeyPair(o.period.start, o.period.end);
             return (
               period: o.period,
               label: PayrollService.formatPayPeriodRange(o.period.start, o.period.end),
@@ -1684,7 +1662,7 @@ if (day == 0) {
 
   Future<void> _showPaidWorkersDropdown(BuildContext anchor) async {
     final options = _payPeriodOptions();
-    final selectedKey = '${PayrollService.periodDateKey(_payPeriodStart)}_${PayrollService.periodDateKey(_payPeriodEnd)}';
+    final selectedKey = PayrollService.periodKeyPair(_payPeriodStart, _payPeriodEnd);
 
     final overlay = Overlay.of(context);
     final overlayBox = overlay.context.findRenderObject() as RenderBox?;
@@ -1714,11 +1692,11 @@ if (day == 0) {
             child: Row(
               children: [
                 Icon(
-                  '${PayrollService.periodDateKey(option.period.start)}_${PayrollService.periodDateKey(option.period.end)}' == selectedKey
+                  PayrollService.periodKeyPair(option.period.start, option.period.end) == selectedKey
                       ? Icons.check_rounded
                       : Icons.radio_button_unchecked_rounded,
                   size: 16,
-                  color: '${PayrollService.periodDateKey(option.period.start)}_${PayrollService.periodDateKey(option.period.end)}' == selectedKey
+                  color: PayrollService.periodKeyPair(option.period.start, option.period.end) == selectedKey
                       ? const Color(0xFF0247C4)
                       : const Color(0xFF9CA3AF),
                 ),
@@ -2299,7 +2277,7 @@ if (day == 0) {
     final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
 
 
-    final isPaidRecord = data['isPaid'] == true || (data['status'] ?? '').toString().toLowerCase() == 'paid';
+    final isPaidRecord = PayrollService.isPayrollRecordPaid(data);
     final attendanceCounts = isPaidRecord
         ? PayrollService.attendanceCounts(data)
         : await _attendanceCountsForRecord(data);

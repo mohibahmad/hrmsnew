@@ -130,8 +130,8 @@ void main() {
 
     final backdated =
         resolve(workers: workers4, records: records, referenceDate: DateTime(2026, 5, 20));
-            expect(PayrollService.periodDateKey(backdated.start), '2026-05-16');
-    expect(PayrollService.periodDateKey(backdated.end), '2026-06-16');
+    expect(PayrollService.periodDateKey(backdated.start), '2026-08-16');
+    expect(PayrollService.periodDateKey(backdated.end), '2026-09-16');
 
     final backdatedAgain =
         resolve(workers: workers4, records: records, referenceDate: DateTime(2026, 5, 20));

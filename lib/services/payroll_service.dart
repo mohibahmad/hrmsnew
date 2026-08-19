@@ -170,7 +170,7 @@ class PayrollService {
           start: DateTime(start.year, start.month, start.day),
           end: DateTime(end.year, end.month, end.day),
         );
-        final key = '${periodDateKey(period.start)}_${periodDateKey(period.end)}';
+        final key = periodKeyPair(period.start, period.end);
         candidatePeriods[key] = period;
       }
     }
@@ -189,7 +189,7 @@ class PayrollService {
         periodEnd: period.end,
       );
       final hasUnpaid = unpaid.any((worker) =>
-          extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0);
+          hasPayableSalary(worker, companyCurrency: companyCurrency));
 
       if (!hasUnpaid) {
         if (latestSettled == null || period.end.isAfter(latestSettled.end)) {
@@ -230,7 +230,7 @@ class PayrollService {
         periodEnd: lastPaid.end,
       );
       final hasUnpaidInLastPaid = lastPaidUnpaid.any((w) =>
-          extractSalary(currentSalaryDisplay(w, companyCurrency: companyCurrency)) > 0);
+          hasPayableSalary(w, companyCurrency: companyCurrency));
 
       if (today.isBefore(lastPaid.end) && hasUnpaidInLastPaid) {
         return lastPaid;
@@ -248,7 +248,7 @@ class PayrollService {
       );
 
       final hasPayableNext = nextUnpaid.any((worker) =>
-          extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0);
+          hasPayableSalary(worker, companyCurrency: companyCurrency));
 
       if (hasPayableNext || !advanceIfFullyPaid) {
         if (persistedCycle != null &&
@@ -263,7 +263,7 @@ class PayrollService {
             periodStart: persistedCycle.start,
             periodEnd: persistedCycle.end,
           );
-          if (persistedUnpaid.any((w) => extractSalary(currentSalaryDisplay(w, companyCurrency: companyCurrency)) > 0)) {
+          if (persistedUnpaid.any((w) => hasPayableSalary(w, companyCurrency: companyCurrency))) {
             return persistedCycle;
           }
         }
@@ -370,11 +370,23 @@ class PayrollService {
 
   static String periodDateKey(DateTime d) => '${pad4(d.year)}-${pad2(d.month)}-${pad2(d.day)}';
 
+  static String periodKeyPair(DateTime start, DateTime end) => '${periodDateKey(start)}_${periodDateKey(end)}';
+
   static String payrollKeyForPeriod(String identity, DateTime periodStart, DateTime periodEnd) {
     final normalizedIdentity = identity.trim().toLowerCase();
     return normalizedIdentity.isEmpty
         ? ''
         : '${normalizedIdentity}_${periodDateKey(periodStart)}_${periodDateKey(periodEnd)}';
+  }
+
+  static bool hasPayableSalary(Map<String, dynamic> worker, {String? companyCurrency}) {
+    return extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0;
+  }
+
+  static double sumDeductions(Map<String, dynamic> record) {
+    return extractSalary((record['absentDeduction'] ?? 0).toString()) +
+        extractSalary((record['leaveDeduction'] ?? 0).toString()) +
+        extractSalary((record['customDeduction'] ?? 0).toString());
   }
 
   static bool workerEmployedDuringPeriod(Map<String, dynamic> worker, DateTime periodEnd) {
@@ -422,7 +434,7 @@ class PayrollService {
       periodStart: periodStart,
       periodEnd: periodEnd,
     ).where((worker) =>
-        extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0
+        hasPayableSalary(worker, companyCurrency: companyCurrency)
     ).toList();
 
   }
@@ -448,7 +460,7 @@ class PayrollService {
     ).where((worker) =>
         worker['isPaid'] != true &&
         !workerEmployedDuringPeriod(worker, effectivePeriodEnd) &&
-        extractSalary(currentSalaryDisplay(worker, companyCurrency: companyCurrency)) > 0
+        hasPayableSalary(worker, companyCurrency: companyCurrency)
     ).toList();
   }
 
