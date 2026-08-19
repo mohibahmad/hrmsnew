@@ -48,9 +48,19 @@ class SafeParser {
   }
 
   static DateTime? asDateOnly(dynamic value) {
-    final dateTime = asDateTime(value);
-    if (dateTime == null) return null;
-    return DateTime.utc(dateTime.year, dateTime.month, dateTime.day);
+    if (value == null) return null;
+    if (value is Timestamp) {
+      final dt = value.toDate();
+      return DateTime(dt.year, dt.month, dt.day);
+    }
+    if (value is DateTime) {
+      return DateTime(value.year, value.month, value.day);
+    }
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    final dt = AppDateUtils.parseDdMmYyyy(text) ?? AppDateUtils.dateFromValue(text) ?? DateTime.tryParse(text);
+    if (dt == null) return null;
+    return DateTime(dt.year, dt.month, dt.day);
   }
 }
 
