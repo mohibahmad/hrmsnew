@@ -437,12 +437,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         ),
                         const Spacer(),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            minimumSize: const Size(0, 36),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(const Color(0xFF0247C4)),
+                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
+                            elevation: WidgetStateProperty.all(0),
+                            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+                            minimumSize: WidgetStateProperty.all(const Size(0, 36)),
                           ),
                           onPressed: isSaving
                               ? null
@@ -855,12 +855,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         ),
                         const Spacer(),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0247C4),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            minimumSize: const Size(0, 36),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(const Color(0xFF0247C4)),
+                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                            elevation: WidgetStateProperty.all(0),
+                            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+                            minimumSize: WidgetStateProperty.all(const Size(0, 36)),
                           ),
                           onPressed: isSaving
                               ? null
