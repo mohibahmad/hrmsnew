@@ -649,11 +649,19 @@ class _WorkersAttendanceScreenState
 
     List<Map<String, dynamic>> syncTimeOffRecords = const [];
     if (shouldHaveLeave || wasLeave) {
-      try {
-        syncTimeOffRecords = await _firestore.getTimeoffOnce(
-          workerId: workerId,
-        );
-      } catch (_) {}
+      final localRecords = _timeOffRecords.where((record) {
+        return _authenticatedRecordBelongsToWorker(record, worker);
+      }).toList();
+
+      if (_timeOffLoaded && localRecords.isNotEmpty) {
+        syncTimeOffRecords = localRecords;
+      } else {
+        try {
+          syncTimeOffRecords = await _firestore.getTimeoffOnce(
+            workerId: workerId,
+          );
+        } catch (_) {}
+      }
     }
 
     final today = DateTime.now();

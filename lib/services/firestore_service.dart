@@ -794,16 +794,14 @@ class FirestoreService {
     final docRef = await coll.add({...expense, 'createdAt': FieldValue.serverTimestamp()});
     final category = (expense['category'] ?? expense['type'] ?? '').toString();
     final amount = (expense['amount'] ?? '').toString();
-    try {
-      await addNotification({
-        'type': 'expense_added',
-        'title': category.isNotEmpty ? 'notif_title_expense_category'.tr(namedArgs: {'category': category}) : 'notif_title_expense'.tr(),
-        'message': amount.isNotEmpty ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount'}) : 'notif_msg_expense'.tr(),
-        'data': {'category': category, 'amount': amount.isNotEmpty ? '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount' : ''},
-      });
-    } catch (error, stackTrace) {
+    unawaited(addNotification({
+      'type': 'expense_added',
+      'title': category.isNotEmpty ? 'notif_title_expense_category'.tr(namedArgs: {'category': category}) : 'notif_title_expense'.tr(),
+      'message': amount.isNotEmpty ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount'}) : 'notif_msg_expense'.tr(),
+      'data': {'category': category, 'amount': amount.isNotEmpty ? '${CurrencyUtils.symbolFor(PreferencesService.cachedCompanyCurrency)}$amount' : ''},
+    }).catchError((error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'ExpenseNotification');
-    }
+    }));
     return docRef.id;
   }
 
@@ -960,16 +958,14 @@ class FirestoreService {
     }, SetOptions(merge: true));
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     if (name.isNotEmpty) {
-      try {
-        await addNotification({
-          'type': 'attendance_marked',
-          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        'type': 'attendance_marked',
+        'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'AttendanceNotification');
-      }
+      }));
     }
     return docRef.id;
   }
@@ -1103,16 +1099,14 @@ class FirestoreService {
 
     final name = (attendanceRecord['name'] ?? attendanceRecord['workerName'] ?? '').toString();
     if (name.isNotEmpty) {
-      try {
-        await addNotification({
-          'type': 'attendance_marked',
-          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        'type': 'attendance_marked',
+        'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'attendanceLeaveNotification');
-      }
+      }));
     }
 
     return AttendanceLeaveSyncResult(attendanceId: attendanceRef.id, timeOffId: savedTimeOffId);
@@ -1378,17 +1372,15 @@ class FirestoreService {
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
     if (name.isNotEmpty) {
-      try {
-        await addNotification({
-          if (payrollKey.isNotEmpty) 'notificationKey': 'payroll_$payrollKey',
-          'type': 'payroll_added',
-          'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
-          'message': amount.isNotEmpty ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': amount, 'name': name}) : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
-          'data': {'name': name, 'amount': amount},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        if (payrollKey.isNotEmpty) 'notificationKey': 'payroll_$payrollKey',
+        'type': 'payroll_added',
+        'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
+        'message': amount.isNotEmpty ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': amount, 'name': name}) : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
+        'data': {'name': name, 'amount': amount},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'PayrollNotification');
-      }
+      }));
     }
     return docRef.id;
   }
@@ -1599,16 +1591,14 @@ class FirestoreService {
     final name = (record['workerName'] ?? record['name'] ?? '').toString();
     final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
     if (name.isNotEmpty) {
-      try {
-        await addNotification({
-          'type': 'time_off_added',
-          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_time_off'.tr(namedArgs: {'type': type, 'name': name}),
-          'data': {'name': name, 'type': type},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        'type': 'time_off_added',
+        'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_time_off'.tr(namedArgs: {'type': type, 'name': name}),
+        'data': {'name': name, 'type': type},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'TimeOffNotification');
-      }
+      }));
     }
     return docRef.id;
   }
@@ -2073,16 +2063,14 @@ class FirestoreService {
     final workerName = (canonicalAsset['name'] ?? canonicalAsset['assetName'] ?? '').toString();
     final assetType = (canonicalAsset['type'] ?? canonicalAsset['assetType'] ?? '').toString();
     if (workerName.isNotEmpty) {
-      try {
-        await addNotification({
-          'type': 'asset_added',
-          'title': assetType.isNotEmpty ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType}) : 'notif_title_asset'.tr(),
-          'message': assetType.isNotEmpty ? 'notif_msg_asset_type'.tr(namedArgs: {'type': assetType, 'name': workerName}) : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
-          'data': {'name': workerName, 'type': assetType},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        'type': 'asset_added',
+        'title': assetType.isNotEmpty ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType}) : 'notif_title_asset'.tr(),
+        'message': assetType.isNotEmpty ? 'notif_msg_asset_type'.tr(namedArgs: {'type': assetType, 'name': workerName}) : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
+        'data': {'name': workerName, 'type': assetType},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'AssetNotification');
-      }
+      }));
     }
     return docRef.id;
   }
