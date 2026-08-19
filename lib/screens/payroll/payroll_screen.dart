@@ -1895,7 +1895,7 @@ if (day == 0) {
               if (i < filters.length - 1)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Container(width: 1, height: 20, color: Colors.grey.shade300),
+                  child: Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
                 ),
             ],
           ],
