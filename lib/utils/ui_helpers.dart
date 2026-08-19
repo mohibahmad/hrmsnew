@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../providers.dart';
+import '../riverpod_providers.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/general/pricing_screen.dart';
 import '../services/preferences_service.dart';
@@ -25,7 +25,7 @@ Widget _blurDialogTransition(
           sigmaY: 10 * animation.value,
         ),
         child: Container(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+          color: const Color(0xFF0F172A).withOpacity(0.35 * animation.value),
         ),
       ),
       FadeTransition(
@@ -63,7 +63,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('unable_to_sign_out'.tr()),
-          backgroundColor: Colors.red,
+          backgroundColor: Color(0xFFFF1014),
         ),
       );
     }
@@ -87,12 +87,12 @@ class _LogoutDialogContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.12),
+                color: const Color(0xFF0F172A).withOpacity(0.12),
                 blurRadius: 32,
                 offset: const Offset(0, 16),
               ),
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+                color: const Color(0xFF0F172A).withOpacity(0.06),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -114,7 +114,7 @@ class _LogoutDialogContent extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                      color: const Color(0xFFE11D48).withOpacity(0.15),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -136,7 +136,6 @@ class _LogoutDialogContent extends StatelessWidget {
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
-                  fontFamily: 'SF Pro Display',
                   letterSpacing: -0.5,
                 ),
               ),
@@ -148,7 +147,6 @@ class _LogoutDialogContent extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF475569),
-                  fontFamily: 'SF Pro Display',
                   height: 1.5,
                   fontWeight: FontWeight.w400,
                 ),
@@ -173,7 +171,6 @@ class _LogoutDialogContent extends StatelessWidget {
                             color: Color(0xFF000000),
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ),
@@ -194,7 +191,7 @@ class _LogoutDialogContent extends StatelessWidget {
                             BoxShadow(
                               color: const Color(
                                 0xFFEF4444,
-                              ).withValues(alpha: 0.2),
+                              ).withOpacity(0.2),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -206,7 +203,6 @@ class _LogoutDialogContent extends StatelessWidget {
                             color: Color(0xFFFFFFFF),
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ),
@@ -296,7 +292,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
             sigmaY: 10 * widget.animation.value,
           ),
           child: Container(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.35 * widget.animation.value),
+            color: const Color(0xFF0F172A).withOpacity(0.35 * widget.animation.value),
           ),
         ),
         FadeTransition(
@@ -313,7 +309,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF000000).withValues(alpha: 0.15),
+                    color: const Color(0xFF000000).withOpacity(0.15),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
@@ -345,7 +341,6 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -356,7 +351,6 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                       fontSize: 14,
                       color: Color(0xFF64748B),
                       fontWeight: FontWeight.w400,
-                      fontFamily: 'SF Pro Display',
                       height: 1.4,
                     ),
                   ),
@@ -380,7 +374,6 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                                 color: Color(0xFF000000),
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -401,7 +394,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                                 BoxShadow(
                                   color: const Color(
                                     0xFFEF4444,
-                                  ).withValues(alpha: 0.2),
+                                  ).withOpacity(0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -413,7 +406,6 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
                                 color: Color(0xFFFFFFFF),
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -438,7 +430,7 @@ void showGuestRestrictionDialog(BuildContext context) {
 
   showDialog(
     context: context,
-    barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+    barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
     builder: (ctx) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -449,7 +441,7 @@ void showGuestRestrictionDialog(BuildContext context) {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
+              color: Colors.black.withOpacity(0.15),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -482,7 +474,6 @@ void showGuestRestrictionDialog(BuildContext context) {
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1A1A2E),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -496,7 +487,6 @@ void showGuestRestrictionDialog(BuildContext context) {
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
                   color: Color(0xFF6B7280),
-                  fontFamily: 'SF Pro Display',
                   height: 1.4,
                 ),
               ),
@@ -531,7 +521,6 @@ void showGuestRestrictionDialog(BuildContext context) {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
@@ -548,7 +537,6 @@ void showGuestRestrictionDialog(BuildContext context) {
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF9CA3AF),
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -586,7 +574,7 @@ class PremiumGate {
       await showDialog(
         context: context,
         barrierDismissible: false,
-        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+        barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
         builder: (context) => const SubscriptionDialog(),
       );
     }
@@ -896,13 +884,13 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                           (widget.isError
                                   ? const Color(0xFFFF4B2B)
                                   : const Color(0xFF0247C4))
-                              .withValues(alpha: 0.35),
+                              .withOpacity(0.35),
                       blurRadius: 15,
                       offset: const Offset(0, 6),
                     ),
                   ],
                   border: Border.all(
-                    color: const Color(0xFFFFFFFF).withValues(alpha: 0.25),
+                    color: const Color(0xFFFFFFFF).withOpacity(0.25),
                     width: 1.5,
                   ),
                 ),
@@ -916,7 +904,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF).withValues(alpha: 0.2),
+                        color: const Color(0xFFFFFFFF).withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: widget.isLoading
@@ -960,7 +948,6 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                               color: Color(0xFFFFFFFF),
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -973,7 +960,6 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                               color: Color(0xFFFFFFFF),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -1075,13 +1061,13 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0247C4).withValues(alpha: 0.12),
+                    color: const Color(0xFF0247C4).withOpacity(0.12),
                     blurRadius: 18,
                     offset: const Offset(0, 4),
                   ),
                 ],
                 border: Border.all(
-                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.20),
+                  color: const Color(0xFFFFFFFF).withOpacity(0.20),
                   width: 1,
                 ),
               ),
@@ -1097,7 +1083,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF).withValues(alpha: 0.18),
+                          color: const Color(0xFFFFFFFF).withOpacity(0.18),
                           shape: BoxShape.circle,
                         ),
                         child: const Center(
@@ -1126,7 +1112,6 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                                 color: Color(0xFFFFFFFF),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
                                 height: 1.2,
                               ),
                             ),
@@ -1138,10 +1123,9 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Color(0xFFFFFFFF).withValues(alpha: 0.70),
+                                  color: Color(0xFFFFFFFF).withOpacity(0.70),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  fontFamily: 'SF Pro Display',
                                   height: 1.2,
                                 ),
                               ),
@@ -1155,10 +1139,9 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                         child: Text(
                           '${(_pc.progress * 100).toInt()}%',
                           style: TextStyle(
-                            color: Color(0xFFFFFFFF).withValues(alpha: 0.85),
+                            color: Color(0xFFFFFFFF).withOpacity(0.85),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ),
@@ -1172,7 +1155,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                             padding: const EdgeInsets.all(4),
                             child: Icon(
                               Icons.close_rounded,
-                              color: Color(0xFFFFFFFF).withValues(alpha: 0.30),
+                              color: Color(0xFFFFFFFF).withOpacity(0.30),
                               size: 24,
                             ),
                           ),
@@ -1190,7 +1173,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                       builder: (context, value, _) => LinearProgressIndicator(
                         value: value > 0 ? value : null,
                         minHeight: 8,
-                        backgroundColor: const Color(0xFFFFFFFF).withValues(alpha: 0.22),
+                        backgroundColor: const Color(0xFFFFFFFF).withOpacity(0.22),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFFFFFFFF),
                         ),

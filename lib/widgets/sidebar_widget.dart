@@ -72,7 +72,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+                  barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
                   builder: (context) => const SubscriptionDialog(),
                 );
               },
@@ -94,7 +94,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.4),
+                      color: const Color(0xFFFFFFFF).withOpacity(0.4),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -120,7 +120,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               color: Color(0xFFFFFFFF),
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -158,7 +157,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  fontFamily: 'SF Pro Display',
                                   height: 1.1,
                                 ),
                               ),
@@ -170,7 +168,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  fontFamily: 'SF Pro Display',
                                   height: 1.1,
                                 ),
                               ),
@@ -233,10 +230,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               height: 42,
               margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF).withValues(alpha: 0.2),
+                color: const Color(0xFFFFFFFF).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.3),
+                  color: const Color(0xFFFFFFFF).withOpacity(0.3),
                   width: 1,
                 ),
               ),
@@ -262,7 +259,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               color: Color(0xFFFFFFFF),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ),
@@ -285,7 +281,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF).withValues(alpha: 0.36),
+              color: const Color(0xFFFFFFFF).withOpacity(0.36),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -369,7 +365,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   color: Color(0xFFFFFFFF),
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -398,7 +393,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+              ? const Color(0xFFFFFFFF).withOpacity(0.36)
               : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -428,7 +423,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   color: const Color(0xFFFFFFFF),
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -460,7 +454,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 color: Color(0xFFFFFFFF),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -488,7 +481,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+                  ? const Color(0xFFFFFFFF).withOpacity(0.36)
                   : const Color(0x00FFFFFF),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -516,7 +509,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                       color: Color(0xFFFFFFFF),
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

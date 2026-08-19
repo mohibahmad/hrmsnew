@@ -42,7 +42,7 @@ class AuthHeroBanner extends StatelessWidget {
                 fontSize: 88,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
-                fontFamily: 'SF Pro',
+                fontFamily: 'SF Pro Display',
                 height: 1,
                 letterSpacing: authHeroTitleLetterSpacing,
               ),
@@ -62,7 +62,7 @@ class AuthHeroBanner extends StatelessWidget {
                 fontSize: 38,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
-                fontFamily: 'SF Pro',
+                fontFamily: 'SF Pro Display',
                 height: 1.2,
                 letterSpacing: authHeroSubtitleLetterSpacing,
               ),
@@ -77,7 +77,7 @@ class AuthHeroBanner extends StatelessWidget {
 void showLanguageModal(BuildContext context) {
   showDialog(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.05),
+    barrierColor: Colors.transparent,
     builder: (BuildContext ctx) {
       final allLanguages = languageMap.keys.toList();
       final currentCode = context.locale.languageCode;
@@ -103,7 +103,7 @@ void showLanguageModal(BuildContext context) {
                 border: Border.all(color: Colors.grey.shade300, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -119,7 +119,6 @@ void showLanguageModal(BuildContext context) {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -149,7 +148,6 @@ void showLanguageModal(BuildContext context) {
                               lang,                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                             if (isSel)
@@ -191,7 +189,7 @@ Widget buildSocialButton({
         backgroundColor: backgroundColor ?? Colors.white,
         foregroundColor: textColor ?? const Color(0xFF000000),
         disabledForegroundColor: (textColor ?? const Color(0xFF000000))
-            .withValues(alpha: 0.6),
+            .withOpacity(0.6),
         disabledBackgroundColor: backgroundColor ?? Colors.white,
         side: border ?? BorderSide(color: Colors.grey.shade200),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -222,7 +220,6 @@ Widget buildSocialButton({
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
               color: isLoading
                   ? (textColor ?? const Color(0xFF000000)).withValues(
                       alpha: 0.6,
@@ -248,65 +245,8 @@ class InputLabel extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: Color(0xFF000000),
-        fontFamily: 'SF Pro Display',
         height: 1.0,
       ),
     );
   }
-}
-
-InputDecoration inputDecoration(
-  String hintText, {
-  bool isPassword = false,
-  bool obscureText = false,
-  VoidCallback? onToggleVisibility,
-}) {
-  return InputDecoration(
-    hintText: hintText,
-    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    suffixIcon: isPassword
-        ? Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: const Color(0xFFCBCBCB),
-                size: 20,
-              ),
-              onPressed: onToggleVisibility,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          )
-        : null,
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-    ),
-    disabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFFF1014), width: 1),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFFF1014), width: 1.5),
-    ),
-    errorStyle: const TextStyle(
-      color: Color(0xFFFF1014),
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      fontFamily: 'SF Pro Display',
-      height: 1.3,
-    ),
-    errorMaxLines: 2,
-  );
 }

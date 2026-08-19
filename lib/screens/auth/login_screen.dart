@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../../widgets/clickable_gesture_detector.dart';
@@ -8,7 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/preferences_service.dart';
@@ -128,27 +127,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _authService = ref.read(authServiceProvider);
     _firestoreService = ref.read(firestoreServiceProvider);
 
-    _googleSub = FirebaseFirestore.instance
-        .collection('social_hrms')
-        .doc('google')
-        .snapshots()
-        .listen(
-          (doc) {
-            if (!mounted) return;
-            final rawEnabled = doc.data()?['googleEnable'];
-            final enabled = rawEnabled is bool ? rawEnabled : true;
-            if (_googleEnabled != enabled) {
-              setState(() => _googleEnabled = enabled);
-            }
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            ErrorReporter.report(
-              error,
-              stackTrace,
-              context: 'loginGoogleConfig',
-            );
-          },
+    _googleSub = AuthService.googleEnabledStream().listen(
+      (enabled) {
+        if (!mounted) return;
+        if (_googleEnabled != enabled) {
+          setState(() => _googleEnabled = enabled);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'loginGoogleConfig',
         );
+      },
+    );
   }
 
   @override
@@ -497,19 +490,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  InputDecoration _buildCustomInputDecoration(
-    String hint, {
-    bool isPassword = false,
-    bool obscureText = false,
-    VoidCallback? onToggleVisibility,
-  }) =>
-      buildAuthInputDecoration(
-        hint,
-        isPassword: isPassword,
-        obscureText: obscureText,
-        onToggleVisibility: onToggleVisibility,
-      );
-
   Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   List<Widget> _buildFormContent(BuildContext context) {
@@ -537,7 +517,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: Colors.black,
-          fontFamily: 'SF Pro Display',
           letterSpacing: -0.5,
           height: 1.2,
         ),
@@ -549,7 +528,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           fontSize: 13,
           fontWeight: FontWeight.w500,
           color: Colors.grey.shade800,
-          fontFamily: 'SF Pro Display',
           height: 1.0,
         ),
       ),
@@ -563,17 +541,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildFieldLabel('email_label'.tr()),
-            TextFormField(
+            AuthTextField(
               controller: _emailController,
+              label: 'email_label'.tr(),
+              hint: 'email_hint'.tr(),
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _buildCustomInputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'email_required'.tr();
@@ -588,29 +562,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildFieldLabel('password_label'.tr()),
-            TextFormField(
+            AuthTextField(
               controller: _passwordController,
+              label: 'password_label'.tr(),
+              hint: 'password_hint'.tr(),
+              isPassword: true,
               enabled: !_anyLoading,
-              obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) {
                 if (!_anyLoading) {
                   _handleLogin();
                 }
               },
-              style: const TextStyle(
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _buildCustomInputDecoration(
-                'password_hint'.tr(),
-                isPassword: true,
-                obscureText: _obscurePassword,
-                onToggleVisibility: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-              ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'password_required'.tr();
@@ -638,10 +601,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Text(
           'forget_password'.tr(),
           style: const TextStyle(
-            color: Color(0xFFFF0000),
+            color: Color(0xFFFF1014),
             fontSize: 13,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -658,7 +620,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             foregroundColor: const Color(0xFFFFFFFF),
             disabledBackgroundColor: const Color(
               0xFF0044C9,
-            ).withValues(alpha: 0.6),
+            ).withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -681,7 +643,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFFFFFF),
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
         ),
@@ -699,7 +660,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(
                 color: Colors.grey.shade400,
                 fontSize: 13,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -739,7 +699,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
+          color: const Color(0xFF0044C9).withOpacity(0.4),
           width: 1.2,
         ),
       ),
@@ -754,15 +714,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               color: Colors.black87,
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
             ),
             children: [
               TextSpan(
                 text: 'sign_up'.tr(),
                 style: const TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'SF Pro Display',
+                  color: Color(0xFFFF1014),
+                  fontWeight: FontWeight.w500,
                 ),
                 recognizer: _signUpRecognizer,
               ),
@@ -820,7 +778,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         fontSize: 58,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white,
-                                        fontFamily: 'SF Pro',
+                                        fontFamily: 'SF Pro Display',
                                         height: 0.9,
                                         letterSpacing: 1.8,
                                       ),
@@ -835,7 +793,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFFFFFFFF),
 
-                                      fontFamily: 'SF Pro',
+                                      fontFamily: 'SF Pro Display',
                                       height: 1.2,
                                       letterSpacing: 1.8,
                                     ),
@@ -940,7 +898,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: Colors.black.withOpacity(0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

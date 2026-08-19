@@ -233,7 +233,6 @@ class _WorkerAvatarState extends State<WorkerAvatar> {
                 color: foregroundColors[colorIndex],
                 fontSize: widget.size * 0.4,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'SF Pro Display',
               ),
             )
           : null,
@@ -649,6 +648,19 @@ class LocalizationHelper {
       case 'Senior':
       case 'senior':
         return 'senior'.tr();
+      default:
+        return value;
+    }
+  }
+
+  static String localizeRelationshipStatus(String value) {
+    switch (value) {
+      case 'Single':
+      case 'single':
+        return 'single'.tr();
+      case 'Married':
+      case 'married':
+        return 'married'.tr();
       default:
         return value;
     }

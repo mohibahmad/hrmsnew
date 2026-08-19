@@ -9,7 +9,7 @@ import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/error_reporter.dart';
@@ -82,7 +82,7 @@ class LeaveColors {
     if (lower.contains('sick')) return sickBg;
     if (lower.contains('casual')) return casualBg;
     if (lower.contains('medical')) return medicalBg;
-    return getColor(leaveType).withValues(alpha: 0.15);
+    return getColor(leaveType).withOpacity(0.15);
   }
 }
 
@@ -2015,7 +2015,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     if (workerName.isNotEmpty) ...[
@@ -2025,7 +2024,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF0247C4),
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -2039,7 +2037,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: Colors.grey.shade600,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -2066,7 +2063,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(width: 8),
@@ -2110,7 +2106,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               fontSize: 28,
               fontWeight: FontWeight.w900,
               color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
             ),
           ),
           const Spacer(),
@@ -2164,7 +2159,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF64748B),
-                fontFamily: 'SF Pro Display'),
+                ),
           ),
         ),
         if (_selectedDates.isNotEmpty &&
@@ -2213,7 +2208,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Color(0xFF1E293B),
-              fontFamily: 'SF Pro Display',
             ),
           ),
           const SizedBox(height: 8),
@@ -2223,7 +2217,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade500,
-                fontFamily: 'SF Pro Display'),
+                ),
           ),
         ],
       ),
@@ -2294,7 +2288,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                         color: Color(0xFFFFFFFF),
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
             ),
@@ -2314,7 +2307,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 8),
@@ -2335,7 +2327,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 icon: const Icon(Icons.arrow_drop_down,
                     color: Colors.black),
                 style: const TextStyle(
-                    fontFamily: 'SF Pro Display',
                     fontSize: 14,
                     color: Colors.black),
                 selectedItemBuilder: (_) =>
@@ -2352,7 +2343,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                     child: Text(
                       displayLabel,
                       style: TextStyle(
-                        fontFamily: 'SF Pro Display',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: LeaveColors.getTextColor(typeVal),
@@ -2374,7 +2364,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                     child: Text(
                       displayLabel,
                       style: TextStyle(
-                        fontFamily: 'SF Pro Display',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: LeaveColors.getTextColor(typeVal),
@@ -2421,7 +2410,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         style: const TextStyle(
             fontSize: 14,
             color: Colors.grey,
-            fontFamily: 'SF Pro Display'),
+            ),
       ),
     );
 
@@ -2438,7 +2427,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 8),
@@ -2509,7 +2497,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           style: const TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              fontFamily: 'SF Pro Display'),
+              ),
         ),
         const SizedBox(width: 16),
         InkWell(
@@ -2555,7 +2543,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
-          fontFamily: 'SF Pro Display',
         ),
       ),
     );
@@ -2805,7 +2792,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
-                color: tooltipColor.withValues(alpha: 0.25),
+                color: tooltipColor.withOpacity(0.25),
                 blurRadius: 8,
                 offset: const Offset(0, 3)),
           ],
@@ -2814,7 +2801,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          fontFamily: 'SF Pro Display',
           height: 1.35,
         ),
         textAlign: TextAlign.center,
@@ -2841,7 +2827,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   color: textColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -2878,7 +2863,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 12),
@@ -2899,13 +2883,13 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             style: const TextStyle(
                 fontSize: 14,
                 color: Colors.black,
-                fontFamily: 'SF Pro Display'),
+                ),
             decoration: InputDecoration.collapsed(
               hintText: 'please_enter_notes'.tr(),
               hintStyle: TextStyle(
                   color: Colors.grey.shade500,
                   fontSize: 14,
-                  fontFamily: 'SF Pro Display'),
+                  ),
             ),
           ),
         ),
@@ -2919,7 +2903,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         _buildSummaryRow(
           _availableLeaveLabel,
           '$_displayedLeaveBalance',
-          _displayedLeaveBalance > 0 ? Colors.black : Colors.red,
+          _displayedLeaveBalance > 0 ? Colors.black : Color(0xFFFF1014),
         ),
         _buildSummaryRow(
             'requested_days'.tr(),
@@ -2930,7 +2914,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           '$_remainingDaysAfterRequest',
           _remainingDaysAfterRequest >= 0
               ? Colors.black
-              : Colors.red,
+              : Color(0xFFFF1014),
         ),
       ],
     );
@@ -2948,7 +2932,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display'),
+                ),
           ),
           Text(
             value,
@@ -2956,7 +2940,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               fontSize: 15,
               color: valueColor,
               fontWeight: FontWeight.bold,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ],
@@ -2984,7 +2967,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.of(ctx).pop(),
               child: Container(
-                  color: Colors.black.withValues(alpha: 0.45)),
+                  color: Colors.black.withOpacity(0.45)),
             ),
           ),
           Center(
@@ -3007,7 +2990,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   boxShadow: [
                     BoxShadow(
                         color:
-                            Colors.black.withValues(alpha: 0.15),
+                            Colors.black.withOpacity(0.15),
                         blurRadius: 20,
                         offset: const Offset(0, 10)),
                   ],
@@ -3048,7 +3031,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -3084,7 +3066,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               color: LeaveColors.getBgColor(type),
               borderRadius: BorderRadius.circular(5),
               border:
-                  Border.all(color: color.withValues(alpha: 0.25)),
+                  Border.all(color: color.withOpacity(0.25)),
             ),
             child: Text(
               '${LocalizationHelper.localizeLeaveType(type)}: $count ${count == 1 ? 'day'.tr() : 'days'.tr()}',
@@ -3092,7 +3074,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   color: color,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'SF Pro Display'),
+                  ),
             ),
           );
         }).toList(),
@@ -3127,7 +3109,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF64748B),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
@@ -3166,7 +3147,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                     color: Color(0xFF004FDE),
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -3178,7 +3158,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -3188,7 +3167,6 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   fontSize: 13,
                   color: Color(0xFF666666),
                   fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               if (dayDisplayType.isNotEmpty) ...[

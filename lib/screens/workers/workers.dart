@@ -3,8 +3,7 @@ import '../../utils/helpers.dart';
 
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart' hide GestureDetector;
-import '../../widgets/clickable_gesture_detector.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
@@ -19,7 +18,7 @@ import '../../widgets/notification_bell.dart';
 import '../../widgets/amount_text.dart';
 import '../../services/worker_profile_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 
 String? _safeOptionalString(dynamic value) {
   if (value is! String) return null;
@@ -429,21 +428,21 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
   Widget _buildFilterTabs() {
     const defaultPositions = LocalizationHelper.defaultJobPositions;
-    final actualPositions = <String>{};
-    final positionNormalizer = <String, String>{};
+    final seenPositionKeys = <String>{};
+    final actualPositions = <String>[];
 
     for (final w in _allWorkers) {
       final pos = (w['position'] ?? '').toString().trim();
       if (pos.isNotEmpty) {
         final key = pos.toLowerCase();
-        if (!positionNormalizer.containsKey(key)) {
-          positionNormalizer[key] = pos;
+        if (seenPositionKeys.add(key)) {
           actualPositions.add(pos);
         }
       }
     }
 
-    final sortedPositions = actualPositions.toList()..sort();
+    actualPositions.sort();
+    final sortedPositions = actualPositions;
     final positionsToShow = <String>[...sortedPositions];
 
     for (final position in defaultPositions) {
@@ -470,7 +469,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           children: [
             for (int i = 0; i <= positionsToShow.length; i++) ...[
               _buildFilterTab(i == 0 ? 'All' : positionsToShow[i - 1], i == 0 ? 'all_filter'.tr() : LocalizationHelper.localizePosition(positionsToShow[i - 1])),
-              if (i < positionsToShow.length) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withValues(alpha: 0.5)),
+              if (i < positionsToShow.length) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
             ],
           ],
         ),
@@ -783,7 +782,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         case 'preview':
           showDialog(
             context: context,
-            barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+            barrierColor: _kPrimaryBlue.withOpacity(0.5),
             builder: (_) => WorkerProfilePreviewDialog(worker: worker),
           );
         case 'edit':
@@ -925,12 +924,12 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       width: 16,
                       height: 16,
                       colorFilter: const ColorFilter.mode(
-                        Colors.red,
+                        Color(0xFFFF1014),
                         BlendMode.srcIn,
                       ),
                     ),
                     label: 'delete_worker'.tr(),
-                    textColor: Colors.red,
+                    textColor: Color(0xFFFF1014),
                   ),
                 ),
               ],
@@ -1079,39 +1078,23 @@ class _WorkerProfilePreviewDialogState
 
   String _orNA(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
-  String _localizedGender(String value) {
-    switch (value.trim().toLowerCase()) {
-      case 'male':
-        return 'male'.tr();
-      case 'female':
-        return 'female'.tr();
-      case 'other':
-      case 'others':
-        return 'other'.tr();
-      default:
-        return value;
-    }
-  }
+  String _capitalizeWords(String text) => Validators.titleCase(text); 
 
-  String _localizedRelationshipStatus(String value) {
-    switch (value.trim().toLowerCase()) {
-      case 'single':
-        return 'single'.tr();
-      case 'married':
-        return 'married'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _capitalizeWords(String text) {
-    return text
-        .split(' ')
-        .map((w) {
-          if (w.isEmpty) return '';
-          return '${w[0].toUpperCase()}${w.substring(1)}';
-        })
-        .join(' ');
+  String _formatSalary(String salaryAmount, {String? currencyOverride}) {
+    final companyCurr =
+        currencyOverride ?? PreferencesService.cachedCompanyCurrency;
+    final currSymbol = CurrencyUtils.symbolFor(companyCurr);
+    final rawSalaryStr = salaryAmount.trim();
+    final salaryToFormat =
+        rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
+        ? '$currSymbol $rawSalaryStr'
+        : rawSalaryStr;
+    return salaryToFormat.isNotEmpty
+        ? AmountText.formatCompact(
+            salaryToFormat,
+            locale: context.locale.toString(),
+          )
+        : '';
   }
 
   Future<void> _handlePdfExport({required bool isShare}) async {
@@ -1146,20 +1129,8 @@ class _WorkerProfilePreviewDialogState
       if (!mounted) return;
 
       final companyCurr =
-          companyProfile['currency']?.toString().trim() ??
-          PreferencesService.cachedCompanyCurrency;
-      final currSymbol = CurrencyUtils.symbolFor(companyCurr);
-      final rawSalaryStr = salaryAmount.trim();
-      final salaryToFormat =
-          rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
-          ? '$currSymbol $rawSalaryStr'
-          : rawSalaryStr;
-      final salary = salaryToFormat.isNotEmpty
-          ? AmountText.formatCompact(
-              salaryToFormat,
-              locale: context.locale.toString(),
-            )
-          : '';
+          companyProfile['currency']?.toString().trim();
+      final salary = _formatSalary(salaryAmount, currencyOverride: companyCurr);
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         (companyProfile['companyName'] ?? companyProfile['businessName'] ?? '')
@@ -1181,14 +1152,14 @@ class _WorkerProfilePreviewDialogState
         experienceLevel: _orNA(
           LocalizationHelper.localizeExperience(_workerField('experienceLevel')),
         ),
-        gender: _orNA(_localizedGender(_workerField('gender'))),
+        gender: _orNA(LocalizationHelper.localizeGender(_workerField('gender'))),
         joiningDate: _orNA(_workerDateText(worker['joiningDate']) ?? ''),
         salary: salary,
         education: _orNA(LocalizationHelper.localizeEducation(_workerField('education'))),
         religion: _orNA(_workerField('religion')),
         dateOfBirth: _orNA(_workerDateText(worker['dob']) ?? ''),
         relationshipStatus: _orNA(
-          _localizedRelationshipStatus(_workerField('relationshipStatus')),
+          LocalizationHelper.localizeRelationshipStatus(_workerField('relationshipStatus')),
         ),
         address: _orNA(_workerField('address')),
         profileImageUrl: profileImage,
@@ -1255,19 +1226,7 @@ class _WorkerProfilePreviewDialogState
     final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
     final salaryAmount = _workerField('salaryAmount');
-    final companyCurr = PreferencesService.cachedCompanyCurrency;
-    final currSymbol = CurrencyUtils.symbolFor(companyCurr);
-    final rawSalaryStr = salaryAmount.trim();
-    final salaryToFormat =
-        rawSalaryStr.isNotEmpty && rawSalaryStr.startsWith(RegExp(r'\d'))
-        ? '$currSymbol $rawSalaryStr'
-        : rawSalaryStr;
-    final salary = salaryToFormat.isNotEmpty
-        ? AmountText.formatCompact(
-            salaryToFormat,
-            locale: context.locale.toString(),
-          )
-        : '';
+    final salary = _formatSalary(salaryAmount);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -1282,7 +1241,7 @@ class _WorkerProfilePreviewDialogState
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: _kBlack.withValues(alpha: 0.15),
+                color: _kBlack.withOpacity(0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1516,7 +1475,7 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _orNA(_localizedGender(_workerField('gender'))),
+                          _orNA(LocalizationHelper.localizeGender(_workerField('gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
@@ -1559,7 +1518,7 @@ class _WorkerProfilePreviewDialogState
                           Icons.favorite,
                           'relationship_status'.tr(),
                           _orNA(
-                            _localizedRelationshipStatus(
+LocalizationHelper.localizeRelationshipStatus(
                               _workerField('relationshipStatus'),
                             ),
                           ),

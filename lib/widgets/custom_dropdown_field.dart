@@ -50,7 +50,6 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             color: Color(0xFF000000),
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            fontFamily: 'SF Pro Display',
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -105,7 +104,6 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                     color: _currentValue.isEmpty
                         ? Colors.grey.shade400
                         : const Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -153,7 +151,6 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
               color: isSelected
                   ? const Color(0xFF0247C4)
                   : const Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -25,7 +25,7 @@ class UnsavedChangesDialog {
                 sigmaY: 10 * animation.value,
               ),
               child: Container(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value),
+                color: const Color(0xFF0F172A).withOpacity(0.35 * animation.value),
               ),
             ),
             FadeTransition(
@@ -42,7 +42,7 @@ class UnsavedChangesDialog {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF000000).withValues(alpha: 0.15),
+                        color: const Color(0xFF000000).withOpacity(0.15),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -74,7 +74,6 @@ class UnsavedChangesDialog {
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -85,7 +84,6 @@ class UnsavedChangesDialog {
                           fontSize: 14,
                           color: Color(0xFF64748B),
                           fontWeight: FontWeight.w400,
-                          fontFamily: 'SF Pro Display',
                           height: 1.4,
                         ),
                       ),
@@ -108,7 +106,6 @@ class UnsavedChangesDialog {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),
@@ -130,7 +127,6 @@ class UnsavedChangesDialog {
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),

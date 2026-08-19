@@ -14,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/worker.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/bulk_worker_csv_service.dart';
 import '../../services/bulk_worker_media_service.dart';
@@ -972,7 +972,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1006,7 +1005,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) => _EditCellDialog(
         currentValue: currentValue,
         fieldKey: fieldKey,
@@ -1179,7 +1178,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -1189,7 +1187,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                       color: Colors.black,
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -1248,7 +1245,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
       ),
@@ -1274,7 +1270,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -1294,7 +1289,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -1319,7 +1313,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFD0E5FF), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withValues(alpha: 0.02),
+            color: const Color(0xFF000000).withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1334,7 +1328,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   (anyErrors
                           ? const Color(0xFFEF4444)
                           : const Color(0xFF34D399))
-                      .withValues(alpha: 0.15),
+                      .withOpacity(0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -1362,7 +1356,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF1E293B),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               const SizedBox(height: 4),
@@ -1375,7 +1368,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   fontSize: 13,
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.w400,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
@@ -1395,7 +1387,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         color: const Color(0xFFFFF8E1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+          color: const Color(0xFFF59E0B).withOpacity(0.5),
         ),
       ),
       child: Row(
@@ -1414,7 +1406,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                 fontSize: 13,
                 color: Color(0xFF92400E),
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -1433,7 +1424,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withValues(alpha: 0.03),
+            color: const Color(0xFF000000).withOpacity(0.03),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -1478,7 +1469,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF1E293B),
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -1488,7 +1478,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                                   fontSize: 13,
                                   color: Color(0xFF94A3B8),
                                   fontWeight: FontWeight.w400,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ],
@@ -1516,7 +1505,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withValues(alpha: 0.03),
+            color: const Color(0xFF000000).withOpacity(0.03),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -1813,7 +1802,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                color: const Color(0xFFEF4444).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
@@ -1853,7 +1842,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                 color: hasErr
                     ? const Color(0xFFDC2626)
                     : const Color(0xFF475569),
-                fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1909,7 +1897,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                     : isBold
                     ? const Color(0xFF0F172A)
                     : const Color(0xFF334155),
-                fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1926,7 +1913,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                       (hasError
                               ? const Color(0xFFDC2626)
                               : const Color(0xFF6B7280))
-                          .withValues(alpha: 0.1),
+                          .withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
@@ -2531,7 +2518,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
       return null;
     }
 
-    if (!isAtLeast18(dob)) {
+    if (!Validators.isAtLeast18(dob)) {
       setState(() => _dialogError = 'validation_min_age'.tr());
       return null;
     }
@@ -2647,12 +2634,12 @@ class _EditCellDialogState extends State<_EditCellDialog> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                color: const Color(0xFF0247C4).withOpacity(0.18),
                 blurRadius: 40,
                 offset: const Offset(0, 12),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withOpacity(0.08),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -2691,7 +2678,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: Color(0xFF374151),
-              fontFamily: 'SF Pro Display',
             ),
           ),
           const SizedBox(height: 8),
@@ -2722,7 +2708,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                 inputFormatters: inputFormattersForField(widget.fieldKey),
                 style: TextStyle(
                   fontSize: 15,
-                  fontFamily: 'SF Pro Display',
                   color:
                       (_isMediaField &&
                           (_mediaDataUrl != null || _hasExistingUpload))
@@ -2744,7 +2729,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                   hintStyle: const TextStyle(
                     color: Color(0xFF9CA3AF),
                     fontSize: 15,
-                    fontFamily: 'SF Pro Display',
                   ),
                   prefixText: widget.fieldKey == 'salaryAmount'
                       ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} '
@@ -2753,7 +2737,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                     color: Color(0xFF374151),
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
                   ),
                   suffixIcon: _isMediaField ? _buildMediaPickerButton() : null,
                 ),
@@ -2793,7 +2776,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -2821,7 +2803,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
               style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF9CA3AF),
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -2848,7 +2829,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                 fontSize: 12,
                 color: Color(0xFFDC2626),
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -2881,7 +2861,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -2918,7 +2897,6 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],

@@ -12,7 +12,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/error_reporter.dart';
@@ -875,7 +875,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                 color: primary ? const Color(0xFFFFFFFF) : const Color(0xFF0F172A),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               )),
         ),
       ),
@@ -900,7 +899,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(6),
-            boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10))],
+            boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 10))],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -921,7 +920,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     ),
                     Expanded(
                       child: Text(title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 17, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
+                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 17, fontWeight: FontWeight.w700, )),
                     ),
                     const SizedBox(width: 32),
                   ],
@@ -956,7 +955,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       children: [
         BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10 * animation.value, sigmaY: 10 * animation.value),
-          child: Container(color: const Color(0xFF0F172A).withValues(alpha: 0.35 * animation.value)),
+          child: Container(color: const Color(0xFF0F172A).withOpacity(0.35 * animation.value)),
         ),
         FadeTransition(opacity: animation, child: ScaleTransition(scale: curve, child: builder(curve))),
       ],
@@ -1125,14 +1124,14 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               Icon(Icons.notifications_active_rounded, color: offset > 0 ? const Color(0xFFEF4444) : const Color(0xFF004FDE), size: 22),
               const SizedBox(width: 12),
               Expanded(child: Text(status,
-                  style: TextStyle(color: offset > 0 ? const Color(0xFFDC2626) : const Color(0xFF004FDE), fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display'))),
+                  style: TextStyle(color: offset > 0 ? const Color(0xFFDC2626) : const Color(0xFF004FDE), fontSize: 15, fontWeight: FontWeight.w700, ))),
             ],
           ),
         ),
         const SizedBox(height: 18),
         Text(
           'payroll_due_message'.tr(namedArgs: {'count': '${payableWorkers.length}', 'date': dueDate}),
-          style: const TextStyle(color: Color(0xFF334155), fontSize: 14, height: 1.4, fontFamily: 'SF Pro Display'),
+          style: const TextStyle(color: Color(0xFF334155), fontSize: 14, height: 1.4, ),
         ),
         const SizedBox(height: 16),
         ConstrainedBox(
@@ -1163,11 +1162,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(name.isEmpty ? 'Worker' : name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                              style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, )),
                           if (position.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(LocalizationHelper.localizePosition(position), maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, )),
                           ],
                         ],
                       ),
@@ -1176,7 +1175,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(20)),
-                      child: Text('payable'.tr(), style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                      child: Text('payable'.tr(), style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, )),
                     ),
                   ],
                 ),
@@ -1211,7 +1210,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('salary_day_help'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.35, fontFamily: 'SF Pro Display')),
+                Text('salary_day_help'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.35, )),
                 const SizedBox(height: 18),
                 GridView.builder(
                   shrinkWrap: true,
@@ -1237,7 +1236,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                                 color: selected ? const Color(0xFFFFFFFF) : const Color(0xFF0F172A),
                                 fontSize: 14,
                                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                fontFamily: 'SF Pro Display',
                               )),
                         ),
                       ),
@@ -1399,7 +1397,7 @@ if (day == 0) {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('workforce'.tr(), style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+              Text('workforce'.tr(), style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, )),
               const SizedBox(height: 2),
             ],
           ),
@@ -1433,7 +1431,6 @@ if (day == 0) {
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1458,7 +1455,7 @@ if (day == 0) {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF27AE60).withValues(alpha: payAllEnabled ? 1 : 0.4),
+                color: const Color(0xFF27AE60).withOpacity(payAllEnabled ? 1 : 0.4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1483,7 +1480,7 @@ if (day == 0) {
                           ),
                         ),
                   const SizedBox(width: 8),
-                  Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                  Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
                 ],
               ),
             ),
@@ -1513,7 +1510,6 @@ if (day == 0) {
                       color: Color(0xFFFFFFFF),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -1551,7 +1547,6 @@ if (day == 0) {
                       color: Color(0xFF0247C4),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -1817,7 +1812,7 @@ if (day == 0) {
                 Expanded(
                   child: Text(
                     option.label,
-                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, ),
                   ),
                 ),
                 if (option.paidCount > 0) ...[
@@ -1830,7 +1825,7 @@ if (day == 0) {
                     ),
                     child: Text(
                       '${option.paidCount}',
-                      style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, ),
                     ),
                   ),
                 ],
@@ -1872,7 +1867,7 @@ if (day == 0) {
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'search_workers_name_position'.tr(),
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -1895,7 +1890,7 @@ if (day == 0) {
     return Row(
       children: [
         Expanded(
-          child: Text('pay_roll_list'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+          child: Text('pay_roll_list'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
         ),
         _buildFilterDropdown(),
       ],
@@ -1941,7 +1936,6 @@ if (day == 0) {
                         fontSize: 14,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                         color: selected ? const Color(0xFF0247C4) : const Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
                       ),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
@@ -1961,7 +1955,7 @@ if (day == 0) {
             const SizedBox(width: 8),
             Text(
               _selectedFilter == 'Pay' ? 'payable'.tr() : _selectedFilter == 'Paid' ? 'paid'.tr() : 'all_filter'.tr(),
-              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, ),
             ),
             const SizedBox(width: 4),
             const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF), size: 22),
@@ -2031,7 +2025,6 @@ if (day == 0) {
               color: isSelected ? Colors.white : Colors.black,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               fontSize: 14,
-              fontFamily: 'SF Pro Display',
             )),
       ),
     );
@@ -2051,7 +2044,7 @@ if (day == 0) {
           const SizedBox(height: 16),
           Text(
             _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_payroll_records'.tr(),
-            style: const TextStyle(color: Color(0xFF0247C4), fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+            style: const TextStyle(color: Color(0xFF0247C4), fontSize: 16, fontWeight: FontWeight.w600, ),
             overflow: TextOverflow.ellipsis, maxLines: 2,
           ),
         ],
@@ -2094,7 +2087,7 @@ if (day == 0) {
     );
   }
 
-  TextStyle _headerStyle() => const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black, fontFamily: 'SF Pro Display');
+  TextStyle _headerStyle() => const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black, );
 
   Widget _buildEmployeeRow(Map<String, dynamic> doc) {
     final isPaid = doc['isPaid'] == true;
@@ -2136,10 +2129,10 @@ if (day == 0) {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text((doc['name'] ?? '').toString(),
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'), maxLines: 2),
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, ), maxLines: 2),
                             const SizedBox(height: 4),
                             Text((doc['email'] ?? '').toString(),
-                                style: const TextStyle(fontSize: 14, color: Colors.black, fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(fontSize: 14, color: Colors.black, )),
                           ],
                         ),
                       ),
@@ -2154,14 +2147,14 @@ if (day == 0) {
             child: Padding(
               padding: const EdgeInsets.only(right: 24),
               child: Text(LocalizationHelper.localizePosition((doc['position'] ?? '').toString()),
-                  style: const TextStyle(fontSize: 15, color: Colors.black, fontFamily: 'SF Pro Display'), maxLines: 2),
+                  style: const TextStyle(fontSize: 15, color: Colors.black, ), maxLines: 2),
             ),
           ),
           Expanded(
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 24),
-              child: Text(contactNo, style: const TextStyle(fontSize: 15, color: Colors.black, fontFamily: 'SF Pro Display'), maxLines: 1),
+              child: Text(contactNo, style: const TextStyle(fontSize: 15, color: Colors.black, ), maxLines: 1),
             ),
           ),
           Expanded(
@@ -2178,8 +2171,7 @@ if (day == 0) {
                     color: isPaid
                         ? const Color(0xFF27AE60)
                         : (isEmployedInPeriod ? const Color(0xFFE74C3C) : const Color(0xFF9CA3AF)),
-                    fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display',
-                  ),
+                    fontSize: 16, fontWeight: FontWeight.w500,                   ),
                 ),
               ),
             ),
@@ -2476,7 +2468,7 @@ if (day == 0) {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.circular(6),
-                boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2503,7 +2495,7 @@ if (day == 0) {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text('payroll_data_preview'.tr(), textAlign: TextAlign.center, maxLines: 1,
-                                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 18, fontWeight: FontWeight.bold, )),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -2624,14 +2616,14 @@ if (day == 0) {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(name, style: const TextStyle(color: Color(0xFF333333), fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display'),
+                Text(name, style: const TextStyle(color: Color(0xFF333333), fontSize: 16, fontWeight: FontWeight.w700, ),
                     overflow: TextOverflow.ellipsis, maxLines: 1),
                 const SizedBox(height: 4),
                 Row(children: [
                   SvgPicture.asset('assets/email.svg', height: 12, width: 12, colorFilter: const ColorFilter.mode(Color(0xFF666666), BlendMode.srcIn)),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(email, style: const TextStyle(color: Color(0xFF666666), fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'SF Pro Display'),
+                    child: Text(email, style: const TextStyle(color: Color(0xFF666666), fontSize: 13, fontWeight: FontWeight.w400, ),
                         overflow: TextOverflow.ellipsis, maxLines: 1),
                   ),
                 ]),
@@ -2662,9 +2654,9 @@ if (day == 0) {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'), overflow: TextOverflow.ellipsis, maxLines: 1),
+                Text(title, style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w600, ), overflow: TextOverflow.ellipsis, maxLines: 1),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'), overflow: TextOverflow.ellipsis, maxLines: 2),
+                Text(value, style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.bold, ), overflow: TextOverflow.ellipsis, maxLines: 2),
               ],
             ),
           ),

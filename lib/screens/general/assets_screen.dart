@@ -10,7 +10,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/firestore_service.dart';
@@ -400,7 +400,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -432,7 +432,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF000000),
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ),
@@ -590,7 +589,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   style: const TextStyle(
                                     color: Color(0xFFFFFFFF),
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                         ),
@@ -606,7 +604,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -638,14 +635,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         hintStyle: TextStyle(
                                           color: Colors.grey.shade400,
                                           fontSize: 14,
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.black,
                                         fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
                                       ),
                                       onChanged: (val) {
                                         setModalState(() {
@@ -671,7 +666,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 elevation: 6,
                                 color: Colors.white,
                                 borderRadius: BorderRadius.zero,
-                                shadowColor: Colors.black.withValues(alpha: 0.12),
+                                shadowColor: Colors.black.withOpacity(0.12),
                                 child: Container(
                                   constraints: const BoxConstraints(maxHeight: 220, maxWidth: 420),
                                   decoration: BoxDecoration(
@@ -695,8 +690,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         final option = options.elementAt(index);
                                         return InkWell(
                                           onTap: () => onSelected(option),
-                                          splashColor: const Color(0xFF0247C4).withValues(alpha: 0.06),
-                                          highlightColor: const Color(0xFF0247C4).withValues(alpha: 0.04),
+                                          splashColor: const Color(0xFF0247C4).withOpacity(0.06),
+                                          highlightColor: const Color(0xFF0247C4).withOpacity(0.04),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                             child: Text(
@@ -704,7 +699,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                               style: const TextStyle(
                                                 fontSize: 13.5,
                                                 color: Color(0xFF1F2937),
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ),
@@ -762,7 +756,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const Spacer(),
@@ -828,7 +821,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -858,7 +851,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const Spacer(),
@@ -1007,7 +999,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     color: Color(0xFFFFFFFF),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                         ),
@@ -1063,7 +1054,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const Spacer(),
@@ -1125,7 +1115,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 8),
@@ -1145,13 +1134,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
             decoration: InputDecoration.collapsed(
               hintText: hintText,
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
             ),
             style: TextStyle(
               fontSize: 14,
               color: readOnly ? const Color(0xFF9E9E9E) : Colors.black,
               fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -1177,7 +1165,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 8),
@@ -1198,7 +1185,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
                 isEmpty ? 'no_workers_found'.tr() : hintText,
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
               ),
               isExpanded: true,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
@@ -1206,12 +1193,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 fontSize: 14,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
               items: items.map((val) {
                 return DropdownMenuItem<String>(
                   value: val,
-                  child: Text(val, style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                  child: Text(val, style: const TextStyle(fontWeight: FontWeight.w500, )),
                 );
               }).toList(),
               onChanged: isEmpty ? null : onChanged,
@@ -1238,7 +1224,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 8),
@@ -1260,7 +1245,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       fontSize: 14,
                       color: textColor,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
@@ -1299,7 +1283,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, _, _) {
@@ -1322,12 +1306,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                            color: const Color(0xFF0247C4).withOpacity(0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withOpacity(0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -1348,7 +1332,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF111827),
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -1387,7 +1370,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Color(0xFF374151),
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -1414,7 +1396,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.white,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -1460,7 +1441,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1501,7 +1481,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               const SizedBox(height: 4),
@@ -1601,7 +1580,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 color: Color(0xFFFFFFFF),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -1656,7 +1634,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         fontWeight: FontWeight.bold,
         fontSize: 16,
         color: Color(0xFF000000),
-        fontFamily: 'SF Pro Display',
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -1702,7 +1679,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                         color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ),
@@ -1718,7 +1694,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 _formatPositionTitleCase(data.position),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF000000), ),
               ),
             ),
           ),
@@ -1730,7 +1706,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 data.type,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
               ),
             ),
           ),
@@ -1742,7 +1718,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 AppDateUtils.fromValueLocalized(data.dateLoaned, locale: context.locale.toString()),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
               ),
             ),
           ),
@@ -1760,7 +1736,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: data.isReturned ? Colors.green : const Color(0xFFFF0004),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -1841,7 +1816,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     color: Color(0xFF0247C4),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ],
@@ -1865,7 +1839,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     color: const Color(0xFFFF0004),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ],
@@ -1908,7 +1881,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),

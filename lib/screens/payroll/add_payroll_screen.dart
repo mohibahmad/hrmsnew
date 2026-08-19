@@ -12,7 +12,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hrms/utils/utils.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/firestore_service.dart';
@@ -970,7 +970,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     try {
       await showDialog<void>(
         context: context,
-        barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.55),
+        barrierColor: const Color(0xFF0F172A).withOpacity(0.55),
         builder: (ctx) {
           final screenSize = MediaQuery.of(ctx).size;
           final dialogWidth = screenSize.width > 620
@@ -1080,7 +1080,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
                 color: Color(0xFF111827),
               ),
             ),
@@ -1111,7 +1110,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: const Color(
                     0xFF0247C4,
-                  ).withValues(alpha: 0.55),
+                  ).withOpacity(0.55),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1175,7 +1174,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),

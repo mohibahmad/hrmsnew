@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'utils/helpers.dart';
 import 'utils/ui_helpers.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,9 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:window_manager/window_manager.dart';
-
-import 'providers.dart';
-
+import 'riverpod_providers.dart';
 import 'firebase_options.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -29,41 +26,30 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-
       _setupErrorHandling();
-
       try {
         await EasyLocalization.ensureInitialized();
-
         await initializeDateFormatting();
-
         await PreferencesService.initFromPrefs();
-
         if (PreferencesService.cachedIsGuest) {
           final cachedUrl = PreferencesService.cachedProfilePicUrl;
           if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
             AuthService.profilePicNotifier.value = cachedUrl;
           }
-
           final cachedStamp = PreferencesService.cachedCompanyStampUrl;
           if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
             AuthService.companyStampNotifier.value = cachedStamp;
           }
         }
-
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-
         FirebaseFirestore.instance.settings = const Settings(
           persistenceEnabled: true,
           cacheSizeBytes: 100 * 1024 * 1024,
         );
-
         await DummyData.loadFromPrefs();
-
         await _initializeMacOSWindow();
-
         runApp(
           EasyLocalization(
             supportedLocales: const [
@@ -86,7 +72,6 @@ Future<void> main() async {
           context: 'AppInitialization',
           fatal: true,
         );
-
         runApp(StartupErrorApp(error: error));
       }
     },
@@ -95,38 +80,31 @@ Future<void> main() async {
     },
   );
 }
-
 void _setupErrorHandling() {
   final originalOnError = FlutterError.onError;
-
   FlutterError.onError = (FlutterErrorDetails details) {
     final errorMessage = details.exception.toString();
-
     final isKnownKeyboardAssertion =
         details.exception is AssertionError &&
         errorMessage.contains('!_pressedKeys.containsKey(event.physicalKey)');
-
     if (isKnownKeyboardAssertion) {
       if (kDebugMode) {
         debugPrint('Ignored keyboard assertion: $errorMessage');
       }
       return;
     }
-
     ErrorReporter.report(
       details.exception,
       details.stack,
       context: 'FlutterError',
       fatal: true,
     );
-
     if (originalOnError != null) {
       originalOnError(details);
     } else {
       FlutterError.presentError(details);
     }
   };
-
   PlatformDispatcher.instance.onError = (error, stackTrace) {
     ErrorReporter.report(
       error,
@@ -134,11 +112,9 @@ void _setupErrorHandling() {
       context: 'PlatformDispatcher',
       fatal: true,
     );
-
     return false;
   };
 }
-
 Future<void> _initializeMacOSWindow() async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
     return;
@@ -178,7 +154,10 @@ class HRMSApp extends ConsumerWidget {
       navigatorKey: _rootNavigatorKey,
       title: 'HRMS',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(fontFamily: 'SF Pro Display'),
+      theme: ThemeData(
+        fontFamily: 'SF Pro Display',
+        primaryColor: const Color(0xFF0044C9),
+      ),
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
@@ -228,9 +207,7 @@ class HRMSApp extends ConsumerWidget {
 
 class StartupErrorApp extends StatelessWidget {
   const StartupErrorApp({super.key, required this.error});
-
   final Object error;
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -242,7 +219,7 @@ class StartupErrorApp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const Icon(Icons.error_outline, size: 48, color: Color(0xFFFF1014)),
                 const SizedBox(height: 16),
                 const Text(
                   'App could not start',

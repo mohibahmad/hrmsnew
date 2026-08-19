@@ -17,7 +17,7 @@ import 'package:pdfx/pdfx.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/error_reporter.dart';
@@ -170,7 +170,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
@@ -224,7 +223,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'search_workers_name_position'.tr(),
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14, fontFamily: 'SF Pro Display'),
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14, ),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -261,7 +260,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           const SizedBox(height: 16),
           Text(
             _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_workers_added_yet'.tr(),
-            style: const TextStyle(color: Color(0xFF0247C4), fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+            style: const TextStyle(color: Color(0xFF0247C4), fontSize: 16, fontWeight: FontWeight.w600, ),
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
@@ -296,7 +295,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFEEEEEE)),
-            boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -308,11 +307,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display', color: Color(0xFF000000))),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF000000))),
                     if (position.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(LocalizationHelper.localizePosition(position), maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[500], fontFamily: 'SF Pro Display')),
+                          style: TextStyle(fontSize: 13, color: Colors.grey[500], )),
                     ],
                   ],
                 ),
@@ -321,9 +320,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0247C4).withValues(alpha: 0.08),
+                  color: const Color(0xFF0247C4).withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF0247C4).withValues(alpha: 0.2)),
+                  border: Border.all(color: const Color(0xFF0247C4).withOpacity(0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -332,7 +331,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
                     const SizedBox(width: 6),
                     Text('edit_documents'.tr(),
-                        style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                        style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w600, )),
                   ],
                 ),
               ),
@@ -800,7 +799,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 6 * anim.value, sigmaY: 6 * anim.value),
-                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withValues(alpha: 0.35))),
+                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withOpacity(0.35))),
               ),
             ),
             FadeTransition(opacity: fade, child: ScaleTransition(scale: scale, child: child)),
@@ -829,7 +828,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 6 * anim.value, sigmaY: 6 * anim.value),
-                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withValues(alpha: 0.35))),
+                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withOpacity(0.35))),
               ),
             ),
             FadeTransition(opacity: fade, child: ScaleTransition(scale: scale, child: child)),
@@ -849,7 +848,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('personal_documentation'.tr(),
-                style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+                style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, )),
             const SizedBox(height: 24),
             IntrinsicHeight(
               child: Row(
@@ -877,7 +876,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text('id_card_label'.tr(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, )),
           ),
         ),
         const SizedBox(height: 16),
@@ -917,7 +916,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       children: [
         GestureDetector(
           onTap: () => _pickFile(field),
-          child: Text(labelText, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+          child: Text(labelText, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, )),
         ),
         const Spacer(),
         if (hasFile) ...[
@@ -943,7 +942,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6),
-            boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 2))],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -953,7 +952,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               else
                 Icon(icon, color: Colors.white, size: 16),
               const SizedBox(width: 5),
-              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, )),
             ],
           ),
         ),
@@ -970,7 +969,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+            Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, )),
             const SizedBox(width: 6),
             SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14,
                 colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
@@ -992,7 +991,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text('upload_cv_label'.tr(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, )),
               const Spacer(),
               if (hasCv) ...[
                 GestureDetector(
@@ -1008,7 +1007,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                         else
                           const Icon(Icons.file_download_outlined, color: Colors.white, size: 14),
                         const SizedBox(width: 4),
-                        Text('download'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                        Text('download'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, )),
                       ],
                     ),
                   ),
@@ -1048,7 +1047,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: hasFile ? const Color(0xFF0B50C3).withValues(alpha: 0.5) : Colors.grey.shade200,
+            color: hasFile ? const Color(0xFF0B50C3).withOpacity(0.5) : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
         ),
@@ -1073,7 +1072,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                     bottom: 0, left: 0, right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black.withValues(alpha: 0.54),
+                      color: Colors.black.withOpacity(0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1081,7 +1080,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(fileName ?? 'file_uploaded'.tr(),
-                                style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(color: Colors.white, fontSize: 11, )),
                           ),
                         ],
                       ),
@@ -1103,7 +1102,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF0B50C3).withValues(alpha: 0.5), width: 2),
+            border: Border.all(color: const Color(0xFF0B50C3).withOpacity(0.5), width: 2),
           ),
         ),
       );
@@ -1118,9 +1117,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       children: [
         Image.asset('assets/Id card.png', width: 50, height: 50, fit: BoxFit.contain),
         const SizedBox(height: 12),
-        Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+        Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500, )),
         const SizedBox(height: 4),
-        Text('tap_to_select_file'.tr(), style: TextStyle(color: Colors.grey.shade300, fontSize: 12, fontFamily: 'SF Pro Display')),
+        Text('tap_to_select_file'.tr(), style: TextStyle(color: Colors.grey.shade300, fontSize: 12, )),
       ],
     );
   }
@@ -1171,7 +1170,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('upload'.tr(),
-                          style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'SF Pro Display')),
+                          style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600, fontSize: 15, )),
                       const SizedBox(width: 8),
                       SvgPicture.asset('assets/Upload_profile.svg', height: 18, width: 18,
                           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
@@ -1182,9 +1181,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.92), borderRadius: BorderRadius.circular(20)),
                 child: Text('upload_cv_hint'.tr(), textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFF4B5563), fontSize: 12, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                    style: const TextStyle(color: Color(0xFF4B5563), fontSize: 12, fontWeight: FontWeight.w500, )),
               ),
             ],
           ),
@@ -1244,7 +1243,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           children: [
             const Icon(Icons.description, size: 48, color: Color(0xFF0247C4)),
             const SizedBox(height: 12),
-            Text(_cvName ?? 'cv_resume'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontFamily: 'SF Pro Display')),
+            Text(_cvName ?? 'cv_resume'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13, )),
           ],
         ),
       );
@@ -1271,7 +1270,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(6),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 3))],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 3))],
                   ),
                   child: previewContent,
                 ),
@@ -1362,7 +1361,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
           children: [
             const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0247C4))),
             const SizedBox(height: 12),
-            Text('loading_pdf'.tr(), style: const TextStyle(fontSize: 13, color: Colors.grey, fontFamily: 'SF Pro Display')),
+            Text('loading_pdf'.tr(), style: const TextStyle(fontSize: 13, color: Colors.grey, )),
           ],
         ),
       );
@@ -1375,7 +1374,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
             const SizedBox(height: 12),
-            Text('failed_to_load_pdf'.tr(), style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontFamily: 'SF Pro Display')),
+            Text('failed_to_load_pdf'.tr(), style: TextStyle(fontSize: 13, color: Colors.grey.shade600, )),
           ],
         ),
       );
@@ -1383,7 +1382,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
 
     final document = _document;
     if (document == null) {
-      return Center(child: Text('no_pages_found'.tr(), style: const TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display')));
+      return Center(child: Text('no_pages_found'.tr(), style: const TextStyle(color: Colors.grey, )));
     }
 
     return ScrollConfiguration(
@@ -1547,7 +1546,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 8))],
+          boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.25), blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1558,12 +1557,12 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
               child: Row(
                 children: [
                   Expanded(child: Text(cleanTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'))),
+                      style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, fontWeight: FontWeight.w600, ))),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(color: const Color(0xFF1A1A1A).withValues(alpha: 0.06), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: const Color(0xFF1A1A1A).withOpacity(0.06), shape: BoxShape.circle),
                       child: const Icon(Icons.close, color: Color(0xFF1A1A1A), size: 18),
                     ),
                   ),
@@ -1619,7 +1618,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(cleanFileName, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 14, fontWeight: FontWeight.w600, )),
             ),
             const SizedBox(height: 24),
             Row(
@@ -1651,7 +1650,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                           const Icon(Icons.open_in_new, color: Colors.white, size: 16),
                           const SizedBox(width: 8),
                           Text('open_document'.tr(),
-                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
                         ],
                       ),
                     ),
@@ -1664,7 +1663,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                     decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
                     child: Text('close'.tr(),
-                        style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                        style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w600, )),
                   ),
                 ),
               ],

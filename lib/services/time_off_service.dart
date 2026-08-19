@@ -46,7 +46,6 @@ class TimeOffService {
 
   static const Set<String> unpaidLeaveTypes = <String>{};
 
-
   static int _leaveInt(dynamic value) {
     final parsed = value is num
         ? value.toInt()

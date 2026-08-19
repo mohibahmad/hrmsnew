@@ -5,7 +5,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../riverpod_providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -440,7 +440,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: isDark ? Colors.white : const Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               if (_notifications.isNotEmpty) ...[
@@ -460,7 +459,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFFFFFFFF),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
@@ -502,10 +500,10 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0247C4).withValues(alpha: 0.1),
+                        color: const Color(0xFF0247C4).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFF0247C4).withValues(alpha: 0.3),
+                          color: const Color(0xFF0247C4).withOpacity(0.3),
                           width: 1,
                         ),
                       ),
@@ -524,7 +522,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF0247C4),
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -561,7 +558,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.grey[600] : const Color(0xFF9CA3AF),
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ],
@@ -633,7 +629,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
+              color: const Color(0xFF4C84E0).withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -648,7 +644,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: Colors.white.withOpacity(0.08),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -660,7 +656,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: Colors.white.withOpacity(0.06),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -692,7 +688,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -701,7 +697,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFFFFFFFF),
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),
@@ -726,7 +721,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFFFFFFFF),
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -737,8 +731,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontFamily: 'SF Pro Display',
+                      color: Colors.white.withOpacity(0.8),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -750,8 +743,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                         timeAgo,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontFamily: 'SF Pro Display',
+                          color: Colors.white.withOpacity(0.6),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -767,7 +759,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -870,7 +862,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: style.color,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -884,7 +875,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                 color: isDark
                                     ? Colors.grey[600]
                                     : const Color(0xFF9CA3AF),
-                                fontFamily: 'SF Pro Display',
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -909,7 +899,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             color: isDark
                                 ? Colors.white
                                 : const Color(0xFF111827),
-                            fontFamily: 'SF Pro Display',
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -923,7 +912,6 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             color: isDark
                                 ? Colors.grey[400]
                                 : const Color(0xFF6B7280),
-                            fontFamily: 'SF Pro Display',
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

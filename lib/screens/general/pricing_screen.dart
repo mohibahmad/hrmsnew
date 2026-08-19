@@ -6,7 +6,7 @@ import '../../services/preferences_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 
 class SubscriptionDialog extends ConsumerStatefulWidget {
   final bool isPremium;
@@ -98,7 +98,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 26,
                                   fontWeight: FontWeight.w700,
-                                  fontFamily: 'SF Pro Display',
                                   letterSpacing: 0.5,
                                   height: 1.1,
                                 ),
@@ -157,7 +156,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                       color: primaryBlue,
                                       fontSize: 28,
                                       fontWeight: FontWeight.w800,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
@@ -170,7 +168,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                     fontSize: 18,
                                     fontWeight: FontWeight.w500,
                                     height: 1.3,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
 
@@ -264,7 +261,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                               color: Color(0xFFFFFFFF),
                                               fontSize: 19,
                                               fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                   ),
@@ -282,7 +278,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                       color: primaryBlue,
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
@@ -297,7 +292,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                                     fontSize: 11,
                                     height: 1.3,
                                     fontWeight: FontWeight.w400,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
 
@@ -381,7 +375,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
               fontWeight: FontWeight.w500,
               letterSpacing: 0.5,
               height: 1.15,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -451,7 +444,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                           color: primaryBlue,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ),
@@ -471,7 +463,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                     color: primaryBlue,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -499,7 +490,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
@@ -520,7 +510,6 @@ class _SubscriptionDialogState extends ConsumerState<SubscriptionDialog> {
           color: primaryBlue,
           fontSize: 11,
           fontWeight: FontWeight.w500,
-          fontFamily: 'SF Pro Display',
         ),
       ),
     );

@@ -103,7 +103,6 @@ class LeaveTypesPieChart extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -186,7 +185,6 @@ class LeaveTypesPieChart extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF9CA3AF),
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -254,7 +252,6 @@ class LeaveTypesPieChart extends StatelessWidget {
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
               color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -399,7 +396,6 @@ class _DynamicCalloutPainter extends CustomPainter {
               color: Colors.black,
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              fontFamily: 'SF Pro Display',
             ),
           ),
           textDirection: ui.TextDirection.ltr,

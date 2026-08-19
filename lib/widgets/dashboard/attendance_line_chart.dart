@@ -30,7 +30,6 @@ BarTouchTooltipData buildAttendanceBarTooltipData(NumberFormat numberFmt) {
           color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 14,
-          fontFamily: 'SF Pro Display',
         ),
       );
     },
@@ -91,7 +90,6 @@ class AttendanceLineChart extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 22),
@@ -186,7 +184,6 @@ class AttendanceLineChart extends StatelessWidget {
                           color: Color(0xFF65717E),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     );
@@ -231,7 +228,6 @@ class AttendanceLineChart extends StatelessWidget {
                                   : 13,
                               letterSpacing: 0.5,
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -286,7 +282,6 @@ class AttendanceLineChart extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF9CA3AF),
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -314,7 +309,6 @@ class AttendanceLineChart extends StatelessWidget {
             fontSize: 13,
             color: Color(0xFF65717E),
             fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ],

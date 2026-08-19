@@ -13,7 +13,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/attendance_report_service.dart';
 import '../../services/attendance_service.dart';
 import '../../services/auth_service.dart';
@@ -527,7 +527,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                     fontSize: 17.0,
                                     color: isSelected ? _kPrimaryBlue : Colors.grey.shade400,
                                     fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -599,7 +598,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
-      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+      barrierColor: _kPrimaryBlue.withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -635,7 +634,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF000000),
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -658,7 +656,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),
@@ -946,7 +943,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     showDialog(
       context: context,
-      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+      barrierColor: _kPrimaryBlue.withOpacity(0.5),
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         backgroundColor: Colors.transparent,
@@ -1019,7 +1016,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     ),
                   ),
                   Text(monthYearStr,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, )),
                   GestureDetector(
                     onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
                     child: const Padding(
@@ -1066,7 +1063,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             fontSize: 10,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ),
@@ -1155,7 +1151,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     : (isFuture ? Colors.grey.shade400 : Colors.black),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -1208,7 +1203,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: _kTextDark,
-                fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -1262,7 +1256,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   color: _kTextDark,
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               const SizedBox(height: 4),
@@ -1310,7 +1303,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: 'search_workers_name_position'.tr(),
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -1365,7 +1358,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 color: Color(0xFFFFFFFF),
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -1410,7 +1402,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       color: Color(0xFFFFFFFF),
                       fontWeight: FontWeight.w600,
                       fontSize: 14.0,
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1462,7 +1453,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Row(
@@ -1472,10 +1463,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _kTextDark, fontFamily: 'SF Pro Display'),
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _kTextDark, ),
                     overflow: TextOverflow.ellipsis, maxLines: 1),
                 const SizedBox(height: 12),
-                Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: countColor, fontFamily: 'SF Pro Display'),
+                Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: countColor, ),
                     overflow: TextOverflow.ellipsis, maxLines: 1),
               ],
             ),
@@ -1510,7 +1501,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   width: 1,
                   height: 16,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
-                  color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
+                  color: const Color(0xFFE5E7EB).withOpacity(0.5),
                 ),
             ],
           ],
@@ -1537,7 +1528,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               color: isActive ? const Color(0xFFFFFFFF) : _kTextDark,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
               fontSize: 14,
-              fontFamily: 'SF Pro Display',
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1561,7 +1551,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           const SizedBox(height: 16),
           Text(
             _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_attendance_records'.tr(),
-            style: const TextStyle(color: _kPrimaryBlue, fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+            style: const TextStyle(color: _kPrimaryBlue, fontSize: 16, fontWeight: FontWeight.w600, ),
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
@@ -1632,10 +1622,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _kTextDark, fontFamily: 'SF Pro Display'),
+                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _kTextDark, ),
                                 maxLines: 2, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 4),
-                            Text(email, style: const TextStyle(fontSize: 14, color: Colors.black, fontFamily: 'SF Pro Display'),
+                            Text(email, style: const TextStyle(fontSize: 14, color: Colors.black, ),
                                 overflow: TextOverflow.ellipsis, maxLines: 1),
                           ],
                         ),
@@ -1650,14 +1640,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 24),
                   child: Text(LocalizationHelper.localizeType1(workType),
-                      style: const TextStyle(fontSize: 15, color: _kTextDark, fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 15, color: _kTextDark, ),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                 ),
               ),
               Expanded(
                 flex: 2,
                 child: Text(LocalizationHelper.localizePosition(role),
-                    style: const TextStyle(fontSize: 15, color: _kTextDark, fontFamily: 'SF Pro Display'),
+                    style: const TextStyle(fontSize: 15, color: _kTextDark, ),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
               SizedBox(
@@ -1680,7 +1670,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Widget _buildStatusText(Map<String, dynamic> worker) {
     if (_selectedTimeframe != 'Today') {
       return const Text('******',
-          style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+          style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600, ),
           maxLines: 2, overflow: TextOverflow.ellipsis);
     }
 
@@ -1694,7 +1684,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     return Text(
       status.isEmpty ? '-' : status.toLowerCase().tr(),
-      style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+      style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600, ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
@@ -1702,7 +1692,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   Widget _tableHeader(String title) {
     return Text(title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), fontFamily: 'SF Pro Display'));
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ));
   }
 }
 
@@ -1757,7 +1747,7 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
         width: 500,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
-          boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1867,7 +1857,7 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFF000000).withValues(alpha: 0.05)),
+        border: Border.all(color: const Color(0xFF000000).withOpacity(0.05)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

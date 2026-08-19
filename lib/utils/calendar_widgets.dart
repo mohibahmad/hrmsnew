@@ -33,7 +33,6 @@ class WeekdayHeaderChip extends StatelessWidget {
           color: Colors.white,
           fontSize: 9,
           fontWeight: FontWeight.w700,
-          fontFamily: AppColors.fontFamily,
         ),
       ),
     );
@@ -94,7 +93,6 @@ class CalendarDayCell extends StatelessWidget {
                         ? Colors.grey.shade400
                         : Colors.black,
                 fontSize: 12,
-                fontFamily: AppColors.fontFamily,
               ),
             ),
           ),
@@ -213,7 +211,7 @@ class ModalCalendar extends StatelessWidget {
 
     final weekdays = Row(
       children: [
-        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Colors.red, borderRadius: weekdayBorderRadius),
+        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Color(0xFFFF1014), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_mon'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
@@ -253,7 +251,6 @@ class ModalCalendar extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
-                fontFamily: AppColors.fontFamily,
               ),
             ),
             const SizedBox(width: 12),

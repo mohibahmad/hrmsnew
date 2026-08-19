@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../riverpod_providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -89,7 +89,6 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),

@@ -38,7 +38,7 @@ class HolidayCard extends StatelessWidget {
     const Color activeLeftBg = Color(0xFFFF5F65);
     const Color activeRightBg = Color(0xFFFF000A);
     const Color activeTextColor = Color(0xFFFFFFFF);
-    final Color activeSubTextColor = const Color(0xFFFFFFFF).withValues(alpha: 0.9);
+    final Color activeSubTextColor = const Color(0xFFFFFFFF).withOpacity(0.9);
     const Color activeBadgeBg = Color(0xFFFF5F65);
 
     const Color inactiveLeftBg = Color(0xFFE2E4E4);
@@ -79,7 +79,6 @@ class HolidayCard extends StatelessWidget {
                     color: mainTextColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -91,7 +90,6 @@ class HolidayCard extends StatelessWidget {
                     color: mainTextColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -118,7 +116,6 @@ class HolidayCard extends StatelessWidget {
                             color: subTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
                             height: 1.0,
                           ),
                         ),
@@ -134,7 +131,6 @@ class HolidayCard extends StatelessWidget {
                             color: mainTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
                             height: 1.0,
                           ),
                         ),
@@ -157,7 +153,6 @@ class HolidayCard extends StatelessWidget {
                         color: Color(0xFFFFFFFF),
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ),
@@ -171,7 +166,6 @@ class HolidayCard extends StatelessWidget {
                       fontSize: 13,
                       height: 1.1,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],

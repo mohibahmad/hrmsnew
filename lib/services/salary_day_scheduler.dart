@@ -11,7 +11,7 @@ import 'package:easy_localization/src/localization.dart' show Localization;
 // ignore: implementation_imports
 import 'package:easy_localization/src/translations.dart' show Translations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers.dart';
+import '../riverpod_providers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../utils/utils.dart';
@@ -2702,14 +2702,14 @@ class PayrollRunner {
                         BoxShadow(
                           color: const Color(
                             0xFF0F172A,
-                          ).withValues(alpha: 0.12),
+                          ).withOpacity(0.12),
                           blurRadius: 32,
                           offset: const Offset(0, 16),
                         ),
                         BoxShadow(
                           color: const Color(
                             0xFF0F172A,
-                          ).withValues(alpha: 0.06),
+                          ).withOpacity(0.06),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -2767,7 +2767,6 @@ class PayrollRunner {
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFFFFFFFF),
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
@@ -2803,7 +2802,6 @@ class PayrollRunner {
                                 },
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  fontFamily: 'SF Pro Display',
                                   color: Color(0xFF111827),
                                 ),
                                 decoration: InputDecoration(
@@ -2811,7 +2809,6 @@ class PayrollRunner {
                                   hintStyle: const TextStyle(
                                     fontSize: 13,
                                     color: Color(0xFFBDBDBD),
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                   prefixIcon: const Icon(
                                     Icons.search,
@@ -2886,7 +2883,6 @@ class PayrollRunner {
                                         fontWeight: positionFilter == 'All'
                                             ? FontWeight.w600
                                             : FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(4),
@@ -2931,7 +2927,6 @@ class PayrollRunner {
                                             fontWeight: positionFilter == pos
                                                 ? FontWeight.w600
                                                 : FontWeight.w500,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
@@ -2976,7 +2971,6 @@ class PayrollRunner {
                                             color: Color(0xFF0247C4),
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -2991,7 +2985,6 @@ class PayrollRunner {
                                           style: const TextStyle(
                                             color: Color(0xFF6B7280),
                                             fontSize: 13,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -3045,7 +3038,6 @@ class PayrollRunner {
                                                     : const Color(0xFF0247C4),
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ],
@@ -3145,7 +3137,6 @@ class PayrollRunner {
                                                     : const Color(0xFF0247C4),
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ],
@@ -3180,7 +3171,6 @@ class PayrollRunner {
                                           'no_results'.tr(),
                                           style: const TextStyle(
                                             color: Color(0xFF64748B),
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ],
@@ -3260,7 +3250,7 @@ class PayrollRunner {
                                               color: isSelected
                                                   ? const Color(
                                                       0xFF0F70FF,
-                                                    ).withValues(alpha: 0.3)
+                                                    ).withOpacity(0.3)
                                                   : const Color(0xFFE5E7EB),
                                               width: 1.2,
                                             ),
@@ -3370,7 +3360,7 @@ class PayrollRunner {
                                                                       FontWeight
                                                                           .bold,
                                                                   fontFamily:
-                                                                      'SF Pro Display',
+                                                                      'SF Pro',
                                                                   color: Color(
                                                                     0xFF111827,
                                                                   ),
@@ -3414,7 +3404,7 @@ class PayrollRunner {
                                                                   letterSpacing:
                                                                       0.5,
                                                                   fontFamily:
-                                                                      'SF Pro Display',
+                                                                      'SF Pro',
                                                                 ),
                                                               ),
                                                             ),
@@ -3448,7 +3438,7 @@ class PayrollRunner {
                                                                     0xFF6B7280,
                                                                   ),
                                                                   fontFamily:
-                                                                      'SF Pro Display',
+                                                                      'SF Pro',
                                                                 ),
                                                                 maxLines: 1,
                                                                 overflow:
@@ -3477,7 +3467,7 @@ class PayrollRunner {
                                                             0xFF6B7280,
                                                           ),
                                                           fontFamily:
-                                                              'SF Pro Display',
+                                                              'SF Pro',
                                                         ),
                                                       ),
                                                       const SizedBox(height: 5),
@@ -3512,7 +3502,7 @@ class PayrollRunner {
                                                             fontWeight:
                                                                 FontWeight.w700,
                                                             fontFamily:
-                                                                'SF Pro Display',
+                                                                'SF Pro',
                                                             color: r.success
                                                                 ? const Color(
                                                                     0xFF0F70FF,
@@ -3566,7 +3556,6 @@ class PayrollRunner {
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF6B7280),
                                         letterSpacing: 0.5,
-                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -3603,7 +3592,6 @@ class PayrollRunner {
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF111827),
-                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                   ],
@@ -3630,7 +3618,6 @@ class PayrollRunner {
                                             color: Color(0xFF000000),
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -3666,7 +3653,7 @@ class PayrollRunner {
                                           color: filteredPayCount == 0
                                               ? const Color(
                                                   0xFF0247C4,
-                                                ).withValues(alpha: 0.4)
+                                                ).withOpacity(0.4)
                                               : const Color(0xFF0247C4),
                                           borderRadius: BorderRadius.circular(
                                             8,
@@ -3676,7 +3663,7 @@ class PayrollRunner {
                                                   BoxShadow(
                                                     color: const Color(
                                                       0xFF0247C4,
-                                                    ).withValues(alpha: 0.2),
+                                                    ).withOpacity(0.2),
                                                     blurRadius: 8,
                                                     offset: const Offset(0, 4),
                                                   ),
@@ -3702,7 +3689,6 @@ class PayrollRunner {
                                                 color: Colors.white,
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.bold,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ],
@@ -3737,7 +3723,7 @@ class PayrollRunner {
               child: Container(
                 color: const Color(
                   0xFF0F172A,
-                ).withValues(alpha: 0.45 * animation.value),
+                ).withOpacity(0.45 * animation.value),
               ),
             ),
             FadeTransition(
@@ -3795,7 +3781,6 @@ class PayrollRunner {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF111827),
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -3807,7 +3792,6 @@ class PayrollRunner {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF6B7280),
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ],
@@ -3824,7 +3808,6 @@ class PayrollRunner {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF6B7280),
                             letterSpacing: 0.8,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -3838,7 +3821,6 @@ class PayrollRunner {
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF0247C4),
                             letterSpacing: -1.0,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ],
@@ -3954,7 +3936,7 @@ class PayrollRunner {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.01),
+                        color: Colors.black.withOpacity(0.01),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -3985,7 +3967,6 @@ class PayrollRunner {
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF111827),
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -3995,7 +3976,6 @@ class PayrollRunner {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF6B7280),
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ],
@@ -4046,7 +4026,7 @@ class PayrollRunner {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0247C4).withValues(alpha: 0.2),
+                        color: const Color(0xFF0247C4).withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -4067,7 +4047,6 @@ class PayrollRunner {
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -4101,7 +4080,6 @@ class PayrollRunner {
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF6B7280),
                 letterSpacing: 0.8,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -4138,7 +4116,6 @@ class PayrollRunner {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: labelColor,
-                fontFamily: 'SF Pro Display',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -4152,7 +4129,6 @@ class PayrollRunner {
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: valueColor,
-                fontFamily: 'SF Pro Display',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -4215,7 +4191,6 @@ class PayrollRunner {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: accentColor,
-                fontFamily: 'SF Pro Display',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -4237,7 +4212,6 @@ class PayrollRunner {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
                 color: accentColor,
               ),
               textAlign: TextAlign.end,
@@ -4247,14 +4221,12 @@ class PayrollRunner {
                   color: accentColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'SF Pro Display',
                 ),
                 hintText: '0',
                 hintStyle: TextStyle(
-                  color: accentColor.withValues(alpha: 0.4),
+                  color: accentColor.withOpacity(0.4),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'SF Pro Display',
                 ),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
@@ -4339,7 +4311,6 @@ class PayrollRunner {
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
               color: Color(0xFF111827),
             ),
             decoration: InputDecoration(
@@ -4348,14 +4319,12 @@ class PayrollRunner {
                 color: Color(0xFF111827),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
               hintText: 'amount_hint'.tr(),
               hintStyle: TextStyle(
-                color: const Color(0xFF6B7280).withValues(alpha: 0.6),
+                color: const Color(0xFF6B7280).withOpacity(0.6),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               filled: true,
@@ -4406,7 +4375,6 @@ class PayrollRunner {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -4505,7 +4473,6 @@ class PayrollRunner {
             color: textColor,
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       );

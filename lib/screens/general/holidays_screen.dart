@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/firestore_service.dart';
@@ -262,7 +262,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     await showDialog<void>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (dialogCtx) => StatefulBuilder(
         builder: (_, setModalState) {
           final offDays = LocalizationHelper.weekdayKeys.keys.where((d) => !selectedDays.contains(d)).toList();
@@ -271,7 +271,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             title: Text('company_work_days'.tr(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, )),
             content: SizedBox(
               width: 520,
               child: Column(
@@ -279,7 +279,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('company_work_days_help'.tr(),
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14, fontFamily: 'SF Pro Display')),
+                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14, )),
                   const SizedBox(height: 20),
                   _buildWorkDaysSectionTitle(icon: Icons.business_center_rounded, title: 'working_days'.tr(), color: const Color(0xFF0247C4)),
                   const SizedBox(height: 10),
@@ -304,7 +304,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   const SizedBox(height: 8),
                   Text(
                     offDays.isEmpty ? 'none'.tr() : offDays.map(_weekdayLabel).join(', '),
-                    style: const TextStyle(color: Color(0xFF64748B), fontFamily: 'SF Pro Display'),
+                    style: const TextStyle(color: Color(0xFF64748B), ),
                   ),
                 ],
               ),
@@ -388,7 +388,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   ),
                   Text(dialogTitle,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), )),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton(
@@ -403,7 +403,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                       child: isSaving
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : Text('save'.tr(),
-                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
                     ),
                   ),
                 ],
@@ -411,7 +411,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             ),
             const SizedBox(height: 16),
             Text('holiday_name'.tr(),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
             const SizedBox(height: 6),
             Container(
               height: 38,
@@ -423,9 +423,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                 inputFormatters: [LengthLimitingTextInputFormatter(50)],
                 decoration: InputDecoration.collapsed(
                   hintText: 'enter_holiday_name'.tr(),
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontFamily: 'SF Pro Display'),
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
                 ),
-                style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+                style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, ),
               ),
             ),
             const SizedBox(height: 16),
@@ -444,7 +444,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     showDialog(
       context: parentContext,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -560,7 +560,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -780,7 +780,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('workforce'.tr(),
-                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, )),
               const SizedBox(height: 4),
             ],
           ),
@@ -803,10 +803,10 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('work_schedule'.tr(),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
               const SizedBox(height: 4),
               Text('company_work_days_help'.tr(),
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3, )),
             ],
           ),
         ),
@@ -826,7 +826,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           ),
           icon: const Icon(Icons.edit_calendar_rounded, size: 22, color: Color(0xFFFFFFFF)),
           label: Text('set_workdays'.tr(),
-              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
         ),
       ],
     );
@@ -837,7 +837,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(child: Text('holiday_list'.tr(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display'))),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), ))),
         const SizedBox(width: 16),
         MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -857,7 +857,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             icon: SvgPicture.asset('assets/holidays_icon.svg', width: 22, height: 22,
                 colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
             label: Text('add_holiday'.tr(),
-                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
           ),
         ),
       ],
@@ -892,7 +892,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
         Container(
           width: 38,
           height: 38,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(9)),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(9)),
           child: Icon(icon, color: color, size: 21),
         ),
         const SizedBox(width: 12),
@@ -901,10 +901,10 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
+                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, )),
               const SizedBox(height: 2),
               Text(days, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w500, )),
             ],
           ),
         ),
@@ -918,11 +918,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
         Container(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, color: color, size: 19),
         ),
         const SizedBox(width: 10),
-        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontFamily: 'SF Pro Display')),
+        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700, )),
       ],
     );
   }
@@ -963,7 +963,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(_localizeMonth(month),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w600, )),
         const SizedBox(height: 12),
         ...sorted.map(_buildListItem),
       ],
@@ -983,13 +983,13 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             alignment: Alignment.center,
             decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
             child: Text('${item.day}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF000000), )),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               '${LocalizationHelper.localizeHolidayName(item.name)}${item.isRecurring ? ' (Every Year)' : ''}',
-              style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontWeight: FontWeight.w500, ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -1052,7 +1052,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
                   ),
                 ),
               ),
@@ -1078,12 +1078,12 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               PopupMenuItem(value: 'edit', height: 36, child: Row(children: [
                 SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
                 const SizedBox(width: 8),
-                Text('edit'.tr(), style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                Text('edit'.tr(), style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, )),
               ])),
               PopupMenuItem(value: 'delete', height: 36, child: Row(children: [
-                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn)),
+                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Color(0xFFFF1014), BlendMode.srcIn)),
                 const SizedBox(width: 8),
-                Text('delete'.tr(), style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                Text('delete'.tr(), style: const TextStyle(color: Color(0xFFFF1014), fontSize: 13, fontWeight: FontWeight.w500, )),
               ])),
             ],
           ),
@@ -1108,7 +1108,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('no_holidays_found'.tr(), textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), )),
           ),
         ],
       ),

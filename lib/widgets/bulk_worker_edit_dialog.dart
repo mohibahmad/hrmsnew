@@ -57,12 +57,12 @@ Widget buildDateField({
   required void Function(VoidCallback) setDialogState,
   required void Function(String) onDateSelected,
 }) {
-  final parsed = parseDate(currentValue);
+  final parsed = AppDateUtils.parseDdMmYyyy(currentValue);
   final displayText = currentValue.isNotEmpty
       ? currentValue
       : 'Tap to select date';
   final hasError =
-      (fieldKey == 'dob' && parsed != null && !isAtLeast18(parsed)) ||
+      (fieldKey == 'dob' && parsed != null && !Validators.isAtLeast18(parsed)) ||
       (fieldKey == 'joiningDate' &&
           parsed != null &&
           parsed.isAfter(DateTime.now()));
@@ -102,7 +102,6 @@ Widget buildDateField({
                 displayText,
                 style: TextStyle(
                   fontSize: 15,
-                  fontFamily: 'SF Pro Display',
                   fontWeight: FontWeight.w500,
                   color: currentValue.isEmpty
                       ? const Color(0xFF9CA3AF)
@@ -147,7 +146,7 @@ void showCupertinoDatePickerDialog({
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Date Picker',
-    barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+    barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (_, _, _) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, secondaryAnim, child) {
@@ -175,12 +174,12 @@ void showCupertinoDatePickerDialog({
                         BoxShadow(
                           color: const Color(
                             0xFF0247C4,
-                          ).withValues(alpha: 0.18),
+                          ).withOpacity(0.18),
                           blurRadius: 40,
                           offset: const Offset(0, 12),
                         ),
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
+                          color: Colors.black.withOpacity(0.08),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -205,7 +204,6 @@ void showCupertinoDatePickerDialog({
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF111827),
-                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ],
@@ -227,7 +225,6 @@ void showCupertinoDatePickerDialog({
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF6B7280),
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -270,7 +267,6 @@ void showCupertinoDatePickerDialog({
                                           fontSize: 15,
                                           fontWeight: FontWeight.w600,
                                           color: Color(0xFF374151),
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),
@@ -282,7 +278,7 @@ void showCupertinoDatePickerDialog({
                                 child: GestureDetector(
                                   onTap: () {
                                     if (fieldKey == 'dob' &&
-                                        !isAtLeast18(selected)) {
+                                        !Validators.isAtLeast18(selected)) {
                                       FlashySnackBar.show(
                                         ctx,
                                         message: 'worker_must_be_18'.tr(),
@@ -300,7 +296,7 @@ void showCupertinoDatePickerDialog({
                                       );
                                       return;
                                     }
-                                    final dateStr = formatDateForField(
+                                    final dateStr = AppDateUtils.formatDate(
                                       selected,
                                     );
                                     onDateSelected(dateStr);
@@ -322,7 +318,6 @@ void showCupertinoDatePickerDialog({
                                           fontSize: 15,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),
@@ -402,7 +397,6 @@ Widget buildCurrencyDropdown({
                       color: isSelected
                           ? const Color(0xFF0247C4)
                           : const Color(0xFF111827),
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -426,7 +420,6 @@ Widget buildCurrencyDropdown({
                     : currentCode,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontFamily: 'SF Pro Display',
                   color: Color(0xFF9CA3AF),
                 ),
                 maxLines: 1,

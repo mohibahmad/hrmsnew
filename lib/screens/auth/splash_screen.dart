@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/error_reporter.dart';
 import '../../services/firestore_service.dart';
@@ -187,7 +187,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         color: Color(0xFFFFFFFF),
                         fontSize: 38,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'SF Pro Display',
                         height: 1,
                         letterSpacing: 0,
                       ),

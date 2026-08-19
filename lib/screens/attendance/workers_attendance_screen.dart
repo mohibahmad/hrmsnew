@@ -17,7 +17,7 @@ import '../../services/time_off_service.dart';
 import '../../services/preferences_service.dart';
 import '../../widgets/sidebar_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../utils/utils.dart' as app_date_utils;
 import '../../widgets/notification_bell.dart';
 import '../auth/login_screen.dart';
@@ -1312,7 +1312,6 @@ class _WorkersAttendanceScreenState
               style: const TextStyle(
                 color: textDark,
                 fontSize: 15,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -1397,7 +1396,6 @@ class _WorkersAttendanceScreenState
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
                                               color: textDark,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                         ),
@@ -1452,7 +1450,6 @@ class _WorkersAttendanceScreenState
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
                                                 color: textDark,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                             _buildStatusFilterDropdown(),
@@ -1774,7 +1771,6 @@ class _WorkersAttendanceScreenState
                       color: selected
                           ? const Color(0xFF0247C4)
                           : const Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1814,7 +1810,6 @@ class _WorkersAttendanceScreenState
                 color: Color(0xFFFFFFFF),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
               ),
             ),
             const SizedBox(width: 4),
@@ -1865,7 +1860,6 @@ class _WorkersAttendanceScreenState
               fontSize: 28,
               fontWeight: FontWeight.w800,
               color: textDark,
-              fontFamily: 'SF Pro Display',
             ),
           ),
           const Spacer(),
@@ -1916,7 +1910,6 @@ class _WorkersAttendanceScreenState
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
-                  fontFamily: 'SF Pro Display',
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -2148,7 +2141,7 @@ class _WorkersAttendanceScreenState
                           BoxShadow(
                             color: const Color(
                               0xFF000000,
-                            ).withValues(alpha: 0.2),
+                            ).withOpacity(0.2),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -2179,7 +2172,6 @@ class _WorkersAttendanceScreenState
                                     color: textDark,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                                 const Spacer(),
@@ -2304,7 +2296,6 @@ class _WorkersAttendanceScreenState
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -2334,7 +2325,6 @@ class _WorkersAttendanceScreenState
                                                   : '${(o['key'] as String? ?? '').tr()} (${o['balance'] ?? 0})',
                                               style: TextStyle(
                                                 fontSize: 13,
-                                                fontFamily: 'SF Pro Display',
                                                 color: o['disabled'] == 'true'
                                                     ? Colors.grey
                                                     : Colors.black,
@@ -2364,7 +2354,6 @@ class _WorkersAttendanceScreenState
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -2393,7 +2382,6 @@ class _WorkersAttendanceScreenState
                                             alpha: 0.38,
                                           ),
                                           fontSize: 13,
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),
@@ -2432,7 +2420,6 @@ class _WorkersAttendanceScreenState
                                           color: Colors.white,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13,
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),
@@ -2801,7 +2788,6 @@ class _WorkersAttendanceScreenState
                                                 color: Color(0xFFFFFFFF),
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 13,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                     ),
@@ -2856,7 +2842,6 @@ class _WorkersAttendanceScreenState
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0247C4),
-              fontFamily: 'SF Pro Display',
             ),
           ),
           if (isCompanyOffDay) ...[
@@ -2867,7 +2852,6 @@ class _WorkersAttendanceScreenState
               style: const TextStyle(
                 fontSize: 14,
                 color: textMuted,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -2912,7 +2896,6 @@ class _WorkersAttendanceScreenState
                 color: Color(0xFF0247C1),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -3013,7 +2996,6 @@ class _WorkersAttendanceScreenState
                 color: Color(0xFF0247C1),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -3087,7 +3069,6 @@ class _WorkersAttendanceScreenState
                     : Colors.black,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -3148,7 +3129,6 @@ class WorkerListItem extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                     color: textDark,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                 ),
@@ -3158,7 +3138,6 @@ class WorkerListItem extends StatelessWidget {
                   style: const TextStyle(
                     color: textMuted,
                     fontSize: 13,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                 ),
@@ -3244,7 +3223,6 @@ class WorkerListItem extends StatelessWidget {
                           : const Color(0xFF64748B),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -3294,7 +3272,6 @@ class _AttendanceActionButton extends StatelessWidget {
             color: Color(0xFFFFFFFF),
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ),
@@ -3347,7 +3324,6 @@ class TodayAttendanceItem extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: textDark,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
@@ -3381,7 +3357,6 @@ class TodayAttendanceItem extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: textDark,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               if (data["desc"] != null) ...[
@@ -3392,7 +3367,6 @@ class TodayAttendanceItem extends StatelessWidget {
                     fontSize: 12,
                     color: textMuted,
                     height: 1.3,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 2,
                 ),
@@ -3464,7 +3438,6 @@ class StatusPill extends StatelessWidget {
           color: textColor,
           fontWeight: FontWeight.w600,
           fontSize: 12,
-          fontFamily: 'SF Pro Display',
         ),
         textAlign: TextAlign.center,
         maxLines: 1,

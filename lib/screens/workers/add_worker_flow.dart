@@ -18,7 +18,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/error_reporter.dart';
@@ -1922,7 +1922,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                               color: Color(0xFF000000),
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           Text(
@@ -1933,7 +1932,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                               color: Colors.black,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -1988,7 +1986,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                         : const Color(0xFF555555),
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                         ),
@@ -2017,7 +2014,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                           BoxShadow(
                             color: const Color(
                               0xFF000000,
-                            ).withValues(alpha: 0.02),
+                            ).withOpacity(0.02),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -2032,14 +2029,14 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                             width: 1,
                             color: const Color(
                               0xFFE0E0E0,
-                            ).withValues(alpha: 0.5),
+                            ).withOpacity(0.5),
                           ),
                           Expanded(child: _buildTopTab('experience'.tr(), 1)),
                           VerticalDivider(
                             width: 1,
                             color: const Color(
                               0xFFE0E0E0,
-                            ).withValues(alpha: 0.5),
+                            ).withOpacity(0.5),
                           ),
                           Expanded(
                             child: _buildTopTab('documentation'.tr(), 2),
@@ -2132,7 +2129,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                             barrierLabel: 'DeleteCvDialog',
                             barrierColor: const Color(
                               0xFF0F172A,
-                            ).withValues(alpha: 0.3),
+                            ).withOpacity(0.3),
                             transitionDuration: const Duration(
                               milliseconds: 400,
                             ),
@@ -2167,7 +2164,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                             BoxShadow(
                                               color: const Color(
                                                 0xFF000000,
-                                              ).withValues(alpha: 0.15),
+                                              ).withOpacity(0.15),
                                               blurRadius: 24,
                                               offset: const Offset(0, 8),
                                             ),
@@ -2198,7 +2195,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                 fontSize: 22,
                                                 fontWeight: FontWeight.w800,
                                                 color: Color(0xFF000000),
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                               textAlign: TextAlign.center,
                                             ),
@@ -2210,7 +2206,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                 fontSize: 14,
                                                 color: Color(0xFF64748B),
                                                 fontWeight: FontWeight.w400,
-                                                fontFamily: 'SF Pro Display',
                                                 height: 1.4,
                                               ),
                                             ),
@@ -2247,7 +2242,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                           fontWeight:
                                                               FontWeight.bold,
                                                           fontFamily:
-                                                              'SF Pro Display',
+                                                              'SF Pro',
                                                         ),
                                                       ),
                                                     ),
@@ -2308,7 +2303,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                           fontWeight:
                                                               FontWeight.bold,
                                                           fontFamily:
-                                                              'SF Pro Display',
+                                                              'SF Pro',
                                                         ),
                                                       ),
                                                     ),
@@ -2363,7 +2358,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           color: const Color(0xFF000000),
           fontSize: 15,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          fontFamily: 'SF Pro Display',
         ),
       ),
     );
@@ -2429,7 +2423,7 @@ class WorkerDetailFormSection extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, secondaryAnim, child) {
@@ -2457,12 +2451,12 @@ class WorkerDetailFormSection extends StatelessWidget {
                           BoxShadow(
                             color: const Color(
                               0xFF0247C4,
-                            ).withValues(alpha: 0.18),
+                            ).withOpacity(0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withOpacity(0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -2487,7 +2481,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF111827),
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -2508,7 +2501,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF6B7280),
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -2551,7 +2543,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Color(0xFF374151),
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -2580,7 +2571,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.white,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ),
@@ -2617,7 +2607,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'SF Pro Display',
               ),
             ),
             GestureDetector(
@@ -2638,7 +2627,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                         color: Color(0xFF000000),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -2827,7 +2815,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                       color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -2844,7 +2831,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           BoxShadow(
                             color: const Color(
                               0xFF000000,
-                            ).withValues(alpha: 0.01),
+                            ).withOpacity(0.01),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           ),
@@ -2861,7 +2848,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                       color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -2923,14 +2909,13 @@ class WorkerDetailFormSection extends StatelessWidget {
           right: 0,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: Colors.black.withValues(alpha: 0.54),
+            color: Colors.black.withOpacity(0.54),
             child: Text(
               profileImageName ?? 'worker_profile'.tr(),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
@@ -2945,7 +2930,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   context: context,
                   barrierDismissible: true,
                   barrierLabel: 'RemoveProfileImage',
-                  barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                  barrierColor: const Color(0xFF0F172A).withOpacity(0.3),
                   transitionDuration: const Duration(milliseconds: 400),
                   pageBuilder: (context, animation, secondaryAnimation) =>
                       const SizedBox(),
@@ -2976,7 +2961,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                       BoxShadow(
                                         color: const Color(
                                           0xFF000000,
-                                        ).withValues(alpha: 0.15),
+                                        ).withOpacity(0.15),
                                         blurRadius: 24,
                                         offset: const Offset(0, 8),
                                       ),
@@ -3008,7 +2993,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                           fontSize: 22,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFF000000),
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                       const SizedBox(height: 12),
@@ -3019,7 +3003,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                                           fontSize: 14,
                                           color: Color(0xFF64748B),
                                           fontWeight: FontWeight.w400,
-                                          fontFamily: 'SF Pro Display',
                                           height: 1.4,
                                         ),
                                       ),
@@ -3048,7 +3031,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.bold,
                                                     fontFamily:
-                                                        'SF Pro Display',
+                                                        'SF Pro',
                                                   ),
                                                 ),
                                               ),
@@ -3075,7 +3058,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     BoxShadow(
                                                       color: const Color(
                                                         0xFFEF4444,
-                                                      ).withValues(alpha: 0.2),
+                                                      ).withOpacity(0.2),
                                                       blurRadius: 8,
                                                       offset: const Offset(
                                                         0,
@@ -3091,7 +3074,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.bold,
                                                     fontFamily:
-                                                        'SF Pro Display',
+                                                        'SF Pro',
                                                   ),
                                                 ),
                                               ),
@@ -3112,7 +3095,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.54),
+                  color: Colors.black.withOpacity(0.54),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -3135,7 +3118,6 @@ class WorkerDetailFormSection extends StatelessWidget {
             color: Color(0xFF000000),
             fontWeight: FontWeight.w700,
             fontSize: 14,
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 6),
@@ -3143,10 +3125,9 @@ class WorkerDetailFormSection extends StatelessWidget {
           'tap_to_upload_profile_image'.tr(),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black.withValues(alpha: 0.54),
+            color: Colors.black.withOpacity(0.54),
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ],
@@ -3252,14 +3233,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     }
   }
 
-  String _localizeType1(String value) =>
-      LocalizationHelper.localizeType1(value);
-  String _localizeType2(String value) =>
-      LocalizationHelper.localizeType2(value);
-  String _localizeExperience(String value) =>
-      LocalizationHelper.localizeExperience(value);
-  String _localizeEducation(String value) =>
-      LocalizationHelper.localizeEducation(value);
 
   void _parseSelectedDate({bool includeLocalizedMonth = false}) {
     final dateStr = widget.selectedJoiningDate?.trim() ?? '';
@@ -3325,7 +3298,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'SF Pro Display',
               ),
             ),
             Row(
@@ -3359,7 +3331,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               color: Color(0xFF000000),
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ],
@@ -3389,7 +3360,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             color: Color(0xFF000000),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -3444,7 +3414,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Mid-Level',
                               'Senior',
                             ],
-                            itemLabelBuilder: (val) => _localizeExperience(val),
+                            itemLabelBuilder: (val) => LocalizationHelper.localizeExperience(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.experienceLevelController.text = val;
@@ -3468,7 +3438,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Contract',
                               'Freelance',
                             ],
-                            itemLabelBuilder: (val) => _localizeType1(val),
+                            itemLabelBuilder: (val) => LocalizationHelper.localizeType1(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type1Controller.text = val;
@@ -3489,7 +3459,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Master',
                               'Other',
                             ],
-                            itemLabelBuilder: (val) => _localizeEducation(val),
+                            itemLabelBuilder: (val) => LocalizationHelper.localizeEducation(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.educationController.text = val;
@@ -3508,7 +3478,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             selectedValue: widget.type2Controller.text,
                             hint: 'enter_your_attendance_type'.tr(),
                             items: const ['On-Site', 'Remote', 'Hybrid'],
-                            itemLabelBuilder: (val) => _localizeType2(val),
+                            itemLabelBuilder: (val) => LocalizationHelper.localizeType2(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type2Controller.text = val;
@@ -3537,7 +3507,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       color: Color(0xFF000000),
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -3550,7 +3519,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         BoxShadow(
                           color: const Color(
                             0xFF000000,
-                          ).withValues(alpha: 0.04),
+                          ).withOpacity(0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3584,7 +3553,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
                                   letterSpacing: 1.0,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -3781,7 +3749,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                               fontWeight: isSelected
                                                   ? FontWeight.bold
                                                   : FontWeight.w500,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                         );
@@ -3810,7 +3777,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             color: Color(0xFF000000),
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 16),
@@ -3902,7 +3868,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
 
   Widget _buildDayPill(String text, bool isRed, {bool isGreen = false}) {
     Color bg = isRed
-        ? Colors.red
+        ? Color(0xFFFF1014)
         : (isGreen ? Colors.green : const Color(0xFF0B50C3));
     final display = text.length > 3 ? text.substring(0, 3) : text;
     return Container(
@@ -3918,7 +3884,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           color: Color(0xFFFFFFFF),
           fontSize: 8,
           fontWeight: FontWeight.bold,
-          fontFamily: 'SF Pro Display',
         ),
       ),
     );
@@ -3977,7 +3942,6 @@ class DocumentationSection extends StatelessWidget {
                 color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'SF Pro Display',
               ),
             ),
             if (onPrevStep != null)
@@ -4008,7 +3972,6 @@ class DocumentationSection extends StatelessWidget {
                           color: Color(0xFF000000),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -4036,7 +3999,6 @@ class DocumentationSection extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ),
@@ -4072,7 +4034,6 @@ class DocumentationSection extends StatelessWidget {
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
                                       color: Color(0xFF000000),
                                     ),
                                   ),
@@ -4101,7 +4062,6 @@ class DocumentationSection extends StatelessWidget {
                                               color: Colors.white,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                           const SizedBox(width: 6),
@@ -4134,7 +4094,6 @@ class DocumentationSection extends StatelessWidget {
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
@@ -4162,7 +4121,6 @@ class DocumentationSection extends StatelessWidget {
                                               color: Colors.white,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                           const SizedBox(width: 6),
@@ -4210,7 +4168,6 @@ class DocumentationSection extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                         const Spacer(),
@@ -4235,7 +4192,6 @@ class DocumentationSection extends StatelessWidget {
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -4302,7 +4258,7 @@ class DocumentationSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: hasFile
-                ? const Color(0xFF0B50C3).withValues(alpha: 0.5)
+                ? const Color(0xFF0B50C3).withOpacity(0.5)
                 : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
@@ -4353,7 +4309,7 @@ class DocumentationSection extends StatelessWidget {
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black.withValues(alpha: 0.54),
+                      color: Colors.black.withOpacity(0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -4369,7 +4325,6 @@ class DocumentationSection extends StatelessWidget {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -4401,7 +4356,6 @@ class DocumentationSection extends StatelessWidget {
             color: Colors.grey.shade400,
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            fontFamily: 'SF Pro Display',
           ),
         ),
         const SizedBox(height: 4),
@@ -4410,7 +4364,6 @@ class DocumentationSection extends StatelessWidget {
           style: TextStyle(
             color: Colors.grey.shade300,
             fontSize: 12,
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ],
@@ -4436,7 +4389,6 @@ class DocumentationSection extends StatelessWidget {
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
               const SizedBox(width: 8),
@@ -4578,7 +4530,6 @@ class DocumentationSection extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
-                              fontFamily: 'SF Pro Display',
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -4641,7 +4592,6 @@ Widget _buildInputField(
           color: Color(0xFF000000),
           fontSize: 14,
           fontWeight: FontWeight.bold,
-          fontFamily: 'SF Pro Display',
         ),
       ),
       const SizedBox(height: 8),
@@ -4705,14 +4655,12 @@ Widget _buildInputField(
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
               color: Colors.grey.shade400,
               fontSize: 14,
-              fontFamily: 'SF Pro Display',
             ),
             border: InputBorder.none,
             isDense: true,
@@ -4726,7 +4674,6 @@ Widget _buildInputField(
               color: Color(0xFF6B7280),
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
             ),
             suffixIcon: isDropdown
                 ? Icon(
@@ -4788,7 +4735,6 @@ Widget _buildCustomRadio({
               color: textColor,
               fontSize: 16,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -4988,7 +4934,6 @@ class _DocPreviewState extends State<DocPreview> {
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],
@@ -5013,7 +4958,6 @@ class _DocPreviewState extends State<DocPreview> {
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade600,
-                fontFamily: 'SF Pro Display',
               ),
               textAlign: TextAlign.center,
             ),
@@ -5034,7 +4978,6 @@ class _DocPreviewState extends State<DocPreview> {
             fontSize: 13,
             height: 1.5,
             color: Color(0xFF333333),
-            fontFamily: 'SF Pro Display',
           ),
         ),
       ),
@@ -5209,7 +5152,6 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ],

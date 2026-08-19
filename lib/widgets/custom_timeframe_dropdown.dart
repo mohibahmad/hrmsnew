@@ -184,7 +184,6 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                         ? const Color(0xFF0247C4)
                                         : Colors.grey.shade400,
                                     fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -255,7 +254,6 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                     color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w600,
                     fontSize: 17.0,
-                    fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

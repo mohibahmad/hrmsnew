@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dashboard_chart_service.dart';
 import '../../services/dummy_data.dart';
@@ -967,7 +967,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('dashboard'.tr(),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
                     CustomTimeframeDropdown(
                       selectedPeriod: _selectedPeriod,
                       options: const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year'],
@@ -1009,9 +1009,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(flex: 1, child: Text('attendance_overview'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display'))),
+                    Expanded(flex: 1, child: Text('attendance_overview'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, ))),
                     const SizedBox(width: 6),
-                    Expanded(flex: 1, child: Text('leave_types'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display'))),
+                    Expanded(flex: 1, child: Text('leave_types'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, ))),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -1042,7 +1042,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text('upcoming_holidays'.tr(),
-                    style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+                    style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, )),
                 const SizedBox(height: 24),
                 _buildHolidaysCard(),
               ],
@@ -1060,7 +1060,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [BoxShadow(color: const Color(0xFFFFFFFF).withValues(alpha: 0.45), blurRadius: 12, spreadRadius: 1.5)],
+        boxShadow: [BoxShadow(color: const Color(0xFFFFFFFF).withOpacity(0.45), blurRadius: 12, spreadRadius: 1.5)],
       ),
       child: Builder(
         builder: (context) {
@@ -1077,7 +1077,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     SvgPicture.asset('assets/holidays_icon.svg', height: 50, width: 50, colorFilter: const ColorFilter.mode(Color(0xFF9CA3AF), BlendMode.srcIn)),
                     const SizedBox(height: 12),
-                    Text('no_holidays_yet'.tr(), style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF), fontFamily: 'SF Pro Display')),
+                    Text('no_holidays_yet'.tr(), style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF), )),
                   ],
                 ),
               ),
@@ -1087,7 +1087,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('overview'.tr(), style: const TextStyle(color: Color(0xFF000000), fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+              Text('overview'.tr(), style: const TextStyle(color: Color(0xFF000000), fontSize: 18, fontWeight: FontWeight.w800, )),
               const SizedBox(height: 40),
               LayoutBuilder(
                 builder: (context, constraints) {

@@ -106,7 +106,6 @@ class SparklineCard extends StatelessWidget {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 18,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -129,7 +128,6 @@ class SparklineCard extends StatelessWidget {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
-                                  fontFamily: 'SF Pro Display',
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -219,7 +217,6 @@ class SparklineCard extends StatelessWidget {
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       );
                                     }
@@ -243,7 +240,7 @@ class SparklineCard extends StatelessWidget {
                                     .map((s) => FlSpot(s.x, s.y * animValue))
                                     .toList(),
                                 isCurved: true,
-                                color: lineColor.withValues(alpha: 0.06),
+                                color: lineColor.withOpacity(0.06),
                                 barWidth: 1.2,
                                 isStrokeCapRound: false,
                                 dotData: const FlDotData(show: false),
@@ -274,24 +271,24 @@ class SparklineCard extends StatelessWidget {
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withValues(alpha: 0.50)
+                                            ).withOpacity(0.50)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withValues(alpha: 0.50),
+                                            ).withOpacity(0.50),
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withValues(alpha: 0.20)
+                                            ).withOpacity(0.20)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withValues(alpha: 0.20),
+                                            ).withOpacity(0.20),
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withValues(alpha: 0.0)
+                                            ).withOpacity(0.0)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withValues(alpha: 0.0),
+                                            ).withOpacity(0.0),
                                     ],
                                     stops: const [0.0, 0.3, 0.8],
                                     begin: Alignment.topCenter,
@@ -336,7 +333,6 @@ class SparklineCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF9CA3AF),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],

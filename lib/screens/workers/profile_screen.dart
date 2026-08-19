@@ -15,7 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image/image.dart' as img;
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/error_reporter.dart';
 import '../../services/firestore_service.dart';
@@ -1056,7 +1056,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   void _showPreviewDialog() {
     showDialog(
       context: context,
-      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
+      barrierColor: _kPrimaryBlue.withOpacity(0.5),
       builder: (_) => ProfilePreviewDialog(
         businessName: _businessNameController.text,
         companyId: _companyIdController.text,
@@ -1766,7 +1766,7 @@ class ProfilePreviewDialog extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: _kBlack.withValues(alpha: 0.15),
+                color: _kBlack.withOpacity(0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),

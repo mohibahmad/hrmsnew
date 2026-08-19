@@ -63,7 +63,6 @@ class TotalWorkersCard extends StatelessWidget {
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 18,
-                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ),
@@ -73,7 +72,6 @@ class TotalWorkersCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          fontFamily: 'SF Pro Display',
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -121,7 +119,6 @@ class TotalWorkersCard extends StatelessWidget {
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
                                           color: Color(0xFF0F172A),
-                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),
@@ -196,7 +193,6 @@ class TotalWorkersCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF9CA3AF),
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ],
@@ -234,7 +230,6 @@ class TotalWorkersCard extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        fontFamily: 'SF Pro Display',
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -247,7 +242,6 @@ class TotalWorkersCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                       color: Color(0xFF334155),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
@@ -258,7 +252,6 @@ class TotalWorkersCard extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF64748B),
-                  fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

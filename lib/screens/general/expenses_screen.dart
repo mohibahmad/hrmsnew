@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/firestore_service.dart';
@@ -428,7 +428,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     await showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -510,7 +510,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       color: Color(0xFFFFFFFF),
       fontSize: 14,
       fontWeight: FontWeight.w600,
-      fontFamily: 'SF Pro Display',
     );
     // Measure the label so the loading spinner swaps in at the exact same
     // width. Otherwise the button shrinks when saving starts and (being
@@ -535,7 +534,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
         ),
         Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF000000), )),
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
@@ -600,7 +599,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('expense_title'.tr(),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
                   const SizedBox(height: 8),
                   Container(
                     height: 215,
@@ -620,7 +619,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: InputBorder.none,
                       ),
-                      style: const TextStyle(fontSize: 15, color: Colors.black, fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 15, color: Colors.black, ),
                     ),
                   ),
                 ],
@@ -734,7 +733,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     bool isAmount = false,
     String? prefixText,
   }) {
-    const fieldStyle = TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display');
+    const fieldStyle = TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w500, );
     final textField = TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -762,7 +761,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
         const SizedBox(height: 8),
         Container(
           height: 44,
@@ -857,7 +856,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('expenses'.tr(),
-                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display')),
+                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, )),
             ],
           ),
           const Spacer(),
@@ -929,7 +928,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             icon: SvgPicture.asset('assets/add_expense.svg', width: 18, height: 18,
                 colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
             label: Text('add_expenses'.tr(),
-                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
           ),
         ),
       ],
@@ -948,7 +947,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         const SizedBox(width: 24),
         Expanded(child: _buildCard(
           title: 'total_expense'.tr(),
-          titleColor: Colors.red,
+          titleColor: Color(0xFFFF1014),
           amount: _formatCurrency(_totalExpenseSum),
           iconWidget: SvgPicture.asset('assets/total_expense.svg', width: 44, height: 44),
         )),
@@ -977,14 +976,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: TextStyle(fontSize: 15, color: titleColor, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+                    style: TextStyle(fontSize: 15, color: titleColor, fontWeight: FontWeight.bold, ),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 12),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(amount,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF000000), ),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
               ],
@@ -1002,7 +1001,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text('expenses_list'.tr(),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
         CustomTimeframeDropdown(
           selectedPeriod: _selectedPeriod,
           options: const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year', 'All Time'],
@@ -1054,7 +1053,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   Widget _tableHeader(String title, {TextAlign? textAlign}) {
     return Text(title, textAlign: textAlign,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ),
         maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 
@@ -1074,25 +1073,25 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             Expanded(flex: 3, child: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Text(name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 3, child: Padding(
               padding: const EdgeInsets.only(left: 40, right: 16),
               child: Text(category,
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 3, child: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Text(date, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontFamily: 'SF Pro Display'),
+                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             )),
             Expanded(flex: 2, child: Text(
               _isPayrollExpense(doc) ? _formatFullCurrency(amount) : _formatCurrency(amount),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Color(0xFF0247C4), fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(fontSize: 15, color: Color(0xFF0247C4), fontWeight: FontWeight.w600, ),
             )),
             _buildActionMenu(doc),
           ],
@@ -1128,7 +1127,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
                 const SizedBox(width: 8),
                 Text('edit_expense'.tr(),
-                    style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                    style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, )),
               ],
             ),
           ),
@@ -1138,10 +1137,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: Row(
               children: [
                 SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16,
-                    colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn)),
+                    colorFilter: const ColorFilter.mode(Color(0xFFFF1014), BlendMode.srcIn)),
                 const SizedBox(width: 8),
                 Text('delete'.tr(),
-                    style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                    style: const TextStyle(color: Color(0xFFFF1014), fontSize: 13, fontWeight: FontWeight.w500, )),
               ],
             ),
           ),
@@ -1164,7 +1163,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
           const SizedBox(height: 16),
           Text('add_expenses'.tr(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), fontFamily: 'SF Pro Display')),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), )),
         ],
       ),
     );

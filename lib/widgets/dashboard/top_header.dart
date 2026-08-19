@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../utils/helpers.dart';
 
@@ -59,7 +59,6 @@ class TopHeader extends ConsumerWidget {
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -70,7 +69,6 @@ class TopHeader extends ConsumerWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
@@ -109,7 +107,6 @@ class TopHeader extends ConsumerWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
-                                fontFamily: 'SF Pro Display',
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hrms/utils/utils.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/attendance_report_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
@@ -1009,7 +1009,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                     ? 'all_filter'.tr()
                     : LocalizationHelper.localizePosition(allFilters[i]),
               ),
-              if (i < allFilters.length - 1) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withValues(alpha: 0.5)),
+              if (i < allFilters.length - 1) Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
             ],
           ],
         ),
@@ -1209,8 +1209,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   onTap: () => _navigateToAssign(doc),
                   mouseCursor: SystemMouseCursors.click,
                   borderRadius: BorderRadius.circular(6),
-                  splashColor: _kActionBlue.withValues(alpha: 0.15),
-                  highlightColor: _kActionBlue.withValues(alpha: 0.05),
+                  splashColor: _kActionBlue.withOpacity(0.15),
+                  highlightColor: _kActionBlue.withOpacity(0.05),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -1532,7 +1532,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      barrierColor: _kBlue.withValues(alpha: 0.5),
+      barrierColor: _kBlue.withOpacity(0.5),
       builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1547,7 +1547,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: _kBlack.withValues(alpha: 0.15),
+                  color: _kBlack.withOpacity(0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1961,7 +1961,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Colors.black.withOpacity(0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -2028,7 +2028,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                         color: LeaveColors.getBgColor(type),
                         borderRadius: BorderRadius.circular(5),
                         border: Border.all(
-                          color: color.withValues(alpha: 0.25),
+                          color: color.withOpacity(0.25),
                         ),
                       ),
                       child: Text(
@@ -2347,7 +2347,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
-      barrierColor: _kBlue.withValues(alpha: 0.5),
+      barrierColor: _kBlue.withOpacity(0.5),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {

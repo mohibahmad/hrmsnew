@@ -39,6 +39,21 @@ class AuthService {
     return _auth.currentUser;
   }
 
+  static Stream<bool> googleEnabledStream() {
+    return FirebaseFirestore.instance
+        .collection('social_hrms')
+        .doc('google')
+        .snapshots()
+        .map((doc) {
+      final raw = doc.data()?['googleEnable'];
+      if (raw is bool) return raw;
+      if (raw is num) return raw != 0;
+      final normalized = raw?.toString().trim().toLowerCase();
+      if (normalized == 'false' || normalized == '0') return false;
+      return true;
+    });
+  }
+
   Future<void> _clearSeededDummyDataIfNeeded() async {
     try {
       await FirestoreService.instance.clearDummyDataForCurrentUser();

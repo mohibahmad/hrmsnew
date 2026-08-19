@@ -10,7 +10,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/preferences_service.dart';
@@ -77,7 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             filter: ImageFilter.blur(sigmaX: 12 * animation.value, sigmaY: 12 * animation.value),
             child: FadeTransition(
               opacity: animation,
-              child: Container(color: const Color(0xFF0247C4).withValues(alpha: 0.18)),
+              child: Container(color: const Color(0xFF0247C4).withOpacity(0.18)),
             ),
           ),
         ),
@@ -152,7 +152,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(10),
-                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8))],
                 ),
                 child: Form(
                   key: formKey,
@@ -170,7 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text('reset_password'.tr(),
-                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, )),
                             ),
                           ],
                         ),
@@ -181,10 +181,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('reset_password_email_desc'.tr(),
-                                style: const TextStyle(fontSize: 14, height: 1.4, color: Color(0xFF64748B), fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(fontSize: 14, height: 1.4, color: Color(0xFF64748B), )),
                             const SizedBox(height: 20),
                             Text('email_label'.tr(),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827), fontFamily: 'SF Pro Display')),
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827), )),
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: emailController,
@@ -230,7 +230,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                     ),
-                                    child: Text('cancel'.tr(), style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display')),
+                                    child: Text('cancel'.tr(), style: const TextStyle(fontWeight: FontWeight.w600, )),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -244,7 +244,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     ),
                                     child: isSending
                                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                        : Text('send_reset_link'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                                        : Text('send_reset_link'.tr(), style: const TextStyle(fontWeight: FontWeight.bold, )),
                                   ),
                                 ),
                               ],
@@ -347,7 +347,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8))],
                 ),
                 child: Form(
                   key: deleteFormKey,
@@ -361,16 +361,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 20),
                       Text('delete_account_question'.tr(),
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
                       const SizedBox(height: 12),
                       Text('delete_account_desc'.tr(), textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w400, fontFamily: 'SF Pro Display', height: 1.4)),
+                          style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w400, height: 1.4)),
                       if (usesPasswordProvider) ...[
                         const SizedBox(height: 20),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text('password_label'.tr(),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827), fontFamily: 'SF Pro Display')),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827), )),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
@@ -406,7 +406,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   height: 48, alignment: Alignment.center,
                                   decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
                                   child: Text('cancel'.tr(),
-                                      style: const TextStyle(color: Color(0xFF000000), fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                                      style: const TextStyle(color: Color(0xFF000000), fontSize: 15, fontWeight: FontWeight.bold, )),
                                 ),
                               ),
                             ),
@@ -423,12 +423,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFEF4444),
                                     borderRadius: BorderRadius.circular(6),
-                                    boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                                    boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
                                   ),
                                   child: dialogIsDeleting
                                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                       : Text('delete_account'.tr(),
-                                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 15, fontWeight: FontWeight.bold, )),
                                 ),
                               ),
                             ),
@@ -534,14 +534,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: Colors.grey.shade300, width: 1),
-                      boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                      boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text('select_language'.tr(), textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), fontFamily: 'SF Pro Display')),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), )),
                         const SizedBox(height: 16),
                         ...allLanguages.map((lang) {
                           final isSel = currentLang == lang;
@@ -563,7 +563,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(lang, style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+                                  Text(lang, style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w500, )),
                                   if (isSel) const Icon(Icons.check, color: Color(0xFF0247C4), size: 16),
                                 ],
                               ),
@@ -631,7 +631,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('settings'.tr(),
-                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, height: 1.0, letterSpacing: 0)),
             ],
           ),
           const Spacer(),
@@ -684,7 +684,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Expanded(
             child: Text(text,
                 style: TextStyle(fontSize: 16, color: disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
-                    fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                    fontWeight: FontWeight.w500, height: 1.0, letterSpacing: 0)),
           ),
           MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -708,7 +708,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Text(buttonText,
                         style: TextStyle(fontSize: 16,
                             color: disabled ? const Color(0xFFAAAAAA) : buttonColor != null ? Colors.white : const Color(0xFF000000),
-                            fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                            fontWeight: FontWeight.w500, height: 1.0, letterSpacing: 0)),
                   ],
                 ),
               ),
@@ -736,10 +736,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(width: 16),
               Text('language'.tr(),
-                  style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                  style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, height: 1.0, letterSpacing: 0)),
               const Spacer(),
               Text(_getCurrentLanguageName(),
-                  style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                  style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, height: 1.0, letterSpacing: 0)),
               const SizedBox(width: 8),
               const Icon(Icons.arrow_drop_down, color: Color(0xFF000000), size: 28),
             ],
@@ -769,7 +769,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display', height: 1.0, letterSpacing: 0)),
+                    style: const TextStyle(fontSize: 16, color: Color(0xFF000000), fontWeight: FontWeight.w500, height: 1.0, letterSpacing: 0)),
               ),
             ],
           ),

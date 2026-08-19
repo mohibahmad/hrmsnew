@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../utils/ui_helpers.dart';
 import '../../utils/auth_widgets.dart';
-import '../../providers.dart';
+import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../shared/app_constants.dart';
 
@@ -135,10 +135,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('welcome_to_hrms'.tr(), maxLines: 1,
-                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 0.9, letterSpacing: 1.8)),
+                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display', height: 0.9, letterSpacing: 1.8)),
                     const SizedBox(height: 10),
                     Text('welcome_banner_subtitle'.tr(), maxLines: 2,
-                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro', height: 1.2, letterSpacing: 1.8)),
+                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display', height: 1.2, letterSpacing: 1.8)),
                   ],
                 ),
               ),
@@ -160,7 +160,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                       boxShadow: [
                         const BoxShadow(color: Colors.white, blurRadius: 0, spreadRadius: 3),
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(10, 9)),
+                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(10, 9)),
                       ],
                     ),
                     child: ClipRRect(
@@ -192,11 +192,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 Center(child: Image.asset('assets/app_icon.png', height: 120, fit: BoxFit.contain)),
                 const SizedBox(height: 50),
                 Text('reset_password'.tr(),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black, fontFamily: 'SF Pro Display', letterSpacing: -0.5, height: 1.2)),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -0.5, height: 1.2)),
                 const SizedBox(height: 4),
                 Text(
                   _emailSent ? 'forgot_password_subtitle_reset'.tr() : 'forgot_password_link_subtitle'.tr(),
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade800, fontFamily: 'SF Pro Display', height: 1.0),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade800, height: 1.0),
                 ),
                 const SizedBox(height: 20),
                 _emailSent ? _buildEmailSentContent() : _buildEmailForm(),
@@ -217,7 +217,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Center(child: Image.asset('assets/langauge_icon.png', width: 24, height: 24, color: const Color(0xFF0044C9))),
       ),
@@ -234,18 +234,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildFieldLabel('email_label'.tr()),
-              TextFormField(
+              AuthTextField(
                 controller: _emailController,
+                label: 'email_label'.tr(),
+                hint: 'email_hint'.tr(),
                 enabled: !_isLoading,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                textCapitalization: TextCapitalization.none,
-                autocorrect: false,
-                enableSuggestions: false,
                 onFieldSubmitted: (_) => _sendResetEmail(),
-                style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
-                decoration: _buildInputDecoration('email_hint'.tr()),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) return 'email_required'.tr();
                   if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) return 'email_invalid'.tr();
@@ -285,12 +281,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   children: [
                     Text(
                       'password_reset_email_sent'.tr(namedArgs: {'email': _emailController.text.trim()}),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'check_email_reset_link'.tr(namedArgs: {'email': _emailController.text.trim()}),
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontFamily: 'SF Pro Display'),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF475569), ),
                     ),
                   ],
                 ),
@@ -316,7 +312,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0044C9),
           foregroundColor: const Color(0xFFFFFFFF),
-          disabledBackgroundColor: const Color(0xFF0044C9).withValues(alpha: 0.6),
+          disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           elevation: 0,
         ),
@@ -327,7 +323,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF))),
               )
             : Text(label,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display')),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF), )),
       ),
     );
   }
@@ -335,11 +331,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Widget _buildTapText({required String label, VoidCallback? onTap}) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display'),
+        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500, ),
         children: [
           TextSpan(
             text: label,
-            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+            style: const TextStyle(color: Color(0xFFFF1014), fontWeight: FontWeight.bold, ),
             recognizer: TapGestureRecognizer()..onTap = onTap,
           ),
         ],

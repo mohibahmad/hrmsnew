@@ -263,7 +263,6 @@ const Map<String, String> kHeaderMap = {
   'currency': 'currency',
 };
 
-bool isAtLeast18(DateTime dob) => Validators.isAtLeast18(dob);
 
 String? normalizeEducation(String input) {
   final normalized = input.trim().toLowerCase();
@@ -289,12 +288,6 @@ String? normalizeEducation(String input) {
 bool isDateField(String fieldKey) =>
     fieldKey == 'dob' || fieldKey == 'joiningDate';
 
-DateTime? parseDate(String dateStr) {
-  if (dateStr.trim().isEmpty) return null;
-  return AppDateUtils.parseDdMmYyyy(dateStr);
-}
-
-String formatDateForField(DateTime date) => AppDateUtils.formatDate(date);
 
 Map<String, String> validateWorkerData(
   Map<String, dynamic> workerData, {
@@ -336,7 +329,7 @@ Map<String, String> validateWorkerData(
     final dob = AppDateUtils.parseDdMmYyyy(dobStr);
     if (dob == null) {
       fieldErrors['dob'] = 'validation_invalid_date'.tr();
-    } else if (!isAtLeast18(dob)) {
+    } else if (!Validators.isAtLeast18(dob)) {
       fieldErrors['dob'] = 'validation_min_age'.tr();
     }
   }
@@ -1624,7 +1617,6 @@ class AppDateUtils {
     final monthStr = date.month.toString().padLeft(2, '0');
     return '${date.year}-$monthStr-$dayStr';
   }
-
   static String monthName(DateTime date, {String? locale}) {
     try {
       return DateFormat('MMMM', locale ?? 'en_US').format(date);
@@ -1632,7 +1624,6 @@ class AppDateUtils {
       return '';
     }
   }
-
   static String formatLocaleDate(DateTime date, {String? locale}) {
     try {
       final loc = locale ?? Intl.getCurrentLocale();
