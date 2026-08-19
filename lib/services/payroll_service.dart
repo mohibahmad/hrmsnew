@@ -219,7 +219,7 @@ class PayrollService {
       companyCurrency: companyCurrency,
     );
 
-    if (lastPaid != null && !today.isBefore(lastPaid.start)) {
+    if (lastPaid != null) {
       final lastPaidUnpaid = unpaidWorkersForPeriod(
         workersList,
         payrollRecords,

@@ -1656,7 +1656,7 @@ if (day == 0) {
 
     final selectedCycle = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
     final selectedKey = '${PayrollService.periodDateKey(selectedCycle.start)}_${PayrollService.periodDateKey(selectedCycle.end)}';
-    if (!map.containsKey(selectedKey) && selectedKey == currentKey) {
+    if (!map.containsKey(selectedKey)) {
       map[selectedKey] = (
         period: selectedCycle,
         paidCount: 0,
@@ -2248,22 +2248,29 @@ if (day == 0) {
   }
 
   PayrollPeriod _trueCurrentPayrollCycle() {
-    final now = DateTime.now();
     final payDay = _salaryPayDay;
-    if (payDay != null) {
-      return PayrollService.transitionPayDayPeriod(
-        currentStart: _payPeriodStart,
-        payDay: payDay.clamp(1, 28),
-        isFirstCycle: _isFirstCycle,
-      );
+    if (_isFirstCycle) {
+      final now = DateTime.now();
+      if (payDay != null) {
+        return PayrollService.transitionPayDayPeriod(
+          currentStart: PayrollService.payPeriodStart(now),
+          payDay: payDay.clamp(1, 28),
+          isFirstCycle: true,
+        );
+      } else {
+        return PayrollPeriod(
+          start: PayrollService.payPeriodStart(now),
+          end: PayrollService.payPeriodEnd(now),
+        );
+      }
     }
+
     return PayrollService.resolveCurrentPayrollPeriod(
       workersList: _workersList,
       payrollRecords: _rawPayrollDocs,
-      payDay: 0,
+      payDay: payDay ?? 0,
       companyCurrency: _companyCurrency,
-      referenceDate: now,
-      persistedCycle: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+      referenceDate: DateTime.now(),
       advanceIfFullyPaid: true,
     );
   }

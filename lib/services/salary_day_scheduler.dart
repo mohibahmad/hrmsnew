@@ -1302,7 +1302,7 @@ class PayrollRunner {
   Future<DialogController> _showProgressDialog(BuildContext context) async {
     final controller = DialogController(
       context,
-      initialLabel: 'sending_payroll'.tr(),
+      initialLabel: 'generating_invoices'.tr(),
     );
     return controller;
   }
@@ -1345,10 +1345,7 @@ class PayrollRunner {
     final controller = await _showProgressDialog(context);
 
     try {
-
-
-
-      controller.update(progress: 0.05, label: 'sending_payroll'.tr());
+      controller.update(progress: 0.05, label: 'generating_invoices'.tr());
       final preloadedAssets = preloadedAssetsFuture == null
           ? null
           : await preloadedAssetsFuture;
@@ -1556,7 +1553,7 @@ class PayrollRunner {
 
 
 
-    controller?.update(progress: 0.10, label: 'sending_payroll'.tr());
+    controller?.update(progress: 0.10, label: 'generating_invoices'.tr());
 
     final firestoreService = ProviderScope.containerOf(
       context,
@@ -1569,7 +1566,7 @@ class PayrollRunner {
         .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
         .toList();
 
-    controller?.update(progress: 0.18, label: 'sending_payroll'.tr());
+    controller?.update(progress: 0.18, label: 'generating_invoices'.tr());
 
     final unpaidResults = successfulResults.where((result) {
       final isAlreadyPaid = latestPayrollRecords.any(
@@ -1638,7 +1635,7 @@ class PayrollRunner {
 
     if (payrollRecords.isEmpty) return 0;
 
-    controller?.update(progress: 0.28, label: 'sending_payroll'.tr());
+    controller?.update(progress: 0.28, label: 'generating_invoices'.tr());
     final payrollCount = await firestoreService.addBulkPayrollRecords(
       payrollRecords,
     );
