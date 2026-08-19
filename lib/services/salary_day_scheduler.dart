@@ -498,6 +498,7 @@ class PayrollRunner {
     final isGuest =
         ProviderScope.containerOf(
           context,
+          listen: false,
         ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     if (isGuest) {
@@ -539,10 +540,12 @@ class PayrollRunner {
   }) async {
     final authService = ProviderScope.containerOf(
       context,
+      listen: false,
     ).read(authServiceProvider);
     final isGuest = authService.currentUser?.isAnonymous ?? false;
     final firestoreService = ProviderScope.containerOf(
       context,
+      listen: false,
     ).read(firestoreServiceProvider);
 
     List<Map<String, dynamic>> workers = await _loadWorkers(
@@ -1239,6 +1242,7 @@ class PayrollRunner {
     try {
       final firestoreService = ProviderScope.containerOf(
         context,
+        listen: false,
       ).read(firestoreServiceProvider);
       final workers = await _loadWorkers(context, isGuest, firestoreService);
       if (workers.isEmpty) return summary;
@@ -1429,6 +1433,7 @@ class PayrollRunner {
       if (isGuest) return;
       final firestoreService = ProviderScope.containerOf(
         context,
+        listen: false,
       ).read(firestoreServiceProvider);
       final notifications = <Map<String, dynamic>>[];
       for (final r in summary.results.where((r) => r.success)) {
@@ -1563,6 +1568,7 @@ class PayrollRunner {
 
     final firestoreService = ProviderScope.containerOf(
       context,
+      listen: false,
     ).read(firestoreServiceProvider);
     final successfulResults = summary.results.where((r) => r.success).toList();
     final payPeriodDate = periodEnd;
@@ -1851,6 +1857,7 @@ class PayrollRunner {
 
       final firestore = ProviderScope.containerOf(
         context,
+        listen: false,
       ).read(firestoreServiceProvider);
       final resolvedProfile =
           (preloadedAssets?['resolvedProfile'] as Map<String, dynamic>?) ??
@@ -2274,6 +2281,7 @@ class PayrollRunner {
     final isGuest =
         ProviderScope.containerOf(
           context,
+          listen: false,
         ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -2313,6 +2321,7 @@ class PayrollRunner {
 
     final firestoreService = ProviderScope.containerOf(
       context,
+      listen: false,
     ).read(firestoreServiceProvider);
     final reviewedStart =
         periodStart ?? PayrollService.payPeriodStart(DateTime.now());

@@ -1192,7 +1192,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
-    return UnsavedChangesDialog.show(context) ?? false;
+    return UnsavedChangesDialog.show(context);
   }
 
   @override

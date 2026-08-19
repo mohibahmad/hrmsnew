@@ -51,7 +51,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
   if (confirmed == true) {
     try {
       if (!context.mounted) return;
-      final container = ProviderScope.containerOf(context);
+      final container = ProviderScope.containerOf(context, listen: false);
       await container.read(authServiceProvider).signOut(preserveBiometricLogin: true);
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -84,7 +84,7 @@ class _LogoutDialogContent extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF0F172A).withOpacity(0.12),
@@ -426,6 +426,7 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
 void showGuestRestrictionDialog(BuildContext context) {
   final authService = ProviderScope.containerOf(
     context,
+    listen: false,
   ).read(authServiceProvider);
 
   showDialog(
@@ -564,6 +565,7 @@ class PremiumGate {
     final isGuest =
         ProviderScope.containerOf(
           context,
+          listen: false,
         ).read(authServiceProvider).currentUser?.isAnonymous ??
         false;
     if (isGuest) return false;

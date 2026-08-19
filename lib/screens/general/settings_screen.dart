@@ -346,8 +346,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [BoxShadow(color: const Color(0xFF000000).withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
                 ),
                 child: Form(
                   key: deleteFormKey,
@@ -373,24 +373,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827), )),
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
-                          controller: deletePasswordController,
-                          enabled: !dialogIsDeleting,
-                          obscureText: true,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => executeAccountDeletion(),
-                          decoration: InputDecoration(
-                            hintText: 'password_hint'.tr(),
-                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0247C4)),
-                            filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0247C4), width: 1.5)),
-                          ),
-                          validator: (value) => (value == null || value.isEmpty) ? 'password_required'.tr() : null,
+                        FormField<String>(
+                          validator: (value) =>
+                              (deletePasswordController.text.trim().isEmpty)
+                                  ? 'password_required'.tr()
+                                  : null,
+                          builder: (field) {
+                            final hasError = field.hasError &&
+                                field.errorText != null &&
+                                field.errorText!.isNotEmpty;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextField(
+                                  controller: deletePasswordController,
+                                  enabled: !dialogIsDeleting,
+                                  obscureText: true,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  textInputAction: TextInputAction.done,
+                                  onChanged: (val) {
+                                    field.didChange(val);
+                                    if (field.hasError) {
+                                      field.reset();
+                                    }
+                                  },
+                                  onSubmitted: (_) => executeAccountDeletion(),
+                                  decoration: InputDecoration(
+                                    hintText: 'password_hint'.tr(),
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: hasError
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF0247C4),
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFC),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: hasError
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: hasError
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: hasError
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFF0247C4),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (hasError) ...[
+                                  const SizedBox(height: 5),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 2.0),
+                                    child: Text(
+                                      field.errorText!,
+                                      style: const TextStyle(
+                                        color: Color(0xFFEF4444),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                       ],
                       const SizedBox(height: 28),
