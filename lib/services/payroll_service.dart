@@ -78,7 +78,7 @@ class PayrollService {
       periodDateKey(a.start) == periodDateKey(b.start) &&
       periodDateKey(a.end) == periodDateKey(b.end);
 
-                                                static PayrollPeriod getNextFullMonthlyCycleAfter(DateTime anchor, int payDay) {
+  static PayrollPeriod getNextFullMonthlyCycleAfter(DateTime anchor, int payDay) {
     final normalizedPayDay = payDay.clamp(1, 28);
     var candidateStart = DateTime(anchor.year, anchor.month, normalizedPayDay);
     if (candidateStart.isBefore(anchor)) {

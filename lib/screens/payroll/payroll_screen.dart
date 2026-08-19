@@ -116,12 +116,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return _matchesFilter(doc, _selectedFilter);
     }).toList()
       ..sort((a, b) {
-        final paidA = a['isPaid'] == true;
-        final paidB = b['isPaid'] == true;
-        if (paidA != paidB) return paidA ? 1 : -1;
-        return (a['name'] ?? '').toString().trim().toLowerCase().compareTo(
-              (b['name'] ?? '').toString().trim().toLowerCase(),
-            );
+        final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
+        final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
+        return nameA.compareTo(nameB);
       });
     return filtered;
   }
@@ -772,8 +769,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             .toList();
         _combinePayroll();
       });
-      await _reconcilePayrollPeriod();
       await _advanceCycleIfAllPaid();
+      await _reconcilePayrollPeriod();
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'refreshPayrollAfterCommit');
     }
@@ -1733,13 +1730,25 @@ if (day == 0) {
       if (start == null || end == null) continue;
       final period = PayrollPeriod(start: start, end: end);
       final key = '${PayrollService.periodDateKey(start)}_${PayrollService.periodDateKey(end)}';
-      final existing = map[key];
-      map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
+
+      final unpaid = PayrollService.unpaidWorkersForPeriod(
+        _workersList,
+        _rawPayrollDocs,
+        month: DateTime(period.end.year, period.end.month, 1),
+        allowUndatedRecords: _isGuest,
+        companyCurrency: _companyCurrency,
+        periodStart: period.start,
+        periodEnd: period.end,
+      );
+      final hasUnpaid = unpaid.any((w) =>
+          PayrollService.extractSalary(PayrollService.currentSalaryDisplay(w, companyCurrency: _companyCurrency)) > 0);
+
+      if (!hasUnpaid) {
+        final existing = map[key];
+        map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
+      }
     }
 
-    // Always include the true current (running) cycle so the user can see
-    // it even when viewing a previous cycle and no workers have been paid
-    // in the current cycle yet.
     final currentCycle = _trueCurrentPayrollCycle();
     final currentKey = '${PayrollService.periodDateKey(currentCycle.start)}_${PayrollService.periodDateKey(currentCycle.end)}';
     if (!map.containsKey(currentKey)) {
@@ -1747,20 +1756,6 @@ if (day == 0) {
         period: currentCycle,
         paidCount: 0,
       );
-    }
-
-    final lastPaid = PayrollService.latestSettledPayrollCycle(
-      _workersList,
-      _rawPayrollDocs,
-      companyCurrency: _companyCurrency,
-    );
-    final displayedPeriod = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
-    final isOverlappingPaid = lastPaid != null && displayedPeriod.end.difference(lastPaid.end).inDays < 20;
-    if (!isOverlappingPaid) {
-      final displayedKey = '${PayrollService.periodDateKey(displayedPeriod.start)}_${PayrollService.periodDateKey(displayedPeriod.end)}';
-      if (!map.containsKey(displayedKey)) {
-        map[displayedKey] = (period: displayedPeriod, paidCount: 0);
-      }
     }
 
     final options = map.values.toList()

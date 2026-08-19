@@ -772,8 +772,10 @@ class FlashySnackBar {
         subtitle: subtitle,
         onDismiss: () {
           if (entry.mounted) {
-            _currentEntry = null;
-            entry.remove();
+            if (_currentEntry == entry) _currentEntry = null;
+            try {
+              entry.remove();
+            } catch (_) {}
           }
         },
       ),
@@ -785,9 +787,11 @@ class FlashySnackBar {
 
     // Wire up the controller so update() can trigger in-place rebuilds.
     controller._dismiss = () {
-      if (_currentEntry == entry && entry.mounted) {
-        _currentEntry = null;
-        entry.remove();
+      if (entry.mounted) {
+        if (_currentEntry == entry) _currentEntry = null;
+        try {
+          entry.remove();
+        } catch (_) {}
       }
     };
 
