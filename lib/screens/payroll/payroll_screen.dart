@@ -21,7 +21,6 @@ import '../../services/invoice_service.dart';
 import '../../services/payroll_service.dart';
 import '../../services/preferences_service.dart';
 import '../../services/salary_day_scheduler.dart';
-import '../../utils/image_loader.dart';
 import '../../utils/utils.dart';
 import '../../widgets/amount_text.dart';
 import '../../widgets/clickable_gesture_detector.dart';
@@ -2150,20 +2149,6 @@ if (day == 0) {
       try { companyProfile = await _firestore.getUserProfile() ?? const {}; } catch (_) {}
 
       Uint8List? employeeImageBytes;
-      final profileImageSource = (data['profileImage'] ?? '').toString();
-      if (profileImageSource.trim().isNotEmpty) {
-        try {
-          final rawImage = await ImageLoader.load(
-            source: profileImageSource,
-            maxSizeBytes: 10 * 1024 * 1024,
-            timeout: const Duration(seconds: 5),
-            convertToPng: false,
-          );
-          if (rawImage != null && rawImage.isNotEmpty) {
-            employeeImageBytes = compressImageBytes(rawImage, maxWidth: 256, quality: 80);
-          }
-        } catch (_) {}
-      }
 
       final bytes = await InvoiceService.generatePayrollInvoice(
         employeeName: (data['name'] ?? '').toString(),
