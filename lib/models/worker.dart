@@ -259,9 +259,11 @@ class Worker {
     map.addField('gender', gender, forUpdate);
     map.addField('address', address, forUpdate);
     map.addField('relationshipStatus', relationshipStatus, forUpdate);
-    map.addField('workType', workType, forUpdate); // Renamed mapping
+    map.addField('type1', workType, forUpdate);
+    map.addField('workType', workType, forUpdate);
     map.addField('position', position, forUpdate);
-    map.addField('attendanceType', attendanceType, forUpdate); // Renamed mapping
+    map.addField('type2', attendanceType, forUpdate);
+    map.addField('attendanceType', attendanceType, forUpdate);
     map.addField('experienceLevel', experienceLevel, forUpdate);
     map.addField('education', education, forUpdate);
     map.addField('salaryType', salaryType, forUpdate);

@@ -1449,8 +1449,14 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         'type1': _type1Controller.text.isNotEmpty
             ? _type1Controller.text
             : 'Full-Time',
+        'workType': _type1Controller.text.isNotEmpty
+            ? _type1Controller.text
+            : 'Full-Time',
         'position': position.isNotEmpty ? position : 'Employee',
         'type2': _type2Controller.text.isNotEmpty
+            ? _type2Controller.text
+            : 'On-Site',
+        'attendanceType': _type2Controller.text.isNotEmpty
             ? _type2Controller.text
             : 'On-Site',
         'experienceLevel': _experienceLevelController.text.trim(),
