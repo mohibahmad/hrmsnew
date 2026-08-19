@@ -1489,10 +1489,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     return IntrinsicWidth(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1502,8 +1502,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               if (i < tabs.length - 1)
                 Container(
                   width: 1,
-                  height: 16,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  height: 18,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
                   color: const Color(0xFFE5E7EB).withOpacity(0.5),
                 ),
             ],
@@ -1520,10 +1520,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: GestureDetector(
         onTap: () => setState(() { _selectedTab = filterKey; _cachedFiltered = null; _filterCacheKey = ''; }),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: isActive ? _kPrimaryBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
             displayLabel,
