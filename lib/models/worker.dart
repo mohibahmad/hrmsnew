@@ -271,7 +271,9 @@ class Worker {
     map.addField('frontId', frontId, forUpdate);
     map.addField('backId', backId, forUpdate);
     map.addField('cv', cv, forUpdate);
-    map.addField('status', status, forUpdate);
+    if (status != null && status != 'Active') {
+      map.addField('status', status, forUpdate);
+    }
     map.addField('leavePolicy', leavePolicy, forUpdate);
 
     if (currency != null) {
