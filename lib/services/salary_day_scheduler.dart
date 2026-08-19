@@ -3228,7 +3228,7 @@ class PayrollRunner {
                                                           ],
                                                         ),
                                                         const SizedBox(
-                                                          height: 5,
+                                                          height: 2,
                                                         ),
                                                         Row(
                                                           children: [
