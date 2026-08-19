@@ -3179,9 +3179,7 @@ class PayrollRunner {
                                                                   fontSize: 15,
                                                                   fontWeight:
                                                                       FontWeight
-                                                                          .bold,
-                                                                  fontFamily:
-                                                                      'SF Pro',
+                                                                          .w600,
                                                                   color: Color(
                                                                     0xFF111827,
                                                                   ),
@@ -3224,8 +3222,6 @@ class PayrollRunner {
                                                                   ),
                                                                   letterSpacing:
                                                                       0.5,
-                                                                  fontFamily:
-                                                                      'SF Pro',
                                                                 ),
                                                               ),
                                                             ),
@@ -3258,8 +3254,6 @@ class PayrollRunner {
                                                                   color: Color(
                                                                     0xFF6B7280,
                                                                   ),
-                                                                  fontFamily:
-                                                                      'SF Pro',
                                                                 ),
                                                                 maxLines: 1,
                                                                 overflow:
@@ -3280,15 +3274,13 @@ class PayrollRunner {
                                                     children: [
                                                       Text(
                                                         'net_salary'.tr(),
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           fontSize: 10,
                                                           fontWeight:
                                                               FontWeight.w600,
                                                           color: Color(
                                                             0xFF6B7280,
                                                           ),
-                                                          fontFamily:
-                                                              'SF Pro',
                                                         ),
                                                       ),
                                                       const SizedBox(height: 5),
