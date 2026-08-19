@@ -1657,7 +1657,10 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             worker: worker,
           ),
           _dataCell(
-            CurrencyUtils.formatWithCommas(worker['salaryAmount']),
+            (worker['salaryAmount'] != null &&
+                    worker['salaryAmount'].toString().trim().isNotEmpty)
+                ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} ${CurrencyUtils.formatWithCommas(worker['salaryAmount'])}'
+                : '',
             130,
             fieldKey: 'salaryAmount',
             workerIndex: index,
@@ -2741,6 +2744,15 @@ class _EditCellDialogState extends State<_EditCellDialog> {
                   hintStyle: const TextStyle(
                     color: Color(0xFF9CA3AF),
                     fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  prefixText: widget.fieldKey == 'salaryAmount'
+                      ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} '
+                      : null,
+                  prefixStyle: const TextStyle(
+                    color: Color(0xFF374151),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
                   ),
                   suffixIcon: _isMediaField ? _buildMediaPickerButton() : null,

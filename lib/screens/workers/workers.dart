@@ -763,9 +763,9 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   Widget _buildListItem(Map<String, dynamic> worker) {
     final name = (worker['name'] ?? '').toString();
     final email = (worker['email'] ?? '').toString();
-    final type1 = (worker['type1'] ?? '').toString();
-    final position = (worker['position'] ?? '').toString();
-    final type2 = (worker['type2'] ?? '').toString();
+    final type1 = (worker['type1'] ?? worker['workType'] ?? '').toString();
+    final position = (worker['position'] ?? worker['role'] ?? '').toString();
+    final type2 = (worker['type2'] ?? worker['attendanceType'] ?? '').toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
 
     final localizedType1 = LocalizationHelper.localizeType1(type1);
@@ -1065,7 +1065,17 @@ class _WorkerProfilePreviewDialogState
 
   bool _isSharing = false;
 
-  String _workerField(String key) => (widget.worker[key] ?? '').toString();
+  String _workerField(String key) {
+    if (key == 'type1') {
+      final val = widget.worker['type1'] ?? widget.worker['workType'];
+      return (val ?? '').toString();
+    }
+    if (key == 'type2') {
+      final val = widget.worker['type2'] ?? widget.worker['attendanceType'];
+      return (val ?? '').toString();
+    }
+    return (widget.worker[key] ?? '').toString();
+  }
 
   String _orNA(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 

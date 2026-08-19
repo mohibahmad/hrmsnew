@@ -168,12 +168,14 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       _positionController.text = (widget.workerToEdit!['position'] ?? '')
           .toString();
 
-      _type1Controller.text = (widget.workerToEdit!['type1'] ?? 'Full-Time')
-          .toString();
+      _type1Controller.text =
+          (widget.workerToEdit!['type1'] ?? widget.workerToEdit!['workType'] ?? 'Full-Time')
+              .toString();
       if (_type1Controller.text.isEmpty) _type1Controller.text = 'Full-Time';
 
-      _type2Controller.text = (widget.workerToEdit!['type2'] ?? 'On-Site')
-          .toString();
+      _type2Controller.text =
+          (widget.workerToEdit!['type2'] ?? widget.workerToEdit!['attendanceType'] ?? 'On-Site')
+              .toString();
       if (_type2Controller.text.isEmpty) _type2Controller.text = 'On-Site';
 
       _experienceLevelController.text =

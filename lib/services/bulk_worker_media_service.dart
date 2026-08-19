@@ -245,7 +245,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   if (remoteKeys.isNotEmpty) {
     const maxConcurrent = 20;
     var nextIndex = 0;
-    Object? firstError;
 
     Future<void> processItem((int, String) key) async {
       final item = remoteItems[key]!;
@@ -259,51 +258,57 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
           fallbackMimeType: item.fallbackMime,
         );
       } catch (e) {
-        final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
-        final errorText = 'bulk_media_broken_link_error'.tr(namedArgs: {'error': readableSaveError(e)});
-        throw StateError('$workerName — ${mediaFieldName(item.field)} link: $errorText');
+        debugPrint('Remote media download failed for ${item.url}: $e');
+        prepared[item.workerIndex][item.key] = item.url;
+        return;
       }
 
       final file = downloaded;
 
       if (!isSupportedMediaType(item.field, file.mimeType)) {
-        final workerName = (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
-        throw StateError('$workerName — ${mediaFieldName(item.field)} link: ${supportedMediaMessage(item.field, file.mimeType)}');
+        debugPrint('Unsupported media type for ${item.url}: ${file.mimeType}');
+        prepared[item.workerIndex][item.key] = item.url;
+        return;
       }
 
-      final compressed = await _compressForUpload(file.bytes, file.mimeType, item.field);
-      final uploadFile = compressed != null
-          ? UploadFile(
-              folder: item.folder,
-              fileName: file.fileName,
-              bytes: compressed,
-              mimeType: file.mimeType,
-            )
-          : file;
+      try {
+        final compressed = await _compressForUpload(file.bytes, file.mimeType, item.field);
+        final uploadFile = compressed != null
+            ? UploadFile(
+                folder: item.folder,
+                fileName: file.fileName,
+                bytes: compressed,
+                mimeType: file.mimeType,
+              )
+            : file;
 
-      final results = await uploadBatch([uploadFile]);
-      final result = results.first;
-      prepared[item.workerIndex][item.key] = result.url!;
+        final results = await uploadBatch([uploadFile]);
+        final result = results.first;
+        if (result.isSuccess && result.url != null) {
+          prepared[item.workerIndex][item.key] = result.url!;
+        } else {
+          prepared[item.workerIndex][item.key] = item.url;
+        }
+      } catch (e) {
+        debugPrint('Remote media re-upload failed for ${item.url}: $e');
+        prepared[item.workerIndex][item.key] = item.url;
+      }
     }
 
     Future<void> worker() async {
       while (true) {
-        if (firstError != null) return;
         final index = nextIndex++;
         if (index >= remoteKeys.length) return;
 
         try {
           await processItem(remoteKeys[index]);
         } catch (e) {
-          firstError ??= e;
-          return;
+          debugPrint('Error processing remote media item: $e');
         }
       }
     }
 
     await Future.wait(List.generate(maxConcurrent, (_) => worker()));
-
-    if (firstError != null) throw firstError!;
   }
 
   uploadedMediaByRowId.clear();

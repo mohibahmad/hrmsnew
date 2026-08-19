@@ -1058,9 +1058,10 @@ class Validators {
     if (value == null) return false;
     final trimmed = value.trim();
     if (trimmed.isEmpty) return false;
+    // Reject if contains any character other than digits, +, space, -, (, )
+    if (RegExp(r'[^\d+\-\s()]').hasMatch(trimmed)) return false;
     final digits = trimmed.replaceAll(RegExp(r'[^\d]'), '');
     if (digits.isEmpty) return false;
-
     if (digits.split('').every((d) => d == digits[0])) return false;
     return true;
   }
