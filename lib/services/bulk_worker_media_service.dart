@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import '../services/upload_service.dart';
-import '../utils/helpers.dart';
 
 String mediaFieldName(String field) {
   return switch (field) {
@@ -109,14 +108,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   ];
   const uploadBatchSize = 20;
 
-  var totalMedia = 0;
-  for (final worker in workers) {
-    for (final m in mediaFields) {
-      final value = (worker[m.key] ?? worker[m.field] ?? '').toString().trim();
-      if (value.isNotEmpty) totalMedia++;
-    }
-  }
-
   final embeddedSources = <({
     int workerIndex,
     String key,
@@ -126,15 +117,6 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     String folder,
     String fileName,
   })>[];
-  final remoteItems = <(int, String), ({
-    int workerIndex,
-    String key,
-    String field,
-    String url,
-    String folder,
-    String fallbackName,
-    String fallbackMime,
-  })>{};
 
   for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
     final worker = prepared[workerIndex];
@@ -183,23 +165,13 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
               : '${field}_$workerIndex.$fallbackExtension',
         ));
       } else {
-        if (value.isNotEmpty && isHttpUrl(value)) {
-          remoteItems[(workerIndex, key)] = (
-            workerIndex: workerIndex,
-            key: key,
-            field: field,
-            url: value,
-            folder: folder,
-            fallbackName: storedName.isNotEmpty ? storedName : '${field}_$workerIndex',
-            fallbackMime: 'application/octet-stream',
-          );
-        }
         prepared[workerIndex][key] = value;
       }
     }
   }
 
   var completedCount = 0;
+  final totalMedia = embeddedSources.length;
 
   Future<List<UploadResult>> uploadBatch(List<UploadFile> batchFiles) async {
     if (batchFiles.isEmpty) return [];
@@ -230,7 +202,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
   if (embeddedSources.isNotEmpty) {
     onProgress?.call(0, totalMedia, 'uploading_embedded');
 
-                final embeddedFiles = await _prepareUploadFiles(embeddedSources);
+    final embeddedFiles = await _prepareUploadFiles(embeddedSources);
 
     final embedResults = await uploadBatch(embeddedFiles);
 
@@ -240,89 +212,20 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     }
   }
 
-  final remoteKeys = remoteItems.keys.toList();
-
-  if (remoteKeys.isNotEmpty) {
-    const maxConcurrent = 20;
-    var nextIndex = 0;
-
-    Future<void> processItem((int, String) key) async {
-      final item = remoteItems[key]!;
-      UploadFile? downloaded;
-
-      try {
-        downloaded = await UploadService.downloadRemoteFile(
-          url: item.url,
-          folder: item.folder,
-          fallbackFileName: item.fallbackName,
-          fallbackMimeType: item.fallbackMime,
-        );
-      } catch (e) {
-        debugPrint('Remote media download failed for ${item.url}: $e');
-        prepared[item.workerIndex][item.key] = item.url;
-        return;
-      }
-
-      final file = downloaded;
-
-      if (!isSupportedMediaType(item.field, file.mimeType)) {
-        debugPrint('Unsupported media type for ${item.url}: ${file.mimeType}');
-        prepared[item.workerIndex][item.key] = item.url;
-        return;
-      }
-
-      try {
-        final compressed = await _compressForUpload(file.bytes, file.mimeType, item.field);
-        final uploadFile = compressed != null
-            ? UploadFile(
-                folder: item.folder,
-                fileName: file.fileName,
-                bytes: compressed,
-                mimeType: file.mimeType,
-              )
-            : file;
-
-        final results = await uploadBatch([uploadFile]);
-        final result = results.first;
-        if (result.isSuccess && result.url != null) {
-          prepared[item.workerIndex][item.key] = result.url!;
-        } else {
-          prepared[item.workerIndex][item.key] = item.url;
-        }
-      } catch (e) {
-        debugPrint('Remote media re-upload failed for ${item.url}: $e');
-        prepared[item.workerIndex][item.key] = item.url;
-      }
-    }
-
-    Future<void> worker() async {
-      while (true) {
-        final index = nextIndex++;
-        if (index >= remoteKeys.length) return;
-
-        try {
-          await processItem(remoteKeys[index]);
-        } catch (e) {
-          debugPrint('Error processing remote media item: $e');
-        }
-      }
-    }
-
-    await Future.wait(List.generate(maxConcurrent, (_) => worker()));
-  }
-
   uploadedMediaByRowId.clear();
   for (final worker in prepared) {
-    final rowId = (worker['clientRowId'] ?? '').toString().trim();
-    if (rowId.isEmpty) continue;
-
-    final urls = <String>[];
+    final clientRowId = (worker['clientRowId'] ?? worker['client_row_id'] ?? '').toString().trim();
+    if (clientRowId.isEmpty) continue;
+    final rowUrls = <String>[];
     for (final m in mediaFields) {
-      final value = (worker[m.key] ?? '').toString().trim();
-      if (value.isNotEmpty && value.startsWith('http')) urls.add(value);
+      final val = (worker[m.key] ?? worker[m.field] ?? '').toString().trim();
+      if (val.isNotEmpty && (val.startsWith('http://') || val.startsWith('https://'))) {
+        rowUrls.add(val);
+      }
     }
-
-    if (urls.isNotEmpty) uploadedMediaByRowId[rowId] = urls;
+    if (rowUrls.isNotEmpty) {
+      uploadedMediaByRowId[clientRowId] = rowUrls;
+    }
   }
 
   return prepared;
