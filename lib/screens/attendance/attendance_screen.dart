@@ -1489,7 +1489,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     return IntrinsicWidth(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(4),
@@ -1499,7 +1499,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           children: [
             for (int i = 0; i < tabs.length; i++) ...[
               _buildTab(tabs[i].$1, tabs[i].$2),
-              if (i < tabs.length - 1) const SizedBox(width: 28),
+              if (i < tabs.length - 1)
+                Container(
+                  width: 1,
+                  height: 16,
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  color: const Color(0xFFE5E7EB).withOpacity(0.5),
+                ),
             ],
           ],
         ),
