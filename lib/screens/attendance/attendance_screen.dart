@@ -1514,7 +1514,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: GestureDetector(
         onTap: () => setState(() { _selectedTab = filterKey; _cachedFiltered = null; _filterCacheKey = ''; }),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: isActive ? _kPrimaryBlue : Colors.transparent,
             borderRadius: BorderRadius.circular(3),
