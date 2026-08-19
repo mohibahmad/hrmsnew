@@ -116,6 +116,17 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return _matchesFilter(doc, _selectedFilter);
     }).toList()
       ..sort((a, b) {
+        final isPaidA = a['isPaid'] == true ||
+            a['hasPaidPayrollRecord'] == true ||
+            (a['status'] ?? '').toString().toLowerCase() == 'paid';
+        final isPaidB = b['isPaid'] == true ||
+            b['hasPaidPayrollRecord'] == true ||
+            (b['status'] ?? '').toString().toLowerCase() == 'paid';
+
+        if (isPaidA != isPaidB) {
+          return isPaidA ? 1 : -1;
+        }
+
         final nameA = (a['name'] ?? '').toString().trim().toLowerCase();
         final nameB = (b['name'] ?? '').toString().trim().toLowerCase();
         return nameA.compareTo(nameB);

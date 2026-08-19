@@ -335,6 +335,7 @@ class AutoPayrollResult {
   final String email;
   String netSalary;
   final bool success;
+  final bool isPaid;
   final String? error;
   final int absents;
   final int halfDays;
@@ -362,6 +363,7 @@ class AutoPayrollResult {
     required this.email,
     required this.netSalary,
     required this.success,
+    this.isPaid = false,
     this.error,
     this.absents = 0,
     this.halfDays = 0,
@@ -390,6 +392,7 @@ class AutoPayrollResult {
     email: email,
     netSalary: netSalary,
     success: success,
+    isPaid: isPaid,
     error: error,
     absents: absents,
     halfDays: halfDays,
@@ -1101,6 +1104,11 @@ class PayrollRunner {
         final netSalary =
             '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
 
+        final isWorkerPaid = worker['isPaid'] == true ||
+            worker['hasPaidPayrollRecord'] == true ||
+            (worker['status'] ?? '').toString().toLowerCase() == 'paid' ||
+            (prevRecord != null && PayrollService.isPayrollRecordPaid(prevRecord));
+
         results.add(
           AutoPayrollResult(
             workerId: workerId,
@@ -1109,6 +1117,7 @@ class PayrollRunner {
             netSalary: netSalary,
             rawNetSalaryValue: rawNetVal,
             success: true,
+            isPaid: isWorkerPaid,
             absents: absents,
             halfDays: halfDays,
             leaves: leaves,
@@ -2296,7 +2305,7 @@ class PayrollRunner {
     final Map<int, TextEditingController> overtimeControllers = {};
 
     for (int i = 0; i < summary.results.length; i++) {
-      if (summary.results[i].success) {
+      if (summary.results[i].success && !summary.results[i].isPaid) {
         selectedIndices.add(i);
       }
     }
@@ -2443,16 +2452,20 @@ class PayrollRunner {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             dialogSetState = setDialogState;
+            final unpaidResults = summary.results
+                .where((r) => !r.isPaid)
+                .toList();
+
             List<AutoPayrollResult> posFiltered;
             if (positionFilter == 'All') {
-              posFiltered = List<AutoPayrollResult>.from(summary.results)
+              posFiltered = List<AutoPayrollResult>.from(unpaidResults)
                 ..sort(
                   (a, b) => a.workerName.trim().toLowerCase().compareTo(
                     b.workerName.trim().toLowerCase(),
                   ),
                 );
             } else {
-              posFiltered = summary.results
+              posFiltered = unpaidResults
                   .where(
                     (r) =>
                         r.position.toLowerCase().trim() ==
@@ -3308,9 +3321,7 @@ class PayrollRunner {
                                                           style: TextStyle(
                                                             fontSize: 14,
                                                             fontWeight:
-                                                                FontWeight.w700,
-                                                            fontFamily:
-                                                                'SF Pro',
+                                                                FontWeight.w600,
                                                             color: r.success
                                                                 ? const Color(
                                                                     0xFF0F70FF,
@@ -3425,7 +3436,7 @@ class PayrollRunner {
                                           style: const TextStyle(
                                             color: Color(0xFF000000),
                                             fontSize: 15,
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
@@ -3625,10 +3636,10 @@ class PayrollRunner {
                             locale: context.locale.toString(),
                           ),
                           style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w600,
                             color: Color(0xFF0247C4),
-                            letterSpacing: -1.0,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ],

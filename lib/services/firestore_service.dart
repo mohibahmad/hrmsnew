@@ -112,7 +112,7 @@ class FirestoreService {
     final isReturned = (explicitStatus ?? hasReturnedDate) && returnedDate != null;
 
     normalized['isReturned'] = isReturned;
-    normalized['dateReturned'] = isReturned ? Timestamp.fromDate(DateTime(returnedDate!.year, returnedDate.month, returnedDate.day)) : null;
+    normalized['dateReturned'] = isReturned ? Timestamp.fromDate(DateTime(returnedDate.year, returnedDate.month, returnedDate.day)) : null;
     return normalized;
   }
 
@@ -351,16 +351,14 @@ class FirestoreService {
 
     final name = (worker['name'] ?? '').toString();
     if (name.isNotEmpty) {
-      try {
-        await addNotification({
-          'type': 'worker_added',
-          'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      } catch (error, stackTrace) {
+      unawaited(addNotification({
+        'type': 'worker_added',
+        'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      }).catchError((error, stackTrace) {
         ErrorReporter.report(error, stackTrace, context: 'WorkerNotification');
-      }
+      }));
     }
     return docRef.id;
   }
@@ -1568,17 +1566,8 @@ class FirestoreService {
 
     final expenseDocs = payrollKey.trim().isEmpty || _expenses == null ? <QueryDocumentSnapshot>[] : (await _expenses!.where('payrollKey', isEqualTo: payrollKey.trim()).get()).docs;
     final batch = _firestore.batch();
-    batch.update(payrollColl.doc(payrollId), {
-      'status': 'Unpaid',
-      'isPaid': false,
-      'paid': false,
-      'paymentStatus': 'unpaid',
-      'paidAt': FieldValue.delete(),
-      'paidOn': FieldValue.delete(),
-      'paymentDate': FieldValue.delete(),
-      'cancelledAt': FieldValue.serverTimestamp(),
-      'lastModified': FieldValue.serverTimestamp(),
-    });
+    batch.delete(payrollColl.doc(payrollId));
+
     final expenseRefs = <String, DocumentReference>{for (final expense in expenseDocs) expense.reference.path: expense.reference};
     if (_expenses != null && payrollKey.trim().isNotEmpty) {
       final deterministicRef = _expenses!.doc(_payrollExpenseDocumentId(payrollKey.trim()));

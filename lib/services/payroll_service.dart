@@ -333,7 +333,7 @@ class PayrollService {
       periodStart: periodStart,
       periodEnd: periodEnd,
     ).where((worker) =>
-        worker['isPaid'] != true &&
+        !isPayrollRecordPaid(worker) &&
         workerEmployedDuringPeriod(worker, effectivePeriodEnd)
     ).toList();
   }  static List<Map<String, dynamic>> payableWorkersForPeriod(

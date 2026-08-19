@@ -471,11 +471,17 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           ? spec.fileName!.trim()
           : spec.fallbackFileName;
       final mimeType = mimeTypeForExtension(fileName, fallback: 'application/octet-stream');
+
+      Uint8List bytesToUpload = spec.bytes;
+      if (spec.compressImages && bytesToUpload.length > 350 * 1024) {
+        bytesToUpload = compressImageBytes(bytesToUpload, maxWidth: 1200, quality: 80);
+      }
+
       files.add(
         UploadFile(
           folder: spec.folder,
           fileName: fileName,
-          bytes: spec.bytes,
+          bytes: bytesToUpload,
           mimeType: mimeType,
         ),
       );
@@ -1217,11 +1223,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
           return;
         }
-      } else {
+      } else if (isEditing) {
         final duplicateField = await _firestore.findDuplicateWorkerField(
           email: email,
           nationalId: nationalId,
-          excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
+          excludeId: widget.workerToEdit!['id']?.toString(),
         );
         if (duplicateField != null && mounted) {
           setState(() => _isSaving = false);
@@ -1494,7 +1500,20 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           await DummyData.saveToPrefs();
           if (mounted) setState(() {});
         } else {
-          await _firestore.addWorker(data);
+          try {
+            await _firestore.addWorker(data);
+          } on DuplicateWorkerException catch (dup) {
+            if (mounted) {
+              setState(() => _isSaving = false);
+              final messageKey = switch (dup.field) {
+                DuplicateWorkerField.name => 'duplicate_name',
+                DuplicateWorkerField.email => 'duplicate_email',
+                DuplicateWorkerField.nationalId => 'duplicate_national_id',
+              };
+              FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+              return;
+            }
+          }
         }
       }
 

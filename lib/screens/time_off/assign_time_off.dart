@@ -628,7 +628,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   bool get _requestedDaysExceedAvailable =>
       !widget.viewOnly &&
       _usesPaidAllowance &&
-      _selectedDaysCount > _baseAvailableDays;
+      (_selectedDaysCount > _availableDays || _baseAvailableDays <= 0);
 
   String get _localizedSelectedLeaveType {
     final normalized = TimeOffService.normalizeLeaveType(_timeOffType);
@@ -2264,7 +2264,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                       _selectedWorker == null ||
                       _isLoading ||
                       _isAggregateOverview ||
-                      !_hasUnsavedChanges)
+                      !_hasUnsavedChanges ||
+                      _selectedDaysCount == 0 ||
+                      (_usesPaidAllowance &&
+                          (_baseAvailableDays <= 0 ||
+                              _selectedDaysCount > _availableDays)))
                   ? null
                   : () {
                       if (_isGuest) {

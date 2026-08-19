@@ -19,7 +19,6 @@ import '../../services/firestore_service.dart';
 import '../../services/invoice_service.dart';
 import '../../services/payroll_service.dart';
 import '../../services/preferences_service.dart';
-import '../../widgets/amount_text.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/notification_sidebar.dart';
@@ -224,10 +223,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }, onError: (_, __) {});
     }
 
-    _salaryCtrl.text = AmountText.formatFull(
-      _salaryStr,
-      locale: context.locale.toString(),
-    );
+    final salaryVal = PayrollService.extractSalary(_salaryStr);
+    _salaryCtrl.text = salaryVal == 0
+        ? ''
+        : PayrollService.formatFullNumber(
+            salaryVal,
+            locale: context.locale.toString(),
+          );
 
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
@@ -856,21 +858,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     });
 
     if (idx != -1) {
-      final cancelledAt = DateTime.now();
-      guestPayroll[idx] =
-          {
-              ...guestPayroll[idx],
-              'status': 'Unpaid',
-              'isPaid': false,
-              'paid': false,
-              'paymentStatus': 'unpaid',
-              'cancelledAt': cancelledAt,
-              'lastModified': cancelledAt,
-            }
-            ..remove('paidAt')
-            ..remove('paidOn')
-            ..remove('paymentDate');
-
+      guestPayroll.removeAt(idx);
       await PreferencesService.setGuestPayroll(guestPayroll);
     }
 
@@ -884,7 +872,12 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   }
   String _editableAmountValue(dynamic value) {
     final text = (value ?? '').toString().trim();
-    return PayrollService.extractSalary(text) == 0 ? '' : text;
+    final salaryVal = PayrollService.extractSalary(text);
+    if (salaryVal == 0) return '';
+    return PayrollService.formatFullNumber(
+      salaryVal,
+      locale: context.locale.toString(),
+    );
   }
 
   Future<void> _generateAndShowInvoice() async {
@@ -1549,6 +1542,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   'base_salary'.tr(),
                   '',
                   _salaryCtrl,
+                  isCurrency: true,
                   readOnly: true,
                   focusedBorderColor: _borderLight,
                 ),
@@ -1661,7 +1655,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
           decoration: InputDecoration(
             prefixIcon: isCurrency
                 ? Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 8),
+                    padding: const EdgeInsets.only(left: 16, right: 4),
                     child: Align(
                       widthFactor: 1,
                       heightFactor: 1,

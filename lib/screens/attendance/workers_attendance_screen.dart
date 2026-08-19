@@ -1275,6 +1275,15 @@ class _WorkersAttendanceScreenState
         .toList();
 
     list.sort((a, b) {
+      final statusA = (a['status'] ?? '').toString().trim();
+      final statusB = (b['status'] ?? '').toString().trim();
+      final isMarkedA = statusA.isNotEmpty;
+      final isMarkedB = statusB.isNotEmpty;
+
+      if (isMarkedA != isMarkedB) {
+        return isMarkedA ? 1 : -1;
+      }
+
       final nameA = (a['name'] ?? a['workerName'] ?? '')
           .toString()
           .trim()
@@ -2374,6 +2383,10 @@ class _WorkersAttendanceScreenState
                                       enabled: !dialogIsSaving,
                                       maxLines: null,
                                       maxLength: 100,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black,
+                                      ),
                                       onChanged: (_) => setDialogState(() {}),
                                       decoration: InputDecoration.collapsed(
                                         hintText: 'enter_reason_hint'.tr(),
