@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 
 class UnsavedChangesDialog {
   static Future<bool> show(BuildContext context) async {
+    bool popped = false;
     final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -92,7 +93,12 @@ class UnsavedChangesDialog {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () => Navigator.pop(context, false),
+                              onPressed: () {
+                                if (!popped && ModalRoute.of(context)?.isCurrent == true) {
+                                  popped = true;
+                                  Navigator.pop(context, false);
+                                }
+                              },
                               style: ButtonStyle(
                                 elevation: WidgetStateProperty.all(0),
                                 backgroundColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
@@ -113,7 +119,12 @@ class UnsavedChangesDialog {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () => Navigator.pop(context, true),
+                              onPressed: () {
+                                if (!popped && ModalRoute.of(context)?.isCurrent == true) {
+                                  popped = true;
+                                  Navigator.pop(context, true);
+                                }
+                              },
                               style: ButtonStyle(
                                 elevation: WidgetStateProperty.all(0),
                                 backgroundColor: WidgetStateProperty.all(const Color(0xFFEF4444)),
