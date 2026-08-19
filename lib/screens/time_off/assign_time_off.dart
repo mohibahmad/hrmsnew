@@ -458,9 +458,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _calendarMonth2 =
           DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
 
-      // Only jump to the current month when starting fresh (no dates yet).
-      // When editing an existing record the calendar must open on the
-      // record's own month — even if it's in the past.
+
+
+
       if (_selectedDates.isEmpty) {
         final now = DateTime.now();
         final currentMonth = DateTime(now.year, now.month, 1);
@@ -1010,8 +1010,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _calendarMonth2 =
           DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
 
-      // Same rule as _resetFormFields: keep the record's own month when it
-      // has dates; only clamp to the current month when starting fresh.
+
+
       if (_selectedDates.isEmpty) {
         final now = DateTime.now();
         final currentMonth = DateTime(now.year, now.month, 1);

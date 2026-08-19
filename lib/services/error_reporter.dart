@@ -108,9 +108,9 @@ class ErrorReporter {
     final total = _recordedErrors.length;
     final fatal = _recordedErrors.where((e) => e.fatal).length;
     final nonFatal = total - fatal;
-    
+
     final lastError = _recordedErrors.isNotEmpty ? _recordedErrors.last : null;
-    
+
     return {
       'totalErrors': total,
       'fatalErrors': fatal,

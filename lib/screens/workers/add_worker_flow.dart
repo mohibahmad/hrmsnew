@@ -11,7 +11,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
-import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -440,15 +439,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       return 'macos_file_access_permission_error'.tr();
     }
     return 'failed_to_pick_file'.tr();
-  }
-
-  String _jpegFileName(String fileName, String fallback) {
-    final cleanName = fileName.trim().isEmpty ? fallback : fileName.trim();
-    final dotIndex = cleanName.lastIndexOf('.');
-    final baseName = dotIndex > 0
-        ? cleanName.substring(0, dotIndex)
-        : cleanName;
-    return '$baseName.jpg';
   }
 
   Future<List<UploadFile>> _prepareUploadFilesBatched({
@@ -986,10 +976,6 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     }
 
     return false;
-  }
-
-  Future<List<Uint8List>> _compressImagesBatch(List<Uint8List> images) {
-    return compute(compressImagesTask, images);
   }
 
   Future<void> _saveWorker() async {
@@ -3224,7 +3210,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       _parseSelectedDate(includeLocalizedMonth: true);
     }
   }
-
 
   void _parseSelectedDate({bool includeLocalizedMonth = false}) {
     final dateStr = widget.selectedJoiningDate?.trim() ?? '';

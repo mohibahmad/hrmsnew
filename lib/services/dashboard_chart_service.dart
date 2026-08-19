@@ -136,7 +136,7 @@ class DashboardChartService {
   }
 
   static bool isDateWithinPeriod(DateTime date, String period, {DateTime? now}) {
-   
+
     return AppDateUtils.isDateWithinEffectivePeriod(date, period, now: now);
   }
 

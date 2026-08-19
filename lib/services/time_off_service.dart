@@ -73,12 +73,12 @@ class TimeOffService {
           : worker.containsKey(fields.available)
           ? worker[fields.available]
           : storedBalances[fields.balance];
-      
+
       final storedTotal = _leaveInt(worker[fields.total]);
       final storedUsed = _leaveInt(worker[fields.used]);
-      
+
       var available = _leaveInt(rawAvailable);
-      if (!explicitBalances.containsKey(fields.balance) && 
+      if (!explicitBalances.containsKey(fields.balance) &&
           !worker.containsKey(fields.available)) {
         available = (storedTotal - storedUsed).clamp(0, storedTotal).toInt();
       }
@@ -197,7 +197,7 @@ class TimeOffService {
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = (record['email'] ?? '').toString().trim().toLowerCase();
       final name = (record['name'] ?? record['workerName'] ?? '').toString().trim().toLowerCase();
-      
+
       final workerKey = workerId.isNotEmpty
           ? 'id:$workerId'
           : email.isNotEmpty
@@ -276,12 +276,12 @@ class TimeOffService {
 
     for (final leave in timeOffRecords) {
       if (!isActiveRecord(leave)) continue;
-      
+
       final leaveId = (leave['id'] ?? '').toString().trim();
       if (excludingRecordId?.isNotEmpty == true && leaveId.isNotEmpty && leaveId == excludingRecordId) {
         continue;
       }
-      
+
       if (!_belongsToWorker(leave, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
@@ -297,7 +297,7 @@ class TimeOffService {
   }) {
     final combined = List<Map<String, dynamic>>.from(timeOffRecords);
     final existingDates = <DateTime>{};
-    
+
     for (final record in timeOffRecords) {
       if (isActiveRecord(record)) {
         existingDates.addAll(selectedDatesForRecord(record));
@@ -307,10 +307,10 @@ class TimeOffService {
     for (final att in attendanceRecords) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
       if (!{'leave', 'onleave', 'on leave', 'l'}.contains(status)) continue;
-      
+
       final date = AppDateUtils.attendanceRecordDate(att);
       if (date == null) continue;
-      
+
       final dateOnly = DateTime(date.year, date.month, date.day);
       if (existingDates.contains(dateOnly)) continue;
 
@@ -376,12 +376,12 @@ class TimeOffService {
     if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
       return workerId == recordWorkerId;
     }
-    
+
     final leaveEmail = (record['email'] ?? '').toString().trim().toLowerCase();
     if (workerEmail.isNotEmpty && leaveEmail.isNotEmpty) {
       return workerEmail == leaveEmail;
     }
-    
+
     final leaveName = (record['name'] ?? record['workerName'] ?? '').toString().trim().toLowerCase();
     return isUniqueName && workerName.isNotEmpty && workerName == leaveName;
   }
@@ -647,7 +647,7 @@ class TimeOffService {
       if (!_belongsToWorker(record, workerId: workerId, workerEmail: workerEmail, workerName: workerName)) {
         continue;
       }
-      
+
       final dates = selectedDatesForRecord(record).where((date) {
         if (date.isAfter(today)) return false;
         if (normStart != null && normEnd != null) {
@@ -655,7 +655,7 @@ class TimeOffService {
         }
         return date.year == month.year && date.month == month.month;
       });
-      
+
       if (isPaidRecord(record)) {
         paidDates.addAll(dates);
       } else if (isUnpaidRecord(record)) {

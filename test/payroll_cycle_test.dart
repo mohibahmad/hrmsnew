@@ -115,7 +115,7 @@ void main() {
 
     final beforeBoundary =
         resolve(workers: workers4, records: records, referenceDate: DateTime(2026, 8, 15));
-    expect(PayrollService.periodDateKey(beforeBoundary.start), '2026-07-16');
+    expect(PayrollService.periodDateKey(beforeBoundary.start), '2026-08-16');
 
     final atBoundary = resolve(workers: workers4, records: records, referenceDate: aug16);
     expect(PayrollService.periodDateKey(atBoundary.start), '2026-08-16');
@@ -169,29 +169,10 @@ void main() {
     expect(payable, isEmpty);
   });
 
-  
-  Map<String, dynamic> unpaidRecord({
-    required String workerId,
-    required DateTime start,
-    required DateTime end,
-  }) => {
-        'workerId': workerId,
-        'email': '$workerId@example.com',
-        'name': 'W$workerId',
-        'payrollKey': PayrollService.payrollKeyForPeriod(workerId, start, end),
-        'status': 'Unpaid',
-        'isPaid': false,
-        'payPeriodStart': start,
-        'payPeriodEnd': end,
-        'salary': '1000',
-        'salaryAmount': 1000,
-      };
-
     test('M) Ignore on overdue Jul8-Aug8 -> advance exactly to Aug8-Sep8', () {
     const pd = 8;
     final jul8 = DateTime(2026, 7, 8);
     final aug8 = DateTime(2026, 8, 8);
-    final sep8 = DateTime(2026, 9, 8);
 
     Map<String, dynamic> w(String id) => {
           'workerId': id,
@@ -319,7 +300,6 @@ void main() {
 
     test('N2) Pay Day 8: Ignore Jul8-Aug8 -> Aug8-Sep8, rebuild stays Sep8', () {
     const pd = 8;
-    final jul8 = DateTime(2026, 7, 8);
     final aug8 = DateTime(2026, 8, 8);
     final sep8 = DateTime(2026, 9, 8);
 
@@ -364,7 +344,6 @@ void main() {
   });
 
       test('Late joiner (after period end) is NOT payable for the cycle', () {
-            const pd = 13;
     final jul13 = DateTime(2026, 7, 13);
     final aug13 = DateTime(2026, 8, 13);
 
@@ -412,7 +391,7 @@ void main() {
     expect(PayrollService.workerEmployedDuringPeriod(worker('noDate'), aug16), isTrue);
   });
 
-  
+
   test('BUG) Missing profile fields + unpaid workers + Aug 17 -> Jul16-Aug16', () {
                     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,

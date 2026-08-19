@@ -106,7 +106,7 @@ class FirestoreService {
       'false' || '0' || 'no' => false,
       _ => null,
     };
-    final hasReturnedDate = rawReturnedDate != null && normalizedDateText != null && normalizedDateText.isNotEmpty && 
+    final hasReturnedDate = rawReturnedDate != null && normalizedDateText != null && normalizedDateText.isNotEmpty &&
         normalizedDateText != 'in_use' && normalizedDateText != '__in_use__';
     final returnedDate = hasReturnedDate ? AppDateUtils.dateFromValue(rawReturnedDate) : null;
     final isReturned = (explicitStatus ?? hasReturnedDate) && returnedDate != null;
@@ -241,7 +241,7 @@ class FirestoreService {
   CollectionReference? get _holidays => _userDoc?.collection('hrms_holidays');
   CollectionReference? get _notifications => _userDoc?.collection('hrms_notifications');
 
-  
+
   Future<void> createUserProfile({required String username, required String email, required String phone}) async {
     final user = AuthService.instance.currentUser;
     if (user == null || user.isAnonymous || user.uid == 'guest_uid' || user.uid.startsWith('guest_')) return;
@@ -330,7 +330,7 @@ class FirestoreService {
     return doc.snapshots().map((snap) => snap.data() as Map<String, dynamic>?);
   }
 
-  
+
   Future<String> addWorker(Map<String, dynamic> worker) async {
     Validators.validateWorker(worker);
     final coll = _workers;
@@ -786,7 +786,7 @@ class FirestoreService {
     return null;
   }
 
-  
+
   Future<String> addExpense(Map<String, dynamic> expense) async {
     Validators.validateExpense(expense);
     final coll = _expenses;
@@ -831,12 +831,12 @@ class FirestoreService {
     final payrollDocs = await payrollColl.where('payrollKey', isEqualTo: normalizedKey).get();
     final batch = _firestore.batch();
     batch.update(expensesColl.doc(expenseId.trim()), {...expenseData, 'amount': netAmount, 'updatedAt': FieldValue.serverTimestamp()});
-    
+
     for (final payroll in payrollDocs.docs) {
       final pData = payroll.data() as Map<String, dynamic>;
       final baseSalary = PayrollService.extractSalary(pData['salary'] ?? pData['salaryAmount']);
       final double overtime, absenceDeduction;
-      if (netAmount >= baseSalary) { overtime = netAmount - baseSalary; absenceDeduction = 0.0; } 
+      if (netAmount >= baseSalary) { overtime = netAmount - baseSalary; absenceDeduction = 0.0; }
       else { overtime = 0.0; absenceDeduction = baseSalary - netAmount; }
       final formatted = PayrollService.formatAmountInCurrency(netAmount, currency);
       final now = FieldValue.serverTimestamp();
@@ -934,7 +934,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  
+
   Future<String> addAttendanceRecord(Map<String, dynamic> record) async {
     Validators.validateAttendance(record);
     final coll = _attendance;
@@ -1359,7 +1359,7 @@ class FirestoreService {
         .get();
   }
 
-  
+
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
     Validators.validatePayroll(record);
     final coll = _payroll;
@@ -1590,7 +1590,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).get();
   }
 
-  
+
   Future<String> addTimeOffRecord(Map<String, dynamic> record) async {
     Validators.validateTimeOff(record);
     final coll = _timeoff;
@@ -1678,7 +1678,7 @@ class FirestoreService {
           }
         }
 
-                        
+
         final recordsAfterCancellation = currentTimeOffRecords.where((record) => record['id']?.toString() != timeOffId).map(Map<String, dynamic>.from).toList();
         final workerWithId = {...workerData, 'id': workerId, 'workerId': workerId};
         workerBalanceUpdate = TimeOffService.canonicalWorkerLeaveFields(workerWithId, remainingBalances: TimeOffService.remainingBalancesFromAssignedRecords(workerWithId, recordsAfterCancellation));
@@ -1689,21 +1689,21 @@ class FirestoreService {
         transaction.delete(timeOffRef);
       }
       if (workerBalanceUpdate != null) transaction.update(workerRef, workerBalanceUpdate);
-      // Cancelling a Time Off must never auto-restore attendance to "Present".
-      // Removing a leave only proves the leave is gone - it does NOT prove the
-      // employee showed up. Safe professional flow:
-      //   - Future dates: leave removal has no effect on attendance at all.
-      //   - Today/past dates: the linked attendance record is removed so the
-      //     day becomes "Not Marked" and HR decides Present/Absent manually.
-      //     (The system does not preserve the pre-leave status, so assuming
-      //     "Present" would be an unfounded assumption.)
+
+
+
+
+
+
+
+
       final today = DateTime.now();
       final normalizedToday = DateTime(today.year, today.month, today.day);
       for (final entry in attendanceSnapshots.entries) {
         final snapshot = entry.value;
         if (!snapshot.exists) continue;
 
-        // Future leave removed -> nothing in Attendance.
+
         final attendanceDate = AppDateUtils.dateFromValue(entry.key);
         if (attendanceDate != null && attendanceDate.isAfter(normalizedToday)) continue;
 
@@ -1724,8 +1724,8 @@ class FirestoreService {
             (isMissingDocument && attendanceShowsLeave);
         if (!shouldClearLeave) continue;
 
-        // Today/past leave removed -> "Not Marked": delete the record so HR
-        // re-marks Present/Absent manually instead of assuming Present.
+
+
         transaction.delete(snapshot.reference);
       }
     });
@@ -2063,7 +2063,7 @@ class FirestoreService {
     return await coll.where('workerId', isEqualTo: workerId).get();
   }
 
-  
+
   Future<String> addAsset(Map<String, dynamic> asset) async {
     final canonicalAsset = _canonicalAssetReturnFields(asset);
     Validators.validateAsset(canonicalAsset);
@@ -2113,7 +2113,7 @@ class FirestoreService {
     return await coll.orderBy('createdAt', descending: true).limit(limit).get();
   }
 
-  
+
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
     final canonicalHoliday = _canonicalHolidayFields(holiday, forUpdate: false);
     Validators.validateHoliday(canonicalHoliday);
@@ -2172,7 +2172,7 @@ class FirestoreService {
     }, SetOptions(merge: true));
   }
 
-  
+
   Future<void> seedDummyDataForUser({
     required String uid,
     required String displayName,
@@ -2264,7 +2264,7 @@ class FirestoreService {
     if (count % 500 != 0) await batch.commit();
   }
 
-  
+
   Future<void> addNotification(Map<String, dynamic> notification) async {
     final coll = _notifications;
     if (coll == null) return;

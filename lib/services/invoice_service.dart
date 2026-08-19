@@ -141,7 +141,7 @@ class InvoiceService {
 
   static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
     if (fontBytes != null) {
-      
+
       if (_cachedParsedFont != null) return _cachedParsedFont;
       try {
         final font = pw.Font.ttf(

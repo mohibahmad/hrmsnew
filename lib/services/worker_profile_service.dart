@@ -98,18 +98,18 @@ class WorkerProfileService {
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return bytes;
-      
-      final needsResize = decoded.width > _maxPdfImageDimension || 
+
+      final needsResize = decoded.width > _maxPdfImageDimension ||
                           decoded.height > _maxPdfImageDimension;
       if (!needsResize) return bytes;
-      
+
       final resized = img.copyResize(
         decoded,
         width: decoded.width >= decoded.height ? _maxPdfImageDimension : null,
         height: decoded.height > decoded.width ? _maxPdfImageDimension : null,
         interpolation: img.Interpolation.linear,
       );
-      
+
       if (decoded.hasAlpha) {
         return Uint8List.fromList(img.encodePng(resized));
       }
@@ -197,14 +197,14 @@ class WorkerProfileService {
       allowedExtensions: const ['pdf'],
       bytes: bytes,
     );
-    
+
     if (result == null || result.trim().isEmpty) return false;
 
     var outputPath = result.trim();
     if (!outputPath.toLowerCase().endsWith('.pdf')) {
       outputPath = '$outputPath.pdf';
     }
-    
+
     await File(outputPath).writeAsBytes(bytes, flush: true);
     await FileOpener.open(outputPath);
     return true;
@@ -214,7 +214,7 @@ class WorkerProfileService {
     final segments = fileName.trim().split(RegExp(r'[\\/]'));
     var name = segments.isEmpty ? '' : segments.last.trim();
     name = name.replaceAll(RegExp(r'[:*?"<>|]'), '_');
-    
+
     if (name.isEmpty || name == '.' || name == '..') {
       name = 'worker_profile.pdf';
     }
@@ -547,7 +547,7 @@ Future<Uint8List> _buildPdf(_PdfArgs args) async {
             accentColor: navy,
             mutedColor: PdfColor.fromHex('#6B7280'),
             authorizedSignatoryText: s['authorized_signatory']!,
-            generatedOnText: args.generatedOnText ?? 
+            generatedOnText: args.generatedOnText ??
                 '${s['generated_on']!} ${DateTime.now().toString().substring(0, 10)}',
           ),
         ),

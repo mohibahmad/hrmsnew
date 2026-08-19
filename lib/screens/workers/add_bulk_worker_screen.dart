@@ -636,7 +636,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       if (isGuest) {
         DummyData.loadFromPrefs();
       }
-                  
+
       if (!keepInvalidWorkers) {
         widget.onBack?.call();
       }

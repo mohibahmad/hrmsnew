@@ -78,22 +78,73 @@ class PayrollService {
       periodDateKey(a.start) == periodDateKey(b.start) &&
       periodDateKey(a.end) == periodDateKey(b.end);
 
+
+
+
+
+
+
+
+
+
+  static PayrollPeriod transitionPayDayPeriod({
+    required DateTime currentStart,
+    required int payDay,
+    bool isFirstCycle = false,
+  }) {
+    final s = DateTime(currentStart.year, currentStart.month, currentStart.day);
+    final normalizedPayDay = payDay.clamp(1, 28);
+
+    if (isFirstCycle) {
+      final prevMonth = DateTime(s.year, s.month - 1, 1);
+      final maxDaysPrev = DateTime(prevMonth.year, prevMonth.month + 1, 0).day;
+      final start = DateTime(prevMonth.year, prevMonth.month, normalizedPayDay.clamp(1, maxDaysPrev));
+
+      final maxDaysCurrent = DateTime(s.year, s.month + 1, 0).day;
+      final end = DateTime(s.year, s.month, normalizedPayDay.clamp(1, maxDaysCurrent));
+
+      return PayrollPeriod(start: start, end: end);
+    }
+
+    final maxDaysInMonth = DateTime(s.year, s.month + 1, 0).day;
+    final candidateDay = normalizedPayDay.clamp(1, maxDaysInMonth);
+    final candidateEnd = DateTime(s.year, s.month, candidateDay);
+
+    if (candidateEnd.isAfter(s)) {
+      return PayrollPeriod(start: s, end: candidateEnd);
+    } else {
+      final nextMonth = DateTime(s.year, s.month + 1, 1);
+      final maxDaysNextMonth = DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
+      final nextEnd = DateTime(nextMonth.year, nextMonth.month, normalizedPayDay.clamp(1, maxDaysNextMonth));
+      return PayrollPeriod(start: s, end: nextEnd);
+    }
+  }
+
+
+
+  static bool isDateInPayrollRange(DateTime date, DateTime start, DateTime end) {
+    final d = DateTime(date.year, date.month, date.day);
+    final s = DateTime(start.year, start.month, start.day);
+    final e = DateTime(end.year, end.month, end.day);
+    return !d.isBefore(s) && d.isBefore(e);
+  }
+
   static PayrollPeriod getNextFullMonthlyCycleAfter(DateTime anchor, int payDay) {
-    if (anchor.day >= 28) {
+    if (payDay <= 0 || (anchor.day >= 28 && payDay >= 28)) {
       final start = DateTime(anchor.year, anchor.month + 1, 1);
       final end = DateTime(anchor.year, anchor.month + 2, 0);
       return PayrollPeriod(start: start, end: end);
     }
     final normalizedPayDay = payDay.clamp(1, 28);
     var candidateStart = DateTime(anchor.year, anchor.month, normalizedPayDay);
-    if (!candidateStart.isAfter(anchor)) {
+    if (candidateStart.isBefore(anchor)) {
       candidateStart = DateTime(anchor.year, anchor.month + 1, normalizedPayDay);
     }
     final candidateEnd = DateTime(candidateStart.year, candidateStart.month + 1, normalizedPayDay);
     return PayrollPeriod(start: candidateStart, end: candidateEnd);
   }
 
-  /// Returns the first occurrence of [payDay] strictly after [anchor].
+
   static DateTime getNextPayDayAfter(DateTime anchor, int payDay) {
     final normalizedPayDay = payDay.clamp(1, 28);
     var candidate = DateTime(anchor.year, anchor.month, normalizedPayDay);
@@ -103,7 +154,7 @@ class PayrollService {
     return candidate;
   }
 
-  /// Returns the latest SETTLED (fully paid) payroll cycle from records.
+
   static PayrollPeriod? latestSettledPayrollCycle(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
@@ -160,7 +211,7 @@ class PayrollService {
   }) {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final normalizedPayDay = payDay.clamp(1, 28);
+    final normalizedPayDay = payDay.clamp(0, 28);
 
     final lastPaid = latestSettledPayrollCycle(
       workersList,

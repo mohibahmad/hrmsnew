@@ -19,7 +19,7 @@ class PdfHelpers {
   static pw.Font? _cachedFont;
 
   static Future<pw.Font?> loadFont() async {
-    
+
     if (_cachedFont != null) return _cachedFont;
     try {
       final fontData = await (_fontDataFuture ??= _loadFontData());
@@ -31,7 +31,7 @@ class PdfHelpers {
     }
   }
 
-   
+
   static Future<Uint8List?> loadFontBytes() async {
     final data = await (_fontDataFuture ??= _loadFontData());
     if (data == null) return null;

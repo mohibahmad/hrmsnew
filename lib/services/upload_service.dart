@@ -121,7 +121,7 @@ class UploadService {
       final downloadedData = bytesBuilder.takeBytes();
       final remoteName = _getRemoteFileName(uri);
       final safeName = _safeFileName(remoteName.isNotEmpty ? remoteName : safeFallbackName, safeFallbackName);
-      
+
       final mimeType = _getMimeType(
         response: response,
         bytes: downloadedData,
@@ -150,8 +150,8 @@ class UploadService {
     if (detectedMimeType != null) return detectedMimeType;
 
     final responseMimeType = response.headers.contentType?.mimeType;
-    if (responseMimeType != null && 
-        responseMimeType.isNotEmpty && 
+    if (responseMimeType != null &&
+        responseMimeType.isNotEmpty &&
         responseMimeType != 'application/octet-stream') {
       return _normalizeMimeType(responseMimeType, fileName: fileName, bytes: bytes);
     }
@@ -177,7 +177,7 @@ class UploadService {
 
     Future<void> uploadSingleFile(int index) async {
       final file = files[index];
-      
+
       if (cancelToken?.isCancelled == true) {
         results[index] = UploadResult.cancelled(file: file);
       } else {
@@ -211,11 +211,11 @@ class UploadService {
     }
 
     await Future.wait(List.generate(poolSize, (_) => worker()));
-    
+
     for (var i = 0; i < total; i++) {
       results[i] ??= UploadResult.cancelled(file: files[i]);
     }
-    
+
     return results.cast<UploadResult>();
   }
 
@@ -290,10 +290,10 @@ class UploadService {
     if (file.fileName.trim().isEmpty) return 'File name is required.';
     if (file.bytes.isEmpty) return 'File is empty.';
     if (file.bytes.length > maxFileBytes) return 'File is larger than the 10 MB limit.';
-    
+
     final mimeType = _normalizeMimeType(file.mimeType, fileName: file.fileName, bytes: file.bytes);
     if (!mimeType.contains('/')) return 'A valid MIME type is required.';
-    
+
     return null;
   }
 
@@ -409,7 +409,7 @@ class UploadService {
     if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) return 'image/png';
     if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
     if (startsWith(const [0x42, 0x4D])) return 'image/bmp';
-    
+
     if (bytes.length >= 12 &&
         startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
         bytes[8] == 0x57 &&
@@ -418,16 +418,16 @@ class UploadService {
         bytes[11] == 0x50) {
       return 'image/webp';
     }
-    
+
     if (startsWith(const [0x25, 0x50, 0x44, 0x46])) return 'application/pdf';
     if (startsWith(const [0xD0, 0xCF, 0x11, 0xE0])) return 'application/msword';
-    
+
     if (startsWith(const [0x50, 0x4B, 0x03, 0x04]) &&
         _containsAsciiString(bytes, '[Content_Types].xml') &&
         _containsAsciiString(bytes, 'word/')) {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
-    
+
     return null;
   }
 
@@ -451,14 +451,14 @@ class UploadService {
   static Future<void> deleteByUrl(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.host.contains('firebasestorage.googleapis.com')) return;
-    
+
     final segments = uri.pathSegments;
     final oIndex = segments.indexOf('o');
     if (oIndex == -1 || oIndex + 1 >= segments.length) return;
-    
+
     final path = Uri.decodeComponent(segments[oIndex + 1]);
     if (path.trim().isEmpty) return;
-    
+
     try {
       await FirebaseStorage.instance.ref(path).delete();
     } catch (error, stackTrace) {

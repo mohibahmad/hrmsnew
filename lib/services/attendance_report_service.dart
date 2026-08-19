@@ -89,9 +89,9 @@ class AttendanceReportService {
       _ => today,
     };
 
-    // Shared future-date exclusion rule: effectiveEnd = min(rangeEnd, today),
-    // so approved Time Off in the future is never counted in attendance
-    // statistics before those dates occur.
+
+
+
     final end = rawEnd.isAfter(today) ? today : DateTime(rawEnd.year, rawEnd.month, rawEnd.day);
 
     return AttendanceDateRange(start: start, end: end);
@@ -161,7 +161,7 @@ class AttendanceReportService {
 
       final key = _dateKey(date);
 
-                              
+
       final existing = recordsByDay[key];
       if (existing == null || _isNewer(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);

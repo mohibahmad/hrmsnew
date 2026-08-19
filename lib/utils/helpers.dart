@@ -438,10 +438,10 @@ class FileOpener {
       final file = File(filePath);
       if (!await file.exists()) return;
       final result = await OpenFile.open(filePath);
-      // open_file returns a result object instead of throwing. If the file
-      // couldn't actually be opened (error / not found / sandbox path), fall
-      // back to revealing it in the file manager so the user still sees where
-      // it was saved.
+
+
+
+
       if (result.type == ResultType.error ||
           result.type == ResultType.fileNotFound) {
         await _revealInFileManager(file);
@@ -453,7 +453,7 @@ class FileOpener {
     }
   }
 
-  /// Shows the file in Finder / Explorer so the download location is obvious.
+
   static Future<void> _revealInFileManager(File file) async {
     if (Platform.isMacOS) {
       await Process.run('open', ['-R', file.path]);
@@ -1073,7 +1073,7 @@ class Validators {
     if (value == null) return false;
     final trimmed = value.trim();
     if (trimmed.isEmpty) return false;
-    // Reject if contains any character other than digits, +, space, -, (, )
+
     if (RegExp(r'[^\d+\-\s()]').hasMatch(trimmed)) return false;
     final digits = trimmed.replaceAll(RegExp(r'[^\d]'), '');
     if (digits.isEmpty) return false;

@@ -186,19 +186,28 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   Widget _buildWorkerList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 22.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSearchBar(),
-          const SizedBox(height: 20),
-          if (_filteredWorkers.isEmpty)
-            _buildEmptyState()
-          else
-            ..._filteredWorkers.map(_buildWorkerCard),
-        ],
-      ),
+    final filtered = _filteredWorkers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(40.0, 22.0, 40.0, 0.0),
+          child: _buildSearchBar(),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: filtered.isEmpty
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 22.0),
+                  child: _buildEmptyState(),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 22.0),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) => _buildWorkerCard(filtered[index]),
+                ),
+        ),
+      ],
     );
   }
 
@@ -383,7 +392,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   Widget _editShimmerColumn({required bool isCvColumn}) {
     if (isCvColumn) {
-      // Mirrors the real CV section: label + one upload box that fills the rest.
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -400,7 +409,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       );
     }
 
-    // Mirrors the real ID Card section: label + container with two upload boxes.
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

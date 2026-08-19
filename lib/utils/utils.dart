@@ -265,7 +265,6 @@ const Map<String, String> kHeaderMap = {
   'currency': 'currency',
 };
 
-
 String? normalizeEducation(String input) {
   final normalized = input.trim().toLowerCase();
   const valid = {
@@ -289,7 +288,6 @@ String? normalizeEducation(String input) {
 
 bool isDateField(String fieldKey) =>
     fieldKey == 'dob' || fieldKey == 'joiningDate';
-
 
 Map<String, String> validateWorkerData(
   Map<String, dynamic> workerData, {
@@ -1704,12 +1702,12 @@ class AppDateUtils {
     }
   }
 
-  /// Effective end of a period for attendance/time-off statistics.
-  ///
-  /// Rule: `effectiveEndDate = min(selectedRangeEnd, today)`. Future dates
-  /// (e.g. approved Time Off that hasn't happened yet) must NOT be counted in
-  /// statistics before they occur, even when the selected range ends in the
-  /// future (Last 7/30 Days, Last 3/6 Months, custom ranges, etc.).
+
+
+
+
+
+
   static DateTime effectivePeriodEnd(String period, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     final rawEnd = periodEnd(period, now);
@@ -1717,9 +1715,9 @@ class AppDateUtils {
     return normalizedEnd.isAfter(today) ? today : normalizedEnd;
   }
 
-  /// True when [date] falls within [period]'s start and its effective end
-  /// (`min(periodEnd, today)`). Shares the future-date exclusion rule so every
-  /// caller aggregates with the same `date >= start && date <= today` cutoff.
+
+
+
   static bool isDateWithinEffectivePeriod(DateTime date, String period, {DateTime? now}) {
     final current = now ?? DateTime.now();
     final day = DateTime(date.year, date.month, date.day);

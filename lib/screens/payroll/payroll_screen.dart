@@ -209,65 +209,31 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             return day != null && day >= 1 && day <= 28 ? day : null;
   }
 
-  PayrollPeriod? _persistedCycleFromProfile(Map<String, dynamic>? profile, int payDay, {DateTime? referenceDate}) {
-    final savedStart = AppDateUtils.dateFromValue(profile?['payrollCycleStart']);
-    final savedEnd = AppDateUtils.dateFromValue(profile?['payrollCycleEnd']);
-
-    if (savedStart != null && savedEnd != null && savedStart.isBefore(savedEnd)) {
-      final period = PayrollPeriod(
-        start: DateTime(savedStart.year, savedStart.month, savedStart.day),
-        end: DateTime(savedEnd.year, savedEnd.month, savedEnd.day),
-      );
-      final ref = referenceDate ?? DateTime.now();
-      final today = DateTime(ref.year, ref.month, ref.day);
-      if (period.end.isBefore(today)) {
-        return null;
-      }
-      final lastPaid = PayrollService.latestSettledPayrollCycle(
-        _workersList,
-        _rawPayrollDocs,
-        companyCurrency: _companyCurrency,
-      );
-      if (lastPaid != null && period.end.difference(lastPaid.end).inDays < 20) {
-        return null;
-      }
-      return period;
-    }
-    return null;
+  bool get _isFirstCycle {
+    final lastPaid = PayrollService.latestSettledPayrollCycle(
+      _workersList,
+      _rawPayrollDocs,
+      companyCurrency: _companyCurrency,
+    );
+    return lastPaid == null;
   }
 
   PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
-    final referenceDate = DateTime.now();
-    final period = _resolveCurrentPayrollPeriod(
-      payDay: payDay,
-      persisted: _persistedCycleFromProfile(profile, payDay, referenceDate: referenceDate),
-      advanceIfFullyPaid: true,
-    );
-    final savedStartStr = profile?['payrollCycleStart']?.toString();
-    final correctStartStr = period.start.toIso8601String();
-    if (savedStartStr != correctStartStr && !_isGuest) {
-      _firestore.updateUserProfile({
-        'payrollCycleStart': period.start.toIso8601String(),
-        'payrollCycleEnd': period.end.toIso8601String(),
-      }).catchError((_) {});
+    final startStr = profile?['payrollCycleStart']?.toString();
+    final endStr = profile?['payrollCycleEnd']?.toString();
+    if (startStr != null && endStr != null && startStr.isNotEmpty && endStr.isNotEmpty) {
+      final start = AppDateUtils.dateFromValue(startStr);
+      final end = AppDateUtils.dateFromValue(endStr);
+      if (start != null && end != null && end.isAfter(start)) {
+        return PayrollPeriod(start: start, end: end);
+      }
     }
-    return period;
-  }
 
-        PayrollPeriod _resolveCurrentPayrollPeriod({
-    int? payDay,
-    PayrollPeriod? persisted,
-    bool advanceIfFullyPaid = true,
-    DateTime? referenceDate,
-  }) {
-    return PayrollService.resolveCurrentPayrollPeriod(
-      workersList: _workersList,
-      payrollRecords: _rawPayrollDocs,
-      payDay: payDay ?? _salaryPayDay ?? DateTime.now().day,
-      companyCurrency: _companyCurrency,
-      referenceDate: referenceDate,
-      persistedCycle: persisted,
-      advanceIfFullyPaid: advanceIfFullyPaid,
+    final now = DateTime.now();
+    return PayrollService.transitionPayDayPeriod(
+      currentStart: PayrollService.payPeriodStart(now),
+      payDay: payDay,
+      isFirstCycle: _isFirstCycle,
     );
   }
 
@@ -279,99 +245,25 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _rawPayrollDocs,
       companyCurrency: _companyCurrency,
     );
-    final currentPersisted = (lastPaid != null && _payPeriodEnd.difference(lastPaid.end).inDays < 20)
-        ? null
-        : PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
 
-    var resolved = _resolveCurrentPayrollPeriod(
-      payDay: _salaryPayDay,
-      persisted: currentPersisted,
-    );
-    if (lastPaid != null && _payPeriodEnd.difference(lastPaid.end).inDays < 20) {
-      setState(() {
-        _payPeriodStart = resolved.start;
-        _payPeriodEnd = resolved.end;
-        _payrollMonth = DateTime(resolved.end.year, resolved.end.month, 1);
-        _combinePayroll();
-      });
-      _firestore.updateUserProfile({
-        'payrollCycleStart': resolved.start.toIso8601String(),
-        'payrollCycleEnd': resolved.end.toIso8601String(),
-      }).catchError((_) {});
-    }
-    // Never go backward: if the resolution landed on a past cycle
-    // (e.g. after a pay-day change shifted the window), keep advancing
-    // until the resolved period ends at or after the current one.
-    final safePayDay = (_salaryPayDay ?? 28).clamp(1, 28);
-    while (resolved.end.isBefore(_payPeriodEnd)) {
-      resolved = PayrollService.nextPayDayPeriod(resolved, safePayDay);
-    }
-    if (!mounted) return;
+    if (lastPaid != null && _payPeriodStart.isBefore(lastPaid.end)) {
+      final payDay = _salaryPayDay;
+      final lastDayOfMonth = DateTime(lastPaid.end.year, lastPaid.end.month + 1, 0).day;
+      final isFullCalendarMonth = lastPaid.start.day == 1 && lastPaid.end.day == lastDayOfMonth;
+      final anchor = isFullCalendarMonth ? lastPaid.end.add(const Duration(days: 1)) : lastPaid.end;
+      final newPeriod = payDay != null
+          ? PayrollService.transitionPayDayPeriod(currentStart: anchor, payDay: payDay)
+          : PayrollService.getNextFullMonthlyCycleAfter(lastPaid.end, 0);
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final normalizedPayDay = safePayDay;
-    final lastDay = DateTime(today.year, today.month + 1, 0).day;
-    final currentMonthPayday = DateTime(today.year, today.month, normalizedPayDay.clamp(1, lastDay));
-
-    if (today.isAfter(currentMonthPayday) &&
-        !resolved.start.isBefore(currentMonthPayday) &&
-        PayrollService.payrollPeriodsEqual(
-            resolved, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
-      final prevCycleEnd = resolved.start;
-      final prevMonth = DateTime(prevCycleEnd.year, prevCycleEnd.month - 1, 1);
-      final prevLastDay = DateTime(prevMonth.year, prevMonth.month + 1, 0).day;
-      final prevCycleStart = DateTime(prevMonth.year, prevMonth.month, normalizedPayDay.clamp(1, prevLastDay));
-
-      final prevPayable = PayrollService.payableWorkersForPeriod(
-        _workersList,
-        _rawPayrollDocs,
-        month: DateTime(prevCycleEnd.year, prevCycleEnd.month, 1),
-        allowUndatedRecords: true,
-        companyCurrency: _companyCurrency,
-        periodStart: prevCycleStart,
-        periodEnd: prevCycleEnd,
-      );
-
-      final isOverlappingPaid = lastPaid != null && prevCycleEnd.difference(lastPaid.end).inDays < 20;
-
-      if (prevPayable.isNotEmpty &&
-          !isOverlappingPaid &&
-          !PayrollService.payrollPeriodsEqual(
-              resolved, PayrollPeriod(start: prevCycleStart, end: prevCycleEnd))) {
-                        final prevWindow = PayrollReminderWindow(
-          payrollMonth: DateTime(prevCycleEnd.year, prevCycleEnd.month, 1),
-          dueDate: prevCycleEnd,
-          dayOffset: 0,
-        );
-        final isIgnored =
-            await PreferencesService.isPayrollReminderIgnored(prevWindow.suppressionKey);
-        if (!isIgnored && mounted) {
-          resolved = PayrollPeriod(start: prevCycleStart, end: prevCycleEnd);
-        }
+      if (!PayrollService.payrollPeriodsEqual(newPeriod, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
+        setState(() {
+          _payPeriodStart = newPeriod.start;
+          _payPeriodEnd = newPeriod.end;
+          _payrollMonth = DateTime(newPeriod.end.year, newPeriod.end.month, 1);
+          _combinePayroll();
+        });
       }
     }
-
-    final changed = PayrollService.periodDateKey(resolved.start) != PayrollService.periodDateKey(_payPeriodStart) ||
-        PayrollService.periodDateKey(resolved.end) != PayrollService.periodDateKey(_payPeriodEnd);
-    if (!changed) return;
-
-    if (!_isGuest) {
-      await _firestore.updateUserProfile({
-        'payrollCycleStart': resolved.start.toIso8601String(),
-        'payrollCycleEnd': resolved.end.toIso8601String(),
-      });
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _payPeriodStart = resolved.start;
-      _payPeriodEnd = resolved.end;
-      _payrollMonth = DateTime(resolved.end.year, resolved.end.month, 1);
-      _selectedFilter = 'All';
-      _combinePayroll();
-    });
-    _scheduleAttendanceFetch();
   }
 
   Future<PayrollPeriod> _periodForProfile(Map<String, dynamic>? profile, int? salaryPayDay) async {
@@ -690,10 +582,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   String _payPeriodLabelFor(DateTime month) {
-    final isCurrent = month.year == _payrollMonth.year && month.month == _payrollMonth.month;
-    final start = isCurrent ? _payPeriodStart : PayrollService.payPeriodStart(month);
-    final end = isCurrent ? _payPeriodEnd : PayrollService.payPeriodEnd(month);
-    return PayrollService.formatPayPeriodRange(start, end, locale: context.locale.toString());
+    return PayrollService.formatPayPeriodRange(_payPeriodStart, _payPeriodEnd, locale: context.locale.toString());
   }
 
   String _payDayButtonLabel() {
@@ -721,8 +610,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _handlePayAllForMonth(DateTime payrollMonth) async {
     if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty) return;
     setState(() => _isRunningPayroll = true);
-    // Show immediate feedback so the UI doesn't feel frozen while heavy
-    // payroll computation runs on the main isolate.
+
+
     FlashySnackBar.dismiss();
     await Future<void>.delayed(const Duration(milliseconds: 50));
     try {
@@ -739,9 +628,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(context, message: 'payroll_run_complete'.tr(namedArgs: {'count': '${summary.successCount}'}));
-        // The Firestore stream may lag a frame behind the commit, so refresh
-        // the in-memory records and reconcile the pay period — this is what
-        // advances the screen to the next unpaid cycle after one is fully paid.
+
+
+
         await _refreshPayrollAfterCommit();
       } else if (mounted) {
         FlashySnackBar.dismiss();
@@ -757,8 +646,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       if (mounted) {
         setState(() {
           _isRunningPayroll = false;
-          // Guest mode has no Firestore stream, so reload the paid records
-          // from DummyData to keep the list + previous-cycle dropdown in sync.
+
+
           if (_isGuest) {
             _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
             _combinePayroll();
@@ -768,10 +657,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
   }
 
-  /// After a successful "Pay all" commit, re-read the payroll records from
-  /// Firestore (the snapshot listener can lag behind the write) and re-run the
-  /// pay-period reconciliation so the app moves on to the next unpaid cycle
-  /// instead of staying on the just-completed one.
+
+
+
+
   Future<void> _refreshPayrollAfterCommit() async {
     if (_isGuest || !mounted) return;
     try {
@@ -790,11 +679,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
   }
 
-  
+
   Future<void> _advanceCycleIfAllPaid() async {
     if (_isGuest || !mounted) return;
 
-    // Only advance when the current period has nobody left to pay.
+
     if (PayrollService.payableWorkersForPeriod(
       _workersList,
       _rawPayrollDocs,
@@ -808,14 +697,14 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final current = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
 
-    // Guard against double-advance: only move on from a period that actually
-    // has paid records. A fresh (already-advanced) next period has none, so we
-    // never leap more than one cycle after a single Pay-All.
+
+
+
     if (!_periodHasAnyPaidRecord(current)) return;
 
     final next = _nextCycleAfter(current, _salaryPayDay);
 
-    // Already on the next cycle — nothing to do.
+
     if (PayrollService.payrollPeriodsEqual(next, current)) return;
 
     try {
@@ -838,8 +727,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     _scheduleAttendanceFetch();
   }
 
-  /// True when any saved record belongs to [period] (so we never advance from
-  /// a period that hasn't actually been paid yet).
+
+
   bool _periodHasAnyPaidRecord(PayrollPeriod period) {
     for (final record in _rawPayrollDocs) {
       final isPaid = record['isPaid'] == true ||
@@ -861,7 +750,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return false;
   }
 
-  
+
    PayrollPeriod _nextCycleAfter(PayrollPeriod current, int? payDay) {
     if (payDay != null && payDay >= 1 && payDay <= 28) {
       return PayrollService.nextPayDayPeriod(current, payDay.clamp(1, 28));
@@ -1077,9 +966,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           confirmButtonText: 'yes',
         );
         if (!confirmed || !mounted) break;
-        // Confirmed: skip the overdue cycle and start the next one. The
-        // ignored flag also prevents _reconcilePayrollPeriod from pulling
-        // the period back to the stale overdue cycle.
+
+
+
         await PreferencesService.ignorePayrollReminder(window.suppressionKey);
         if (!_isGuest) {
           await _firestore.updateUserProfile({
@@ -1260,7 +1149,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             ),
             actions: [
               _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext)),
-              // Clear Pay Day only makes sense when a pay day is already set.
+
               if (_salaryPayDay != null)
                 _desktopDialogButton(label: 'Clear Pay Day', onTap: () => Navigator.pop(dialogContext, 0)),
               _desktopDialogButton(label: 'save'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, selectedDay)),
@@ -1315,21 +1204,12 @@ if (day == 0) {
   return;
 }
     try {
-      PayrollPeriod period;
-      if (day != _salaryPayDay) {
-        final payDay = day.clamp(1, 28);
-        final lastPaid = PayrollService.latestSettledPayrollCycle(
-          _workersList,
-          _rawPayrollDocs,
-          companyCurrency: _companyCurrency,
-        );
-        final anchor = lastPaid != null ? lastPaid.end : _trueCurrentPayrollCycle().start;
-        period = PayrollService.getNextFullMonthlyCycleAfter(anchor, payDay);
-        FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
-      } else {
-        period = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
-        FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
-      }
+      final payDay = day.clamp(1, 28);
+      final period = PayrollService.transitionPayDayPeriod(
+        currentStart: _payPeriodStart,
+        payDay: payDay,
+        isFirstCycle: _isFirstCycle,
+      );
 
       await _firestore.updateUserProfile({
         'salaryPayDay': day,
@@ -1338,13 +1218,21 @@ if (day == 0) {
       });
 
       if (!mounted) return;
+      _isUserSelectedCycle = false;
       setState(() {
         _salaryPayDay = day;
         _payPeriodStart = period.start;
         _payPeriodEnd = period.end;
         _payrollMonth = DateTime(period.end.year, period.end.month, 1);
+        _combinePayroll();
       });
       _schedulePayrollReminderCheck();
+
+      final rangeLabel = PayrollService.formatPayPeriodRange(period.start, period.end, locale: context.locale.toString());
+      FlashySnackBar.show(
+        context,
+        message: 'Pay Day updated. Current pay period: $rangeLabel',
+      );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SaveSalaryPayDay');
       if (mounted) FlashySnackBar.show(context, message: 'failed_to_save_record'.tr(), isError: true);
@@ -1426,8 +1314,9 @@ if (day == 0) {
 
   Widget _buildPayPeriodBar() {
     final periodText = _payPeriodLabelFor(_payrollMonth);
+    final isCurrent = _isViewingCurrentCycle;
     final hasCurrentPayable = _currentPayablePayrollWorkers.isNotEmpty;
-    final payAllEnabled = !_isRunningPayroll && hasCurrentPayable;
+    final payAllEnabled = !_isRunningPayroll && hasCurrentPayable && isCurrent;
 
     return Row(
       children: [
@@ -1469,7 +1358,7 @@ if (day == 0) {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF27AE60).withOpacity(payAllEnabled ? 1 : 0.4),
+                color: const Color(0xFF27AE60).withOpacity(payAllEnabled ? 1.0 : 0.4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1488,13 +1377,20 @@ if (day == 0) {
                           'assets/payroll_icon.svg',
                           width: 18,
                           height: 18,
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFFFFFFFF),
+                          colorFilter: ColorFilter.mode(
+                            Color(0xFFFFFFFF).withOpacity(payAllEnabled ? 1.0 : 0.6),
                             BlendMode.srcIn,
                           ),
                         ),
                   const SizedBox(width: 8),
-                  Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
+                  Text(
+                    'pay_all'.tr(),
+                    style: TextStyle(
+                      color: Color(0xFFFFFFFF).withOpacity(payAllEnabled ? 1.0 : 0.6),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1502,26 +1398,30 @@ if (day == 0) {
         ),
         const SizedBox(width: 12),
         MouseRegion(
-          cursor: SystemMouseCursors.click,
+          cursor: isCurrent ? SystemMouseCursors.click : SystemMouseCursors.basic,
           child: GestureDetector(
-            onTap: _showSetPayDayDialog,
+            onTap: isCurrent ? _showSetPayDayDialog : null,
             child: Container(
               height: 43,
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF0247C4),
+                color: const Color(0xFF0247C4).withOpacity(isCurrent ? 1.0 : 0.4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_month_rounded, size: 18, color: Color(0xFFFFFFFF)),
+                  Icon(
+                    Icons.calendar_month_rounded,
+                    size: 18,
+                    color: const Color(0xFFFFFFFF).withOpacity(isCurrent ? 1.0 : 0.6),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     _payDayButtonLabel(),
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
+                    style: TextStyle(
+                      color: const Color(0xFFFFFFFF).withOpacity(isCurrent ? 1.0 : 0.6),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1572,8 +1472,8 @@ if (day == 0) {
     );
   }
 
-  /// Merges a paid payroll record with its worker profile (name, position,
-  /// avatar) so it can be shown in the previous-cycle dialog or exported.
+
+
   Map<String, dynamic>? _paidWorkerRecord(Map<String, dynamic> record) {
     if (!PayrollService.isPayrollRecordPaid(record)) return null;
     Map<String, dynamic> worker = const {};
@@ -1593,7 +1493,7 @@ if (day == 0) {
     return {...record, if (worker.isNotEmpty) ...worker};
   }
 
-  /// Every paid payroll record across all cycles (merged with worker profile).
+
   List<Map<String, dynamic>> _allPaidWorkers() {
     return _rawPayrollDocs
         .map(_paidWorkerRecord)
@@ -1614,13 +1514,13 @@ if (day == 0) {
     if (start != null && end != null) {
       return PayrollService.formatPayPeriodRange(start, end);
     }
-    // Current-cycle combined records may not carry saved period dates.
+
     return PayrollService.formatPayPeriodRange(_payPeriodStart, _payPeriodEnd);
   }
 
   Future<void> _handleExportPayroll() async {
-    // Everything: every paid record across all cycles, plus the current
-    // cycle's unpaid/payable workers — a full payroll dump.
+
+
     final paidWorkers = _allPaidWorkers();
     final unpaidCurrent = _payrollDocs.where((doc) {
       if (doc['isPaid'] == true || doc['hasPaidPayrollRecord'] == true) return false;
@@ -1730,7 +1630,7 @@ if (day == 0) {
     }
   }
 
-   
+
   List<({PayrollPeriod period, String label, int paidCount, bool isCurrent})> _payPeriodOptions() {
     final map = <String, ({PayrollPeriod period, int paidCount})>{};
 
@@ -1756,7 +1656,7 @@ if (day == 0) {
 
     final selectedCycle = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
     final selectedKey = '${PayrollService.periodDateKey(selectedCycle.start)}_${PayrollService.periodDateKey(selectedCycle.end)}';
-    if (!map.containsKey(selectedKey)) {
+    if (!map.containsKey(selectedKey) && selectedKey == currentKey) {
       map[selectedKey] = (
         period: selectedCycle,
         paidCount: 0,
@@ -1780,8 +1680,8 @@ if (day == 0) {
         .toList();
   }
 
-  /// Opens a dropdown (anchored to the pay-period label) listing the available
-  /// pay periods; selecting one switches the payroll list below to that cycle.
+
+
   Future<void> _showPaidWorkersDropdown(BuildContext anchor) async {
     final options = _payPeriodOptions();
     final selectedKey = '${PayrollService.periodDateKey(_payPeriodStart)}_${PayrollService.periodDateKey(_payPeriodEnd)}';
@@ -1798,7 +1698,7 @@ if (day == 0) {
 
     final selected = await showMenu<({PayrollPeriod period, String label, int paidCount, bool isCurrent})>(
       context: context,
-      // Open just below the date label (with a small gap) instead of on top of it.
+
       position: RelativeRect.fromRect(anchorRect.translate(0, anchorRect.height + 6), Offset.zero & overlaySize),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
@@ -1851,7 +1751,7 @@ if (day == 0) {
 
     if (selected == null || !mounted) return;
     _isUserSelectedCycle = true;
-    // Switch the main payroll list to the selected cycle (no popup).
+
     setState(() {
       _payPeriodStart = selected.period.start;
       _payPeriodEnd = selected.period.end;
@@ -2334,23 +2234,36 @@ if (day == 0) {
     }
   }
 
-  /// The true current pay cycle (computed from today + salary pay day), which
-  /// stays stable even when the user views an older cycle via the dropdown.
-  /// Mirrors the logic in [PayrollService.resolveCurrentPayrollPeriod] so that
-  /// when there are still unpaid workers in the previous cycle, the dropdown
-  /// shows that cycle as "current" rather than jumping ahead.
+
+
+
+
+
+  bool get _isViewingCurrentCycle {
+    final active = _trueCurrentPayrollCycle();
+    return PayrollService.payrollPeriodsEqual(
+      PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+      active,
+    );
+  }
+
   PayrollPeriod _trueCurrentPayrollCycle() {
     final now = DateTime.now();
-    final payDay = (_salaryPayDay ?? 28).clamp(1, 28);
-
-    // Use the same resolution logic as PayrollService so the dropdown and
-    // the rest of the app agree on which cycle is "current".
+    final payDay = _salaryPayDay;
+    if (payDay != null) {
+      return PayrollService.transitionPayDayPeriod(
+        currentStart: _payPeriodStart,
+        payDay: payDay.clamp(1, 28),
+        isFirstCycle: _isFirstCycle,
+      );
+    }
     return PayrollService.resolveCurrentPayrollPeriod(
       workersList: _workersList,
       payrollRecords: _rawPayrollDocs,
-      payDay: payDay,
+      payDay: 0,
       companyCurrency: _companyCurrency,
       referenceDate: now,
+      persistedCycle: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
       advanceIfFullyPaid: true,
     );
   }
@@ -2370,15 +2283,15 @@ if (day == 0) {
   }
 
   void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index, {bool readOnly = false}) async {
-    // Paid records in the current cycle are editable too (the edit flow asks
-    // for confirmation and re-opens payroll with the paid data); only older
-    // cycles stay read-only.
+
+
+
     final canEdit = !readOnly && _recordInCurrentPayrollCycle(data);
     final name = (data['name'] ?? '').toString();
     final email = (data['email'] ?? '').toString();
     final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
-    // Paid records already store attendance counts — use them directly
-    // to avoid a slow Firestore / preFetchedRecords lookup.
+
+
     final isPaidRecord = data['isPaid'] == true || (data['status'] ?? '').toString().toLowerCase() == 'paid';
     final attendanceCounts = isPaidRecord
         ? PayrollService.attendanceCounts(data)

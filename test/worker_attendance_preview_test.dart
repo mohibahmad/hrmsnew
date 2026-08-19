@@ -1,16 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/attendance_report_service.dart';
 
-/// Worker Attendance Preview regression test.
-///
-/// The popup (`WorkerAttendancePreviewCard` in
-/// `lib/screens/attendance/attendance_screen.dart`) is fed by
-/// `_showAttendancePreview` → `_filterWorkerRecords` →
-/// `AttendanceReportService.recordsForWorker` with
-/// `AttendanceReportService.rangeForPeriod(period)`. Both apply the shared
-/// effective-date rule `effectiveEndDate = min(selectedRangeEnd, today)`, so
-/// approved Time Off in the future (e.g. September, when today is Aug 17)
-/// must contribute zero records to the preview until those dates occur.
 void main() {
   group('Worker Attendance Preview — future time off excluded', () {
     final worker = {
@@ -66,8 +56,8 @@ void main() {
         () {
       final now = DateTime(2026, 8, 17);
 
-      // This is exactly what the preview popup feeds the card:
-      // _filterWorkerRecords(doc, periodOverride: 'Last 6 Months').
+
+
       final records = AttendanceReportService.recordsForWorker(
         worker: worker,
         attendanceRecords: rawAttendance,
@@ -82,8 +72,8 @@ void main() {
           records.where((d) => d['status'] == 'Present').length;
       final total = records.length;
 
-      // Effective window is Mar 1 – Aug 17, so the September leave (11 days)
-      // must not appear as records in the preview list.
+
+
       final futureDates = records
           .map((r) => AttendanceReportService.recordDateForRecord(r))
           .where((d) => d != null && d.isAfter(now))
@@ -103,7 +93,7 @@ void main() {
     });
 
     test('leave starting today through the future counts only today', () {
-      // 11-day leave Aug 17–27 with today Aug 17 → only Aug 17 counts.
+
       final records = AttendanceReportService.recordsForWorker(
         worker: worker,
         attendanceRecords: rawAttendance,

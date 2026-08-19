@@ -511,9 +511,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       fontSize: 14,
       fontWeight: FontWeight.w600,
     );
-    // Measure the label so the loading spinner swaps in at the exact same
-    // width. Otherwise the button shrinks when saving starts and (being
-    // right-aligned) visibly jumps.
+
+
+
     final textWidth = (TextPainter(
       text: TextSpan(text: buttonText, style: buttonTextStyle),
       textDirection: Directionality.of(ctx),
@@ -768,8 +768,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
-          // Render the prefix (e.g. currency symbol) as a static widget so it
-          // stays visible even when the field is empty and not focused.
+
+
           child: prefixText == null
               ? textField
               : Row(

@@ -2,9 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/helpers.dart';
 import '../utils/utils.dart';
 
-// -----------------------------------------------------------------------------
-// SAFE PARSER UTILITY
-// -----------------------------------------------------------------------------
 class SafeParser {
   SafeParser._();
 
@@ -64,7 +61,6 @@ class SafeParser {
   }
 }
 
-// Extension to make mapping beautifully crisp
 extension SafeParserExtension on Object? {
   String get asString => SafeParser.asString(this);
   String? get asStringOrNull => SafeParser.asStringOrNull(this);
@@ -76,11 +72,8 @@ extension SafeParserExtension on Object? {
   DateTime? get asDateOnly => SafeParser.asDateOnly(this);
 }
 
-// -----------------------------------------------------------------------------
-// FIRESTORE MAP EXTENSION
-// -----------------------------------------------------------------------------
 extension FieldAdder on Map<String, dynamic> {
-  // Deep-sixed 'isDate' because it was unused. Kept only what is needed.
+
   void addField(
     String key,
     dynamic value,
@@ -101,9 +94,6 @@ extension FieldAdder on Map<String, dynamic> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// WORKER MODEL
-// -----------------------------------------------------------------------------
 typedef WorkerModel = Worker;
 
 String _normalizeWorkerStatus(dynamic value) {
@@ -137,12 +127,12 @@ class Worker {
   final String? gender;
   final String? address;
   final String? relationshipStatus;
-  
-  // Renamed from type1 & type2 for clean HRMS understanding
-  final String? workType;       
+
+
+  final String? workType;
   final String? position;
-  final String? attendanceType; 
-  
+  final String? attendanceType;
+
   final String? experienceLevel;
   final String? education;
   final String? salaryType;

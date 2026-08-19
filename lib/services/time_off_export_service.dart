@@ -25,31 +25,31 @@ class TimeOffExportService {
     if (explicitDays != null && explicitDays.toString().trim().isNotEmpty) {
       return explicitDays.toString().trim();
     }
-    
+
     final rawDays = record['days'] ?? record['numberOfDays'] ?? record['totalDays'];
     if (rawDays != null && rawDays.toString().trim().isNotEmpty) {
       return rawDays.toString().trim();
     }
-    
+
     final dates = record['selectedDates'];
     if (dates is List && dates.isNotEmpty) {
       return dates.length.toString();
     }
-    
+
     return '1';
   }
 
   static String _escapeCsvCell(dynamic value) {
     if (value == null) return '""';
-    
+
     var text = value.toString().trim();
     if (text.isEmpty) return '""';
-    
+
     if (text.startsWith('=') || text.startsWith('+') || text.startsWith('-') ||
         text.startsWith('@') || text.startsWith('\t') || text.startsWith('\r')) {
       text = "'$text";
     }
-    
+
     final escaped = text.replaceAll('"', '""').replaceAll('\n', ' ');
     return '"$escaped"';
   }
@@ -57,7 +57,7 @@ class TimeOffExportService {
   static String generateCsvContent(List<Map<String, dynamic>> records) {
     final activeRecords = records.where(TimeOffService.isActiveRecord).toList();
     final buffer = StringBuffer();
-    
+
     buffer.writeln('Worker Name,Leave Type,From Date,To Date,Days,Status,Reason');
 
     for (final record in activeRecords) {

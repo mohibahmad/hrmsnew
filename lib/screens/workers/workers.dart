@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/dummy_data.dart';
@@ -644,10 +645,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                 const SizedBox(height: 22),
 
                 if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  _buildShimmerTable(dynamicHeight)
                 else if (_loadErrorMessage != null)
                   SizedBox(
                     width: double.infinity,
@@ -742,6 +740,131 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
               itemCount: workers.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, index) => _buildListItem(workers[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerTable(double tableHeight) {
+    return Container(
+      height: tableHeight,
+      decoration: BoxDecoration(
+        color: _kWhite,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
+            child: Row(
+              children: [
+                _tableHeader('worker_name'.tr(), flex: 3),
+                _tableHeader('work_type'.tr(), flex: 2),
+                _tableHeader('position'.tr(), flex: 2),
+                _tableHeader('attendance_type'.tr(), flex: 2),
+                const SizedBox(width: 48),
+              ],
+            ),
+          ),
+          const SizedBox(height: 1, child: ColoredBox(color: _kDivider)),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 5,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, __) => Shimmer.fromColors(
+                baseColor: Colors.grey[200]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+                  decoration: BoxDecoration(
+                    color: _kRowBg,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  width: 60,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          width: 80,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          width: 80,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          width: 80,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -1078,7 +1201,7 @@ class _WorkerProfilePreviewDialogState
 
   String _orNA(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
-  String _capitalizeWords(String text) => Validators.titleCase(text); 
+  String _capitalizeWords(String text) => Validators.titleCase(text);
 
   String _formatSalary(String salaryAmount, {String? currencyOverride}) {
     final companyCurr =

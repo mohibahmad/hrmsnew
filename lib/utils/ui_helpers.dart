@@ -645,11 +645,11 @@ class FlashySnackBarProgressController {
   double get progress => _progress;
   String get label => _label;
 
-  /// True while the progress snackbar overlay entry is still mounted.
+
   bool get isActive => _entry?.mounted ?? false;
 
-  /// In-place update: just change the values and trigger a rebuild of
-  /// the existing widget instead of destroying + recreating the overlay.
+
+
   void update({required double progress, required String label}) {
     _progress = progress;
     _label = label;
@@ -720,8 +720,8 @@ class FlashySnackBar {
     _currentIsLoading = isLoading;
     overlay.insert(entry);
 
-    // Loading toasts stay visible (replaced by the next toast) so the user
-    // sees continuous progress during long operations.
+
+
     if (!isLoading) {
       Future.delayed(displayDuration, () {
         if (entry.mounted) {
@@ -732,9 +732,9 @@ class FlashySnackBar {
     }
   }
 
-  /// Shows a progress snackbar that can be updated via the returned controller.
-  /// Unlike [show], this snackbar stays visible until [FlashySnackBarProgressController.dismiss]
-  /// is called.
+
+
+
   static FlashySnackBarProgressController showProgress(
     BuildContext context, {
     required String message,
@@ -777,7 +777,7 @@ class FlashySnackBar {
     overlay.insert(entry);
     controller._entry = entry;
 
-    // Wire up the controller so update() can trigger in-place rebuilds.
+
     controller._dismiss = () {
       if (entry.mounted) {
         if (_currentEntry == entry) _currentEntry = null;
@@ -790,9 +790,9 @@ class FlashySnackBar {
     return controller;
   }
 
-  /// Removes the currently visible toast if it is still a loading toast.
-  /// Safe to call after an operation ends early; a success/error toast that
-  /// replaced the loading one is left untouched.
+
+
+
   static void dismiss() {
     if (!_currentIsLoading) return;
     final entry = _currentEntry;
@@ -1017,7 +1017,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
   @override
   void initState() {
     super.initState();
-    // Wire up the controller so it can trigger in-place rebuilds.
+
     _pc._setState = () {
       if (mounted) setState(() {});
     };

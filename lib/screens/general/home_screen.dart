@@ -56,10 +56,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  // Stable instance so the fade-in only plays once (on first mount). If we
-  // created a new Tween on every build the dashboard would replay its 0→1 fade
-  // on each stream-driven setState, making content flicker instead of showing
-  // smooth.
+
+
+
+
   static final Tween<double> _dashboardFadeTween = Tween<double>(begin: 0, end: 1);
 
   late int _selectedIndex;
@@ -129,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
-  
+
   }
 
   @override
@@ -541,7 +541,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     )['netSalary'] as num).toDouble();
   }
 
-  
+
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
