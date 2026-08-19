@@ -1705,7 +1705,8 @@ if (day == 0) {
 
       final csvString = await compute(_generateCsvString, rows);
       final csvBytes = Uint8List.fromList(utf8.encode(csvString));
-      final fileName = 'paid_workers_export_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+      final monthStr = DateFormat('MMM_yyyy').format(_payPeriodEnd);
+      final fileName = 'Payroll_Export_$monthStr.csv';
 
       final outputFile = await FilePicker.saveFile(
         dialogTitle: 'Export Paid Workers (All Cycles)',
