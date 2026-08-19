@@ -4712,7 +4712,7 @@ Widget _buildInputField(
                 ? const EdgeInsets.only(top: 14)
                 : const EdgeInsets.symmetric(vertical: 12),
             prefixText: (isAmount && showCurrency)
-                ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} '
+                ? '${CurrencyUtils.symbolFor(CurrencyUtils.companyCurrency)} | '
                 : null,
             prefixStyle: const TextStyle(
               color: Color(0xFF6B7280),
