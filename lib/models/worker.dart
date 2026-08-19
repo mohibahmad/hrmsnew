@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/helpers.dart';
 import '../utils/utils.dart';
 
 // -----------------------------------------------------------------------------
@@ -93,6 +94,8 @@ extension FieldAdder on Map<String, dynamic> {
 // -----------------------------------------------------------------------------
 // WORKER MODEL
 // -----------------------------------------------------------------------------
+typedef WorkerModel = Worker;
+
 String _normalizeWorkerStatus(dynamic value) {
   final raw = value?.toString().trim() ?? '';
   if (raw.isEmpty) return 'Active';
@@ -150,9 +153,14 @@ class Worker {
   final String? frontId;
   final String? backId;
   final String? cv;
+  final String? cvFileName;
+  final String? clientRowId;
   final DateTime? createdAt;
   final bool? payrollInitialized;
   final String? status;
+
+  String? get idFront => frontId;
+  String? get idBack => backId;
 
   const Worker({
     this.id,
@@ -189,6 +197,8 @@ class Worker {
     this.frontId,
     this.backId,
     this.cv,
+    this.cvFileName,
+    this.clientRowId,
     this.createdAt,
     this.payrollInitialized,
     this.status,
@@ -234,10 +244,89 @@ class Worker {
       frontId: SafeParser.asStringOrNull(data['idFront'] ?? data['frontId'] ?? data['front_id'] ?? data['id_front']),
       backId: SafeParser.asStringOrNull(data['idBack'] ?? data['backId'] ?? data['back_id'] ?? data['id_back']),
       cv: SafeParser.asStringOrNull(data['cv']),
+      cvFileName: SafeParser.asStringOrNull(data['cvFileName']),
+      clientRowId: SafeParser.asStringOrNull(data['clientRowId'] ?? data['client_row_id']),
       createdAt: SafeParser.asDateTime(data['createdAt']),
       payrollInitialized: SafeParser.asBool(data['payroll_initialized'] ?? data['payrollInitialized']) ?? false,
       status: _normalizeWorkerStatus(data['status']),
     );
+  }
+
+  Map<String, dynamic> toFirestore({bool forUpdate = false}) {
+    final annual = annualLeaves ?? 0;
+    final sick = sickLeaves ?? 0;
+    final casual = casualLeaves ?? 0;
+    final medical = medicalLeaves ?? 0;
+
+    final availAnnual = availableAnnualLeaves ?? annual;
+    final availSick = availableSickLeaves ?? sick;
+    final availCasual = availableCasualLeaves ?? casual;
+    final availMedical = availableMedicalLeaves ?? medical;
+
+    final map = <String, dynamic>{
+      'name': name.trim(),
+      'fatherName': fatherName?.trim() ?? '',
+      'email': WorkerIdentity.normalizeEmail(email),
+      'phone': phone?.trim() ?? '',
+      'nationalId': nationalId?.trim() ?? '',
+      'religion': religion?.trim() ?? '',
+      'gender': gender?.trim() ?? '',
+      'address': address?.trim() ?? '',
+      'relationshipStatus': relationshipStatus?.trim() ?? '',
+      'type1': (workType?.trim().isNotEmpty == true) ? workType!.trim() : 'Full-Time',
+      'workType': (workType?.trim().isNotEmpty == true) ? workType!.trim() : 'Full-Time',
+      'position': (position?.trim().isNotEmpty == true) ? position!.trim() : 'Employee',
+      'type2': (attendanceType?.trim().isNotEmpty == true) ? attendanceType!.trim() : 'On-Site',
+      'attendanceType': (attendanceType?.trim().isNotEmpty == true) ? attendanceType!.trim() : 'On-Site',
+      'experienceLevel': experienceLevel?.trim() ?? '',
+      'education': education?.trim() ?? '',
+      'annualLeaves': annual,
+      'availableAnnualLeaves': availAnnual,
+      'sickLeaves': sick,
+      'availableSickLeaves': availSick,
+      'casualLeaves': casual,
+      'availableCasualLeaves': availCasual,
+      'medicalLeaves': medical,
+      'availableMedicalLeaves': availMedical,
+      'leaveBalances': {
+        'annualLeave': availAnnual,
+        'sickLeave': availSick,
+        'casualLeave': availCasual,
+        'medicalLeave': availMedical,
+      },
+      'payroll_initialized': payrollInitialized ?? true,
+    };
+
+    if (dob != null) {
+      map['dob'] = Timestamp.fromDate(DateTime(dob!.year, dob!.month, dob!.day));
+    }
+    if (joiningDate != null) {
+      map['joiningDate'] = Timestamp.fromDate(DateTime(joiningDate!.year, joiningDate!.month, joiningDate!.day));
+    }
+
+    if (salaryAmount != null) map['salaryAmount'] = salaryAmount;
+    if (salaryType != null) map['salaryType'] = salaryType;
+    if (currency != null) map['currency'] = CurrencyUtils.normalize(currency);
+
+    if (profileImage != null && profileImage!.trim().isNotEmpty) {
+      map['profileImage'] = profileImage!.trim();
+    }
+    if (frontId != null && frontId!.trim().isNotEmpty) {
+      map['idFront'] = frontId!.trim();
+    }
+    if (backId != null && backId!.trim().isNotEmpty) {
+      map['idBack'] = backId!.trim();
+    }
+    if (cv != null && cv!.trim().isNotEmpty) {
+      map['cv'] = cv!.trim();
+      map['cvFileName'] = cvFileName ?? cleanUploadedDocumentFileName(cv!);
+    }
+
+    if (clientRowId != null && clientRowId!.trim().isNotEmpty) {
+      map['clientRowId'] = clientRowId!.trim();
+    }
+
+    return map;
   }
 
   Map<String, dynamic> toMap({bool forUpdate = false}) {
@@ -268,8 +357,8 @@ class Worker {
     map.addField('education', education, forUpdate);
     map.addField('salaryType', salaryType, forUpdate);
     map.addField('profileImage', profileImage, forUpdate);
-    map.addField('frontId', frontId, forUpdate);
-    map.addField('backId', backId, forUpdate);
+    map.addField('idFront', idFront, forUpdate);
+    map.addField('idBack', idBack, forUpdate);
     map.addField('cv', cv, forUpdate);
     if (status != null && status != 'Active') {
       map.addField('status', status, forUpdate);
@@ -303,6 +392,9 @@ class Worker {
     }
 
     map['payroll_initialized'] = payrollInitialized ?? true;
+    if (clientRowId != null && clientRowId!.trim().isNotEmpty) {
+      map['clientRowId'] = clientRowId!.trim();
+    }
 
     return map;
   }

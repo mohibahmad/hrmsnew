@@ -181,6 +181,8 @@ const Map<String, String> kHeaderMap = {
   'company no': 'phone',
   'email address': 'email',
   'father name/husband name': 'fatherName',
+  'father / husband name': 'fatherName',
+  'father/husband name': 'fatherName',
   'father name': 'fatherName',
   'national id': 'nationalId',
   'professed religion': 'religion',

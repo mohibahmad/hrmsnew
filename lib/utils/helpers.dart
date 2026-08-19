@@ -93,6 +93,9 @@ Uint8List compressImageBytes(
   int maxWidth = 1200,
   int quality = 80,
 }) {
+  if (bytes.length <= 350 * 1024) {
+    return bytes;
+  }
   img.Image? image = img.decodeImage(bytes);
   if (image == null) return bytes;
   if (image.width > maxWidth) {

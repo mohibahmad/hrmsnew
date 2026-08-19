@@ -1,3 +1,4 @@
+import '../models/worker.dart';
 import '../utils/helpers.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -335,26 +336,13 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) throw StateError('No authenticated user');
 
-    final existingSnapshot = await coll.get();
-    final existingWorkers = existingSnapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id});
-    final duplicateField = WorkerIdentity.duplicateField(worker, existingWorkers);
+    final duplicateField = await findDuplicateWorkerField(
+      email: (worker['email'] ?? '').toString(),
+      nationalId: (worker['nationalId'] ?? '').toString(),
+    );
     if (duplicateField != null) throw DuplicateWorkerException(duplicateField);
 
-    final canonicalWorker = {
-      ...worker,
-      ...TimeOffService.canonicalWorkerLeaveFields(worker),
-      'payroll_initialized': worker['payroll_initialized'] ?? true,
-    };
-
-    for (final key in ['dob', 'joiningDate']) {
-      final val = canonicalWorker[key];
-      if (val is String && val.trim().isNotEmpty) {
-        final dt = AppDateUtils.parseDdMmYyyy(val) ?? AppDateUtils.dateFromValue(val);
-        if (dt != null) canonicalWorker[key] = Timestamp.fromDate(DateTime(dt.year, dt.month, dt.day));
-      } else if (val is DateTime) {
-        canonicalWorker[key] = Timestamp.fromDate(DateTime(val.year, val.month, val.day));
-      }
-    }
+    final canonicalWorker = WorkerModel.fromMap(worker).toFirestore();
 
     final docRef = await coll.add({
       ..._withNormalizedCurrency(canonicalWorker, isNewDoc: true),
@@ -464,20 +452,8 @@ class FirestoreService {
     final batch = _firestore.batch();
     for (final worker in workers) {
       final docRef = coll.doc();
-      final canonicalWorker = {
-        ...worker,
-        ...TimeOffService.canonicalWorkerLeaveFields(worker),
-        'payroll_initialized': worker['payroll_initialized'] ?? true,
-      };
-      for (final key in ['dob', 'joiningDate']) {
-        final val = canonicalWorker[key];
-        if (val is String && val.trim().isNotEmpty) {
-          final dt = AppDateUtils.parseDdMmYyyy(val) ?? AppDateUtils.dateFromValue(val);
-          if (dt != null) canonicalWorker[key] = Timestamp.fromDate(DateTime(dt.year, dt.month, dt.day));
-        } else if (val is DateTime) {
-          canonicalWorker[key] = Timestamp.fromDate(DateTime(val.year, val.month, val.day));
-        }
-      }
+      final canonicalWorker = WorkerModel.fromMap(worker).toFirestore();
+
       final dataToSet = _withNormalizedCurrency(canonicalWorker, isNewDoc: true);
       dataToSet['createdAt'] = FieldValue.serverTimestamp();
       batch.set(docRef, dataToSet);
@@ -490,25 +466,29 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null) return;
 
-    final existingSnapshot = await coll.get();
-    final existingWorkers = existingSnapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id});
-    final duplicateField = WorkerIdentity.duplicateField(data, existingWorkers, excludeId: id);
+    final duplicateField = await findDuplicateWorkerField(
+      email: (data['email'] ?? '').toString(),
+      nationalId: (data['nationalId'] ?? '').toString(),
+      excludeId: id,
+    );
     if (duplicateField != null) throw DuplicateWorkerException(duplicateField);
 
-    final currentWorker = existingWorkers.firstWhere((worker) => worker['id']?.toString() == id, orElse: () => <String, dynamic>{});
+    final currentDoc = await coll.doc(id).get();
+    final currentWorker = currentDoc.exists
+        ? {...currentDoc.data() as Map<String, dynamic>, 'id': id}
+        : <String, dynamic>{};
+
     if (currentWorker.isNotEmpty) {
       final normalizedName = WorkerIdentity.normalizeName(currentWorker['name']);
-      final sameNameWorkers = existingWorkers.where((worker) => WorkerIdentity.normalizeName(worker['name']) == normalizedName);
       await _backfillLegacyWorkerReferences(
         workerId: id,
         previousWorker: currentWorker,
-        allowNameFallback: normalizedName.isNotEmpty && sameNameWorkers.length == 1,
+        allowNameFallback: normalizedName.isNotEmpty,
       );
     }
 
     final workerUpdate = <String, dynamic>{...currentWorker, ...data};
-    final timeOffSnapshot = await _timeoff?.get();
-    final timeOffRecords = timeOffSnapshot?.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id}).toList() ?? const <Map<String, dynamic>>[];
+    final timeOffRecords = await getTimeoffOnce(workerId: id);
     final workerWithId = {...workerUpdate, 'id': id, 'workerId': id};
     final assignedByType = TimeOffService.paidDaysUsedForWorkerByType(workerWithId, timeOffRecords);
 
@@ -760,9 +740,52 @@ class FirestoreService {
   Future<DuplicateWorkerField?> findDuplicateWorkerField({required String? email, required String? nationalId, String? excludeId}) async {
     final coll = _workers;
     if (coll == null) throw StateError('No authenticated user');
-    final snapshot = await coll.get();
-    final existingWorkers = snapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id});
-    return WorkerIdentity.duplicateField(<String, dynamic>{'email': email, 'nationalId': nationalId}, existingWorkers, excludeId: excludeId);
+
+    final normEmail = WorkerIdentity.normalizeEmail(email);
+    final rawNationalId = (nationalId ?? '').trim();
+    final normNationalId = WorkerIdentity.normalizeNationalId(nationalId);
+
+    if (normEmail.isEmpty && rawNationalId.isEmpty && normNationalId.isEmpty) return null;
+
+    final futures = <Future<QuerySnapshot?>>[];
+
+    if (normEmail.isNotEmpty) {
+      futures.add(coll.where('email', isEqualTo: normEmail).limit(2).get());
+    } else {
+      futures.add(Future.value(null));
+    }
+
+    if (rawNationalId.isNotEmpty) {
+      futures.add(coll.where('nationalId', isEqualTo: rawNationalId).limit(2).get());
+    } else {
+      futures.add(Future.value(null));
+    }
+
+    final results = await Future.wait(futures);
+
+    final emailSnap = results[0];
+    if (emailSnap != null) {
+      for (final doc in emailSnap.docs) {
+        if (excludeId != null && doc.id == excludeId) continue;
+        return DuplicateWorkerField.email;
+      }
+    }
+
+    final nationalIdSnap = results[1];
+    if (nationalIdSnap != null && nationalIdSnap.docs.isNotEmpty) {
+      for (final doc in nationalIdSnap.docs) {
+        if (excludeId != null && doc.id == excludeId) continue;
+        return DuplicateWorkerField.nationalId;
+      }
+    } else if (normNationalId.isNotEmpty && normNationalId != rawNationalId) {
+      final normNatSnap = await coll.where('nationalId', isEqualTo: normNationalId).limit(2).get();
+      for (final doc in normNatSnap.docs) {
+        if (excludeId != null && doc.id == excludeId) continue;
+        return DuplicateWorkerField.nationalId;
+      }
+    }
+
+    return null;
   }
 
   

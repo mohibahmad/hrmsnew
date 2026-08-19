@@ -169,7 +169,7 @@ void showCupertinoDatePickerDialog({
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(
@@ -258,7 +258,7 @@ void showCupertinoDatePickerDialog({
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Center(
                                       child: Text(
@@ -309,7 +309,7 @@ void showCupertinoDatePickerDialog({
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF0247C4),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Center(
                                       child: Text(

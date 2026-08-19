@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:typed_data';
@@ -464,51 +465,19 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   }) async {
     if (specs.isEmpty) return const [];
 
-    final resolvedNames = [
-      for (final spec in specs)
-        spec.fileName?.trim().isNotEmpty == true
-            ? spec.fileName!.trim()
-            : spec.fallbackFileName,
-    ];
-
-    final compressIndices = <int>[];
-    for (var index = 0; index < specs.length; index++) {
-      final spec = specs[index];
-      if (spec.compressImages &&
-          mimeTypeForExtension(resolvedNames[index]).startsWith('image/')) {
-        compressIndices.add(index);
-      }
-    }
-
-    final compressed = compressIndices.isEmpty
-        ? const <Uint8List>[]
-        : await _compressImagesBatch([
-            for (final index in compressIndices) specs[index].bytes,
-          ]);
-
     final files = <UploadFile>[];
-    var compressedIndex = 0;
-    for (var index = 0; index < specs.length; index++) {
-      final spec = specs[index];
-      final mimeType = mimeTypeForExtension(resolvedNames[index]);
-      final isImage = spec.compressImages && mimeType.startsWith('image/');
+    for (final spec in specs) {
+      final fileName = spec.fileName?.trim().isNotEmpty == true
+          ? spec.fileName!.trim()
+          : spec.fallbackFileName;
+      final mimeType = mimeTypeForExtension(fileName, fallback: 'application/octet-stream');
       files.add(
-        isImage
-            ? UploadFile(
-                folder: spec.folder,
-                fileName: _jpegFileName(
-                  resolvedNames[index],
-                  spec.fallbackFileName,
-                ),
-                bytes: compressed[compressedIndex++],
-                mimeType: 'image/jpeg',
-              )
-            : UploadFile(
-                folder: spec.folder,
-                fileName: resolvedNames[index],
-                bytes: spec.bytes,
-                mimeType: mimeType,
-              ),
+        UploadFile(
+          folder: spec.folder,
+          fileName: fileName,
+          bytes: spec.bytes,
+          mimeType: mimeType,
+        ),
       );
     }
     return files;
@@ -1388,7 +1357,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         final worker = widget.workerToEdit!;
         final timeOffRecords = isGuest
             ? List<Map<String, dynamic>>.from(DummyData.timeoff)
-            : await _firestore.getTimeoffOnce();
+            : await _firestore.getTimeoffOnce(workerId: worker['id']?.toString());
         final assignedByType = TimeOffService.paidDaysUsedForWorkerByType(
           worker,
           timeOffRecords,
@@ -1542,18 +1511,22 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           ?oldBackIdUrl,
           ?oldCvUrl,
         };
+        final deleteFutures = <Future<void>>[];
         for (final oldUrl in oldUrls) {
           if (oldUrl.isNotEmpty && !currentUrls.contains(oldUrl)) {
-            try {
-              await UploadService.deleteByUrl(oldUrl);
-            } catch (cleanupError, cleanupStack) {
-              ErrorReporter.report(
-                cleanupError,
-                cleanupStack,
-                context: 'workerEditCleanupOldFile',
-              );
-            }
+            deleteFutures.add(
+              UploadService.deleteByUrl(oldUrl).catchError((cleanupError, cleanupStack) {
+                ErrorReporter.report(
+                  cleanupError,
+                  cleanupStack,
+                  context: 'workerEditCleanupOldFile',
+                );
+              }),
+            );
           }
+        }
+        if (deleteFutures.isNotEmpty) {
+          unawaited(Future.wait(deleteFutures));
         }
       }
 
@@ -2446,7 +2419,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(
@@ -2534,7 +2507,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -2562,7 +2535,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFF0247C4),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Center(
                                         child: Text(

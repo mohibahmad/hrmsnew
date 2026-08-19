@@ -102,8 +102,10 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
 
   const mediaFields = <({String key, String field})>[
     (key: 'profileImage', field: 'profileImage'),
-    (key: 'frontId', field: 'frontId'),
-    (key: 'backId', field: 'backId'),
+    (key: 'frontId', field: 'idFront'),
+    (key: 'idFront', field: 'idFront'),
+    (key: 'backId', field: 'idBack'),
+    (key: 'idBack', field: 'idBack'),
     (key: 'cv', field: 'cv'),
   ];
   const uploadBatchSize = 20;
@@ -209,6 +211,7 @@ Future<List<Map<String, dynamic>>> uploadEmbeddedWorkerMedia(
     for (var i = 0; i < embedResults.length; i++) {
       final t = embeddedSources[i];
       prepared[t.workerIndex][t.key] = embedResults[i].url;
+      prepared[t.workerIndex][t.field] = embedResults[i].url;
     }
   }
 

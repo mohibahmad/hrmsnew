@@ -1303,7 +1303,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF0247C4).withOpacity(0.18),
@@ -1361,7 +1361,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -1387,7 +1387,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFF0247C4),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Center(
                                         child: Text(
