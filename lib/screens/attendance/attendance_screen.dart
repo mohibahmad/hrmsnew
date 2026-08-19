@@ -1537,7 +1537,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildEmptyState() {
-    final dynamicHeight = (MediaQuery.of(context).size.height - 465).clamp(480.0, 1200.0);
+    final dynamicHeight = (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
     return Container(
       width: double.infinity,
       height: dynamicHeight,
@@ -1561,7 +1561,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
-    final tableHeight = (MediaQuery.of(context).size.height - 465).clamp(480.0, 1200.0);
+    final tableHeight = (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
 
     return Container(
       height: tableHeight,

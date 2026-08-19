@@ -2969,8 +2969,11 @@ class _WorkersAttendanceScreenState
 
     final visibleAttendance = _visibleTodayAttendance;
     if (visibleAttendance.isEmpty) {
+      final dynamicHeight =
+          (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
       return Container(
         width: double.infinity,
+        height: dynamicHeight,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),

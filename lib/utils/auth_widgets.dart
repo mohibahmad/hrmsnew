@@ -135,6 +135,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
               enableSuggestions: widget.enableSuggestions,
               onChanged: (val) {
                 field.didChange(val);
+                if (field.hasError) {
+                  field.reset();
+                }
               },
               onSubmitted: widget.onFieldSubmitted,
               style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
