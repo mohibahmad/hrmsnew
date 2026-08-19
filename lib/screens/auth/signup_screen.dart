@@ -91,7 +91,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _openHome() {
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(noTransitionRoute(builder: (_) => const HomeScreen()));
+    Navigator.of(context).pushReplacement(authTransitionRoute(builder: (_) => const HomeScreen()));
   }
 
   Future<void> _handleGoogleLogin() async {

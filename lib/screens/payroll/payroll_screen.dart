@@ -302,14 +302,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     // Never go backward: if the resolution landed on a past cycle
     // (e.g. after a pay-day change shifted the window), keep advancing
     // until the resolved period ends at or after the current one.
+    final safePayDay = (_salaryPayDay ?? 28).clamp(1, 28);
     while (resolved.end.isBefore(_payPeriodEnd)) {
-      resolved = PayrollService.nextPayDayPeriod(resolved, _salaryPayDay!);
+      resolved = PayrollService.nextPayDayPeriod(resolved, safePayDay);
     }
     if (!mounted) return;
 
-                                            final now = DateTime.now();
+    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final normalizedPayDay = _salaryPayDay!.clamp(1, 28);
+    final normalizedPayDay = safePayDay;
     final lastDay = DateTime(today.year, today.month + 1, 0).day;
     final currentMonthPayday = DateTime(today.year, today.month, normalizedPayDay.clamp(1, lastDay));
 

@@ -129,7 +129,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
-    _activatedScreens[3] = true;
   
   }
 

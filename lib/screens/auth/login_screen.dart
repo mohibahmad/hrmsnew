@@ -58,7 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     Navigator.of(
       context,
-    ).pushReplacement(noTransitionRoute(builder: (_) => const HomeScreen()));
+    ).pushReplacement(authTransitionRoute(builder: (_) => const HomeScreen()));
   }
 
   Future<void> _handleMissingProfile(String? email) async {
