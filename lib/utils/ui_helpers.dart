@@ -1170,22 +1170,7 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: widget.onDismiss,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.close_rounded,
-                              color: Color(0xFFFFFFFF).withOpacity(0.30),
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ),
+
                     ],
                   ),
                   const SizedBox(height: 10),
