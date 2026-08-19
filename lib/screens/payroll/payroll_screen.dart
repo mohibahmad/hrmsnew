@@ -1505,12 +1505,7 @@ if (day == 0) {
   Future<void> _handleExportPayroll() async {
 
 
-    final paidWorkers = _allPaidWorkers();
-    final unpaidCurrent = _payrollDocs.where((doc) {
-      return !PayrollService.isPayrollRecordPaid(doc);
-    }).toList();
-
-    final allRecords = [...paidWorkers, ...unpaidCurrent];
+    final allRecords = _payrollDocs;
     if (allRecords.isEmpty) {
       FlashySnackBar.show(context, message: 'No payroll data to export yet.');
       return;
@@ -1587,7 +1582,7 @@ if (day == 0) {
       final fileName = 'Payroll_Export_$monthStr.csv';
 
       final outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Export Paid Workers (All Cycles)',
+        dialogTitle: 'Export Payroll Cycle Data',
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: ['csv'],
