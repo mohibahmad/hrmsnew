@@ -693,6 +693,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         payrollMonth: payrollMonth,
         payPeriodStart: _payPeriodStart,
         payPeriodEnd: _payPeriodEnd,
+        onBeforeReviewDialog: () {
+          if (mounted) {
+            setState(() => _isRunningPayroll = false);
+          }
+        },
       );
       if (summary != null && mounted) {
         FlashySnackBar.show(context, message: 'payroll_run_complete'.tr(namedArgs: {'count': '${summary.successCount}'}));
@@ -1277,7 +1282,8 @@ if (day == 0) {
       PayrollPeriod period;
       if (day != _salaryPayDay) {
         final payDay = day.clamp(1, 28);
-        final currentAnchorStart = _payPeriodStart;
+        final activeCurrent = _trueCurrentPayrollCycle();
+        final currentAnchorStart = activeCurrent.start;
         final adaptedStart = PayrollService.payDayPeriodContaining(currentAnchorStart, payDay).start;
         final adaptedEnd = PayrollService.nextPayDayPeriod(PayrollPeriod(start: adaptedStart, end: adaptedStart), payDay).end;
         final adaptedPersisted = PayrollPeriod(start: adaptedStart, end: adaptedEnd);
@@ -1441,25 +1447,24 @@ if (day == 0) {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_isRunningPayroll)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFFFFFFFF),
-                      ),
-                    )
-                  else
-                    SvgPicture.asset(
-                      'assets/payroll_icon.svg',
-                      width: 18,
-                      height: 18,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFFFFFFFF),
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                  _isRunningPayroll
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Color(0xFFFFFFFF),
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          'assets/payroll_icon.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFFFFFFF),
+                            BlendMode.srcIn,
+                          ),
+                        ),
                   const SizedBox(width: 8),
                   Text('pay_all'.tr(), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
                 ],

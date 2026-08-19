@@ -70,7 +70,11 @@ class DialogController {
   double get progress => _progress;
   String get label => _label;
 
-  void _init(BuildContext context, {double initialProgress = 0, String initialLabel = ''}) {
+  void _init(
+    BuildContext context, {
+    double initialProgress = 0,
+    String initialLabel = '',
+  }) {
     _context = context;
     _progress = initialProgress;
     _label = initialLabel;
@@ -82,7 +86,11 @@ class DialogController {
     );
   }
 
-  void update({required double progress, required String label, bool forceLabel = false}) {
+  void update({
+    required double progress,
+    required String label,
+    bool forceLabel = false,
+  }) {
     // Late updates (e.g. a background chunk finishing after the flow ended)
     // must never resurrect a dismissed snackbar.
     if (_closed) return;
@@ -145,7 +153,9 @@ class DialogController {
 
 final Map<String, Map<String, dynamic>> _translationsCache = {};
 
-Future<Map<String, dynamic>> _loadLocaleTranslations(String languageCode) async {
+Future<Map<String, dynamic>> _loadLocaleTranslations(
+  String languageCode,
+) async {
   final cached = _translationsCache[languageCode];
   if (cached != null) return cached;
   try {
@@ -176,7 +186,11 @@ Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
     try {
       files.add(await _generatePayrollInvoiceFile(args));
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceGeneration');
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollInvoiceGeneration',
+      );
     }
   }
   return files;
@@ -187,7 +201,8 @@ Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
 @pragma('vm:entry-point')
 List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
   return [
-    for (final bytes in images) compressImageBytes(bytes, maxWidth: 128, quality: 60),
+    for (final bytes in images)
+      compressImageBytes(bytes, maxWidth: 128, quality: 60),
   ];
 }
 
@@ -228,7 +243,8 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
   final companyId = (args['companyId'] ?? '') as String;
   final locale = (args['locale'] ?? 'en') as String;
   final translations =
-      (args['translations'] ?? const <String, dynamic>{}) as Map<String, dynamic>;
+      (args['translations'] ?? const <String, dynamic>{})
+          as Map<String, dynamic>;
   final employeeImageBytes = args['employeeImageBytes'] as Uint8List?;
 
   // Seed easy_localization so invoice labels stay localized inside the isolate.
@@ -245,8 +261,9 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
   } catch (_) {}
 
   final enteredSalary = PayrollService.extractSalary(salary);
-  final rawSalary =
-      salaryType.trim().toLowerCase() == 'annual' ? enteredSalary / 12 : enteredSalary;
+  final rawSalary = salaryType.trim().toLowerCase() == 'annual'
+      ? enteredSalary / 12
+      : enteredSalary;
   final workDays = int.tryParse(totalWorkDays) ?? 30;
   final absentEquivalent = absents + (halfDays * 0.5);
   final overtimeAmt = PayrollService.extractSalary(overtimeAmount);
@@ -258,7 +275,10 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
       PayrollService.extractSalary(customDeduction) +
       absentDeductionTotal +
       leaveDeductionTotal;
-  final netSalary = (grossSalary + overtimeAmt - totalDeductions).clamp(0.0, double.infinity);
+  final netSalary = (grossSalary + overtimeAmt - totalDeductions).clamp(
+    0.0,
+    double.infinity,
+  );
   final currencySymbol = PayrollService.getCurrencySymbol(currency);
 
   final pdfBytes = await InvoiceService.generatePayrollInvoice(
@@ -300,7 +320,9 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
       .replaceAll(RegExp(r'[^\w\s]'), '')
       .trim()
       .replaceAll(RegExp(r'\s+'), '_');
-  final safeName = sanitizedName.isNotEmpty ? sanitizedName : 'worker_${index + 1}';
+  final safeName = sanitizedName.isNotEmpty
+      ? sanitizedName
+      : 'worker_${index + 1}';
   return <String, Object>{
     'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
     'bytes': pdfBytes,
@@ -471,8 +493,13 @@ class PayrollRunner {
     DateTime? payPeriodStart,
     DateTime? payPeriodEnd,
     String? positionFilter,
+    VoidCallback? onBeforeReviewDialog,
   }) async {
-    final isGuest = ProviderScope.containerOf(context).read(authServiceProvider).currentUser?.isAnonymous ?? false;
+    final isGuest =
+        ProviderScope.containerOf(
+          context,
+        ).read(authServiceProvider).currentUser?.isAnonymous ??
+        false;
     if (isGuest) {
       return _runPayrollInternal(
         context,
@@ -481,6 +508,7 @@ class PayrollRunner {
         payPeriodStart: payPeriodStart,
         payPeriodEnd: payPeriodEnd,
         positionFilter: positionFilter,
+        onBeforeReviewDialog: onBeforeReviewDialog,
       );
     }
     if (_runInProgress) return null;
@@ -493,6 +521,7 @@ class PayrollRunner {
         payPeriodStart: payPeriodStart,
         payPeriodEnd: payPeriodEnd,
         positionFilter: positionFilter,
+        onBeforeReviewDialog: onBeforeReviewDialog,
       );
     } finally {
       _runInProgress = false;
@@ -506,12 +535,21 @@ class PayrollRunner {
     DateTime? payPeriodStart,
     DateTime? payPeriodEnd,
     String? positionFilter,
+    VoidCallback? onBeforeReviewDialog,
   }) async {
-    final authService = ProviderScope.containerOf(context).read(authServiceProvider);
+    final authService = ProviderScope.containerOf(
+      context,
+    ).read(authServiceProvider);
     final isGuest = authService.currentUser?.isAnonymous ?? false;
-    final firestoreService = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+    final firestoreService = ProviderScope.containerOf(
+      context,
+    ).read(firestoreServiceProvider);
 
-    List<Map<String, dynamic>> workers = await _loadWorkers(context, isGuest, firestoreService);
+    List<Map<String, dynamic>> workers = await _loadWorkers(
+      context,
+      isGuest,
+      firestoreService,
+    );
     if (workers.isEmpty) return null;
 
     workers = _filterByPosition(workers, positionFilter);
@@ -521,29 +559,73 @@ class PayrollRunner {
     }
 
     final now = DateTime.now();
-    final effectivePayrollMonth = payrollMonth ?? PayrollService.currentPayrollMonth(referenceDate: now);
-    final periodLabel = PayrollService.payrollPeriodLabel(effectivePayrollMonth);
-    final effectivePeriodStart = payPeriodStart ?? PayrollService.payPeriodStart(effectivePayrollMonth);
-    final effectivePeriodEnd = payPeriodEnd ?? PayrollService.payPeriodEnd(effectivePayrollMonth);
+    final effectivePayrollMonth =
+        payrollMonth ?? PayrollService.currentPayrollMonth(referenceDate: now);
+    final periodLabel = PayrollService.payrollPeriodLabel(
+      effectivePayrollMonth,
+    );
+    final effectivePeriodStart =
+        payPeriodStart ?? PayrollService.payPeriodStart(effectivePayrollMonth);
+    final effectivePeriodEnd =
+        payPeriodEnd ?? PayrollService.payPeriodEnd(effectivePayrollMonth);
 
-    final data = await _fetchRequiredData(context, isGuest, firestoreService, effectivePayrollMonth, effectivePeriodStart, effectivePeriodEnd);
+    final data = await _fetchRequiredData(
+      context,
+      isGuest,
+      firestoreService,
+      effectivePayrollMonth,
+      effectivePeriodStart,
+      effectivePeriodEnd,
+    );
     if (data == null) return null;
-    
-    final (companyProfile, existingPayroll, autoWorkDays, preFetchedAttendance) = data;
-    
+
+    final (
+      companyProfile,
+      existingPayroll,
+      autoWorkDays,
+      preFetchedAttendance,
+    ) = data;
+
     if (autoWorkDays <= 0) {
-      _showError(context, 'invalid_working_days', namedArgs: {'days': '$autoWorkDays'});
+      _showError(
+        context,
+        'invalid_working_days',
+        namedArgs: {'days': '$autoWorkDays'},
+      );
       return null;
     }
 
-    final companyCurrency = CurrencyUtils.normalize(companyProfile?['currency']);
-    final payrollCheckResult = await _checkExistingPayroll(context, workers, existingPayroll, effectivePayrollMonth, effectivePeriodStart, effectivePeriodEnd, companyCurrency, isGuest);
+    final companyCurrency = CurrencyUtils.normalize(
+      companyProfile?['currency'],
+    );
+    final payrollCheckResult = await _checkExistingPayroll(
+      context,
+      workers,
+      existingPayroll,
+      effectivePayrollMonth,
+      effectivePeriodStart,
+      effectivePeriodEnd,
+      companyCurrency,
+      isGuest,
+    );
     if (payrollCheckResult == null) return null;
     workers = payrollCheckResult;
 
-    final prevPayroll = _buildPrevPayrollMap(existingPayroll, effectivePayrollMonth);
-    final attendanceResults = await _fetchAttendance(context, isGuest, firestoreService, workers, effectivePayrollMonth, effectivePeriodStart, effectivePeriodEnd, preFetchedAttendance);
-    
+    final prevPayroll = _buildPrevPayrollMap(
+      existingPayroll,
+      effectivePayrollMonth,
+    );
+    final attendanceResults = await _fetchAttendance(
+      context,
+      isGuest,
+      firestoreService,
+      workers,
+      effectivePayrollMonth,
+      effectivePeriodStart,
+      effectivePeriodEnd,
+      preFetchedAttendance,
+    );
+
     final results = await _calculateResults(
       workers: workers,
       attendanceResults: attendanceResults,
@@ -565,29 +647,52 @@ class PayrollRunner {
       periodLabel: periodLabel,
     );
 
-   
-    final preloadedAssetsFuture = _preloadInvoiceAssets(companyProfile, isGuest, firestore: firestoreService);
+    final preloadedAssetsFuture = _preloadInvoiceAssets(
+      companyProfile,
+      isGuest,
+      firestore: firestoreService,
+    );
 
-    final result = await _handleSummaryCommit(context, summary, autoMode, isGuest, effectivePeriodStart, effectivePeriodEnd, companyProfile ?? {}, preloadedAssetsFuture: preloadedAssetsFuture);
+    final result = await _handleSummaryCommit(
+      context,
+      summary,
+      autoMode,
+      isGuest,
+      effectivePeriodStart,
+      effectivePeriodEnd,
+      companyProfile ?? {},
+      preloadedAssetsFuture: preloadedAssetsFuture,
+      onBeforeReviewDialog: onBeforeReviewDialog,
+    );
     return result;
   }
 
-  
-  Future<Map<String, dynamic>?> _preloadInvoiceAssets(Map<String, dynamic>? companyProfile, bool isGuest, {FirestoreService? firestore}) async {
+  Future<Map<String, dynamic>?> _preloadInvoiceAssets(
+    Map<String, dynamic>? companyProfile,
+    bool isGuest, {
+    FirestoreService? firestore,
+  }) async {
     try {
       final locale = Intl.defaultLocale ?? 'en';
-      final resolved = await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
-      final companyLogoUrl = (resolved['profilePicUrl'] ??
-              companyProfile?['profilePic'] ??
-              companyProfile?['profilePicUrl'] ??
-              companyProfile?['photoUrl'] ??
-              companyProfile?['companyLogoUrl'] ??
-              '').toString().trim();
-      final companyStampUrl = (resolved['companyStampUrl'] ??
-              companyProfile?['companyStampUrl'] ??
-              companyProfile?['stampUrl'] ??
-              companyProfile?['companyStamp'] ??
-              '').toString().trim();
+      final resolved =
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
+      final companyLogoUrl =
+          (resolved['profilePicUrl'] ??
+                  companyProfile?['profilePic'] ??
+                  companyProfile?['profilePicUrl'] ??
+                  companyProfile?['photoUrl'] ??
+                  companyProfile?['companyLogoUrl'] ??
+                  '')
+              .toString()
+              .trim();
+      final companyStampUrl =
+          (resolved['companyStampUrl'] ??
+                  companyProfile?['companyStampUrl'] ??
+                  companyProfile?['stampUrl'] ??
+                  companyProfile?['companyStamp'] ??
+                  '')
+              .toString()
+              .trim();
       final results = await Future.wait([
         InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
         InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -606,7 +711,11 @@ class PayrollRunner {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _loadWorkers(BuildContext context, bool isGuest, FirestoreService firestoreService) async {
+  Future<List<Map<String, dynamic>>> _loadWorkers(
+    BuildContext context,
+    bool isGuest,
+    FirestoreService firestoreService,
+  ) async {
     List<Map<String, dynamic>> workers;
     if (isGuest) {
       workers = List<Map<String, dynamic>>.from(DummyData.workers);
@@ -619,28 +728,46 @@ class PayrollRunner {
               final name = (w['name'] ?? '').toString().trim();
               final workerId = (w['id'] ?? '').toString().trim();
               final email = (w['email'] ?? '').toString().trim();
-              return name.isNotEmpty && (workerId.isNotEmpty || email.isNotEmpty) && PayrollService.isWorkerEligibleForPayroll(w);
+              return name.isNotEmpty &&
+                  (workerId.isNotEmpty || email.isNotEmpty) &&
+                  PayrollService.isWorkerEligibleForPayroll(w);
             })
             .toList();
       } catch (e) {
-        _showError(context, 'failed_to_load_worker_data', namedArgs: {'error': '$e'});
+        _showError(
+          context,
+          'failed_to_load_worker_data',
+          namedArgs: {'error': '$e'},
+        );
         return [];
       }
     }
     return workers;
   }
 
-  List<Map<String, dynamic>> _filterByPosition(List<Map<String, dynamic>> workers, String? positionFilter) {
+  List<Map<String, dynamic>> _filterByPosition(
+    List<Map<String, dynamic>> workers,
+    String? positionFilter,
+  ) {
     if (positionFilter == null || positionFilter.trim().isEmpty) return workers;
     final filter = positionFilter.trim();
     final filtered = workers.where((worker) {
       final position = (worker['position'] ?? '').toString().trim();
-      return position.isNotEmpty && position.toLowerCase().contains(filter.toLowerCase());
+      return position.isNotEmpty &&
+          position.toLowerCase().contains(filter.toLowerCase());
     }).toList();
     return filtered;
   }
 
-  Future<(Map<String, dynamic>?, List<Map<String, dynamic>>, int, List<Map<String, dynamic>>?)?> _fetchRequiredData(
+  Future<
+    (
+      Map<String, dynamic>?,
+      List<Map<String, dynamic>>,
+      int,
+      List<Map<String, dynamic>>?,
+    )?
+  >
+  _fetchRequiredData(
     BuildContext context,
     bool isGuest,
     FirestoreService firestoreService,
@@ -665,39 +792,87 @@ class PayrollRunner {
       } else {
         final results = await Future.wait([
           firestoreService.getUserProfile().catchError((e, st) {
-            ErrorReporter.report(e, st, context: 'PayrollRunnerCompanyCurrency');
+            ErrorReporter.report(
+              e,
+              st,
+              context: 'PayrollRunnerCompanyCurrency',
+            );
             return <String, dynamic>{};
           }),
-                              () async {
-          try {
-            return await firestoreService.getPayrollOnce();
-          } catch (error, stackTrace) {
-            ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerPayrollOnce');
-            return null;
-          }
-        }(),
-          firestoreService.getMonthlyWorkingDays(month: effectivePayrollMonth, startDate: effectivePeriodStart, endDate: effectivePeriodEnd).then((v) => {'_days': v}),
-          firestoreService.getAttendanceForPeriod(effectivePeriodStart, effectivePeriodEnd).then((snapshot) => {
-            '_attendance': snapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id}).toList(),
-          }),
+          () async {
+            try {
+              return await firestoreService.getPayrollOnce();
+            } catch (error, stackTrace) {
+              ErrorReporter.report(
+                error,
+                stackTrace,
+                context: 'PayrollRunnerPayrollOnce',
+              );
+              return null;
+            }
+          }(),
+          firestoreService
+              .getMonthlyWorkingDays(
+                month: effectivePayrollMonth,
+                startDate: effectivePeriodStart,
+                endDate: effectivePeriodEnd,
+              )
+              .then((v) => {'_days': v}),
+          firestoreService
+              .getAttendanceForPeriod(effectivePeriodStart, effectivePeriodEnd)
+              .then(
+                (snapshot) => {
+                  '_attendance': snapshot.docs
+                      .map(
+                        (doc) => {
+                          ...doc.data() as Map<String, dynamic>,
+                          'id': doc.id,
+                        },
+                      )
+                      .toList(),
+                },
+              ),
         ]);
         companyProfile = results[0] as Map<String, dynamic>?;
         final payrollResult = results[1] as dynamic;
         final payrollDocs = payrollResult == null
             ? const <dynamic>[]
             : (payrollResult.docs as List<dynamic>);
-        existingPayroll = payrollDocs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id as String}).toList();
+        existingPayroll = payrollDocs
+            .map(
+              (doc) => {
+                ...doc.data() as Map<String, dynamic>,
+                'id': doc.id as String,
+              },
+            )
+            .toList();
         final daysMap = results[2] as Map<String, dynamic>;
         autoWorkDays = (daysMap['_days'] as int?) ?? 0;
         final attendanceMap = results[3] as Map<String, dynamic>;
-        preFetchedAttendance = (attendanceMap['_attendance'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        preFetchedAttendance =
+            (attendanceMap['_attendance'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
       }
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerParallelFetch');
-      _showError(context, 'error_occurred', namedArgs: {'error': error.toString()});
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollRunnerParallelFetch',
+      );
+      _showError(
+        context,
+        'error_occurred',
+        namedArgs: {'error': error.toString()},
+      );
       return null;
     }
-    return (companyProfile, existingPayroll, autoWorkDays, preFetchedAttendance);
+    return (
+      companyProfile,
+      existingPayroll,
+      autoWorkDays,
+      preFetchedAttendance,
+    );
   }
 
   Future<List<Map<String, dynamic>>?> _checkExistingPayroll(
@@ -722,22 +897,35 @@ class PayrollRunner {
       );
       return payableWorkers;
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerExistingPayrollCheck');
-      _showError(context, 'error_occurred', namedArgs: {'error': error.toString()});
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollRunnerExistingPayrollCheck',
+      );
+      _showError(
+        context,
+        'error_occurred',
+        namedArgs: {'error': error.toString()},
+      );
       return null;
     }
   }
 
-  (Map<String, Map<String, dynamic>>, Map<String, Map<String, dynamic>>) _buildPrevPayrollMap(
+  (Map<String, Map<String, dynamic>>, Map<String, Map<String, dynamic>>)
+  _buildPrevPayrollMap(
     List<Map<String, dynamic>> existingPayroll,
     DateTime effectivePayrollMonth,
   ) {
     final byWorkerId = <String, Map<String, dynamic>>{};
     final byEmail = <String, Map<String, dynamic>>{};
     for (final record in existingPayroll) {
-      if (!PayrollService.isRecordInMonth(record, effectivePayrollMonth)) continue;
+      if (!PayrollService.isRecordInMonth(record, effectivePayrollMonth))
+        continue;
       final rWorkerId = (record['workerId'] ?? '').toString().trim();
-      final rEmail = (record['email'] ?? record['workerEmail'] ?? '').toString().trim().toLowerCase();
+      final rEmail = (record['email'] ?? record['workerEmail'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       if (rWorkerId.isNotEmpty) byWorkerId[rWorkerId] = record;
       if (rEmail.isNotEmpty) byEmail[rEmail] = record;
     }
@@ -771,7 +959,9 @@ class PayrollRunner {
       final batch = workers.skip(i).take(_maxConcurrentAttendance);
       final batchFutures = batch.map((worker) async {
         final email = (worker['email'] ?? '').toString();
-        final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+        final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+            .toString()
+            .trim();
         try {
           final attendance = await firestoreService.getWorkerMonthlyAttendance(
             email,
@@ -783,7 +973,11 @@ class PayrollRunner {
           );
           return <String, dynamic>{...attendance};
         } catch (error, stackTrace) {
-          ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerAttendanceFetch:$workerId');
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'PayrollRunnerAttendanceFetch:$workerId',
+          );
           return <String, dynamic>{'_error': error.toString()};
         }
       });
@@ -807,24 +1001,57 @@ class PayrollRunner {
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
       final worker = workers[i];
-      final workerId = isGuest ? (worker['id'] ?? '').toString() : (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+      final workerId = isGuest
+          ? (worker['id'] ?? '').toString()
+          : (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
       final name = (worker['name'] ?? '').toString();
       final email = (worker['email'] ?? '').toString();
-      final salaryStr = PayrollService.currentSalaryDisplay(worker, companyCurrency: companyCurrency);
+      final salaryStr = PayrollService.currentSalaryDisplay(
+        worker,
+        companyCurrency: companyCurrency,
+      );
       final totalWorkDays = (worker['totalWorkDays'] ?? '').toString();
-      final workDays = int.tryParse(totalWorkDays) ?? (autoWorkDays > 0 ? autoWorkDays : 30);
+      final workDays =
+          int.tryParse(totalWorkDays) ?? (autoWorkDays > 0 ? autoWorkDays : 30);
       final attendance = attendanceResults[i];
       final attendanceError = (attendance['_error'] ?? '').toString();
 
       if (PayrollService.extractSalary(salaryStr) <= 0) {
-        results.add(_createErrorResult(worker, workerId, name, email, salaryStr, companyCurrency, totalWorkDays, 'please_enter_salary'.tr()));
+        results.add(
+          _createErrorResult(
+            worker,
+            workerId,
+            name,
+            email,
+            salaryStr,
+            companyCurrency,
+            totalWorkDays,
+            'please_enter_salary'.tr(),
+          ),
+        );
         continue;
       }
 
-      final prorationFactor = _calculateProrationFactor(worker, effectivePeriodStart, effectivePeriodEnd);
+      final prorationFactor = _calculateProrationFactor(
+        worker,
+        effectivePeriodStart,
+        effectivePeriodEnd,
+      );
 
       if (!isGuest && attendanceError.isNotEmpty) {
-        results.add(_createErrorResult(worker, workerId, name, email, salaryStr, companyCurrency, totalWorkDays, attendanceError, prorationFactor: prorationFactor));
+        results.add(
+          _createErrorResult(
+            worker,
+            workerId,
+            name,
+            email,
+            salaryStr,
+            companyCurrency,
+            totalWorkDays,
+            attendanceError,
+            prorationFactor: prorationFactor,
+          ),
+        );
         continue;
       }
 
@@ -836,11 +1063,14 @@ class PayrollRunner {
 
       Map<String, dynamic>? prevRecord;
       if (workerId.isNotEmpty) prevRecord = prevPayrollByWorkerId[workerId];
-      if (prevRecord == null && email.isNotEmpty) prevRecord = prevPayrollByEmail[email.toLowerCase()];
+      if (prevRecord == null && email.isNotEmpty)
+        prevRecord = prevPayrollByEmail[email.toLowerCase()];
 
       final workerOvertime = (worker['overtimeAmount'] ?? '').toString().trim();
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
-      final prevCustomDeduction = PayrollService.extractSalary((prevRecord?['customDeduction'] ?? '0').toString());
+      final prevCustomDeduction = PayrollService.extractSalary(
+        (prevRecord?['customDeduction'] ?? '0').toString(),
+      );
 
       try {
         final rawNetVal = PayrollService.calculateNetFromTotals(
@@ -854,51 +1084,87 @@ class PayrollRunner {
         );
         final currency = PayrollService.getCurrencyPrefix(salaryStr);
         final prefix = currency.isNotEmpty ? '$currency ' : '';
-        final netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
+        final netSalary =
+            '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
 
-        results.add(AutoPayrollResult(
-          workerId: workerId,
-          workerName: name,
-          email: email,
-          netSalary: netSalary,
-          rawNetSalaryValue: rawNetVal,
-          success: true,
-          absents: absents,
-          halfDays: halfDays,
-          leaves: leaves,
-          paidLeaves: paidLeaves,
-          unpaidLeaves: unpaidLeaves,
-          absentDeduction: _editableAmount(0),
-          leaveDeduction: _editableAmount(0),
-          customDeduction: _editableAmount(prevCustomDeduction),
-          deductionsAreTotals: true,
-          overtimeAmount: workerOvertime,
-          salary: salaryStr,
-          currency: companyCurrency,
-          totalWorkDays: workDays.toString(),
-          position: (worker['position'] ?? '').toString(),
-          employmentType: PayrollService.workerEmploymentType(worker),
-          salaryType: salaryType,
-          prorationFactor: prorationFactor,
-          imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty ? (worker['profileImage'] ?? '').toString() : null,
-        ));
+        results.add(
+          AutoPayrollResult(
+            workerId: workerId,
+            workerName: name,
+            email: email,
+            netSalary: netSalary,
+            rawNetSalaryValue: rawNetVal,
+            success: true,
+            absents: absents,
+            halfDays: halfDays,
+            leaves: leaves,
+            paidLeaves: paidLeaves,
+            unpaidLeaves: unpaidLeaves,
+            absentDeduction: _editableAmount(0),
+            leaveDeduction: _editableAmount(0),
+            customDeduction: _editableAmount(prevCustomDeduction),
+            deductionsAreTotals: true,
+            overtimeAmount: workerOvertime,
+            salary: salaryStr,
+            currency: companyCurrency,
+            totalWorkDays: workDays.toString(),
+            position: (worker['position'] ?? '').toString(),
+            employmentType: PayrollService.workerEmploymentType(worker),
+            salaryType: salaryType,
+            prorationFactor: prorationFactor,
+            imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
+                ? (worker['profileImage'] ?? '').toString()
+                : null,
+          ),
+        );
       } catch (error, stackTrace) {
         if (!isGuest) {
-          ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCalculation:$workerId');
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'PayrollRunnerCalculation:$workerId',
+          );
         }
-        results.add(_createErrorResult(worker, workerId, name, email, salaryStr, companyCurrency, totalWorkDays, error.toString(), 
-          absents: absents, halfDays: halfDays, leaves: leaves, paidLeaves: paidLeaves, unpaidLeaves: unpaidLeaves, prorationFactor: prorationFactor));
+        results.add(
+          _createErrorResult(
+            worker,
+            workerId,
+            name,
+            email,
+            salaryStr,
+            companyCurrency,
+            totalWorkDays,
+            error.toString(),
+            absents: absents,
+            halfDays: halfDays,
+            leaves: leaves,
+            paidLeaves: paidLeaves,
+            unpaidLeaves: unpaidLeaves,
+            prorationFactor: prorationFactor,
+          ),
+        );
       }
     }
     return results;
   }
 
-  double _calculateProrationFactor(Map<String, dynamic> worker, DateTime periodStart, DateTime periodEnd) {
-   return 1.0;
+  double _calculateProrationFactor(
+    Map<String, dynamic> worker,
+    DateTime periodStart,
+    DateTime periodEnd,
+  ) {
+    return 1.0;
   }
 
-  AutoPayrollResult _createErrorResult(Map<String, dynamic> worker, String workerId, String name, String email, 
-    String salaryStr, String currency, String totalWorkDays, String error, {
+  AutoPayrollResult _createErrorResult(
+    Map<String, dynamic> worker,
+    String workerId,
+    String name,
+    String email,
+    String salaryStr,
+    String currency,
+    String totalWorkDays,
+    String error, {
     int absents = 0,
     int halfDays = 0,
     int leaves = 0,
@@ -925,7 +1191,9 @@ class PayrollRunner {
       employmentType: PayrollService.workerEmploymentType(worker),
       salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
       prorationFactor: prorationFactor,
-      imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty ? (worker['profileImage'] ?? '').toString() : null,
+      imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
+          ? (worker['profileImage'] ?? '').toString()
+          : null,
     );
   }
 
@@ -937,7 +1205,10 @@ class PayrollRunner {
     return 'name:${r.workerName.trim().toLowerCase()}';
   }
 
-  bool _sameReviewResults(List<AutoPayrollResult> a, List<AutoPayrollResult> b) {
+  bool _sameReviewResults(
+    List<AutoPayrollResult> a,
+    List<AutoPayrollResult> b,
+  ) {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
       if (_reviewWorkerKey(a[i]) != _reviewWorkerKey(b[i])) return false;
@@ -947,7 +1218,7 @@ class PayrollRunner {
     return true;
   }
 
-        Future<PayrollRunSummary> _recomputeLiveSummary({
+  Future<PayrollRunSummary> _recomputeLiveSummary({
     required BuildContext context,
     required PayrollRunSummary summary,
     required bool isGuest,
@@ -955,8 +1226,9 @@ class PayrollRunner {
     required DateTime periodEnd,
   }) async {
     try {
-      final firestoreService =
-          ProviderScope.containerOf(context).read(firestoreServiceProvider);
+      final firestoreService = ProviderScope.containerOf(
+        context,
+      ).read(firestoreServiceProvider);
       final workers = await _loadWorkers(context, isGuest, firestoreService);
       if (workers.isEmpty) return summary;
 
@@ -971,10 +1243,17 @@ class PayrollRunner {
       );
       if (data == null) return summary;
 
-      final (companyProfile, existingPayroll, autoWorkDays, preFetchedAttendance) = data;
+      final (
+        companyProfile,
+        existingPayroll,
+        autoWorkDays,
+        preFetchedAttendance,
+      ) = data;
       if (autoWorkDays <= 0) return summary;
 
-      final companyCurrency = CurrencyUtils.normalize(companyProfile?['currency']);
+      final companyCurrency = CurrencyUtils.normalize(
+        companyProfile?['currency'],
+      );
       final prevPayroll = _buildPrevPayrollMap(existingPayroll, month);
       final attendanceResults = await _fetchAttendance(
         context,
@@ -1029,6 +1308,7 @@ class PayrollRunner {
     DateTime periodEnd,
     Map<String, dynamic> companyProfile, {
     Future<Map<String, dynamic>?>? preloadedAssetsFuture,
+    VoidCallback? onBeforeReviewDialog,
   }) async {
     var committedSummary = summary;
 
@@ -1039,6 +1319,7 @@ class PayrollRunner {
         summary,
         periodStart: periodStart,
         periodEnd: periodEnd,
+        onReviewDialogOpen: onBeforeReviewDialog,
       );
       if (selectedResults == null) return null;
 
@@ -1075,22 +1356,26 @@ class PayrollRunner {
       // review dialog) so both the DB commit and the invoice generation can
       // use them without re-fetching.
       controller.update(progress: 0.05, label: 'sending_payroll'.tr());
-      final preloadedAssets = preloadedAssetsFuture == null ? null : await preloadedAssetsFuture;
+      final preloadedAssets = preloadedAssetsFuture == null
+          ? null
+          : await preloadedAssetsFuture;
 
       final paidResults = committedSummary.successCount >= 1
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
 
       // Fire notifications in the background — never on the critical path.
-      unawaited(_sendNotificationsInBackground(
-        committedSummary,
-        isGuest,
-        context,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-      ));
- 
-       await Future.wait<void>([
+      unawaited(
+        _sendNotificationsInBackground(
+          committedSummary,
+          isGuest,
+          context,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+        ),
+      );
+
+      await Future.wait<void>([
         _commitPayrollRun(
           committedSummary,
           isGuest,
@@ -1117,9 +1402,15 @@ class PayrollRunner {
       controller.update(progress: 1.0, label: 'payroll_completed'.tr());
       await Future.delayed(const Duration(milliseconds: 600));
     } catch (error, stackTrace) {
-      if (!isGuest) ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
+      if (!isGuest)
+        ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
       if (context.mounted) {
-        controller.reset(progress: 0, label: error.toString().isNotEmpty ? error.toString() : 'failed_to_save_record'.tr());
+        controller.reset(
+          progress: 0,
+          label: error.toString().isNotEmpty
+              ? error.toString()
+              : 'failed_to_save_record'.tr(),
+        );
         await Future.delayed(const Duration(seconds: 2));
       }
       controller.dismiss();
@@ -1140,19 +1431,37 @@ class PayrollRunner {
   }) async {
     try {
       if (isGuest) return;
-      final firestoreService = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+      final firestoreService = ProviderScope.containerOf(
+        context,
+      ).read(firestoreServiceProvider);
       final notifications = <Map<String, dynamic>>[];
       for (final r in summary.results.where((r) => r.success)) {
-        final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email.trim().toLowerCase();
+        final payrollIdentity = r.workerId.isNotEmpty
+            ? r.workerId
+            : r.email.trim().toLowerCase();
         if (payrollIdentity.isEmpty) continue;
-        final payrollKey = PayrollService.payrollKeyForPeriod(payrollIdentity, periodStart, periodEnd);
-        final effectiveWorkerName = r.workerName.trim().isNotEmpty ? r.workerName.trim() : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
+        final payrollKey = PayrollService.payrollKeyForPeriod(
+          payrollIdentity,
+          periodStart,
+          periodEnd,
+        );
+        final effectiveWorkerName = r.workerName.trim().isNotEmpty
+            ? r.workerName.trim()
+            : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
         final amount = r.netSalary;
         notifications.add({
           'notificationKey': 'payroll_$payrollKey',
           'type': 'payroll_added',
-          'title': 'notif_title_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
-          'message': amount.isNotEmpty ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': amount, 'name': effectiveWorkerName}) : 'notif_msg_payroll'.tr(namedArgs: {'name': effectiveWorkerName}),
+          'title': 'notif_title_payroll'.tr(
+            namedArgs: {'name': effectiveWorkerName},
+          ),
+          'message': amount.isNotEmpty
+              ? 'notif_msg_payroll_amount'.tr(
+                  namedArgs: {'amount': amount, 'name': effectiveWorkerName},
+                )
+              : 'notif_msg_payroll'.tr(
+                  namedArgs: {'name': effectiveWorkerName},
+                ),
           'data': {'name': effectiveWorkerName, 'amount': amount},
         });
       }
@@ -1160,13 +1469,25 @@ class PayrollRunner {
         await firestoreService.addBulkNotifications(notifications);
       }
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerNotifications');
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollRunnerNotifications',
+      );
     }
   }
 
-  void _showError(BuildContext context, String key, {Map<String, String>? namedArgs}) {
+  void _showError(
+    BuildContext context,
+    String key, {
+    Map<String, String>? namedArgs,
+  }) {
     if (context.mounted) {
-      FlashySnackBar.show(context, message: key.tr(namedArgs: namedArgs ?? const {}), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: key.tr(namedArgs: namedArgs ?? const {}),
+        isError: true,
+      );
     }
   }
 
@@ -1176,6 +1497,7 @@ class PayrollRunner {
     DateTime? payPeriodStart,
     DateTime? payPeriodEnd,
     String? positionFilter,
+    VoidCallback? onBeforeReviewDialog,
   }) async {
     final result = await runPayroll(
       context,
@@ -1184,6 +1506,7 @@ class PayrollRunner {
       payPeriodStart: payPeriodStart,
       payPeriodEnd: payPeriodEnd,
       positionFilter: positionFilter,
+      onBeforeReviewDialog: onBeforeReviewDialog,
     );
     return result;
   }
@@ -1205,13 +1528,24 @@ class PayrollRunner {
       return false;
     }
 
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final recordEmail = (record['email'] ?? record['workerEmail'] ?? '').toString().trim().toLowerCase();
+    final recordEmail = (record['email'] ?? record['workerEmail'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
 
-    final idMatches = workerId.isNotEmpty && recordWorkerId.isNotEmpty && recordWorkerId == workerId;
-    final emailMatches = workerEmail.isNotEmpty && recordEmail.isNotEmpty && workerEmail == recordEmail;
+    final idMatches =
+        workerId.isNotEmpty &&
+        recordWorkerId.isNotEmpty &&
+        recordWorkerId == workerId;
+    final emailMatches =
+        workerEmail.isNotEmpty &&
+        recordEmail.isNotEmpty &&
+        workerEmail == recordEmail;
     return idMatches || emailMatches;
   }
 
@@ -1231,36 +1565,52 @@ class PayrollRunner {
     // instead of sitting still and then jumping (0 → 10 → 20 → ... → 50).
     controller?.update(progress: 0.10, label: 'sending_payroll'.tr());
 
-    final firestoreService = ProviderScope.containerOf(context).read(firestoreServiceProvider);
+    final firestoreService = ProviderScope.containerOf(
+      context,
+    ).read(firestoreServiceProvider);
     final successfulResults = summary.results.where((r) => r.success).toList();
     final payPeriodDate = periodEnd;
     final latestPayrollSnapshot = await firestoreService.getPayrollOnce();
-    final latestPayrollRecords = latestPayrollSnapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id}).toList();
-    
+    final latestPayrollRecords = latestPayrollSnapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+        .toList();
+
     controller?.update(progress: 0.18, label: 'sending_payroll'.tr());
 
     final unpaidResults = successfulResults.where((result) {
-      final isAlreadyPaid = latestPayrollRecords.any((record) => _isPaidPayrollForWorker(
-        record: record,
-        worker: {'id': result.workerId, 'email': result.email},
-        month: payPeriodDate,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-      ));
+      final isAlreadyPaid = latestPayrollRecords.any(
+        (record) => _isPaidPayrollForWorker(
+          record: record,
+          worker: {'id': result.workerId, 'email': result.email},
+          month: payPeriodDate,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+        ),
+      );
       return !isAlreadyPaid;
     }).toList();
 
     if (unpaidResults.isEmpty) {
-      throw StateError('selected_workers_already_paid'.tr().isNotEmpty ? 'selected_workers_already_paid'.tr() : 'Selected workers are already paid for this period');
+      throw StateError(
+        'selected_workers_already_paid'.tr().isNotEmpty
+            ? 'selected_workers_already_paid'.tr()
+            : 'Selected workers are already paid for this period',
+      );
     }
 
     final payrollRecords = <Map<String, dynamic>>[];
     final expenseRecords = <Map<String, dynamic>>[];
 
     for (final r in unpaidResults) {
-      final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email.trim().toLowerCase();
+      final payrollIdentity = r.workerId.isNotEmpty
+          ? r.workerId
+          : r.email.trim().toLowerCase();
       if (payrollIdentity.isEmpty) continue;
-      final payrollKey = PayrollService.payrollKeyForPeriod(payrollIdentity, periodStart, periodEnd);
+      final payrollKey = PayrollService.payrollKeyForPeriod(
+        payrollIdentity,
+        periodStart,
+        periodEnd,
+      );
       final record = r.toCanonicalPayrollRecord(
         payrollKey: payrollKey,
         periodStart: periodStart,
@@ -1269,7 +1619,9 @@ class PayrollRunner {
       );
       payrollRecords.add(record);
 
-      final effectiveWorkerName = r.workerName.trim().isNotEmpty ? r.workerName.trim() : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
+      final effectiveWorkerName = r.workerName.trim().isNotEmpty
+          ? r.workerName.trim()
+          : (r.email.trim().isNotEmpty ? r.email.trim() : 'Worker');
       final netAmount = r.rawNetSalaryValue;
       if (netAmount > 0) {
         expenseRecords.add({
@@ -1283,7 +1635,8 @@ class PayrollRunner {
           'payPeriodEnd': periodEnd,
           'category': 'Salary',
           'amount': netAmount,
-          'description': 'Salary payment for $effectiveWorkerName (${summary.periodLabel})',
+          'description':
+              'Salary payment for $effectiveWorkerName (${summary.periodLabel})',
           'payrollKey': payrollKey,
         });
       }
@@ -1292,7 +1645,9 @@ class PayrollRunner {
     if (payrollRecords.isEmpty) return 0;
 
     controller?.update(progress: 0.28, label: 'sending_payroll'.tr());
-    final payrollCount = await firestoreService.addBulkPayrollRecords(payrollRecords);
+    final payrollCount = await firestoreService.addBulkPayrollRecords(
+      payrollRecords,
+    );
     if (payrollCount != payrollRecords.length) {
       await _rollbackPayrollRecords(firestoreService, payrollRecords);
       throw StateError('Not all payroll records could be saved');
@@ -1302,10 +1657,12 @@ class PayrollRunner {
     // confirmed as saved (not an estimate).
     controller?.update(
       progress: 0.40,
-      label: 'saving_payroll_records'.tr(namedArgs: {
-        'saved': '$payrollCount',
-        'total': '${payrollRecords.length}',
-      }),
+      label: 'saving_payroll_records'.tr(
+        namedArgs: {
+          'saved': '$payrollCount',
+          'total': '${payrollRecords.length}',
+        },
+      ),
       forceLabel: true,
     );
     try {
@@ -1317,23 +1674,35 @@ class PayrollRunner {
 
     controller?.update(
       progress: 0.48,
-      label: 'saving_payroll_records'.tr(namedArgs: {
-        'saved': '$payrollCount',
-        'total': '${payrollRecords.length}',
-      }),
+      label: 'saving_payroll_records'.tr(
+        namedArgs: {
+          'saved': '$payrollCount',
+          'total': '${payrollRecords.length}',
+        },
+      ),
       forceLabel: true,
     );
     return payrollCount;
   }
 
-  Future<int> _commitGuestPayroll(PayrollRunSummary summary, DateTime periodStart, DateTime periodEnd) async {
+  Future<int> _commitGuestPayroll(
+    PayrollRunSummary summary,
+    DateTime periodStart,
+    DateTime periodEnd,
+  ) async {
     final savedPayroll = DummyData.payroll.toList();
     final savedExpenses = DummyData.expenses.toList();
     try {
       for (final r in summary.results) {
         if (!r.success) continue;
-        final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email.trim().toLowerCase();
-        final payrollKey = PayrollService.payrollKeyForPeriod(payrollIdentity, periodStart, periodEnd);
+        final payrollIdentity = r.workerId.isNotEmpty
+            ? r.workerId
+            : r.email.trim().toLowerCase();
+        final payrollKey = PayrollService.payrollKeyForPeriod(
+          payrollIdentity,
+          periodStart,
+          periodEnd,
+        );
         final nowIso = DateTime.now().toIso8601String();
         final canonicalRecord = r.toCanonicalPayrollRecord(
           payrollKey: payrollKey,
@@ -1352,11 +1721,19 @@ class PayrollRunner {
           'payrollDate': summary.runDate.toIso8601String(),
           'paidAt': summary.runDate.toIso8601String(),
         };
-        final existingPayrollIndex = DummyData.payroll.indexWhere((payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey);
+        final existingPayrollIndex = DummyData.payroll.indexWhere(
+          (payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey,
+        );
         if (existingPayrollIndex == -1) {
-          DummyData.payroll.add({...record, 'id': DateTime.now().microsecondsSinceEpoch.toString()});
+          DummyData.payroll.add({
+            ...record,
+            'id': DateTime.now().microsecondsSinceEpoch.toString(),
+          });
         } else {
-          DummyData.payroll[existingPayrollIndex] = {...DummyData.payroll[existingPayrollIndex], ...record};
+          DummyData.payroll[existingPayrollIndex] = {
+            ...DummyData.payroll[existingPayrollIndex],
+            ...record,
+          };
         }
         final netAmount = r.rawNetSalaryValue;
         if (netAmount > 0) {
@@ -1365,35 +1742,56 @@ class PayrollRunner {
             'date': summary.runDate.toIso8601String(),
             'category': 'Salary',
             'amount': netAmount,
-            'description': 'Salary payment for ${r.workerName} (${summary.periodLabel})',
+            'description':
+                'Salary payment for ${r.workerName} (${summary.periodLabel})',
             'payrollKey': payrollKey,
           };
-          final expenseId = 'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
-          final expenseIndex = DummyData.expenses.indexWhere((expense) => (expense['payrollKey'] ?? '').toString() == payrollKey);
+          final expenseId =
+              'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
+          final expenseIndex = DummyData.expenses.indexWhere(
+            (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+          );
           if (expenseIndex == -1) {
             DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
           } else {
-            DummyData.expenses[expenseIndex] = {...DummyData.expenses[expenseIndex], ...expenseRecord};
+            DummyData.expenses[expenseIndex] = {
+              ...DummyData.expenses[expenseIndex],
+              ...expenseRecord,
+            };
           }
         }
       }
       await DummyData.saveToPrefs();
     } catch (_) {
-      DummyData.payroll..clear()..addAll(savedPayroll);
-      DummyData.expenses..clear()..addAll(savedExpenses);
+      DummyData.payroll
+        ..clear()
+        ..addAll(savedPayroll);
+      DummyData.expenses
+        ..clear()
+        ..addAll(savedExpenses);
       rethrow;
     }
     return summary.results.where((result) => result.success).length;
   }
 
-  Future<void> _rollbackPayrollRecords(FirestoreService firestoreService, List<Map<String, dynamic>> payrollRecords) async {
+  Future<void> _rollbackPayrollRecords(
+    FirestoreService firestoreService,
+    List<Map<String, dynamic>> payrollRecords,
+  ) async {
     for (final record in payrollRecords) {
       final payrollKey = (record['payrollKey'] ?? '').toString().trim();
       if (payrollKey.isEmpty) continue;
       try {
-        await firestoreService.cancelPayrollRecord(payrollId: payrollKey.replaceAll('/', '_'), payrollKey: payrollKey);
+        await firestoreService.cancelPayrollRecord(
+          payrollId: payrollKey.replaceAll('/', '_'),
+          payrollKey: payrollKey,
+        );
       } catch (error, stackTrace) {
-        ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerRollback:$payrollKey');
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'PayrollRunnerRollback:$payrollKey',
+        );
       }
     }
   }
@@ -1407,29 +1805,42 @@ class PayrollRunner {
     required DateTime periodEnd,
   }) async {
     if (selected.isEmpty) return;
- 
+
     final locale = context.locale.languageCode;
- 
 
     try {
       final now = DateTime.now();
-      final payPeriod = periodLabel.isNotEmpty ? periodLabel : '${now.year}-${now.month.toString().padLeft(2, '0')}';
-      final periodDisplay = PayrollService.formatPayPeriodRange(periodStart, periodEnd);
+      final payPeriod = periodLabel.isNotEmpty
+          ? periodLabel
+          : '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final periodDisplay = PayrollService.formatPayPeriodRange(
+        periodStart,
+        periodEnd,
+      );
 
-      final firestore = ProviderScope.containerOf(context).read(firestoreServiceProvider);
-      final resolvedProfile = await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
+      final firestore = ProviderScope.containerOf(
+        context,
+      ).read(firestoreServiceProvider);
+      final resolvedProfile =
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
 
-      final companyLogoUrl = (resolvedProfile['profilePicUrl'] ??
-              companyProfile['profilePic'] ??
-              companyProfile['profilePicUrl'] ??
-              companyProfile['photoUrl'] ??
-              companyProfile['companyLogoUrl'] ??
-              '').toString().trim();
-      final companyStampUrl = (resolvedProfile['companyStampUrl'] ??
-              companyProfile['companyStampUrl'] ??
-              companyProfile['stampUrl'] ??
-              companyProfile['companyStamp'] ??
-              '').toString().trim();
+      final companyLogoUrl =
+          (resolvedProfile['profilePicUrl'] ??
+                  companyProfile['profilePic'] ??
+                  companyProfile['profilePicUrl'] ??
+                  companyProfile['photoUrl'] ??
+                  companyProfile['companyLogoUrl'] ??
+                  '')
+              .toString()
+              .trim();
+      final companyStampUrl =
+          (resolvedProfile['companyStampUrl'] ??
+                  companyProfile['companyStampUrl'] ??
+                  companyProfile['stampUrl'] ??
+                  companyProfile['companyStamp'] ??
+                  '')
+              .toString()
+              .trim();
       final allAssets = await Future.wait<Object?>([
         InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
         InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -1442,12 +1853,28 @@ class PayrollRunner {
       final translations = allAssets[3] as Map<String, dynamic>;
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
-        resolvedProfile['companyName'] ?? companyProfile['businessName'] ?? companyProfile['companyName'],
+        resolvedProfile['companyName'] ??
+            companyProfile['businessName'] ??
+            companyProfile['companyName'],
       );
-      final companyAddress = (resolvedProfile['address'] ?? companyProfile['address'] ?? '').toString();
-      final companyEmail = (resolvedProfile['email'] ?? companyProfile['email'] ?? '').toString();
-      final companyPhone = (resolvedProfile['phone'] ?? companyProfile['contact1'] ?? companyProfile['phone'] ?? '').toString();
-      final companyId = (resolvedProfile['companyId'] ?? companyProfile['companyId'] ?? companyProfile['businessId'] ?? '').toString();
+      final companyAddress =
+          (resolvedProfile['address'] ?? companyProfile['address'] ?? '')
+              .toString();
+      final companyEmail =
+          (resolvedProfile['email'] ?? companyProfile['email'] ?? '')
+              .toString();
+      final companyPhone =
+          (resolvedProfile['phone'] ??
+                  companyProfile['contact1'] ??
+                  companyProfile['phone'] ??
+                  '')
+              .toString();
+      final companyId =
+          (resolvedProfile['companyId'] ??
+                  companyProfile['companyId'] ??
+                  companyProfile['businessId'] ??
+                  '')
+              .toString();
 
       final successful = selected.where((result) => result.success).toList();
       if (successful.isEmpty) return;
@@ -1456,8 +1883,12 @@ class PayrollRunner {
       // core). Each isolate renders a whole chunk of workers and reuses the
       // shared font + logo/stamp bytes, so we don't pay the isolate spawn +
       // 6MB font parse cost once per worker.
-      final maxParallel = (Platform.numberOfProcessors * 2).clamp(4, 12).toInt();
-      final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
+      final maxParallel = (Platform.numberOfProcessors * 2)
+          .clamp(4, 12)
+          .toInt();
+      final chunkCount = successful.length < maxParallel
+          ? successful.length
+          : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
       // Pre-load every worker's profile photo on the main isolate so the
       // background render isolates never touch the network or rootBundle.
@@ -1501,7 +1932,9 @@ class PayrollRunner {
           'employeeImageBytes': profileImages[index],
         });
       }
-      final chunkResults = await Future.wait(chunks.map(_generateInvoiceChunkInBackground));
+      final chunkResults = await Future.wait(
+        chunks.map(_generateInvoiceChunkInBackground),
+      );
       for (final files in chunkResults) {
         invoiceFiles.addAll(files);
       }
@@ -1526,18 +1959,24 @@ class PayrollRunner {
           await savedZip.writeAsBytes(zipData, flush: true);
         }
         if (context.mounted) {
-          FlashySnackBar.show(context, message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}));
+          FlashySnackBar.show(
+            context,
+            message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
+          );
         }
         unawaited(FileOpener.open(result));
       }
     } catch (e) {
       if (context.mounted) {
-        FlashySnackBar.show(context, message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$e'}), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$e'}),
+          isError: true,
+        );
       }
     }
   }
 
- 
   Future<void> _generateAndSaveZipSafe(
     BuildContext context,
     List<AutoPayrollResult> paidResults,
@@ -1571,7 +2010,6 @@ class PayrollRunner {
     }
   }
 
- 
   Future<void> _generateAndSaveZipWithProgress(
     BuildContext context,
     List<AutoPayrollResult> selected,
@@ -1588,11 +2026,19 @@ class PayrollRunner {
 
     try {
       final now = DateTime.now();
-      final payPeriod = periodLabel.isNotEmpty ? periodLabel : '${now.year}-${now.month.toString().padLeft(2, '0')}';
-      final periodDisplay = PayrollService.formatPayPeriodRange(periodStart, periodEnd);
+      final payPeriod = periodLabel.isNotEmpty
+          ? periodLabel
+          : '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final periodDisplay = PayrollService.formatPayPeriodRange(
+        periodStart,
+        periodEnd,
+      );
 
-      final firestore = ProviderScope.containerOf(context).read(firestoreServiceProvider);
-      final resolvedProfile = (preloadedAssets?['resolvedProfile'] as Map<String, dynamic>?) ??
+      final firestore = ProviderScope.containerOf(
+        context,
+      ).read(firestoreServiceProvider);
+      final resolvedProfile =
+          (preloadedAssets?['resolvedProfile'] as Map<String, dynamic>?) ??
           await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
 
       final Uint8List? companyLogoBytes;
@@ -1600,17 +2046,23 @@ class PayrollRunner {
       final Uint8List? fontBytes;
       final Map<String, dynamic> translations;
 
-      final companyLogoUrl = (resolvedProfile['profilePicUrl'] ??
-              companyProfile['profilePic'] ??
-              companyProfile['profilePicUrl'] ??
-              companyProfile['photoUrl'] ??
-              companyProfile['companyLogoUrl'] ??
-              '').toString().trim();
-      final companyStampUrl = (resolvedProfile['companyStampUrl'] ??
-              companyProfile['companyStampUrl'] ??
-              companyProfile['stampUrl'] ??
-              companyProfile['companyStamp'] ??
-              '').toString().trim();
+      final companyLogoUrl =
+          (resolvedProfile['profilePicUrl'] ??
+                  companyProfile['profilePic'] ??
+                  companyProfile['profilePicUrl'] ??
+                  companyProfile['photoUrl'] ??
+                  companyProfile['companyLogoUrl'] ??
+                  '')
+              .toString()
+              .trim();
+      final companyStampUrl =
+          (resolvedProfile['companyStampUrl'] ??
+                  companyProfile['companyStampUrl'] ??
+                  companyProfile['stampUrl'] ??
+                  companyProfile['companyStamp'] ??
+                  '')
+              .toString()
+              .trim();
 
       if (preloadedAssets != null &&
           preloadedAssets['fontBytes'] is Uint8List &&
@@ -1620,7 +2072,7 @@ class PayrollRunner {
         fontBytes = preloadedAssets['fontBytes'] as Uint8List?;
         translations = preloadedAssets['translations'] as Map<String, dynamic>;
       } else {
-        controller.update(progress: 0.58, label: 'generating_invoices'.tr());
+        controller.update(progress: 0.10, label: 'generating_invoices'.tr());
         final allAssets = await Future.wait<Object?>([
           InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
           InvoiceService.resolveCompanyStampBytes(companyStampUrl),
@@ -1633,29 +2085,45 @@ class PayrollRunner {
         translations = allAssets[3] as Map<String, dynamic>;
       }
 
-      controller.update(progress: 0.65, label: 'generating_invoices'.tr());
+      controller.update(progress: 0.15, label: 'generating_invoices'.tr());
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
-        resolvedProfile['companyName'] ?? companyProfile['businessName'] ?? companyProfile['companyName'],
+        resolvedProfile['companyName'] ??
+            companyProfile['businessName'] ??
+            companyProfile['companyName'],
       );
-      final companyAddress = (resolvedProfile['address'] ?? companyProfile['address'] ?? '').toString();
-      final companyEmail = (resolvedProfile['email'] ?? companyProfile['email'] ?? '').toString();
-      final companyPhone = (resolvedProfile['phone'] ?? companyProfile['contact1'] ?? companyProfile['phone'] ?? '').toString();
-      final companyId = (resolvedProfile['companyId'] ?? companyProfile['companyId'] ?? companyProfile['businessId'] ?? '').toString();
+      final companyAddress =
+          (resolvedProfile['address'] ?? companyProfile['address'] ?? '')
+              .toString();
+      final companyEmail =
+          (resolvedProfile['email'] ?? companyProfile['email'] ?? '')
+              .toString();
+      final companyPhone =
+          (resolvedProfile['phone'] ??
+                  companyProfile['contact1'] ??
+                  companyProfile['phone'] ??
+                  '')
+              .toString();
+      final companyId =
+          (resolvedProfile['companyId'] ??
+                  companyProfile['companyId'] ??
+                  companyProfile['businessId'] ??
+                  '')
+              .toString();
 
       final successful = selected.where((result) => result.success).toList();
       if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
 
-      controller.update(progress: 0.68, label: 'generating_invoices'.tr());
+      controller.update(progress: 0.20, label: 'generating_invoices'.tr());
       // Fetch raw profile photos with bounded concurrency and nudge the bar
       // forward as each downloads, so a large batch (e.g. 100 workers) doesn't
       // freeze the progress bar during this phase.
       final rawImages = await _loadProfileImagesWithProgress(
         successful,
         controller,
-        startProgress: 0.68,
-        endProgress: 0.72,
+        startProgress: 0.20,
+        endProgress: 0.35,
       );
       final imageIndexes = <int>[];
       final rawToCompress = <Uint8List>[];
@@ -1674,11 +2142,14 @@ class PayrollRunner {
         profileImages[imageIndexes[c]] = compressed[c];
       }
 
-      controller.update(progress: 0.72, label: 'generating_invoices'.tr());
+      controller.update(progress: 0.35, label: 'generating_invoices'.tr());
 
-   
-      final maxParallel = (Platform.numberOfProcessors * 2).clamp(4, 12).toInt();
-      final chunkCount = successful.length < maxParallel ? successful.length : maxParallel;
+      final maxParallel = (Platform.numberOfProcessors * 2)
+          .clamp(4, 12)
+          .toInt();
+      final chunkCount = successful.length < maxParallel
+          ? successful.length
+          : maxParallel;
       final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
       for (var index = 0; index < successful.length; index++) {
         final r = successful[index];
@@ -1718,8 +2189,8 @@ class PayrollRunner {
         });
       }
 
-      controller.update(progress: 0.78, label: 'generating_invoices'.tr());
-     
+      controller.update(progress: 0.40, label: 'generating_invoices'.tr());
+
       final chunkFutures = <Future<void>>[];
       var pdfDone = 0;
       for (final entry in chunks.indexed) {
@@ -1730,11 +2201,10 @@ class PayrollRunner {
             // Real progress: how many PDF batches have actually been rendered
             // by the background isolates so far.
             controller.update(
-              progress: 0.78 + (0.12 * pdfDone / chunkCount),
-              label: 'generating_invoices_progress'.tr(namedArgs: {
-                'done': '$pdfDone',
-                'total': '$chunkCount',
-              }),
+              progress: 0.40 + (0.45 * pdfDone / chunkCount),
+              label: 'generating_invoices_progress'.tr(
+                namedArgs: {'done': '$pdfDone', 'total': '$chunkCount'},
+              ),
               forceLabel: true,
             );
           }),
@@ -1757,14 +2227,20 @@ class PayrollRunner {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'failed_to_generate_zip'.tr(namedArgs: {'error': 'Invoice generation timed out'}),
+            message: 'failed_to_generate_zip'.tr(
+              namedArgs: {'error': 'Invoice generation timed out'},
+            ),
             isError: true,
           );
         }
         return;
       }
 
-      controller.update(progress: 0.90, label: 'preparing_zip'.tr(), forceLabel: true);
+      controller.update(
+        progress: 0.90,
+        label: 'preparing_zip'.tr(),
+        forceLabel: true,
+      );
       // Snapshot so background chunks that finish late can't mutate the list
       // while the ZIP isolate is reading it.
       final filesForZip = List<Map<String, Object>>.from(invoiceFiles);
@@ -1826,7 +2302,10 @@ class PayrollRunner {
   /// Writes the batch ZIP into the app's writable sandbox Documents folder and
   /// returns the resulting file. Used as a safe fallback when direct writes to
   /// the system Downloads folder are blocked (macOS App Sandbox).
-  Future<File> _writeZipToWritableDir(String fileName, Uint8List zipData) async {
+  Future<File> _writeZipToWritableDir(
+    String fileName,
+    Uint8List zipData,
+  ) async {
     final docsDir = await getApplicationDocumentsDirectory();
     final file = File('${docsDir.path}/$fileName');
     await file.writeAsBytes(zipData, flush: true);
@@ -1842,7 +2321,11 @@ class PayrollRunner {
     try {
       return await compute(_generatePayrollInvoiceBatch, chunkArgs);
     } catch (error, stackTrace) {
-      ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceGeneration');
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollInvoiceGeneration',
+      );
       // Fall back to generating on the main isolate so the export still
       // completes even if the background isolate was killed (e.g. by a hot
       // restart, app exit or memory pressure). Slower, but never aborts
@@ -1850,7 +2333,11 @@ class PayrollRunner {
       try {
         return await _generatePayrollInvoiceBatch(chunkArgs);
       } catch (fallbackError, fallbackStack) {
-        ErrorReporter.report(fallbackError, fallbackStack, context: 'PayrollInvoiceGenerationFallback');
+        ErrorReporter.report(
+          fallbackError,
+          fallbackStack,
+          context: 'PayrollInvoiceGenerationFallback',
+        );
         return const [];
       }
     }
@@ -1888,7 +2375,7 @@ class PayrollRunner {
       return await ImageLoader.load(
         source: source,
         maxSizeBytes: 2 * 1024 * 1024,
-        timeout: const Duration(seconds: 2),
+        timeout: const Duration(milliseconds: 600),
         convertToPng: false,
       );
     } catch (_) {
@@ -1896,9 +2383,6 @@ class PayrollRunner {
     }
   }
 
-  /// Compresses the fetched worker photos across several background isolates in
-  /// parallel (instead of one big single-isolate pass) so large batches shrink
-  /// the decode/encode time close to linearly on multi-core machines.
   Future<List<Uint8List>> _compressImagesParallel(List<Uint8List> raw) async {
     if (raw.isEmpty) return const [];
     final cores = Platform.numberOfProcessors;
@@ -1932,19 +2416,17 @@ class PayrollRunner {
     required double endProgress,
   }) async {
     final results = List<Uint8List?>.filled(workers.length, null);
-    const pool = 12;
-    // Hard cap on this network-bound phase. If worker photos are slow or
-    // unreachable the bar must not sit stalled at ~69%; anything we can't
-    // fetch in time is left as null and the PDF falls back to a blank header.
-    // Kept tight so the whole invoice flow stays inside ~3s.
-    final deadline = DateTime.now().add(const Duration(milliseconds: 5000));
+    const pool = 24;
+    // Tight 800ms deadline so network downloads never stall invoice generation.
+    final deadline = DateTime.now().add(const Duration(milliseconds: 800));
     var index = 0;
     var completed = 0;
 
     void report() {
       if (workers.isEmpty) return;
       controller.update(
-        progress: startProgress +
+        progress:
+            startProgress +
             (endProgress - startProgress) * (completed / workers.length),
         label: 'generating_invoices'.tr(),
       );
@@ -1986,6 +2468,7 @@ class PayrollRunner {
     PayrollRunSummary summary, {
     DateTime? periodStart,
     DateTime? periodEnd,
+    VoidCallback? onReviewDialogOpen,
   }) async {
     final isGuest =
         ProviderScope.containerOf(
@@ -2027,8 +2510,9 @@ class PayrollRunner {
     }
     final allPositions = positionNormalizer.values.toList()..sort();
 
-            final firestoreService =
-        ProviderScope.containerOf(context).read(firestoreServiceProvider);
+    final firestoreService = ProviderScope.containerOf(
+      context,
+    ).read(firestoreServiceProvider);
     final reviewedStart =
         periodStart ?? PayrollService.payPeriodStart(DateTime.now());
     final reviewedEnd =
@@ -2063,13 +2547,18 @@ class PayrollRunner {
         );
         if (!liveAlive) return;
         dialogSetState?.call(() {
-          if (refreshed.results.length != summary.results.length || !_sameReviewResults(refreshed.results, summary.results)) {
-                                    final previousSelected = selectedIndices
-                .map((i) =>
-                    i >= 0 && i < summary.results.length ? _reviewWorkerKey(summary.results[i]) : '')
+          if (refreshed.results.length != summary.results.length ||
+              !_sameReviewResults(refreshed.results, summary.results)) {
+            final previousSelected = selectedIndices
+                .map(
+                  (i) => i >= 0 && i < summary.results.length
+                      ? _reviewWorkerKey(summary.results[i])
+                      : '',
+                )
                 .where((k) => k.isNotEmpty)
                 .toSet();
-            final activeKey = activeDetailIndex != null &&
+            final activeKey =
+                activeDetailIndex != null &&
                     activeDetailIndex! >= 0 &&
                     activeDetailIndex! < summary.results.length
                 ? _reviewWorkerKey(summary.results[activeDetailIndex!])
@@ -2079,13 +2568,16 @@ class PayrollRunner {
             selectedIndices.clear();
             for (int i = 0; i < refreshed.results.length; i++) {
               if (refreshed.results[i].success &&
-                  previousSelected.contains(_reviewWorkerKey(refreshed.results[i]))) {
+                  previousSelected.contains(
+                    _reviewWorkerKey(refreshed.results[i]),
+                  )) {
                 selectedIndices.add(i);
               }
             }
             if (activeKey != null) {
-              final idx = refreshed.results
-                  .indexWhere((r) => _reviewWorkerKey(r) == activeKey);
+              final idx = refreshed.results.indexWhere(
+                (r) => _reviewWorkerKey(r) == activeKey,
+              );
               activeDetailIndex = idx >= 0 ? idx : null;
             } else if (activeDetailIndex != null &&
                 activeDetailIndex! >= refreshed.results.length) {
@@ -2099,10 +2591,16 @@ class PayrollRunner {
 
     void attachLiveRefresh() {
       liveSubscriptions.add(
-        firestoreService.workersStream.listen((_) => scheduleLiveRefresh(), onError: (_) {}),
+        firestoreService.workersStream.listen(
+          (_) => scheduleLiveRefresh(),
+          onError: (_) {},
+        ),
       );
       liveSubscriptions.add(
-        firestoreService.timeoffStream.listen((_) => scheduleLiveRefresh(), onError: (_) {}),
+        firestoreService.timeoffStream.listen(
+          (_) => scheduleLiveRefresh(),
+          onError: (_) {},
+        ),
       );
       liveSubscriptions.add(
         firestoreService
@@ -2128,7 +2626,1102 @@ class PayrollRunner {
       barrierLabel: 'PayrollReviewDialog',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 280),
-      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onReviewDialogOpen?.call();
+        });
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            dialogSetState = setDialogState;
+            List<AutoPayrollResult> posFiltered;
+            if (positionFilter == 'All') {
+              posFiltered = List<AutoPayrollResult>.from(summary.results)
+                ..sort(
+                  (a, b) => a.workerName.trim().toLowerCase().compareTo(
+                    b.workerName.trim().toLowerCase(),
+                  ),
+                );
+            } else {
+              posFiltered = summary.results
+                  .where(
+                    (r) =>
+                        r.position.toLowerCase().trim() ==
+                        positionFilter.toLowerCase().trim(),
+                  )
+                  .toList();
+            }
+
+            if (showOnlyAbsences) {
+              posFiltered = posFiltered.where((r) => r.absents > 0).toList();
+            }
+
+            final filteredResults = searchQuery.isEmpty
+                ? posFiltered
+                : posFiltered
+                      .where(
+                        (r) =>
+                            r.workerName.toLowerCase().contains(
+                              searchQuery.toLowerCase(),
+                            ) ||
+                            r.email.toLowerCase().contains(
+                              searchQuery.toLowerCase(),
+                            ),
+                      )
+                      .toList();
+
+            final filteredSelectedCount = filteredResults
+                .where(
+                  (r) => selectedIndices.contains(summary.results.indexOf(r)),
+                )
+                .length;
+            final filteredPayCount = filteredResults
+                .where(
+                  (r) =>
+                      r.success &&
+                      selectedIndices.contains(summary.results.indexOf(r)),
+                )
+                .length;
+
+            return PopScope(
+              canPop: true,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Center(
+                  child: Container(
+                    width: dialogWidth,
+                    height: dialogHeight,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.12),
+                          blurRadius: 32,
+                          offset: const Offset(0, 16),
+                        ),
+                        BoxShadow(
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 48,
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          color: const Color(0xFF004FDE),
+                          child: Row(
+                            children: [
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (activeDetailIndex != null) {
+                                      setDialogState(
+                                        () => activeDetailIndex = null,
+                                      );
+                                    } else {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
+                                  child: SizedBox(
+                                    width: 32,
+                                    height: 32,
+                                    child: Icon(
+                                      activeDetailIndex != null
+                                          ? Icons.arrow_back_rounded
+                                          : Icons.close_rounded,
+                                      color: const Color(0xFFFFFFFF),
+                                      size: 21,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    activeDetailIndex != null
+                                        ? 'payroll_details_title'
+                                              .tr(
+                                                namedArgs: {
+                                                  'name': summary
+                                                      .results[activeDetailIndex!]
+                                                      .workerName,
+                                                },
+                                              )
+                                              .trim()
+                                        : 'payroll_run_review'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFFFFFFF),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                            ],
+                          ),
+                        ),
+                        if (activeDetailIndex != null)
+                          Expanded(
+                            child: _buildInlineWorkerDetailView(
+                              context: context,
+                              result: summary.results[activeDetailIndex!],
+                              originalIndex: activeDetailIndex!,
+                              overtimeControllers: overtimeControllers,
+                              onBack: () => setDialogState(
+                                () => activeDetailIndex = null,
+                              ),
+                              isGuest: isGuest,
+                              setDialogState: setDialogState,
+                            ),
+                          )
+                        else ...[
+                          const SizedBox(height: 12),
+
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: SizedBox(
+                              height: 38,
+                              child: TextField(
+                                onChanged: (val) {
+                                  setDialogState(() => searchQuery = val);
+                                },
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontFamily: 'SF Pro Display',
+                                  color: Color(0xFF111827),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'search_workers_hint'.tr(),
+                                  hintStyle: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFBDBDBD),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    size: 18,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE5E7EB),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE5E7EB),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF0F70FF),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ChoiceChip(
+                                      label: Text('all_filter'.tr()),
+                                      selected: positionFilter == 'All',
+                                      onSelected: (_) {
+                                        setDialogState(() {
+                                          positionFilter = 'All';
+                                          showOnlyAbsences = false;
+                                        });
+                                      },
+                                      selectedColor: const Color(0xFF0C51C1),
+                                      backgroundColor: Colors.white,
+                                      checkmarkColor: Colors.transparent,
+                                      showCheckmark: false,
+                                      side: positionFilter == 'All'
+                                          ? null
+                                          : const BorderSide(
+                                              color: Color(0xFFE5E7EB),
+                                            ),
+                                      labelStyle: TextStyle(
+                                        color: positionFilter == 'All'
+                                            ? Colors.white
+                                            : const Color(0xFF111827),
+                                        fontSize: 12,
+                                        fontWeight: positionFilter == 'All'
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    ...allPositions.map(
+                                      (pos) => Padding(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: ChoiceChip(
+                                          label: Text(
+                                            LocalizationHelper.localizePosition(
+                                              pos,
+                                            ),
+                                          ),
+                                          selected: positionFilter == pos,
+                                          onSelected: (_) {
+                                            setDialogState(() {
+                                              positionFilter = pos;
+                                              showOnlyAbsences = false;
+                                            });
+                                          },
+                                          selectedColor: const Color(
+                                            0xFF0C51C1,
+                                          ),
+                                          backgroundColor: Colors.white,
+                                          checkmarkColor: Colors.transparent,
+                                          showCheckmark: false,
+                                          side: positionFilter == pos
+                                              ? null
+                                              : const BorderSide(
+                                                  color: Color(0xFFE5E7EB),
+                                                ),
+                                          labelStyle: TextStyle(
+                                            color: positionFilter == pos
+                                                ? Colors.white
+                                                : const Color(0xFF111827),
+                                            fontSize: 12,
+                                            fontWeight: positionFilter == pos
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEEF2FF),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$filteredSelectedCount ${'selected'.tr()}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF0247C4),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Flexible(
+                                        child: Text(
+                                          'processing_for_cycle'.tr(
+                                            namedArgs: {
+                                              'period': summary.periodLabel,
+                                            },
+                                          ),
+                                          style: const TextStyle(
+                                            color: Color(0xFF6B7280),
+                                            fontSize: 13,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        setDialogState(() {
+                                          showOnlyAbsences = !showOnlyAbsences;
+                                          if (showOnlyAbsences)
+                                            positionFilter = 'All';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: showOnlyAbsences
+                                              ? const Color(0xFF0C51C1)
+                                              : const Color(0xFFEEF2FF),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              showOnlyAbsences
+                                                  ? Icons.filter_alt
+                                                  : Icons.filter_alt_off,
+                                              size: 14,
+                                              color: showOnlyAbsences
+                                                  ? const Color(0xFFFFFFFF)
+                                                  : const Color(0xFF0247C4),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'with_absences'.tr(),
+                                              style: TextStyle(
+                                                color: showOnlyAbsences
+                                                    ? const Color(0xFFFFFFFF)
+                                                    : const Color(0xFF0247C4),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setDialogState(() {
+                                          final filteredIndices =
+                                              filteredResults
+                                                  .map(
+                                                    (r) => summary.results
+                                                        .indexOf(r),
+                                                  )
+                                                  .toSet();
+                                          final allFilteredSelected =
+                                              filteredIndices.every(
+                                                (i) =>
+                                                    selectedIndices.contains(i),
+                                              );
+                                          if (allFilteredSelected) {
+                                            selectedIndices.removeAll(
+                                              filteredIndices,
+                                            );
+                                          } else {
+                                            selectedIndices.addAll(
+                                              filteredIndices,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              filteredResults.every(
+                                                (r) => selectedIndices.contains(
+                                                  summary.results.indexOf(r),
+                                                ),
+                                              )
+                                              ? const Color(0xFFFEE2E2)
+                                              : const Color(0xFFEEF2FF),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              filteredResults.every(
+                                                    (r) => selectedIndices
+                                                        .contains(
+                                                          summary.results
+                                                              .indexOf(r),
+                                                        ),
+                                                  )
+                                                  ? Icons.deselect
+                                                  : Icons.select_all,
+                                              size: 14,
+                                              color:
+                                                  filteredResults.every(
+                                                    (r) => selectedIndices
+                                                        .contains(
+                                                          summary.results
+                                                              .indexOf(r),
+                                                        ),
+                                                  )
+                                                  ? const Color(0xFFEF4444)
+                                                  : const Color(0xFF0247C4),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              filteredResults.every(
+                                                    (r) => selectedIndices
+                                                        .contains(
+                                                          summary.results
+                                                              .indexOf(r),
+                                                        ),
+                                                  )
+                                                  ? 'deselect_all'.tr()
+                                                  : 'select_all'.tr(),
+                                              style: TextStyle(
+                                                color:
+                                                    filteredResults.every(
+                                                      (r) => selectedIndices
+                                                          .contains(
+                                                            summary.results
+                                                                .indexOf(r),
+                                                          ),
+                                                    )
+                                                    ? const Color(0xFFEF4444)
+                                                    : const Color(0xFF0247C4),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            height: 1,
+                            color: const Color(0xFFE5E7EB),
+                          ),
+
+                          Expanded(
+                            child: filteredResults.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off_rounded,
+                                          size: 48,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'no_results'.tr(),
+                                          style: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      24,
+                                      10,
+                                      24,
+                                      10,
+                                    ),
+                                    itemCount: filteredResults.length,
+                                    itemBuilder: (_, i) {
+                                      final r = filteredResults[i];
+                                      final originalIndex = summary.results
+                                          .indexOf(r);
+                                      final isSelected = selectedIndices
+                                          .contains(originalIndex);
+
+                                      final avatarColors = [
+                                        const Color(0xFFE4F0FF),
+                                        const Color(0xFFEFE4FF),
+                                        const Color(0xFFE4FFE8),
+                                        const Color(0xFFFFE4E4),
+                                        const Color(0xFFFFF0E4),
+                                      ];
+                                      final avatarTextColors = [
+                                        const Color(0xFF0F70FF),
+                                        const Color(0xFF6A00FF),
+                                        const Color(0xFF22C55E),
+                                        const Color(0xFFEF4444),
+                                        const Color(0xFFF97316),
+                                      ];
+                                      final colorIdx =
+                                          r.workerName.hashCode.abs() % 5;
+
+                                      final posLower = r.position
+                                          .toLowerCase()
+                                          .trim();
+                                      final stLower = r.salaryType
+                                          .toLowerCase()
+                                          .trim();
+                                      final isContractorWorker =
+                                          posLower.contains('contract') ||
+                                          posLower.contains('freelance') ||
+                                          stLower.contains('contract') ||
+                                          stLower.contains('freelance') ||
+                                          (stLower != 'monthly' &&
+                                              stLower.isNotEmpty);
+                                      final storedEmploymentType = r
+                                          .employmentType
+                                          .trim();
+                                      final typeLabel =
+                                          storedEmploymentType.isNotEmpty
+                                          ? LocalizationHelper.localizeType1(
+                                              storedEmploymentType,
+                                            ).toUpperCase()
+                                          : isContractorWorker
+                                          ? 'type_contractor'.tr()
+                                          : 'type_full_time'.tr();
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 200,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? const Color(
+                                                      0xFF0F70FF,
+                                                    ).withValues(alpha: 0.3)
+                                                  : const Color(0xFFE5E7EB),
+                                              width: 1.2,
+                                            ),
+                                          ),
+                                          child: InkWell(
+                                            onTap: () {
+                                              setDialogState(() {
+                                                activeDetailIndex =
+                                                    originalIndex;
+                                              });
+                                            },
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 14,
+                                                    horizontal: 14,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      setDialogState(() {
+                                                        if (isSelected) {
+                                                          selectedIndices
+                                                              .remove(
+                                                                originalIndex,
+                                                              );
+                                                        } else {
+                                                          selectedIndices.add(
+                                                            originalIndex,
+                                                          );
+                                                        }
+                                                      });
+                                                    },
+                                                    child: Container(
+                                                      width: 12,
+                                                      height: 12,
+                                                      decoration: BoxDecoration(
+                                                        border: Border.all(
+                                                          color: isSelected
+                                                              ? const Color(
+                                                                  0xFF0F70FF,
+                                                                )
+                                                              : const Color(
+                                                                  0xFFD1D5DB,
+                                                                ),
+                                                          width: 1,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              2,
+                                                            ),
+                                                        color: isSelected
+                                                            ? const Color(
+                                                                0xFF0F70FF,
+                                                              )
+                                                            : Colors
+                                                                  .transparent,
+                                                      ),
+                                                      child: isSelected
+                                                          ? const Icon(
+                                                              Icons.check,
+                                                              size: 8,
+                                                              color:
+                                                                  Colors.white,
+                                                            )
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 14),
+
+                                                  _workerAvatar(
+                                                    imageUrl: r.imageUrl,
+                                                    name: r.workerName,
+                                                    size: 44,
+                                                    backgroundColor:
+                                                        avatarColors[colorIdx
+                                                                .abs() %
+                                                            5],
+                                                    textColor:
+                                                        avatarTextColors[colorIdx
+                                                                .abs() %
+                                                            5],
+                                                    fontSize: 18,
+                                                    allowExtendedSources:
+                                                        !isGuest,
+                                                  ),
+                                                  const SizedBox(width: 14),
+
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            Flexible(
+                                                              child: Text(
+                                                                r.workerName,
+                                                                style: const TextStyle(
+                                                                  fontSize: 15,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontFamily:
+                                                                      'SF Pro Display',
+                                                                  color: Color(
+                                                                    0xFF111827,
+                                                                  ),
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        7,
+                                                                    vertical: 2,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFF3F4F6,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      4,
+                                                                    ),
+                                                              ),
+                                                              child: Text(
+                                                                typeLabel,
+                                                                style: const TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  color: Color(
+                                                                    0xFF4B5563,
+                                                                  ),
+                                                                  letterSpacing:
+                                                                      0.5,
+                                                                  fontFamily:
+                                                                      'SF Pro Display',
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 5,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Icon(
+                                                              Icons
+                                                                  .mail_outline_rounded,
+                                                              size: 13,
+                                                              color: Colors
+                                                                  .grey
+                                                                  .shade400,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
+                                                            Flexible(
+                                                              child: Text(
+                                                                r.email.isNotEmpty
+                                                                    ? r.email
+                                                                    : 'no_email'
+                                                                          .tr(),
+                                                                style: const TextStyle(
+                                                                  fontSize: 13,
+                                                                  color: Color(
+                                                                    0xFF6B7280,
+                                                                  ),
+                                                                  fontFamily:
+                                                                      'SF Pro Display',
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      Text(
+                                                        'net_salary'.tr(),
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Color(
+                                                            0xFF6B7280,
+                                                          ),
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 5),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 14,
+                                                              vertical: 6,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: r.success
+                                                              ? const Color(
+                                                                  0xFFF0F6FF,
+                                                                )
+                                                              : const Color(
+                                                                  0xFFFEE2E2,
+                                                                ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          AmountText.formatCompact(
+                                                            r.netSalary,
+                                                            locale: context
+                                                                .locale
+                                                                .toString(),
+                                                          ),
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontFamily:
+                                                                'SF Pro Display',
+                                                            color: r.success
+                                                                ? const Color(
+                                                                    0xFF0F70FF,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFFEF4444,
+                                                                  ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(width: 6),
+
+                                                  const Icon(
+                                                    Icons.chevron_right_rounded,
+                                                    size: 22,
+                                                    color: Color(0xFF9CA3AF),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              border: Border(
+                                top: BorderSide(
+                                  color: Color(0xFFE5E7EB),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'total_disbursement'.tr(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF6B7280),
+                                        letterSpacing: 0.5,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      () {
+                                        double total = 0;
+                                        String prefix = '';
+                                        for (final r in filteredResults) {
+                                          final idx = summary.results.indexOf(
+                                            r,
+                                          );
+                                          if (selectedIndices.contains(idx) &&
+                                              r.success &&
+                                              r.rawNetSalaryValue.isFinite) {
+                                            total += r.rawNetSalaryValue;
+                                            if (prefix.isEmpty) {
+                                              prefix =
+                                                  PayrollService.getCurrencyPrefix(
+                                                    r.netSalary,
+                                                  );
+                                            }
+                                          }
+                                        }
+                                        final value =
+                                            PayrollService.formatNumber(
+                                              total,
+                                              locale: context.locale.toString(),
+                                            );
+                                        return prefix.isEmpty
+                                            ? value
+                                            : '$prefix $value';
+                                      }(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF111827),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => Navigator.of(context).pop(),
+                                      child: Container(
+                                        height: 48,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 22,
+                                        ),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: const TextStyle(
+                                            color: Color(0xFF000000),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+
+                                    GestureDetector(
+                                      onTap: filteredPayCount == 0
+                                          ? null
+                                          : () {
+                                              final selected = filteredResults
+                                                  .where(
+                                                    (r) =>
+                                                        r.success &&
+                                                        selectedIndices
+                                                            .contains(
+                                                              summary.results
+                                                                  .indexOf(r),
+                                                            ),
+                                                  )
+                                                  .toList();
+                                              Navigator.of(
+                                                context,
+                                              ).pop(selected);
+                                            },
+                                      child: Container(
+                                        height: 48,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 22,
+                                        ),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: filteredPayCount == 0
+                                              ? const Color(
+                                                  0xFF0247C4,
+                                                ).withValues(alpha: 0.4)
+                                              : const Color(0xFF0247C4),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          boxShadow: filteredPayCount > 0
+                                              ? [
+                                                  BoxShadow(
+                                                    color: const Color(
+                                                      0xFF0247C4,
+                                                    ).withValues(alpha: 0.2),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.check_circle_outline,
+                                              color: Colors.white,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'pay_all_count'.tr(
+                                                namedArgs: {
+                                                  'count': '$filteredPayCount',
+                                                },
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curve = CurvedAnimation(
           parent: animation,
@@ -2147,1182 +3740,7 @@ class PayrollRunner {
             ),
             FadeTransition(
               opacity: animation,
-              child: ScaleTransition(
-                scale: curve,
-                child: StatefulBuilder(
-                  builder: (context, setDialogState) {
-                    dialogSetState = setDialogState;
-                    List<AutoPayrollResult> posFiltered;
-                    if (positionFilter == 'All') {
-                      posFiltered =
-                          List<AutoPayrollResult>.from(summary.results)..sort(
-                            (a, b) => a.workerName
-                                .trim()
-                                .toLowerCase()
-                                .compareTo(b.workerName.trim().toLowerCase()),
-                          );
-                    } else {
-                      posFiltered = summary.results
-                          .where(
-                            (r) =>
-                                r.position.toLowerCase().trim() ==
-                                positionFilter.toLowerCase().trim(),
-                          )
-                          .toList();
-                    }
-
-                    if (showOnlyAbsences) {
-                      posFiltered = posFiltered.where((r) => r.absents > 0).toList();
-                    }
-
-                    final filteredResults = searchQuery.isEmpty
-                        ? posFiltered
-                        : posFiltered
-                              .where(
-                                (r) =>
-                                    r.workerName.toLowerCase().contains(
-                                      searchQuery.toLowerCase(),
-                                    ) ||
-                                    r.email.toLowerCase().contains(
-                                      searchQuery.toLowerCase(),
-                                    ),
-                              )
-                              .toList();
-
-                    final filteredSelectedCount = filteredResults
-                        .where(
-                          (r) => selectedIndices.contains(
-                            summary.results.indexOf(r),
-                          ),
-                        )
-                        .length;
-                    final filteredPayCount = filteredResults
-                        .where(
-                          (r) =>
-                              r.success &&
-                              selectedIndices.contains(
-                                summary.results.indexOf(r),
-                              ),
-                        )
-                        .length;
-
-                    return PopScope(
-                      canPop: true,
-                      child: Dialog(
-                        backgroundColor: Colors.transparent,
-                        elevation: 0,
-                        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Center(
-                        child: Container(
-                          width: dialogWidth,
-                          height: dialogHeight,
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF0F172A,
-                                ).withValues(alpha: 0.12),
-                                blurRadius: 32,
-                                offset: const Offset(0, 16),
-                              ),
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF0F172A,
-                                ).withValues(alpha: 0.06),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Container(
-                                height: 48,
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                color: const Color(0xFF004FDE),
-                                child: Row(
-                                  children: [
-                                    MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          if (activeDetailIndex != null) {
-                                            setDialogState(
-                                              () => activeDetailIndex = null,
-                                            );
-                                          } else {
-                                            Navigator.of(context).pop();
-                                          }
-                                        },
-                                        child: SizedBox(
-                                          width: 32,
-                                          height: 32,
-                                          child: Icon(
-                                            activeDetailIndex != null
-                                                ? Icons.arrow_back_rounded
-                                                : Icons.close_rounded,
-                                            color: const Color(0xFFFFFFFF),
-                                            size: 21,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Center(
-                                        child: Text(
-                                          activeDetailIndex != null
-                                              ? 'payroll_details_title'
-                                                    .tr(
-                                                      namedArgs: {
-                                                        'name': summary
-                                                            .results[activeDetailIndex!]
-                                                            .workerName,
-                                                      },
-                                                    )
-                                                    .trim()
-                                              : 'payroll_run_review'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFFFFFFFF),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 32),
-                                  ],
-                                ),
-                              ),
-                              if (activeDetailIndex != null)
-                                Expanded(
-                                  child: _buildInlineWorkerDetailView(
-                                    context: context,
-                                    result: summary.results[activeDetailIndex!],
-                                    originalIndex: activeDetailIndex!,
-                                    overtimeControllers: overtimeControllers,
-                                    onBack: () => setDialogState(
-                                      () => activeDetailIndex = null,
-                                    ),
-                                    isGuest: isGuest,
-                                    setDialogState: setDialogState,
-                                  ),
-                                )
-                              else ...[
-                                const SizedBox(height: 12),
-
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  child: SizedBox(
-                                    height: 38,
-                                    child: TextField(
-                                      onChanged: (val) {
-                                        setDialogState(() => searchQuery = val);
-                                      },
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontFamily: 'SF Pro Display',
-                                        color: Color(0xFF111827),
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText: 'search_workers_hint'.tr(),
-                                        hintStyle: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFFBDBDBD),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        prefixIcon: const Icon(
-                                          Icons.search,
-                                          size: 18,
-                                          color: Color(0xFF6B7280),
-                                        ),
-                                        filled: true,
-                                        fillColor: const Color(0xFFF9FAFB),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              vertical: 8,
-                                              horizontal: 12,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFFE5E7EB),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFFE5E7EB),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFF0F70FF),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      24,
-                                      8,
-                                      24,
-                                      0,
-                                    ),
-                                    child: SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          ChoiceChip(
-                                            label: Text('all_filter'.tr()),
-                                            selected: positionFilter == 'All',
-                                            onSelected: (_) {
-                                              setDialogState(
-                                                () {
-                                                  positionFilter = 'All';
-                                                  showOnlyAbsences = false;
-                                                },
-                                              );
-                                            },
-                                            selectedColor: const Color(
-                                              0xFF0C51C1,
-                                            ),
-                                            backgroundColor: Colors.white,
-                                            checkmarkColor: Colors.transparent,
-                                            showCheckmark: false,
-                                            side: positionFilter == 'All'
-                                                ? null
-                                                : const BorderSide(
-                                                    color: Color(0xFFE5E7EB),
-                                                  ),
-                                            labelStyle: TextStyle(
-                                              color: positionFilter == 'All'
-                                                  ? Colors.white
-                                                  : const Color(0xFF111827),
-                                              fontSize: 12,
-                                              fontWeight:
-                                                  positionFilter == 'All'
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                            ),
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                          ),
-                                          ...allPositions.map(
-                                            (pos) => Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 8,
-                                              ),
-                                              child: ChoiceChip(
-                                                label: Text(
-                                                  LocalizationHelper.localizePosition(
-                                                    pos,
-                                                  ),
-                                                ),
-                                                selected: positionFilter == pos,
-                                                onSelected: (_) {
-                                                  setDialogState(
-                                                    () {
-                                                      positionFilter = pos;
-                                                      showOnlyAbsences = false;
-                                                    },
-                                                  );
-                                                },
-                                                selectedColor: const Color(
-                                                  0xFF0C51C1,
-                                                ),
-                                                backgroundColor: Colors.white,
-                                                checkmarkColor:
-                                                    Colors.transparent,
-                                                showCheckmark: false,
-                                                side: positionFilter == pos
-                                                    ? null
-                                                    : const BorderSide(
-                                                        color: Color(
-                                                          0xFFE5E7EB,
-                                                        ),
-                                                      ),
-                                                labelStyle: TextStyle(
-                                                  color: positionFilter == pos
-                                                      ? Colors.white
-                                                      : const Color(0xFF111827),
-                                                  fontSize: 12,
-                                                  fontWeight:
-                                                      positionFilter == pos
-                                                      ? FontWeight.w600
-                                                      : FontWeight.w500,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                    ),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    24,
-                                    14,
-                                    24,
-                                    12,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 5,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFEEF2FF),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                '$filteredSelectedCount ${'selected'.tr()}',
-                                                style: const TextStyle(
-                                                  color: Color(0xFF0247C4),
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Flexible(
-                                              child: Text(
-                                                'processing_for_cycle'.tr(
-                                                  namedArgs: {
-                                                    'period': summary.periodLabel,
-                                                  },
-                                                ),
-                                                style: const TextStyle(
-                                                  color: Color(0xFF6B7280),
-                                                  fontSize: 13,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () {
-                                              setDialogState(() {
-                                                showOnlyAbsences = !showOnlyAbsences;
-                                                if (showOnlyAbsences) positionFilter = 'All';
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: showOnlyAbsences ? const Color(0xFF0C51C1) : const Color(0xFFEEF2FF),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    showOnlyAbsences ? Icons.filter_alt : Icons.filter_alt_off,
-                                                    size: 14,
-                                                    color: showOnlyAbsences ? const Color(0xFFFFFFFF) : const Color(0xFF0247C4),
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  Text(
-                                                    'with_absences'.tr(),
-                                                    style: TextStyle(
-                                                      color: showOnlyAbsences ? const Color(0xFFFFFFFF) : const Color(0xFF0247C4),
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                      fontFamily: 'SF Pro Display',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          GestureDetector(
-                                            onTap: () {
-                                              setDialogState(() {
-                                                final filteredIndices =
-                                                    filteredResults
-                                                        .map(
-                                                          (r) => summary.results
-                                                              .indexOf(r),
-                                                        )
-                                                        .toSet();
-                                                final allFilteredSelected =
-                                                    filteredIndices.every(
-                                                      (i) => selectedIndices
-                                                          .contains(i),
-                                                    );
-                                                if (allFilteredSelected) {
-                                                  selectedIndices.removeAll(
-                                                    filteredIndices,
-                                                  );
-                                                } else {
-                                                  selectedIndices.addAll(
-                                                    filteredIndices,
-                                                  );
-                                                }
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 6,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    filteredResults.every(
-                                                      (r) =>
-                                                          selectedIndices.contains(
-                                                            summary.results.indexOf(
-                                                              r,
-                                                            ),
-                                                          ),
-                                                    )
-                                                    ? const Color(0xFFFEE2E2)
-                                                    : const Color(0xFFEEF2FF),
-                                                borderRadius: BorderRadius.circular(
-                                                  8,
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    filteredResults.every(
-                                                          (r) => selectedIndices
-                                                              .contains(
-                                                                summary.results
-                                                                    .indexOf(r),
-                                                              ),
-                                                        )
-                                                        ? Icons.deselect
-                                                        : Icons.select_all,
-                                                    size: 14,
-                                                    color:
-                                                        filteredResults.every(
-                                                          (r) => selectedIndices
-                                                              .contains(
-                                                                summary.results
-                                                                    .indexOf(r),
-                                                              ),
-                                                        )
-                                                        ? const Color(0xFFEF4444)
-                                                        : const Color(0xFF0247C4),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    filteredResults.every(
-                                                          (r) => selectedIndices
-                                                              .contains(
-                                                                summary.results
-                                                                    .indexOf(r),
-                                                              ),
-                                                        )
-                                                        ? 'deselect_all'.tr()
-                                                        : 'select_all'.tr(),
-                                                    style: TextStyle(
-                                                      color:
-                                                          filteredResults.every(
-                                                            (r) => selectedIndices
-                                                                .contains(
-                                                                  summary.results
-                                                                      .indexOf(r),
-                                                                ),
-                                                          )
-                                                          ? const Color(0xFFEF4444)
-                                                          : const Color(0xFF0247C4),
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                      fontFamily: 'SF Pro Display',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  height: 1,
-                                  color: const Color(0xFFE5E7EB),
-                                ),
-
-                                Expanded(
-                                  child: filteredResults.isEmpty
-                                      ? Center(
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.search_off_rounded,
-                                                size: 48,
-                                                color: Colors.grey.shade300,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'no_results'.tr(),
-                                                style: const TextStyle(
-                                                  color: Color(0xFF64748B),
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      : ListView.builder(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            24,
-                                            10,
-                                            24,
-                                            10,
-                                          ),
-                                          itemCount: filteredResults.length,
-                                          itemBuilder: (_, i) {
-                                            final r = filteredResults[i];
-                                            final originalIndex = summary
-                                                .results
-                                                .indexOf(r);
-                                            final isSelected = selectedIndices
-                                                .contains(originalIndex);
-
-                                            final avatarColors = [
-                                              const Color(0xFFE4F0FF),
-                                              const Color(0xFFEFE4FF),
-                                              const Color(0xFFE4FFE8),
-                                              const Color(0xFFFFE4E4),
-                                              const Color(0xFFFFF0E4),
-                                            ];
-                                            final avatarTextColors = [
-                                              const Color(0xFF0F70FF),
-                                              const Color(0xFF6A00FF),
-                                              const Color(0xFF22C55E),
-                                              const Color(0xFFEF4444),
-                                              const Color(0xFFF97316),
-                                            ];
-                                            final colorIdx =
-                                                r.workerName.hashCode.abs() % 5;
-
-                                            final posLower = r.position
-                                                .toLowerCase()
-                                                .trim();
-                                            final stLower = r.salaryType
-                                                .toLowerCase()
-                                                .trim();
-                                            final isContractorWorker =
-                                                posLower.contains('contract') ||
-                                                posLower.contains(
-                                                  'freelance',
-                                                ) ||
-                                                stLower.contains('contract') ||
-                                                stLower.contains('freelance') ||
-                                                (stLower != 'monthly' &&
-                                                    stLower.isNotEmpty);
-                                            final storedEmploymentType = r
-                                                .employmentType
-                                                .trim();
-                                            final typeLabel =
-                                                storedEmploymentType.isNotEmpty
-                                                ? LocalizationHelper.localizeType1(
-                                                    storedEmploymentType,
-                                                  ).toUpperCase()
-                                                : isContractorWorker
-                                                ? 'type_contractor'.tr()
-                                                : 'type_full_time'.tr();
-
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 8,
-                                              ),
-                                              child: AnimatedContainer(
-                                                duration: const Duration(
-                                                  milliseconds: 200,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? const Color(
-                                                            0xFF0F70FF,
-                                                          ).withValues(
-                                                            alpha: 0.3,
-                                                          )
-                                                        : const Color(
-                                                            0xFFE5E7EB,
-                                                          ),
-                                                    width: 1.2,
-                                                  ),
-                                                ),
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    setDialogState(() {
-                                                      activeDetailIndex =
-                                                          originalIndex;
-                                                    });
-                                                  },
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 14,
-                                                          horizontal: 14,
-                                                        ),
-                                                    child: Row(
-                                                      children: [
-                                                        GestureDetector(
-                                                          onTap: () {
-                                                            setDialogState(() {
-                                                              if (isSelected) {
-                                                                selectedIndices
-                                                                    .remove(
-                                                                      originalIndex,
-                                                                    );
-                                                              } else {
-                                                                selectedIndices.add(
-                                                                  originalIndex,
-                                                                );
-                                                              }
-                                                            });
-                                                          },
-                                                          child: Container(
-                                                            width: 12,
-                                                            height: 12,
-                                                            decoration: BoxDecoration(
-                                                              border: Border.all(
-                                                                color:
-                                                                    isSelected
-                                                                    ? const Color(
-                                                                        0xFF0F70FF,
-                                                                      )
-                                                                    : const Color(
-                                                                        0xFFD1D5DB,
-                                                                      ),
-                                                                width: 1,
-                                                              ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    2,
-                                                                  ),
-                                                              color: isSelected
-                                                                  ? const Color(
-                                                                      0xFF0F70FF,
-                                                                    )
-                                                                  : Colors
-                                                                        .transparent,
-                                                            ),
-                                                            child: isSelected
-                                                                ? const Icon(
-                                                                    Icons.check,
-                                                                    size: 8,
-                                                                    color: Colors
-                                                                        .white,
-                                                                  )
-                                                                : null,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 14,
-                                                        ),
-
-                                                        _workerAvatar(
-                                                          imageUrl: r.imageUrl,
-                                                          name: r.workerName,
-                                                          size: 44,
-                                                          backgroundColor:
-                                                              avatarColors[colorIdx
-                                                                      .abs() %
-                                                                  5],
-                                                          textColor:
-                                                              avatarTextColors[colorIdx
-                                                                      .abs() %
-                                                                  5],
-                                                          fontSize: 18,
-                                                          allowExtendedSources:
-                                                              !isGuest,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 14,
-                                                        ),
-
-                                                        Expanded(
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Row(
-                                                                children: [
-                                                                  Flexible(
-                                                                    child: Text(
-                                                                      r.workerName,
-                                                                      style: const TextStyle(
-                                                                        fontSize:
-                                                                            15,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontFamily:
-                                                                            'SF Pro Display',
-                                                                        color: Color(
-                                                                          0xFF111827,
-                                                                        ),
-                                                                      ),
-                                                                      maxLines:
-                                                                          1,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    width: 8,
-                                                                  ),
-                                                                  Container(
-                                                                    padding: const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          7,
-                                                                      vertical:
-                                                                          2,
-                                                                    ),
-                                                                    decoration: BoxDecoration(
-                                                                      color: const Color(
-                                                                        0xFFF3F4F6,
-                                                                      ),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                            4,
-                                                                          ),
-                                                                    ),
-                                                                    child: Text(
-                                                                      typeLabel,
-                                                                      style: const TextStyle(
-                                                                        fontSize:
-                                                                            10,
-                                                                        fontWeight:
-                                                                            FontWeight.w700,
-                                                                        color: Color(
-                                                                          0xFF4B5563,
-                                                                        ),
-                                                                        letterSpacing:
-                                                                            0.5,
-                                                                        fontFamily:
-                                                                            'SF Pro Display',
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              const SizedBox(
-                                                                height: 5,
-                                                              ),
-                                                              Row(
-                                                                children: [
-                                                                  Icon(
-                                                                    Icons
-                                                                        .mail_outline_rounded,
-                                                                    size: 13,
-                                                                    color: Colors
-                                                                        .grey
-                                                                        .shade400,
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    width: 4,
-                                                                  ),
-                                                                  Flexible(
-                                                                    child: Text(
-                                                                      r.email.isNotEmpty
-                                                                          ? r.email
-                                                                          : 'no_email'.tr(),
-                                                                      style: const TextStyle(
-                                                                        fontSize:
-                                                                            13,
-                                                                        color: Color(
-                                                                          0xFF6B7280,
-                                                                        ),
-                                                                        fontFamily:
-                                                                            'SF Pro Display',
-                                                                      ),
-                                                                      maxLines:
-                                                                          1,
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 10,
-                                                        ),
-
-                                                        Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .end,
-                                                          children: [
-                                                            Text(
-                                                              'net_salary'.tr(),
-                                                              style: TextStyle(
-                                                                fontSize: 10,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Color(
-                                                                  0xFF6B7280,
-                                                                ),
-                                                                fontFamily:
-                                                                    'SF Pro Display',
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 5,
-                                                            ),
-                                                            Container(
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        14,
-                                                                    vertical: 6,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color: r.success
-                                                                    ? const Color(
-                                                                        0xFFF0F6FF,
-                                                                      )
-                                                                    : const Color(
-                                                                        0xFFFEE2E2,
-                                                                      ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      20,
-                                                                    ),
-                                                              ),
-                                                              child: Text(
-                                                                AmountText.formatCompact(
-                                                                  r.netSalary,
-                                                                  locale: context
-                                                                      .locale
-                                                                      .toString(),
-                                                                ),
-                                                                style: TextStyle(
-                                                                  fontSize: 14,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700,
-                                                                  fontFamily:
-                                                                      'SF Pro Display',
-                                                                  color:
-                                                                      r.success
-                                                                      ? const Color(
-                                                                          0xFF0F70FF,
-                                                                        )
-                                                                      : const Color(
-                                                                          0xFFEF4444,
-                                                                        ),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 6,
-                                                        ),
-
-                                                        const Icon(
-                                                          Icons
-                                                              .chevron_right_rounded,
-                                                          size: 22,
-                                                          color: Color(
-                                                            0xFF9CA3AF,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                ),
-
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: Color(0xFFE5E7EB),
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    24,
-                                    12,
-                                    24,
-                                    14,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'total_disbursement'.tr(),
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF6B7280),
-                                              letterSpacing: 0.5,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            () {
-                                              double total = 0;
-                                              String prefix = '';
-                                              for (final r in filteredResults) {
-                                                final idx = summary.results
-                                                    .indexOf(r);
-                                                if (selectedIndices.contains(
-                                                      idx,
-                                                    ) &&
-                                                    r.success &&
-                                                    r
-                                                        .rawNetSalaryValue
-                                                        .isFinite) {
-                                                  total += r.rawNetSalaryValue;
-                                                  if (prefix.isEmpty) {
-                                                    prefix =
-                                                        PayrollService.getCurrencyPrefix(
-                                                          r.netSalary,
-                                                        );
-                                                  }
-                                                }
-                                              }
-                                              final value =
-                                                  PayrollService.formatNumber(
-                                                    total,
-                                                    locale: context.locale
-                                                        .toString(),
-                                                  );
-                                              return prefix.isEmpty
-                                                  ? value
-                                                  : '$prefix $value';
-                                            }(),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF111827),
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () =>
-                                                Navigator.of(context).pop(),
-                                            child: Container(
-                                              height: 48,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 22,
-                                                  ),
-                                              alignment: Alignment.center,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFF1F5F9),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                'cancel'.tr(),
-                                                style: const TextStyle(
-                                                  color: Color(0xFF000000),
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 14),
-
-                                          GestureDetector(
-                                            onTap: filteredPayCount == 0
-                                                ? null
-                                                : () {
-                                                    final selected = filteredResults
-                                                        .where(
-                                                          (r) =>
-                                                              r.success &&
-                                                              selectedIndices
-                                                                  .contains(
-                                                                    summary
-                                                                        .results
-                                                                        .indexOf(
-                                                                          r,
-                                                                        ),
-                                                                  ),
-                                                        )
-                                                        .toList();
-                                                    Navigator.of(
-                                                      context,
-                                                    ).pop(selected);
-                                                  },
-                                            child: Container(
-                                              height: 48,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 22,
-                                                  ),
-                                              alignment: Alignment.center,
-                                              decoration: BoxDecoration(
-                                                color: filteredPayCount == 0
-                                                    ? const Color(
-                                                        0xFF0247C4,
-                                                      ).withValues(alpha: 0.4)
-                                                    : const Color(0xFF0247C4),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                boxShadow: filteredPayCount > 0
-                                                    ? [
-                                                        BoxShadow(
-                                                          color:
-                                                              const Color(
-                                                                0xFF0247C4,
-                                                              ).withValues(
-                                                                alpha: 0.2,
-                                                              ),
-                                                          blurRadius: 8,
-                                                          offset: const Offset(
-                                                            0,
-                                                            4,
-                                                          ),
-                                                        ),
-                                                      ]
-                                                    : null,
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.check_circle_outline,
-                                                    color: Colors.white,
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'pay_all_count'.tr(
-                                                      namedArgs: {
-                                                        'count':
-                                                            '$filteredPayCount',
-                                                      },
-                                                    ),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontFamily:
-                                                          'SF Pro Display',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+              child: ScaleTransition(scale: curve, child: child),
             ),
           ],
         );
@@ -3609,12 +4027,11 @@ class PayrollRunner {
                   final controllerKey = originalIndex * 10;
                   final controller = overtimeControllers[controllerKey];
                   if (controller != null) {
-                    final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
-                    _recalcOvertime(
-                      result,
-                      clean,
-                      () {},
+                    final clean = controller.text.replaceAll(
+                      RegExp(r'[^0-9.]'),
+                      '',
                     );
+                    _recalcOvertime(result, clean, () {});
                   }
                   onBack();
                 },
@@ -3892,9 +4309,7 @@ class PayrollRunner {
     final controllerKey = index * 10;
     if (!controllers.containsKey(controllerKey)) {
       final cleanText = r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '');
-      controllers[controllerKey] = TextEditingController(
-        text: cleanText,
-      );
+      controllers[controllerKey] = TextEditingController(text: cleanText);
     }
     final controller = controllers[controllerKey]!;
 
@@ -3913,19 +4328,11 @@ class PayrollRunner {
             ],
             onChanged: (val) {
               final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
-              _recalcOvertime(
-                r,
-                clean,
-                () => setDialogState(() {}),
-              );
+              _recalcOvertime(r, clean, () => setDialogState(() {}));
             },
             onSubmitted: (val) {
               final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
-              _recalcOvertime(
-                r,
-                clean,
-                () => setDialogState(() {}),
-              );
+              _recalcOvertime(r, clean, () => setDialogState(() {}));
             },
             style: const TextStyle(
               fontSize: 14,
@@ -3981,11 +4388,7 @@ class PayrollRunner {
           child: ElevatedButton(
             onPressed: () {
               final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
-              _recalcOvertime(
-                r,
-                clean,
-                () => setDialogState(() {}),
-              );
+              _recalcOvertime(r, clean, () => setDialogState(() {}));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0247C4),
@@ -4010,7 +4413,11 @@ class PayrollRunner {
     );
   }
 
-  void _recalcWithDeductions(AutoPayrollResult r, String deductionVal, VoidCallback onUpdated) {
+  void _recalcWithDeductions(
+    AutoPayrollResult r,
+    String deductionVal,
+    VoidCallback onUpdated,
+  ) {
     r.customDeduction = deductionVal;
     try {
       final absentDeduction = PayrollService.cappedAbsentDeduction(
@@ -4056,7 +4463,11 @@ class PayrollRunner {
     );
   }
 
-  void _recalcOvertime(AutoPayrollResult r, String overtimeVal, VoidCallback onUpdated) {
+  void _recalcOvertime(
+    AutoPayrollResult r,
+    String overtimeVal,
+    VoidCallback onUpdated,
+  ) {
     r.overtimeAmount = overtimeVal.trim().isEmpty ? '0' : overtimeVal.trim();
     _recalcWithDeductions(r, r.customDeduction, onUpdated);
   }
@@ -4088,7 +4499,12 @@ class PayrollRunner {
         alignment: Alignment.center,
         child: Text(
           name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?',
-          style: TextStyle(color: textColor, fontSize: fontSize, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+          style: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
       );
     }
@@ -4098,33 +4514,68 @@ class PayrollRunner {
 
     Widget image;
     if (isHttpUrl(value)) {
-      image = Image.network(value, width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback(), loadingBuilder: (_, child, progress) => progress == null ? child : fallback());
+      image = Image.network(
+        value,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : fallback(),
+      );
     } else if (!allowExtendedSources) {
       return ClipOval(child: fallback());
     } else if (value.startsWith('data:image')) {
       try {
         final commaIndex = value.indexOf(',');
-        if (commaIndex < 0 || commaIndex == value.length - 1) return ClipOval(child: fallback());
-        image = Image.memory(base64Decode(value.substring(commaIndex + 1)), width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback());
+        if (commaIndex < 0 || commaIndex == value.length - 1)
+          return ClipOval(child: fallback());
+        image = Image.memory(
+          base64Decode(value.substring(commaIndex + 1)),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback(),
+        );
       } catch (_) {
         return ClipOval(child: fallback());
       }
     } else if (value.startsWith('assets/')) {
-      image = Image.asset(value, width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback());
+      image = Image.asset(
+        value,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
+      );
     } else {
       try {
         final uri = Uri.tryParse(value);
-        final path = uri != null && uri.scheme == 'file' ? uri.toFilePath() : value;
-        image = Image.file(File(path), width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback());
+        final path = uri != null && uri.scheme == 'file'
+            ? uri.toFilePath()
+            : value;
+        image = Image.file(
+          File(path),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback(),
+        );
       } catch (_) {
         return ClipOval(child: fallback());
       }
     }
 
-    return SizedBox(width: size, height: size, child: ClipOval(child: image));
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(child: image),
+    );
   }
 
   String _editableAmount(num amount) {
-    return amount % 1 == 0 ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2);
+    return amount % 1 == 0
+        ? amount.toStringAsFixed(0)
+        : amount.toStringAsFixed(2);
   }
 }

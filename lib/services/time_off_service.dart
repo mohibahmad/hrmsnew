@@ -42,22 +42,10 @@ class TimeOffService {
     'Sick Leave',
     'Casual Leave',
     'Medical Leave',
-    'Maternity Leave',
-    'Paternity Leave',
-    'Hajj Leave',
-    'Emergency Leave',
-    'Study Leave',
-    'Compensatory Leave',
   };
 
-  static const Set<String> unpaidLeaveTypes = {'Unpaid Leave'};
+  static const Set<String> unpaidLeaveTypes = <String>{};
 
-  static const Set<String> _cancelledStatuses = {
-    'cancelled',
-    'canceled',
-    'rejected',
-    'declined',
-  };
 
   static int _leaveInt(dynamic value) {
     final parsed = value is num
@@ -148,23 +136,6 @@ class TimeOffService {
       case 'medical leave':
       case 'medical':
         return 'Medical Leave';
-      case 'maternity leave':
-      case 'maternity':
-        return 'Maternity Leave';
-      case 'paternity leave':
-        return 'Paternity Leave';
-      case 'hajj leave':
-        return 'Hajj Leave';
-      case 'emergency leave':
-        return 'Emergency Leave';
-      case 'study leave':
-        return 'Study Leave';
-      case 'compensatory leave':
-        return 'Compensatory Leave';
-      case 'unpaid leave':
-        return 'Unpaid Leave';
-      case 'custom leave':
-        return 'Custom Leave';
       default:
         return normalized.isNotEmpty ? normalized : 'Other Leave';
     }
@@ -185,7 +156,7 @@ class TimeOffService {
 
   static bool isCancelledRecord(Map<String, dynamic> record) {
     final status = (record['status'] ?? '').toString().trim().toLowerCase();
-    return _cancelledStatuses.contains(status);
+    return status == 'cancelled' || status == 'canceled' || status == 'rejected' || status == 'declined';
   }
 
   static bool isActiveRecord(Map<String, dynamic> record) => !isCancelledRecord(record);
