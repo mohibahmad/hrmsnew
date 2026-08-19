@@ -90,6 +90,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   int? _salaryPayDay;
   DateTime _payPeriodStart = PayrollService.payPeriodStart(DateTime.now());
   DateTime _payPeriodEnd = PayrollService.payPeriodEnd(DateTime.now());
+  bool _isUserSelectedCycle = false;
 
   Map<String, dynamic>? _workerForPayroll;
 
@@ -271,7 +272,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   Future<void> _reconcilePayrollPeriod() async {
-    if (!mounted || !_workersLoaded || !_payrollLoaded || _salaryPayDay == null) return;
+    if (!mounted || !_workersLoaded || !_payrollLoaded || _isUserSelectedCycle) return;
 
     final lastPaid = PayrollService.latestSettledPayrollCycle(
       _workersList,
@@ -291,6 +292,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         _payPeriodStart = resolved.start;
         _payPeriodEnd = resolved.end;
         _payrollMonth = DateTime(resolved.end.year, resolved.end.month, 1);
+        _combinePayroll();
       });
       _firestore.updateUserProfile({
         'payrollCycleStart': resolved.start.toIso8601String(),
@@ -1727,7 +1729,7 @@ if (day == 0) {
   }
 
    
-  List<({PayrollPeriod period, String label, int paidCount})> _payPeriodOptions() {
+  List<({PayrollPeriod period, String label, int paidCount, bool isCurrent})> _payPeriodOptions() {
     final map = <String, ({PayrollPeriod period, int paidCount})>{};
 
     for (final worker in _allPaidWorkers()) {
@@ -1737,22 +1739,8 @@ if (day == 0) {
       final period = PayrollPeriod(start: start, end: end);
       final key = '${PayrollService.periodDateKey(start)}_${PayrollService.periodDateKey(end)}';
 
-      final unpaid = PayrollService.unpaidWorkersForPeriod(
-        _workersList,
-        _rawPayrollDocs,
-        month: DateTime(period.end.year, period.end.month, 1),
-        allowUndatedRecords: _isGuest,
-        companyCurrency: _companyCurrency,
-        periodStart: period.start,
-        periodEnd: period.end,
-      );
-      final hasUnpaid = unpaid.any((w) =>
-          PayrollService.extractSalary(PayrollService.currentSalaryDisplay(w, companyCurrency: _companyCurrency)) > 0);
-
-      if (!hasUnpaid) {
-        final existing = map[key];
-        map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
-      }
+      final existing = map[key];
+      map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
     }
 
     final currentCycle = _trueCurrentPayrollCycle();
@@ -1764,15 +1752,28 @@ if (day == 0) {
       );
     }
 
+    final selectedCycle = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+    final selectedKey = '${PayrollService.periodDateKey(selectedCycle.start)}_${PayrollService.periodDateKey(selectedCycle.end)}';
+    if (!map.containsKey(selectedKey)) {
+      map[selectedKey] = (
+        period: selectedCycle,
+        paidCount: 0,
+      );
+    }
+
     final options = map.values.toList()
       ..sort((a, b) => b.period.end.compareTo(a.period.end));
     return options
         .map(
-          (o) => (
-            period: o.period,
-            label: PayrollService.formatPayPeriodRange(o.period.start, o.period.end),
-            paidCount: o.paidCount,
-          ),
+          (o) {
+            final key = '${PayrollService.periodDateKey(o.period.start)}_${PayrollService.periodDateKey(o.period.end)}';
+            return (
+              period: o.period,
+              label: PayrollService.formatPayPeriodRange(o.period.start, o.period.end),
+              paidCount: o.paidCount,
+              isCurrent: key == currentKey,
+            );
+          },
         )
         .toList();
   }
@@ -1793,13 +1794,13 @@ if (day == 0) {
       box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay.context.findRenderObject()),
     );
 
-    final selected = await showMenu<({PayrollPeriod period, String label, int paidCount})>(
+    final selected = await showMenu<({PayrollPeriod period, String label, int paidCount, bool isCurrent})>(
       context: context,
       // Open just below the date label (with a small gap) instead of on top of it.
       position: RelativeRect.fromRect(anchorRect.translate(0, anchorRect.height + 6), Offset.zero & overlaySize),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
+        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
       ),
       color: const Color(0xFFFFFFFF),
       elevation: 4,
@@ -1823,7 +1824,7 @@ if (day == 0) {
                 Expanded(
                   child: Text(
                     option.label,
-                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600, ),
+                    style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (option.paidCount > 0) ...[
@@ -1836,7 +1837,7 @@ if (day == 0) {
                     ),
                     child: Text(
                       '${option.paidCount}',
-                      style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600, ),
+                      style: const TextStyle(color: Color(0xFF004FDE), fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -1847,6 +1848,7 @@ if (day == 0) {
     );
 
     if (selected == null || !mounted) return;
+    _isUserSelectedCycle = true;
     // Switch the main payroll list to the selected cycle (no popup).
     setState(() {
       _payPeriodStart = selected.period.start;
@@ -2337,24 +2339,17 @@ if (day == 0) {
   /// shows that cycle as "current" rather than jumping ahead.
   PayrollPeriod _trueCurrentPayrollCycle() {
     final now = DateTime.now();
-    final payDay = _salaryPayDay;
-    if (payDay == null) {
-      return PayrollPeriod(
-        start: PayrollService.payPeriodStart(now),
-        end: PayrollService.payPeriodEnd(now),
-      );
-    }
-    final normalized = payDay.clamp(1, 28);
+    final payDay = (_salaryPayDay ?? 28).clamp(1, 28);
 
     // Use the same resolution logic as PayrollService so the dropdown and
     // the rest of the app agree on which cycle is "current".
     return PayrollService.resolveCurrentPayrollPeriod(
       workersList: _workersList,
       payrollRecords: _rawPayrollDocs,
-      payDay: normalized,
+      payDay: payDay,
       companyCurrency: _companyCurrency,
       referenceDate: now,
-      advanceIfFullyPaid: false,
+      advanceIfFullyPaid: true,
     );
   }
 

@@ -741,6 +741,7 @@ class FlashySnackBar {
     required double progress,
     String? title,
     String? subtitle,
+    VoidCallback? onUserDismiss,
   }) {
     final controller = FlashySnackBarProgressController();
     controller._progress = progress;
@@ -761,6 +762,7 @@ class FlashySnackBar {
         title: title,
         subtitle: subtitle,
         onDismiss: () {
+          onUserDismiss?.call();
           if (entry.mounted) {
             if (_currentEntry == entry) _currentEntry = null;
             try {

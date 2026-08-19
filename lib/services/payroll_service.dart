@@ -79,9 +79,14 @@ class PayrollService {
       periodDateKey(a.end) == periodDateKey(b.end);
 
   static PayrollPeriod getNextFullMonthlyCycleAfter(DateTime anchor, int payDay) {
+    if (anchor.day >= 28) {
+      final start = DateTime(anchor.year, anchor.month + 1, 1);
+      final end = DateTime(anchor.year, anchor.month + 2, 0);
+      return PayrollPeriod(start: start, end: end);
+    }
     final normalizedPayDay = payDay.clamp(1, 28);
     var candidateStart = DateTime(anchor.year, anchor.month, normalizedPayDay);
-    if (candidateStart.isBefore(anchor)) {
+    if (!candidateStart.isAfter(anchor)) {
       candidateStart = DateTime(anchor.year, anchor.month + 1, normalizedPayDay);
     }
     final candidateEnd = DateTime(candidateStart.year, candidateStart.month + 1, normalizedPayDay);
@@ -164,7 +169,19 @@ class PayrollService {
     );
 
     if (lastPaid != null && !today.isBefore(lastPaid.start)) {
-      if (today.isBefore(lastPaid.end)) {
+      final lastPaidUnpaid = unpaidWorkersForPeriod(
+        workersList,
+        payrollRecords,
+        month: DateTime(lastPaid.end.year, lastPaid.end.month, 1),
+        allowUndatedRecords: true,
+        companyCurrency: companyCurrency,
+        periodStart: lastPaid.start,
+        periodEnd: lastPaid.end,
+      );
+      final hasUnpaidInLastPaid = lastPaidUnpaid.any((w) =>
+          extractSalary(currentSalaryDisplay(w, companyCurrency: companyCurrency)) > 0);
+
+      if (today.isBefore(lastPaid.end) && hasUnpaidInLastPaid) {
         return lastPaid;
       }
       final nextCycle = getNextFullMonthlyCycleAfter(lastPaid.end, normalizedPayDay);

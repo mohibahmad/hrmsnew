@@ -53,7 +53,6 @@ String _invoiceMoney(double amount, String currency) {
   return currency.trim().isEmpty ? value : '${currency.trim()} $value';
 }
 
-/// Simple controller to update a progress snackbar from outside its builder.
 class DialogController {
   FlashySnackBarProgressController? _snackBarController;
   double _progress = 0;
@@ -61,16 +60,14 @@ class DialogController {
   DateTime _lastLabelChangeAt = DateTime.fromMillisecondsSinceEpoch(0);
   BuildContext? _context;
   bool _closed = false;
+  bool _userDismissed = false;
 
-  // Each status label ("Sending payroll...", "Generating invoices...", ...)
-  // stays visible for at least this long so the text changes smoothly instead
-  // of flashing through phases in a few hundred milliseconds.
   static const Duration minLabelDwell = Duration(milliseconds: 650);
 
   double get progress => _progress;
   String get label => _label;
 
-  void _init(
+  DialogController(
     BuildContext context, {
     double initialProgress = 0,
     String initialLabel = '',
@@ -78,11 +75,20 @@ class DialogController {
     _context = context;
     _progress = initialProgress;
     _label = initialLabel;
+    _createSnackBar();
+  }
+
+  void _createSnackBar() {
+    final ctx = _context;
+    if (ctx == null || !ctx.mounted || _closed || _userDismissed) return;
     _snackBarController = FlashySnackBar.showProgress(
-      context,
-      message: initialLabel,
-      progress: initialProgress,
+      ctx,
+      message: _label,
+      progress: _progress,
       subtitle: 'creating_payroll_pdfs'.tr(),
+      onUserDismiss: () {
+        _userDismissed = true;
+      },
     );
   }
 
@@ -91,9 +97,9 @@ class DialogController {
     required String label,
     bool forceLabel = false,
   }) {
-    // Late updates (e.g. a background chunk finishing after the flow ended)
-    // must never resurrect a dismissed snackbar.
-    if (_closed) return;
+    // Late updates (e.g. a background chunk finishing after the flow ended
+    // or user manually closed snackbar) must never resurrect a dismissed snackbar.
+    if (_closed || _userDismissed) return;
     // Progress must only ever move forward: with commit + invoice generation
     // running in parallel, racing writers would otherwise push the bar
     // backwards. Values that are behind the current progress are ignored.
@@ -116,14 +122,14 @@ class DialogController {
   /// Used for the error/reset state, which [update] would otherwise ignore
   /// (0 is never greater than current progress).
   void reset({required double progress, required String label}) {
-    if (_closed) return;
+    if (_closed || _userDismissed) return;
     _progress = progress;
     _label = label;
     _refreshSnackBar();
   }
 
   void _refreshSnackBar() {
-    if (_closed) return;
+    if (_closed || _userDismissed) return;
     final ctx = _context;
     if (ctx == null || !ctx.mounted) return;
     final existing = _snackBarController;
@@ -135,12 +141,7 @@ class DialogController {
       return;
     }
     // First call or previous entry was removed: create a new one.
-    _snackBarController = FlashySnackBar.showProgress(
-      ctx,
-      message: _label,
-      progress: _progress,
-      subtitle: 'creating_payroll_pdfs'.tr(),
-    );
+    _createSnackBar();
   }
 
   void dismiss() {
@@ -173,11 +174,6 @@ Future<Map<String, dynamic>> _loadLocaleTranslations(
   }
 }
 
-/// Generates several payroll invoice PDFs inside one background isolate.
-/// All inputs travel through [argsList] as sendable values so the isolate
-/// never touches rootBundle, the network or Flutter bindings. The shared
-/// ~6MB font is parsed once per isolate (cached in InvoiceService) and reused
-/// for every invoice in the batch, instead of re-parsing it per worker.
 Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
   List<Map<String, Object?>> argsList,
 ) async {
@@ -196,8 +192,6 @@ Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
   return files;
 }
 
-/// Compresses worker profile photos in a background isolate. Runs off the main
-/// isolate so image encoding doesn't block the UI during a payroll export.
 @pragma('vm:entry-point')
 List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
   return [
@@ -206,9 +200,6 @@ List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
   ];
 }
 
-/// Generates a single payroll invoice PDF inside a background isolate.
-/// All inputs travel through [args] as sendable values so the isolate never
-/// touches rootBundle, the network or Flutter bindings.
 Future<Map<String, Object>> _generatePayrollInvoiceFile(
   Map<String, Object?> args,
 ) async {
@@ -247,10 +238,6 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
           as Map<String, dynamic>;
   final employeeImageBytes = args['employeeImageBytes'] as Uint8List?;
 
-  // Seed easy_localization so invoice labels stay localized inside the isolate.
-  // Translations must be wrapped in a locale-keyed map ({locale: flatMap})
-  // otherwise easy_localization treats every key as a nested locale name
-  // and none of the actual translation keys are found.
   PdfHelpers.setIsolateTranslations(translations);
   try {
     Localization.load(
@@ -1104,10 +1091,12 @@ class PayrollRunner {
         final netSalary =
             '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
 
-        final isWorkerPaid = worker['isPaid'] == true ||
+        final isWorkerPaid =
+            worker['isPaid'] == true ||
             worker['hasPaidPayrollRecord'] == true ||
             (worker['status'] ?? '').toString().toLowerCase() == 'paid' ||
-            (prevRecord != null && PayrollService.isPayrollRecordPaid(prevRecord));
+            (prevRecord != null &&
+                PayrollService.isPayrollRecordPaid(prevRecord));
 
         results.add(
           AutoPayrollResult(
@@ -1318,8 +1307,10 @@ class PayrollRunner {
   /// Shows a progress snackbar that blocks interaction until dismissed.
   /// Returns the [DialogController] so callers can update progress / label.
   Future<DialogController> _showProgressDialog(BuildContext context) async {
-    final controller = DialogController();
-    controller._init(context, initialLabel: 'sending_payroll'.tr());
+    final controller = DialogController(
+      context,
+      initialLabel: 'sending_payroll'.tr(),
+    );
     return controller;
   }
 
@@ -2180,8 +2171,6 @@ class PayrollRunner {
     }
   }
 
-
-
   /// Loads a worker's profile photo bytes only, without decoding/compressing
   /// on the main isolate. Compression happens in a background isolate via
   /// [_compressProfileImagesTask] so the UI thread stays responsive.
@@ -2521,16 +2510,12 @@ class PayrollRunner {
                       borderRadius: BorderRadius.circular(6),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(
-                            0xFF0F172A,
-                          ).withOpacity(0.12),
+                          color: const Color(0xFF0F172A).withOpacity(0.12),
                           blurRadius: 32,
                           offset: const Offset(0, 16),
                         ),
                         BoxShadow(
-                          color: const Color(
-                            0xFF0F172A,
-                          ).withOpacity(0.06),
+                          color: const Color(0xFF0F172A).withOpacity(0.06),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -4183,10 +4168,7 @@ class PayrollRunner {
             ),
             child: Text(
               'apply'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
