@@ -2276,7 +2276,7 @@ class PayrollRunner {
         false;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogWidth = screenWidth < 700 ? screenWidth * 0.95 : 650.0;
+    final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 560.0;
     final dialogHeight = screenHeight < 640 ? screenHeight * 0.90 : 580.0;
 
     String searchQuery = '';
