@@ -129,8 +129,10 @@ class DialogController {
 
 
 
-    if (existing != null && existing.isActive) {
-      existing.update(progress: _progress, label: _label);
+    if (existing != null) {
+      if (existing.isActive) {
+        existing.update(progress: _progress, label: _label);
+      }
       return;
     }
 

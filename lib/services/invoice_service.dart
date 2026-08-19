@@ -237,17 +237,6 @@ class InvoiceService {
         pw.Row(
           mainAxisSize: pw.MainAxisSize.min,
           children: [
-            if (employeeImage != null) ...[
-              pw.Container(
-                width: 44,
-                height: 44,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColorPalette.border, width: 1),
-                ),
-                child: pw.Image(employeeImage, fit: pw.BoxFit.cover),
-              ),
-              pw.SizedBox(width: 10),
-            ],
             pw.Text(PdfHelpers.translate('payroll_invoice_title', 'PAYROLL INVOICE'), style: pw.TextStyle(fontSize: 21, color: PdfColorPalette.appBlue, fontWeight: pw.FontWeight.normal)),
           ],
         ),
