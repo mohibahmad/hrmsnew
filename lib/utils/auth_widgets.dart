@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-
 InputDecoration buildAuthInputDecoration(
   String hint, {
   bool isPassword = false,

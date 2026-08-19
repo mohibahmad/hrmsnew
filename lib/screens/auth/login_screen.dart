@@ -38,7 +38,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isGoogleLoading = false;
   bool _isGuestLoading = false;
   bool _isBiometricLoading = false;
-  bool _obscurePassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
   bool _initialized = false;
@@ -489,8 +488,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       isError: true,
     );
   }
-
-  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   List<Widget> _buildFormContent(BuildContext context) {
     _signUpRecognizer.onTap = _anyLoading

@@ -92,11 +92,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     FlashySnackBar.show(context, message: message, isError: isError);
   }
 
-  InputDecoration _buildInputDecoration(String hint) =>
-      buildAuthInputDecoration(hint);
-
-  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
-
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 800;

@@ -37,8 +37,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _isGuestLoading = false;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
   bool _initialized = false;
@@ -251,8 +249,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             : 'signup_failed'.tr(namedArgs: {'code': e.code, 'message': e.message ?? ''}),
     };
   }
-
-  Widget _buildFieldLabel(String text) => buildFieldLabel(text);
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-
 class WeekdayHeaderChip extends StatelessWidget {
   final String label;
   final Color color;
