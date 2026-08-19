@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -641,6 +642,8 @@ class FlashySnackBarProgressController {
   double _progress = 0;
   String _label = '';
   OverlayEntry? _entry;
+  DateTime _lastUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _throttleTimer;
 
   double get progress => _progress;
   String get label => _label;
@@ -653,10 +656,29 @@ class FlashySnackBarProgressController {
   void update({required double progress, required String label}) {
     _progress = progress;
     _label = label;
-    _setState?.call();
+
+    final isCompletion = progress >= 1.0;
+    if (isCompletion) {
+      _throttleTimer?.cancel();
+      _setState?.call();
+      return;
+    }
+
+    final now = DateTime.now();
+    if (now.difference(_lastUpdate) >= const Duration(milliseconds: 100)) {
+      _lastUpdate = now;
+      _setState?.call();
+    } else {
+      _throttleTimer?.cancel();
+      _throttleTimer = Timer(const Duration(milliseconds: 100), () {
+        _lastUpdate = DateTime.now();
+        _setState?.call();
+      });
+    }
   }
 
   void dismiss() {
+    _throttleTimer?.cancel();
     _dismiss?.call();
   }
 }
@@ -1090,14 +1112,13 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                           color: const Color(0xFFFFFFFF).withOpacity(0.18),
                           shape: BoxShape.circle,
                         ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Color(0xFFFFFFFF),
-                            ),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/payslip.png',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.contain,
+                            color: const Color(0xFFFFFFFF),
                           ),
                         ),
                       ),
