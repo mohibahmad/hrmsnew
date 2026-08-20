@@ -469,40 +469,42 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   );
 
   Widget _shimmerBox({double? width, required double height}) =>
-      Shimmer.fromColors(
-        baseColor: Colors.grey.shade300,
-        highlightColor: Colors.grey.shade100,
-        child: _shimmerBlock(width: width, height: height),
-      );
+      _shimmerBlock(width: width, height: height);
 
   Widget _buildEditPageShimmer() {
     return Container(
       color: const Color(0xFFF8F9FA),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _shimmerBox(width: 220, height: 24),
-            const SizedBox(height: 24),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: _editShimmerColumn(isCvColumn: false),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 1,
-                    child: _editShimmerColumn(isCvColumn: true),
-                  ),
-                ],
+      child: Shimmer.fromColors(
+        baseColor: screenShimmerBaseColor,
+        highlightColor: screenShimmerHighlightColor,
+        period: screenShimmerPeriod,
+        direction: ShimmerDirection.ltr,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _shimmerBox(width: 220, height: 24),
+              const SizedBox(height: 24),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: _editShimmerColumn(isCvColumn: false),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 1,
+                      child: _editShimmerColumn(isCvColumn: true),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

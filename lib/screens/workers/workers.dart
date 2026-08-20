@@ -17,6 +17,7 @@ import 'add_bulk_worker_screen.dart';
 import '../../widgets/unsaved_changes_dialog.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/amount_text.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import '../../services/worker_profile_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../riverpod_providers.dart';
@@ -774,15 +775,18 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           ),
           const SizedBox(height: 1, child: ColoredBox(color: _kDivider)),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 5,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, __) => Shimmer.fromColors(
-                baseColor: Colors.grey[200]!,
-                highlightColor: Colors.grey[100]!,
-                child: Container(
+            child: DelayedShimmer(
+              child: Shimmer.fromColors(
+                baseColor: screenShimmerBaseColor,
+                highlightColor: screenShimmerHighlightColor,
+                period: screenShimmerPeriod,
+                direction: ShimmerDirection.ltr,
+                child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 5,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, __) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
                   decoration: BoxDecoration(
                     color: _kRowBg,
@@ -867,6 +871,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       const SizedBox(width: 48),
                     ],
                   ),
+                ),
                 ),
               ),
             ),

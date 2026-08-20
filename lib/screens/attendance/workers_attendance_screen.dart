@@ -21,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../riverpod_providers.dart';
 import '../../utils/utils.dart' as app_date_utils;
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import '../auth/login_screen.dart';
 import '../general/home_screen.dart';
 
@@ -1524,89 +1525,93 @@ class _WorkersAttendanceScreenState
                   children: [
                     _buildHeader(context),
                     Expanded(
-                      child: Shimmer.fromColors(
-                        baseColor: const Color(0xFFE5E7EB),
-                        highlightColor: const Color(0xFFF3F4F6),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _AttendanceShimmerBlock(
-                                height: 50,
-                                width: double.infinity,
-                                radius: 6,
-                              ),
-                              const SizedBox(height: 32),
-                              Expanded(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      flex: 65,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(
-                                            height: 43,
-                                            child: Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: _AttendanceShimmerBlock(
-                                                width: 170,
-                                                height: 20,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Expanded(
-                                            child: _buildLoadingListCard(
-                                              showActions: true,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 35,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(
-                                            height: 43,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                _AttendanceShimmerBlock(
-                                                  width: 145,
+                      child: DelayedShimmer(
+                        child: Shimmer.fromColors(
+                          baseColor: screenShimmerBaseColor,
+                          highlightColor: screenShimmerHighlightColor,
+                          period: screenShimmerPeriod,
+                          direction: ShimmerDirection.ltr,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const _AttendanceShimmerBlock(
+                                  height: 50,
+                                  width: double.infinity,
+                                  radius: 6,
+                                ),
+                                const SizedBox(height: 32),
+                                Expanded(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        flex: 65,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(
+                                              height: 43,
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: _AttendanceShimmerBlock(
+                                                  width: 170,
                                                   height: 20,
                                                 ),
-                                                _AttendanceShimmerBlock(
-                                                  width: 90,
-                                                  height: 43,
-                                                  radius: 6,
-                                                ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Expanded(
-                                            child: _buildLoadingListCard(
-                                              showActions: false,
+                                            const SizedBox(height: 16),
+                                            Expanded(
+                                              child: _buildLoadingListCard(
+                                                showActions: true,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        flex: 35,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(
+                                              height: 43,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  _AttendanceShimmerBlock(
+                                                    width: 145,
+                                                    height: 20,
+                                                  ),
+                                                  _AttendanceShimmerBlock(
+                                                    width: 90,
+                                                    height: 43,
+                                                    radius: 6,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Expanded(
+                                              child: _buildLoadingListCard(
+                                                showActions: false,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

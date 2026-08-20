@@ -68,6 +68,7 @@ bool _fileExists(String path) {
     return false;
   }
 }
+
 String mimeTypeForExtension(String fileName, {String fallback = ''}) {
   final ext = fileName.contains('.')
       ? fileName.split('.').last.toLowerCase()
@@ -82,27 +83,35 @@ String mimeTypeForExtension(String fileName, {String fallback = ''}) {
     'bmp' => 'image/bmp',
     'webp' => 'image/webp',
     'jpg' || 'jpeg' => 'image/jpeg',
-    _ => fallback.trim().isEmpty
-        ? 'application/octet-stream'
-        : fallback.trim().toLowerCase(),
+    _ =>
+      fallback.trim().isEmpty
+          ? 'application/octet-stream'
+          : fallback.trim().toLowerCase(),
   };
 }
+
 @pragma('vm:entry-point')
 Uint8List compressImageBytes(
   Uint8List bytes, {
   int maxWidth = 1200,
   int quality = 80,
+  bool force = false,
 }) {
-  if (bytes.length <= 350 * 1024) {
+  if (!force && bytes.length <= 350 * 1024) {
     return bytes;
   }
-  img.Image? image = img.decodeImage(bytes);
-  if (image == null) return bytes;
-  if (image.width > maxWidth) {
-    image = img.copyResize(image, width: maxWidth);
+  try {
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return bytes;
+    if (image.width > maxWidth) {
+      image = img.copyResize(image, width: maxWidth);
+    }
+    return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+  } catch (_) {
+    return bytes;
   }
-  return Uint8List.fromList(img.encodeJpg(image, quality: quality));
 }
+
 @pragma('vm:entry-point')
 List<Uint8List> compressImagesTask(List<Uint8List> images) {
   return [for (final bytes in images) compressImageBytes(bytes)];
@@ -439,9 +448,6 @@ class FileOpener {
       if (!await file.exists()) return;
       final result = await OpenFile.open(filePath);
 
-
-
-
       if (result.type == ResultType.error ||
           result.type == ResultType.fileNotFound) {
         await _revealInFileManager(file);
@@ -453,7 +459,6 @@ class FileOpener {
     }
   }
 
-
   static Future<void> _revealInFileManager(File file) async {
     if (Platform.isMacOS) {
       await Process.run('open', ['-R', file.path]);
@@ -464,6 +469,7 @@ class FileOpener {
     }
   }
 }
+
 class LeaveBalanceHelper {
   static const Map<String, String> availKeyForType = {
     'Sick Leave': 'availableSickLeaves',
@@ -502,8 +508,8 @@ class LeaveBalanceHelper {
     if (configKey != null) return _toInt(worker[configKey]);
     return 0;
   }
-
 }
+
 class LocalizationHelper {
   LocalizationHelper._();
 
@@ -522,8 +528,18 @@ class LocalizationHelper {
   ];
   static const List<String> englishMonthNames = [
     '',
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const List<String> englishWeekdayNames = [
     'Sunday',
@@ -568,19 +584,32 @@ class LocalizationHelper {
 
   static String localizedMonth(int month) {
     switch (month) {
-      case 1:  return 'month_january'.tr();
-      case 2:  return 'month_february'.tr();
-      case 3:  return 'month_march'.tr();
-      case 4:  return 'month_april'.tr();
-      case 5:  return 'month_may'.tr();
-      case 6:  return 'month_june'.tr();
-      case 7:  return 'month_july'.tr();
-      case 8:  return 'month_august'.tr();
-      case 9:  return 'month_september'.tr();
-      case 10: return 'month_october'.tr();
-      case 11: return 'month_november'.tr();
-      case 12: return 'month_december'.tr();
-      default: return '';
+      case 1:
+        return 'month_january'.tr();
+      case 2:
+        return 'month_february'.tr();
+      case 3:
+        return 'month_march'.tr();
+      case 4:
+        return 'month_april'.tr();
+      case 5:
+        return 'month_may'.tr();
+      case 6:
+        return 'month_june'.tr();
+      case 7:
+        return 'month_july'.tr();
+      case 8:
+        return 'month_august'.tr();
+      case 9:
+        return 'month_september'.tr();
+      case 10:
+        return 'month_october'.tr();
+      case 11:
+        return 'month_november'.tr();
+      case 12:
+        return 'month_december'.tr();
+      default:
+        return '';
     }
   }
 
@@ -1048,6 +1077,7 @@ class LocalizationHelper {
     }
   }
 }
+
 class ValidationException implements Exception {
   final String message;
   final String? field;
@@ -1118,7 +1148,7 @@ class Validators {
         .join(' ');
   }
 
-            static String nameFromEmail(String? email) {
+  static String nameFromEmail(String? email) {
     final value = email?.trim() ?? '';
     final atIndex = value.indexOf('@');
     if (atIndex <= 0) return '';
@@ -1128,7 +1158,8 @@ class Validators {
   static bool isAtLeast18(DateTime dob) {
     final now = DateTime.now();
     int age = now.year - dob.year;
-    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
       age--;
     }
     return age >= 18;
@@ -1317,6 +1348,7 @@ class Validators {
     }
   }
 }
+
 enum DuplicateWorkerField { name, email, nationalId }
 
 class DuplicateWorkerException implements Exception {
@@ -1373,14 +1405,14 @@ class WorkerIdentity {
     return null;
   }
 
-    static String normalizeId(Map<String, dynamic> value) {
+  static String normalizeId(Map<String, dynamic> value) {
     final workerId = (value['workerId'] ?? '').toString().trim();
     return workerId.isNotEmpty
         ? workerId
         : (value['id'] ?? '').toString().trim();
   }
 
-          static bool recordsMatch(
+  static bool recordsMatch(
     Map<String, dynamic> record,
     Map<String, dynamic> worker, {
     bool allowName = true,
@@ -1404,7 +1436,7 @@ class WorkerIdentity {
     return recordName.isNotEmpty && recordName == workerName;
   }
 
-      static bool matchesByIdOrEmail(
+  static bool matchesByIdOrEmail(
     Map<String, dynamic> first,
     Map<String, dynamic> second,
   ) {
@@ -1423,7 +1455,7 @@ class WorkerIdentity {
         recordEmail == workerEmail;
   }
 
-      static bool samePerson(
+  static bool samePerson(
     Map<String, dynamic> first,
     Map<String, dynamic> second,
   ) {
@@ -1436,7 +1468,7 @@ class WorkerIdentity {
     return firstEmail.isNotEmpty && firstEmail == secondEmail;
   }
 
-    static Map<String, dynamic>? findMatchingWorker(
+  static Map<String, dynamic>? findMatchingWorker(
     Map<String, dynamic> target,
     Iterable<Map<String, dynamic>> workers,
   ) {
@@ -1446,7 +1478,7 @@ class WorkerIdentity {
     return null;
   }
 
-      static bool recordsMatchByUniqueName(
+  static bool recordsMatchByUniqueName(
     Map<String, dynamic> record,
     Map<String, dynamic> worker,
     Iterable<Map<String, dynamic>> candidates,
@@ -1457,13 +1489,18 @@ class WorkerIdentity {
       return false;
     }
     return candidates
-            .where((candidate) => normalizeName(candidate['name']) == workerName)
+            .where(
+              (candidate) => normalizeName(candidate['name']) == workerName,
+            )
             .length ==
         1;
   }
 }
 
-ImageProvider resolveImageProvider(String? url, {ImageProvider fallback = const AssetImage('assets/profileimage.png')}) {
+ImageProvider resolveImageProvider(
+  String? url, {
+  ImageProvider fallback = const AssetImage('assets/profileimage.png'),
+}) {
   if (url == null || url.isEmpty) return fallback;
   if (url.startsWith('data:image/')) {
     return MemoryImage(base64Decode(url.split(',').last));

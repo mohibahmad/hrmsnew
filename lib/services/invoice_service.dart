@@ -138,6 +138,12 @@ class InvoiceService {
   }
 
   static pw.Font? _cachedParsedFont;
+  static pw.Font? _cachedThemeFont;
+  static pw.ThemeData? _cachedTheme;
+  static Uint8List? _cachedLogoBytes;
+  static pw.MemoryImage? _cachedLogoImage;
+  static Uint8List? _cachedStampBytes;
+  static pw.MemoryImage? _cachedStampImage;
 
   static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
     if (fontBytes != null) {
@@ -153,12 +159,28 @@ class InvoiceService {
     }
     return PdfHelpers.loadFont();
   }
-  static pw.ThemeData _createTheme(pw.Font? font) => PdfHelpers.buildTheme(font);
+  static pw.ThemeData _createTheme(pw.Font? font) {
+    final cached = _cachedTheme;
+    if (cached != null && identical(font, _cachedThemeFont)) return cached;
+    final theme = PdfHelpers.buildTheme(font);
+    _cachedThemeFont = font;
+    _cachedTheme = theme;
+    return theme;
+  }
 
   static Future<pw.MemoryImage?> _loadLogo(Uint8List? companyLogoBytes, String? companyLogoUrl) async {
     try {
       final bytes = companyLogoBytes ?? await resolveCompanyLogoBytes(companyLogoUrl);
-      return bytes != null ? pw.MemoryImage(bytes) : null;
+      if (bytes == null || bytes.isEmpty) return null;
+      if (identical(bytes, _cachedLogoBytes) && _cachedLogoImage != null) {
+        return _cachedLogoImage;
+      }
+      final image = pw.MemoryImage(bytes);
+      if (companyLogoBytes != null) {
+        _cachedLogoBytes = bytes;
+        _cachedLogoImage = image;
+      }
+      return image;
     } catch (_) {
       return null;
     }
@@ -166,7 +188,16 @@ class InvoiceService {
 
   static Future<pw.MemoryImage?> _loadStamp(Uint8List? companyStampBytes, String? companyStampImageUrl) async {
     final bytes = companyStampBytes ?? await resolveCompanyStampBytes(companyStampImageUrl);
-    return bytes != null ? pw.MemoryImage(bytes) : null;
+    if (bytes == null || bytes.isEmpty) return null;
+    if (identical(bytes, _cachedStampBytes) && _cachedStampImage != null) {
+      return _cachedStampImage;
+    }
+    final image = pw.MemoryImage(bytes);
+    if (companyStampBytes != null) {
+      _cachedStampBytes = bytes;
+      _cachedStampImage = image;
+    }
+    return image;
   }
 
   static List<pw.Widget> _buildContent({

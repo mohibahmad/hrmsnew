@@ -27,6 +27,7 @@ import '../../widgets/dashboard/top_header.dart';
 import '../../widgets/dashboard/total_workers_card.dart';
 import '../../widgets/notification_sidebar.dart';
 import '../../widgets/sidebar_widget.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import '../../widgets/unsaved_changes_dialog.dart';
 import '../time_off/assign_time_off.dart';
 import 'assets_screen.dart';
@@ -957,14 +958,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Expanded(
           child: ExcludeSemantics(
             child: IgnorePointer(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: DelayedShimmer(
+                child: Shimmer.fromColors(
+                  baseColor: screenShimmerBaseColor,
+                  highlightColor: screenShimmerHighlightColor,
+                  period: screenShimmerPeriod,
+                  direction: ShimmerDirection.ltr,
+                  child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1023,8 +1030,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 20),
                     const _DashboardShimmerBlock(width: 190, height: 24),
                     const SizedBox(height: 24),
-                    _buildHolidayShimmerCard(),
-                  ],
+                      _buildHolidayShimmerCard(),
+                    ],
+                  ),
+                  ),
                 ),
               ),
             ),
@@ -1399,17 +1408,12 @@ class _DashboardShimmerBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Shimmer.fromColors(
-        baseColor: const Color(0xFFE5E8ED),
-        highlightColor: const Color(0xFFF7F8FA),
-        period: const Duration(milliseconds: 1150),
-        child: Container(
-          width: width ?? double.infinity,
-          height: height,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(radius),
-          ),
+      child: Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
         ),
       ),
     );

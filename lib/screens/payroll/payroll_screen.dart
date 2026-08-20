@@ -26,6 +26,7 @@ import '../../utils/utils.dart';
 import '../../widgets/amount_text.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import 'add_payroll_screen.dart';
 
 String _generateCsvString(List<List<dynamic>> rows) {
@@ -2672,82 +2673,89 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               ),
               Container(height: 1, color: const Color(0xFFF7F8FC)),
               Expanded(
-                child: Shimmer.fromColors(
-                  baseColor: const Color(0xFFE5E7EB),
-                  highlightColor: const Color(0xFFF3F4F6),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 6,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (_, _) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF6F8FA),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 24),
-                              child: Row(
-                                children: [
-                                  _PayrollShimmerBlock(
-                                    width: 40,
-                                    height: 40,
-                                    radius: 20,
-                                  ),
-                                  SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _PayrollShimmerBlock(
-                                        width: 110,
-                                        height: 14,
-                                      ),
-                                      SizedBox(height: 7),
-                                      _PayrollShimmerBlock(
-                                        width: 150,
-                                        height: 11,
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                child: DelayedShimmer(
+                  child: Shimmer.fromColors(
+                    baseColor: screenShimmerBaseColor,
+                    highlightColor: screenShimmerHighlightColor,
+                    period: screenShimmerPeriod,
+                    direction: ShimmerDirection.ltr,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 6,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (_, _) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8FA),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 24),
+                                child: Row(
+                                  children: [
+                                    _PayrollShimmerBlock(
+                                      width: 40,
+                                      height: 40,
+                                      radius: 20,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _PayrollShimmerBlock(
+                                          width: 110,
+                                          height: 14,
+                                        ),
+                                        SizedBox(height: 7),
+                                        _PayrollShimmerBlock(
+                                          width: 150,
+                                          height: 11,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 24),
+                            Expanded(
+                              flex: 2,
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 24),
+                                child: _PayrollShimmerBlock(
+                                  width: 96,
+                                  height: 14,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 24),
+                                child: _PayrollShimmerBlock(
+                                  width: 105,
+                                  height: 14,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
                               child: _PayrollShimmerBlock(
-                                width: 96,
+                                width: 70,
                                 height: 14,
                               ),
                             ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 24),
-                              child: _PayrollShimmerBlock(
-                                width: 105,
-                                height: 14,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: _PayrollShimmerBlock(width: 70, height: 14),
-                          ),
-                          SizedBox(width: 24),
-                        ],
+                            SizedBox(width: 24),
+                          ],
+                        ),
                       ),
                     ),
                   ),

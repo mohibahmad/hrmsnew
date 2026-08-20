@@ -13,7 +13,6 @@ import 'package:easy_localization/src/localization.dart' show Localization;
 import 'package:easy_localization/src/translations.dart' show Translations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../riverpod_providers.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../utils/utils.dart';
 import '../utils/pdf_helpers.dart';
@@ -145,19 +144,6 @@ class DialogController {
 }
 
 final Map<String, Map<String, dynamic>> _translationsCache = {};
-final Map<String, Uint8List?> _payrollImageCache = {};
-final List<String> _payrollCacheKeys = [];
-
-void _cachePayrollImage(String url, Uint8List? bytes) {
-  _payrollImageCache[url] = bytes;
-  _payrollCacheKeys.remove(url);
-  _payrollCacheKeys.add(url);
-  // Bound memory: keep only the most recent 120 unique images.
-  while (_payrollCacheKeys.length > 120) {
-    final oldest = _payrollCacheKeys.removeAt(0);
-    _payrollImageCache.remove(oldest);
-  }
-}
 
 // Scales the invoice PDF batch deadline with worker count so large runs do not
 // silently time out at the old flat 30s ceiling.
@@ -324,7 +310,13 @@ void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
         ...workerArgs,
         'invoiceIsolateReady': true,
       });
-      replyPort.send(<String, Object?>{'file': file});
+      final pdfBytes = file['bytes']! as Uint8List;
+      replyPort.send(<String, Object?>{
+        'file': <String, Object>{
+          ...file,
+          'bytes': TransferableTypedData.fromList(<Uint8List>[pdfBytes]),
+        },
+      });
     } catch (error) {
       replyPort.send(<String, Object?>{'error': error.toString()});
     }
@@ -371,7 +363,14 @@ class _PayrollInvoiceIsolateWorker {
       if (rawResponse is! Map) return null;
       final response = Map<String, Object?>.from(rawResponse);
       final rawFile = response['file'];
-      if (rawFile is Map) return Map<String, Object>.from(rawFile);
+      if (rawFile is Map) {
+        final file = Map<String, Object>.from(rawFile);
+        final transferredBytes = file['bytes'];
+        if (transferredBytes is TransferableTypedData) {
+          file['bytes'] = transferredBytes.materialize().asUint8List();
+        }
+        return file;
+      }
       final error = (response['error'] ?? '').toString();
       if (error.isNotEmpty) throw StateError(error);
       return null;
@@ -391,14 +390,6 @@ class _PayrollInvoiceIsolateWorker {
     _pendingResponses.clear();
     _isolate.kill(priority: Isolate.immediate);
   }
-}
-
-@pragma('vm:entry-point')
-List<Uint8List> _compressProfileImagesTask(List<Uint8List> images) {
-  return [
-    for (final bytes in images)
-      compressImageBytes(bytes, maxWidth: 128, quality: 60),
-  ];
 }
 
 Future<Map<String, Object>> _generatePayrollInvoiceFile(
@@ -920,10 +911,10 @@ class PayrollRunner {
       final rawStamp = results[1] as Uint8List?;
 
       final logoBytes = rawLogo != null && rawLogo.isNotEmpty
-          ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75)
+          ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75, force: true)
           : null;
       final stampBytes = rawStamp != null && rawStamp.isNotEmpty
-          ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75)
+          ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75, force: true)
           : null;
 
       return {
@@ -1599,6 +1590,8 @@ class PayrollRunner {
     if (!context.mounted) return null;
     final controller = await _showProgressDialog(context);
 
+    await Future.delayed(const Duration(milliseconds: 80));
+
     try {
       controller.update(progress: 0.05, label: 'generating_invoices'.tr());
       final preloadedAssets = preloadedAssetsFuture == null
@@ -1608,13 +1601,6 @@ class PayrollRunner {
       final paidResults = committedSummary.successCount >= 1
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
-
-      // Worker photos can be remote. Start loading/compressing them while the
-      // Firestore commit is in flight so image I/O does not extend total Pay
-      // All time. The PDF step receives these already-prepared bytes below.
-      final preloadedProfileImagesFuture = paidResults.isEmpty
-          ? null
-          : _preloadProfileImagesInBackground(paidResults);
 
       unawaited(
         _sendNotificationsInBackground(
@@ -1645,7 +1631,6 @@ class PayrollRunner {
           periodStart: periodStart,
           periodEnd: periodEnd,
           preloadedAssets: preloadedAssets,
-          preloadedProfileImagesFuture: preloadedProfileImagesFuture,
         );
       }
 
@@ -2057,7 +2042,6 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
-    Future<List<Uint8List?>>? preloadedProfileImagesFuture,
   }) async {
     try {
       await _generateAndSaveZipWithProgress(
@@ -2069,7 +2053,6 @@ class PayrollRunner {
         periodStart: periodStart,
         periodEnd: periodEnd,
         preloadedAssets: preloadedAssets,
-        preloadedProfileImagesFuture: preloadedProfileImagesFuture,
       );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceZip');
@@ -2092,7 +2075,6 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
-    Future<List<Uint8List?>>? preloadedProfileImagesFuture,
   }) async {
     if (selected.isEmpty) return;
 
@@ -2174,10 +2156,10 @@ class PayrollRunner {
         final rawLogo = allAssets[0] as Uint8List?;
         final rawStamp = allAssets[1] as Uint8List?;
         companyLogoBytes = rawLogo != null && rawLogo.isNotEmpty
-            ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75)
+            ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75, force: true)
             : null;
         companyStampBytes = rawStamp != null && rawStamp.isNotEmpty
-            ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75)
+            ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75, force: true)
             : null;
         fontBytes = allAssets[2] as Uint8List?;
         translations = allAssets[3] as Map<String, dynamic>;
@@ -2215,15 +2197,6 @@ class PayrollRunner {
 
       controller.update(progress: 0.40, label: 'generating_invoices'.tr());
 
-      final profileImages = preloadedProfileImagesFuture != null
-          ? await preloadedProfileImagesFuture
-          : await _loadProfileImagesWithProgress(
-              successful,
-              controller,
-              startProgress: 0.40,
-              endProgress: 0.55,
-            );
-
       controller.update(
         progress: 0.55,
         label: 'generating_invoices'.tr(),
@@ -2233,7 +2206,7 @@ class PayrollRunner {
       // Each isolate pulls the next individual PDF from a shared queue. The
       // large font/logo/stamp payload is initialized once per persistent
       // isolate, while fixed worker chunks and their long-tail stalls are gone.
-      final maxParallel = Platform.numberOfProcessors.clamp(4, 12).toInt();
+      final maxParallel = Platform.numberOfProcessors.clamp(4, 16).toInt();
       final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
@@ -2278,7 +2251,6 @@ class PayrollRunner {
           'leaveDeduction': r.leaveDeduction,
           'customDeduction': r.customDeduction,
           'currency': r.currency,
-          'employeeImageBytes': profileImages[index],
         });
       }
       controller.update(
@@ -2322,16 +2294,13 @@ class PayrollRunner {
       var stopRequested = false;
       Object? firstPdfError;
       StackTrace? firstPdfStack;
-      var lastProgressAt = DateTime.fromMillisecondsSinceEpoch(0);
+      final progressBatchSize = pool.length.clamp(4, 8).toInt();
 
       void reportPdfProgress() {
-        final now = DateTime.now();
         if (pdfDone != successful.length &&
-            pdfDone % 4 != 0 &&
-            now.difference(lastProgressAt) < const Duration(milliseconds: 60)) {
+            pdfDone % progressBatchSize != 0) {
           return;
         }
-        lastProgressAt = now;
         controller.update(
           progress: 0.60 + (0.28 * pdfDone / successful.length),
           label: 'generating_invoices_progress'.tr(
@@ -2399,8 +2368,7 @@ class PayrollRunner {
       debugPrint(
         'PayrollInvoicePerf: workers=${successful.length} pool=${pool.length} '
         'spawnMs=$spawnMs pdfMs=$pdfMs '
-        'avgPdfMs=${averagePdfMs.toStringAsFixed(1)} '
-        'cacheHits=${_payrollImageCache.length}',
+        'avgPdfMs=${averagePdfMs.toStringAsFixed(1)}',
       );
 
       controller.update(
@@ -2425,24 +2393,8 @@ class PayrollRunner {
         await candidate.writeAsBytes(zipData, flush: true);
         zipFile = candidate;
       } catch (_) {
-        final result = await FilePicker.saveFile(
-          dialogTitle: 'save_payroll_invoices_zip'.tr(),
-          fileName: fileName,
-          type: FileType.custom,
-          allowedExtensions: ['zip'],
-          bytes: zipData,
-        );
-        if (result == null) {
-          zipFile = await _writeZipToWritableDir(fileName, zipData);
-        } else {
-          final saved = File(result);
-          final exists = await saved.exists();
-          final savedLength = exists ? await saved.length() : 0;
-          if (!exists || savedLength != zipData.length) {
-            await saved.writeAsBytes(zipData, flush: true);
-          }
-          zipFile = saved;
-        }
+        // Save instantly to writable documents directory to avoid a blocking system FilePicker dialog
+        zipFile = await _writeZipToWritableDir(fileName, zipData);
       }
 
       if (context.mounted) {
@@ -2465,146 +2417,6 @@ class PayrollRunner {
     final file = File('${docsDir.path}/$fileName');
     await file.writeAsBytes(zipData, flush: true);
     return file;
-  }
-
-  Future<Uint8List?> _loadWorkerProfileImageRaw(String? url) async {
-    final source = (url ?? '').trim();
-    if (source.isEmpty) return null;
-    try {
-      final cacheManager = DefaultCacheManager();
-      final fileInfo = await cacheManager.getFileFromCache(source);
-      if (fileInfo != null) {
-        final bytes = await fileInfo.file.readAsBytes();
-        if (bytes.isNotEmpty) return bytes;
-      }
-    } catch (_) {}
-
-    try {
-      final bytes = await ImageLoader.load(
-        source: source,
-        maxSizeBytes: 1 * 1024 * 1024,
-        timeout: const Duration(milliseconds: 2000),
-        convertToPng: false,
-      );
-      if (bytes != null && bytes.isNotEmpty) {
-        // ignore: invalid_return_type_for_catch_error
-        DefaultCacheManager()
-            .putFile(source, bytes)
-            .catchError((_) => File(''));
-      }
-      return bytes;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<List<Uint8List>> _compressImagesParallel(List<Uint8List> raw) async {
-    if (raw.isEmpty) return const [];
-    return compute(_compressProfileImagesTask, raw);
-  }
-
-  Future<List<Uint8List?>> _preloadProfileImagesInBackground(
-    List<AutoPayrollResult> workers,
-  ) async {
-    try {
-      return await _loadProfileImagesWithProgress(
-        workers,
-        null,
-        startProgress: 0,
-        endProgress: 0,
-      );
-    } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'PayrollProfileImagePreload',
-      );
-      return List<Uint8List?>.filled(workers.length, null);
-    }
-  }
-
-  Future<List<Uint8List?>> _loadProfileImagesWithProgress(
-    List<AutoPayrollResult> workers,
-    DialogController? controller, {
-    required double startProgress,
-    required double endProgress,
-  }) async {
-    final results = List<Uint8List?>.filled(workers.length, null);
-
-    // URL -> worker indexes (dedupes repeated photos within a run).
-    final urlToIndexes = <String, List<int>>{};
-    for (var i = 0; i < workers.length; i++) {
-      final url = (workers[i].imageUrl ?? '').trim();
-      if (url.isEmpty) continue;
-      (urlToIndexes[url] ??= <int>[]).add(i);
-    }
-    if (urlToIndexes.isEmpty) return results;
-
-    var completed = 0;
-    void report() {
-      if (workers.isEmpty) return;
-      controller?.update(
-        progress:
-            startProgress +
-            (endProgress - startProgress) * (completed / workers.length),
-        label: 'generating_invoices'.tr(),
-      );
-    }
-
-    // Fetch ONLY URLs not already cached (final compressed bytes are cached).
-    final missUrls = urlToIndexes.keys
-        .where((u) => !_payrollImageCache.containsKey(u))
-        .toList();
-    debugPrint(
-      'PayrollInvoicePerf: imagesUnique=${urlToIndexes.length} '
-      'misses=${missUrls.length} cached=${_payrollImageCache.length}',
-    );
-
-    if (missUrls.isNotEmpty) {
-      // 1) Download raw bytes for cache misses, with bounded concurrency (limit 12).
-      final rawByUrl = <String, Uint8List?>{};
-      var urlIndex = 0;
-      Future<void> worker() async {
-        while (true) {
-          final idx = urlIndex++;
-          if (idx >= missUrls.length) break;
-          final u = missUrls[idx];
-          rawByUrl[u] = await _loadWorkerProfileImageRaw(u);
-        }
-      }
-
-      final poolSize = missUrls.length < 12 ? missUrls.length : 12;
-      await Future.wait(List.generate(poolSize, (_) => worker()));
-
-      // 2) Compress the newly loaded raws in parallel (isolate) and cache the
-      //    final bytes so later runs skip both download and compression.
-      final compressUrls = <String>[];
-      final compressBytes = <Uint8List>[];
-      for (final u in missUrls) {
-        final bytes = rawByUrl[u];
-        if (bytes != null && bytes.isNotEmpty) {
-          compressUrls.add(u);
-          compressBytes.add(bytes);
-        }
-      }
-      final compressed = compressBytes.isEmpty
-          ? const <Uint8List>[]
-          : await _compressImagesParallel(compressBytes);
-      for (var c = 0; c < compressUrls.length; c++) {
-        _cachePayrollImage(compressUrls[c], compressed[c]);
-      }
-    }
-
-    // 3) Hand the final cached bytes to every worker that references each URL.
-    for (final url in urlToIndexes.keys) {
-      final bytes = _payrollImageCache[url];
-      for (final idx in urlToIndexes[url]!) {
-        results[idx] = bytes;
-      }
-    }
-    completed = workers.length;
-    report();
-    return results;
   }
 
   Future<List<AutoPayrollResult>?> _showReviewDialog(
@@ -2655,6 +2467,7 @@ class PayrollRunner {
       }
     }
     final allPositions = positionNormalizer.values.toList()..sort();
+    final reviewBackdropFilter = ImageFilter.blur(sigmaX: 2, sigmaY: 2);
 
     final firestoreService = ProviderScope.containerOf(
       context,
@@ -2677,6 +2490,8 @@ class PayrollRunner {
 
     var liveAlive = true;
     Timer? liveRefreshTimer;
+    Timer? liveAttachTimer;
+    var liveRefreshAttached = false;
     final liveSubscriptions = <StreamSubscription<dynamic>>[];
     void Function(void Function())? dialogSetState;
 
@@ -2737,35 +2552,58 @@ class PayrollRunner {
     }
 
     void attachLiveRefresh() {
+      if (!liveAlive || liveRefreshAttached) return;
+      liveRefreshAttached = true;
+
+      var receivedInitialWorkers = false;
+      var receivedInitialTimeOff = false;
+      var receivedInitialAttendance = false;
       liveSubscriptions.add(
         firestoreService.workersStream.listen(
-          (_) => scheduleLiveRefresh(),
+          (_) {
+            if (!receivedInitialWorkers) {
+              receivedInitialWorkers = true;
+              return;
+            }
+            scheduleLiveRefresh();
+          },
           onError: (_) {},
         ),
       );
       liveSubscriptions.add(
         firestoreService.timeoffStream.listen(
-          (_) => scheduleLiveRefresh(),
+          (_) {
+            if (!receivedInitialTimeOff) {
+              receivedInitialTimeOff = true;
+              return;
+            }
+            scheduleLiveRefresh();
+          },
           onError: (_) {},
         ),
       );
       liveSubscriptions.add(
         firestoreService
             .attendanceStreamForPeriod(start: liveStart, end: liveEnd)
-            .listen((_) => scheduleLiveRefresh(), onError: (_) {}),
+            .listen((_) {
+              if (!receivedInitialAttendance) {
+                receivedInitialAttendance = true;
+                return;
+              }
+              scheduleLiveRefresh();
+            }, onError: (_) {}),
       );
     }
 
     void detachLiveRefresh() {
       liveAlive = false;
+      liveAttachTimer?.cancel();
       liveRefreshTimer?.cancel();
       for (final sub in liveSubscriptions) {
         sub.cancel();
       }
       liveSubscriptions.clear();
     }
-
-    attachLiveRefresh();
 
     final dialogResult = await showGeneralDialog<List<AutoPayrollResult>>(
       context: context,
@@ -2776,6 +2614,10 @@ class PayrollRunner {
       pageBuilder: (context, animation, secondaryAnimation) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           onReviewDialogOpen?.call();
+          liveAttachTimer ??= Timer(
+            const Duration(milliseconds: 450),
+            attachLiveRefresh,
+          );
         });
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -2783,6 +2625,13 @@ class PayrollRunner {
             final unpaidResults = summary.results
                 .where((r) => !r.isPaid)
                 .toList();
+            final resultIndexByIdentity =
+                Map<AutoPayrollResult, int>.identity();
+            for (var i = 0; i < summary.results.length; i++) {
+              resultIndexByIdentity[summary.results[i]] = i;
+            }
+            int resultIndexOf(AutoPayrollResult result) =>
+                resultIndexByIdentity[result] ?? -1;
 
             List<AutoPayrollResult> posFiltered;
             if (positionFilter == 'All') {
@@ -2822,16 +2671,19 @@ class PayrollRunner {
 
             final filteredSelectedCount = filteredResults
                 .where(
-                  (r) => selectedIndices.contains(summary.results.indexOf(r)),
+                  (r) => selectedIndices.contains(resultIndexOf(r)),
                 )
                 .length;
             final filteredPayCount = filteredResults
                 .where(
                   (r) =>
                       r.success &&
-                      selectedIndices.contains(summary.results.indexOf(r)),
+                      selectedIndices.contains(resultIndexOf(r)),
                 )
                 .length;
+            final allFilteredSelected = filteredResults.every(
+              (r) => selectedIndices.contains(resultIndexOf(r)),
+            );
 
             return PopScope(
               canPop: true,
@@ -2993,101 +2845,62 @@ class PayrollRunner {
                             ),
                           ),
 
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
+                          SizedBox(
+                            height: 40,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
                               padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ChoiceChip(
-                                      label: Text('all_filter'.tr()),
-                                      selected: positionFilter == 'All',
-                                      onSelected: (_) {
-                                        setDialogState(() {
-                                          positionFilter = 'All';
-                                          showOnlyAbsences = false;
-                                        });
-                                      },
-                                      selectedColor: const Color(0xFF0C51C1),
-                                      backgroundColor: Colors.white,
-                                      checkmarkColor: Colors.transparent,
-                                      showCheckmark: false,
-                                      side: positionFilter == 'All'
-                                          ? null
-                                          : const BorderSide(
-                                              color: Color(0xFFE5E7EB),
-                                            ),
-                                      labelStyle: TextStyle(
-                                        color: positionFilter == 'All'
-                                            ? Colors.white
-                                            : const Color(0xFF111827),
-                                        fontSize: 12,
-                                        fontWeight: positionFilter == 'All'
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                      ),
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                    ...allPositions.map(
-                                      (pos) => Padding(
-                                        padding: const EdgeInsets.only(left: 8),
-                                        child: ChoiceChip(
-                                          label: Text(
-                                            LocalizationHelper.localizePosition(
-                                              pos,
-                                            ),
+                              itemCount: allPositions.length + 1,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final isAll = index == 0;
+                                final position = isAll
+                                    ? 'All'
+                                    : allPositions[index - 1];
+                                final isSelected = positionFilter == position;
+                                return ChoiceChip(
+                                  label: Text(
+                                    isAll
+                                        ? 'all_filter'.tr()
+                                        : LocalizationHelper.localizePosition(
+                                            position,
                                           ),
-                                          selected: positionFilter == pos,
-                                          onSelected: (_) {
-                                            setDialogState(() {
-                                              positionFilter = pos;
-                                              showOnlyAbsences = false;
-                                            });
-                                          },
-                                          selectedColor: const Color(
-                                            0xFF0C51C1,
-                                          ),
-                                          backgroundColor: Colors.white,
-                                          checkmarkColor: Colors.transparent,
-                                          showCheckmark: false,
-                                          side: positionFilter == pos
-                                              ? null
-                                              : const BorderSide(
-                                                  color: Color(0xFFE5E7EB),
-                                                ),
-                                          labelStyle: TextStyle(
-                                            color: positionFilter == pos
-                                                ? Colors.white
-                                                : const Color(0xFF111827),
-                                            fontSize: 12,
-                                            fontWeight: positionFilter == pos
-                                                ? FontWeight.w600
-                                                : FontWeight.w500,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (_) {
+                                    setDialogState(() {
+                                      positionFilter = position;
+                                      showOnlyAbsences = false;
+                                    });
+                                  },
+                                  selectedColor: const Color(0xFF0C51C1),
+                                  backgroundColor: Colors.white,
+                                  checkmarkColor: Colors.transparent,
+                                  showCheckmark: false,
+                                  side: isSelected
+                                      ? null
+                                      : const BorderSide(
+                                          color: Color(0xFFE5E7EB),
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : const Color(0xFF111827),
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                );
+                              },
                             ),
                           ),
 
@@ -3195,16 +3008,8 @@ class PayrollRunner {
                                         setDialogState(() {
                                           final filteredIndices =
                                               filteredResults
-                                                  .map(
-                                                    (r) => summary.results
-                                                        .indexOf(r),
-                                                  )
+                                                  .map(resultIndexOf)
                                                   .toSet();
-                                          final allFilteredSelected =
-                                              filteredIndices.every(
-                                                (i) =>
-                                                    selectedIndices.contains(i),
-                                              );
                                           if (allFilteredSelected) {
                                             selectedIndices.removeAll(
                                               filteredIndices,
@@ -3222,12 +3027,7 @@ class PayrollRunner {
                                           vertical: 6,
                                         ),
                                         decoration: BoxDecoration(
-                                          color:
-                                              filteredResults.every(
-                                                (r) => selectedIndices.contains(
-                                                  summary.results.indexOf(r),
-                                                ),
-                                              )
+                                          color: allFilteredSelected
                                               ? const Color(0xFFFEE2E2)
                                               : const Color(0xFFEEF2FF),
                                           borderRadius: BorderRadius.circular(
@@ -3237,47 +3037,21 @@ class PayrollRunner {
                                         child: Row(
                                           children: [
                                             Icon(
-                                              filteredResults.every(
-                                                    (r) => selectedIndices
-                                                        .contains(
-                                                          summary.results
-                                                              .indexOf(r),
-                                                        ),
-                                                  )
+                                              allFilteredSelected
                                                   ? Icons.deselect
                                                   : Icons.select_all,
                                               size: 14,
-                                              color:
-                                                  filteredResults.every(
-                                                    (r) => selectedIndices
-                                                        .contains(
-                                                          summary.results
-                                                              .indexOf(r),
-                                                        ),
-                                                  )
+                                              color: allFilteredSelected
                                                   ? const Color(0xFFEF4444)
                                                   : const Color(0xFF0247C4),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
-                                              filteredResults.every(
-                                                    (r) => selectedIndices
-                                                        .contains(
-                                                          summary.results
-                                                              .indexOf(r),
-                                                        ),
-                                                  )
+                                              allFilteredSelected
                                                   ? 'deselect_all'.tr()
                                                   : 'select_all'.tr(),
                                               style: TextStyle(
-                                                color:
-                                                    filteredResults.every(
-                                                      (r) => selectedIndices
-                                                          .contains(
-                                                            summary.results
-                                                                .indexOf(r),
-                                                          ),
-                                                    )
+                                                color: allFilteredSelected
                                                     ? const Color(0xFFEF4444)
                                                     : const Color(0xFF0247C4),
                                                 fontSize: 12,
@@ -3331,8 +3105,7 @@ class PayrollRunner {
                                     itemCount: filteredResults.length,
                                     itemBuilder: (_, i) {
                                       final r = filteredResults[i];
-                                      final originalIndex = summary.results
-                                          .indexOf(r);
+                                      final originalIndex = resultIndexOf(r);
                                       final isSelected = selectedIndices
                                           .contains(originalIndex);
 
@@ -3699,9 +3472,7 @@ class PayrollRunner {
                                         double total = 0;
                                         String prefix = '';
                                         for (final r in filteredResults) {
-                                          final idx = summary.results.indexOf(
-                                            r,
-                                          );
+                                          final idx = resultIndexOf(r);
                                           if (selectedIndices.contains(idx) &&
                                               r.success &&
                                               r.rawNetSalaryValue.isFinite) {
@@ -3769,8 +3540,7 @@ class PayrollRunner {
                                                         r.success &&
                                                         selectedIndices
                                                             .contains(
-                                                              summary.results
-                                                                  .indexOf(r),
+                                                              resultIndexOf(r),
                                                             ),
                                                   )
                                                   .toList();
@@ -3854,11 +3624,10 @@ class PayrollRunner {
           fit: StackFit.expand,
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Container(
-                color: const Color(
-                  0xFF0F172A,
-                ).withOpacity(0.45 * animation.value),
+              filter: reviewBackdropFilter,
+              child: FadeTransition(
+                opacity: animation,
+                child: const ColoredBox(color: Color(0x730F172A)),
               ),
             ),
             FadeTransition(

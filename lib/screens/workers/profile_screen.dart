@@ -1235,70 +1235,75 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   }
 
   Widget _buildSessionSecuritySection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _kFormBg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'session_security'.tr(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              fontFamily: _kFontFamily,
-              color: _kBlack,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'session_security'.tr(),
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            fontFamily: _kFontFamily,
+            color: _kBlack,
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _kFormBg,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'enable_session_timeout'.tr(),
-                      style: _kLabelStyle,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'enable_session_timeout'.tr(),
+                          style: _kLabelStyle,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _sessionTimeoutEnabled
+                              ? 'session_locked_message'.tr(namedArgs: {'minutes': _sessionTimeoutDuration.toString()})
+                              : 'session_timeout_description'.tr(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: _kGreyText,
+                            fontFamily: _kFontFamily,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _sessionTimeoutEnabled
-                          ? 'session_locked_message'.tr(namedArgs: {'minutes': _sessionTimeoutDuration.toString()})
-                          : 'session_timeout_description'.tr(),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: _kGreyText,
-                        fontFamily: _kFontFamily,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Switch.adaptive(
+                    value: _sessionTimeoutEnabled,
+                    onChanged: !_isEditing
+                        ? null
+                        : (val) {
+                            setState(() {
+                              _sessionTimeoutEnabled = val;
+                            });
+                          },
+                    activeColor: _kPrimaryBlue,
+                  ),
+                ],
               ),
-              Switch.adaptive(
-                value: _sessionTimeoutEnabled,
-                onChanged: !_isEditing
-                    ? null
-                    : (val) {
-                        setState(() {
-                          _sessionTimeoutEnabled = val;
-                        });
-                      },
-                activeColor: _kPrimaryBlue,
-              ),
+              if (_sessionTimeoutEnabled) ...[
+                const SizedBox(height: 20),
+                _buildSessionDurationField(_isEditing),
+              ],
             ],
           ),
-          if (_sessionTimeoutEnabled) ...[
-            const SizedBox(height: 20),
-            _buildSessionDurationField(_isEditing),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
