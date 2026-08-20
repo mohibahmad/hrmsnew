@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/error_reporter.dart';
-import '../../services/firestore_service.dart';
-import '../../services/preferences_service.dart';
-import '../general/home_screen.dart';
-import 'login_screen.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/screens/general/home_screen.dart';
+import 'package:hrms/screens/auth/login_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../services/dashboard_chart_service.dart';
-import '../../utils/app_colors.dart';
+import 'package:hrms/services/dashboard/dashboard_chart_service.dart';
+import 'package:hrms/core/theme/app_colors.dart';
 
 class SparklineCard extends StatelessWidget {
   final String title;

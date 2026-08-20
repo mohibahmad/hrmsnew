@@ -1,24 +1,21 @@
-import '../../utils/ui_helpers.dart';
-import '../../utils/helpers.dart';
-import '../../utils/firestore_record_utils.dart';
+import 'package:hrms/core/utils/utils.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hrms/utils/utils.dart';
 
-import '../../riverpod_providers.dart';
-import '../../services/attendance_report_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/dummy_data.dart';
-import '../../services/error_reporter.dart';
-import '../../services/time_off_export_service.dart';
-import '../../services/time_off_service.dart';
-import '../../widgets/clickable_gesture_detector.dart';
-import '../../widgets/notification_bell.dart';
-import '../../widgets/screen_table_shimmer.dart';
-import 'assign_time_off.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/attendance/attendance_report_service.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/dummy_data.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/services/time_off/time_off_export_service.dart';
+import 'package:hrms/services/time_off/time_off_service.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:hrms/screens/time_off/assign_time_off.dart';
 
 const _kBlue = Color(0xFF0247C4);
 const _kDarkBlue = Color(0xFF004FDE);

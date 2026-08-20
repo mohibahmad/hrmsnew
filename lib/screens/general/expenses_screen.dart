@@ -1,6 +1,4 @@
-import '../../utils/ui_helpers.dart';
-import '../../utils/helpers.dart';
-import '../../utils/calendar_widgets.dart';
+import 'package:hrms/core/utils/calendar_widgets.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -8,17 +6,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/dummy_data.dart';
-import '../../services/firestore_service.dart';
-import '../../services/payroll_service.dart';
-import '../../services/preferences_service.dart';
-import '../../utils/utils.dart';
-import '../../widgets/clickable_gesture_detector.dart';
-import '../../widgets/custom_timeframe_dropdown.dart';
-import '../../widgets/notification_bell.dart';
-import '../../widgets/screen_table_shimmer.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/dummy_data.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/payroll/payroll_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/core/utils/utils.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/custom_timeframe_dropdown.dart';
+import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/common/screen_table_shimmer.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

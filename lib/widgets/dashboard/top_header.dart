@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../utils/helpers.dart';
-import '../../utils/app_colors.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/core/utils/helpers.dart';
+import 'package:hrms/core/theme/app_colors.dart';
 
 class TopHeader extends ConsumerWidget {
   final VoidCallback onProfileTap;

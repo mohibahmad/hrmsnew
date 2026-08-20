@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'rounded_donut_chart.dart';
-import '../../utils/app_colors.dart';
+import 'package:hrms/widgets/dashboard/rounded_donut_chart.dart';
+import 'package:hrms/core/theme/app_colors.dart';
 
 class TotalWorkersCard extends StatelessWidget {
   final int count;

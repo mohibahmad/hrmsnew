@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart' hide GestureDetector;
-import '../../widgets/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../services/preferences_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/auth_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../riverpod_providers.dart';
+import 'package:hrms/riverpod_providers.dart';
 
 class SubscriptionDialog extends ConsumerStatefulWidget {
   final bool isPremium;

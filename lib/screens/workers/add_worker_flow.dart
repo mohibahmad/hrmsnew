@@ -18,20 +18,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/dummy_data.dart';
-import '../../services/error_reporter.dart';
-import '../../services/firestore_service.dart';
-import '../../services/preferences_service.dart';
-import '../../services/time_off_service.dart';
-import '../../services/upload_service.dart';
-import '../../utils/helpers.dart';
-import '../../utils/ui_helpers.dart';
-import '../../utils/utils.dart';
-import '../../widgets/clickable_gesture_detector.dart';
-import '../../widgets/custom_dropdown_field.dart';
-import '../../widgets/unsaved_changes_dialog.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/dummy_data.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/services/time_off/time_off_service.dart';
+import 'package:hrms/services/core/upload_service.dart';
+import 'package:hrms/core/utils/utils.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/custom_dropdown_field.dart';
+import 'package:hrms/widgets/dialogs/unsaved_changes_dialog.dart';
 
 final List<String> _months = LocalizationHelper.englishMonthNames.sublist(1);
 

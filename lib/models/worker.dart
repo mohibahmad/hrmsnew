@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/helpers.dart';
-import '../utils/utils.dart';
+import 'package:hrms/core/utils/utils.dart';
 
 class SafeParser {
   SafeParser._();

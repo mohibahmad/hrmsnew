@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../utils/helpers.dart';
+import 'package:hrms/core/utils/helpers.dart';
 
 class HolidayCard extends StatelessWidget {
   final String day;

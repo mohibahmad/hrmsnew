@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import '../../utils/ui_helpers.dart';
-import '../../utils/helpers.dart';
+import 'package:hrms/core/utils/utils.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -17,16 +16,16 @@ import 'package:pdfx/pdfx.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/dummy_data.dart';
-import '../../services/error_reporter.dart';
-import '../../services/firestore_service.dart';
-import '../../services/upload_service.dart';
-import '../../widgets/clickable_gesture_detector.dart';
-import '../../widgets/notification_bell.dart';
-import '../../widgets/screen_table_shimmer.dart';
-import '../workers/add_worker_flow.dart' show DocPreview, PdfPagePreview;
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/dummy_data.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/upload_service.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:hrms/screens/workers/add_worker_flow.dart' show DocPreview, PdfPagePreview;
 
 class DocumentsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;

@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'utils/helpers.dart';
-import 'utils/ui_helpers.dart';
+import 'package:hrms/core/utils/utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,16 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:window_manager/window_manager.dart';
-import 'riverpod_providers.dart';
-import 'firebase_options.dart';
-import 'screens/auth/splash_screen.dart';
-import 'screens/auth/login_screen.dart';
-import 'services/auth_service.dart';
-import 'services/biometric_service.dart';
-import 'services/dummy_data.dart';
-import 'services/error_reporter.dart';
-import 'services/preferences_service.dart';
-import 'widgets/session_timeout_gate.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/firebase_options.dart';
+import 'package:hrms/screens/auth/splash_screen.dart';
+import 'package:hrms/screens/auth/login_screen.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/biometric_service.dart';
+import 'package:hrms/services/core/dummy_data.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/widgets/navigation/session_timeout_gate.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 

@@ -2,8 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-import '../../utils/utils.dart';
-import '../custom_timeframe_dropdown.dart';
+import 'package:hrms/core/utils/utils.dart';
+import 'package:hrms/widgets/common/custom_timeframe_dropdown.dart';
 
 const _presentColor = Color(0xFF16B887);
 const _absentColor = Color(0xFFF13E5B);

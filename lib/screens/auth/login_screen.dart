@@ -1,26 +1,23 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
-import '../../widgets/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../riverpod_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/preferences_service.dart';
-import '../../services/biometric_service.dart';
-import '../../services/error_reporter.dart';
-import '../../utils/utils.dart';
-import '../../utils/ui_helpers.dart';
-import '../../utils/helpers.dart';
-import '../../utils/auth_widgets.dart';
+import 'package:hrms/riverpod_providers.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/services/core/biometric_service.dart';
+import 'package:hrms/services/core/error_reporter.dart';
+import 'package:hrms/core/utils/utils.dart';
+import 'package:hrms/core/utils/auth_widgets.dart';
 
-import 'forgot_password_screen.dart';
-import '../general/home_screen.dart';
-import '../../shared/app_constants.dart';
-import 'signup_screen.dart';
+import 'package:hrms/screens/auth/forgot_password_screen.dart';
+import 'package:hrms/screens/general/home_screen.dart';
+import 'package:hrms/screens/auth/signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});

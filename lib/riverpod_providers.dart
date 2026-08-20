@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'services/auth_service.dart';
-import 'services/firestore_service.dart';
-import 'services/preferences_service.dart';
-import 'utils/firestore_record_utils.dart';
+import 'package:hrms/services/core/auth_service.dart';
+import 'package:hrms/services/core/firestore_service.dart';
+import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/core/utils/utils.dart';
 
-export 'utils/firestore_record_utils.dart' show FirestoreRecords;
+export 'package:hrms/core/utils/firestore_record_utils.dart' show FirestoreRecords;
 
 extension AsyncProviderListener on WidgetRef {
   void listenAsync<T>(
