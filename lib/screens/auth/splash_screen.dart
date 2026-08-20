@@ -45,11 +45,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateWhenReady() async {
-    final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
+    final minimumSplash = Future<void>.delayed(const Duration(milliseconds: 350));
 
-    final sessionLocked = await _getSessionLocked();
-    final isGuest = await _getIsGuest();
-    var user = await _getUser();
+    final results = await Future.wait([
+      _getSessionLocked(),
+      _getIsGuest(),
+      _getUser(),
+    ]);
+
+    final sessionLocked = results[0] as bool;
+    final isGuest = results[1] as bool;
+    var user = results[2] as User?;
 
     if (!isGuest && user != null && !user.isAnonymous) {
       user = await _validateUserProfile(user);
@@ -69,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final slideAnimation =
               Tween<Offset>(
-                begin: const Offset(0, 0.08),
+                begin: const Offset(0, 0.04),
                 end: Offset.zero,
               ).animate(
                 CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -77,7 +83,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
           final fadeAnimation = CurvedAnimation(
             parent: animation,
-            curve: const Interval(0.0, 0.75, curve: Curves.easeIn),
+            curve: Curves.easeIn,
           );
 
           return FadeTransition(
@@ -85,7 +91,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             child: SlideTransition(position: slideAnimation, child: child),
           );
         },
-        transitionDuration: const Duration(milliseconds: 600),
+        transitionDuration: const Duration(milliseconds: 250),
       ),
     );
   }
@@ -93,7 +99,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<bool> _getSessionLocked() async {
     try {
       return await PreferencesService.isSessionLocked().timeout(
-        const Duration(seconds: 3),
+        const Duration(milliseconds: 1500),
       );
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'splashSessionLocked');
@@ -104,7 +110,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<bool> _getIsGuest() async {
     try {
       return await PreferencesService.isGuest().timeout(
-        const Duration(seconds: 3),
+        const Duration(milliseconds: 1500),
       );
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'splashGuestStatus');
@@ -113,30 +119,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<User?> _getUser() async {
+    final current = _authService.currentUser;
+    if (current != null) return current;
     try {
       return await ref
           .read(authStateProvider.future)
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(milliseconds: 1500),
             onTimeout: () => _authService.currentUser,
           );
-    } on TimeoutException catch (e, st) {
-      ErrorReporter.report(e, st, context: 'splashAuthTimeout');
-      return _authService.currentUser;
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'splashAuthState');
-      return null;
+      return _authService.currentUser;
     }
   }
 
   Future<User?> _validateUserProfile(User user) async {
     try {
       final profile = await _firestoreService.getUserProfileOrThrow().timeout(
-        const Duration(seconds: 8),
+        const Duration(milliseconds: 1500),
       );
 
       final isDeleted = profile?['isDeleted'] == true;
-      if (isDeleted || profile == null) {
+      if (isDeleted) {
         await _authService.signOut();
         return null;
       }

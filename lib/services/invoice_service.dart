@@ -49,7 +49,7 @@ class InvoiceService {
     Uint8List? employeeImageBytes,
   }) async {
     final detectedCurrency = _displayCurrency(currency.isEmpty ? _detectCurrency(salary) : currency);
-    final pdf = pw.Document();
+    final pdf = pw.Document(deflate: (bytes) => bytes);
 
     final font = await _loadFont(fontBytes);
     final theme = _createTheme(font);
@@ -143,7 +143,6 @@ class InvoiceService {
   }
 
   static pw.Font? _cachedParsedFont;
-  static pw.Font? _cachedThemeFont;
   static pw.ThemeData? _cachedTheme;
   static pw.MemoryImage? _cachedLogoImage;
   static pw.MemoryImage? _cachedStampImage;
@@ -159,7 +158,6 @@ class InvoiceService {
           fontBytes.buffer.asByteData(fontBytes.offsetInBytes, fontBytes.lengthInBytes),
         );
         _cachedParsedFont = font;
-        _cachedThemeFont = font;
         _cachedTheme = PdfHelpers.buildTheme(font);
       } catch (_) {}
     }
@@ -186,14 +184,12 @@ class InvoiceService {
         return font;
       } catch (_) {}
     }
-    return PdfHelpers.loadFont();
+    return null;
   }
 
   static pw.ThemeData _createTheme(pw.Font? font) {
-    final cached = _cachedTheme;
-    if (cached != null && (font == null || identical(font, _cachedThemeFont))) return cached;
+    if (_cachedTheme != null) return _cachedTheme!;
     final theme = PdfHelpers.buildTheme(font);
-    _cachedThemeFont = font;
     _cachedTheme = theme;
     return theme;
   }

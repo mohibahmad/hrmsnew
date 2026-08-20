@@ -29,6 +29,7 @@ import 'error_reporter.dart';
 import '../widgets/amount_text.dart';
 import '../utils/ui_helpers.dart';
 import '../utils/helpers.dart';
+import '../main.dart';
 
 Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {
   final archive = Archive();
@@ -327,30 +328,20 @@ void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
         throw StateError('Invalid payroll PDF batch request');
       }
       final files = <Map<String, Object>>[];
-      const chunkConcurrency = 4;
-      for (var i = 0; i < rawArgs.length; i += chunkConcurrency) {
-        final chunk = rawArgs.sublist(
-          i,
-          (i + chunkConcurrency).clamp(0, rawArgs.length),
-        );
-        final chunkResults = await Future.wait(
-          chunk.map((rawWorkerArgs) async {
-            final workerArgs = Map<String, Object?>.from(rawWorkerArgs as Map);
-            final file = await _generatePayrollInvoiceFile(<String, Object?>{
-              ...sharedAssets,
-              ...workerArgs,
-              'invoiceIsolateReady': true,
-            });
-            final pdfBytes = file['bytes']! as Uint8List;
-            final result = <String, Object>{
-              ...file,
-              'bytes': TransferableTypedData.fromList(<Uint8List>[pdfBytes]),
-            };
-            replyPort.send(const <String, Object?>{'progress': 1});
-            return result;
-          }),
-        );
-        files.addAll(chunkResults);
+      for (final rawWorkerArgs in rawArgs) {
+        final workerArgs = Map<String, Object?>.from(rawWorkerArgs as Map);
+        final file = await _generatePayrollInvoiceFile(<String, Object?>{
+          ...sharedAssets,
+          ...workerArgs,
+          'invoiceIsolateReady': true,
+        });
+        final pdfBytes = file['bytes']! as Uint8List;
+        final result = <String, Object>{
+          ...file,
+          'bytes': TransferableTypedData.fromList(<Uint8List>[pdfBytes]),
+        };
+        files.add(result);
+        replyPort.send(const <String, Object?>{'progress': 1});
       }
       replyPort.send(<String, Object?>{'files': files});
     } catch (error) {
@@ -1662,46 +1653,35 @@ class PayrollRunner {
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
 
-      final zipSavePermission = Completer<bool>();
+      // 1. Commit database records snappy (~0.8s)
+      await _commitPayrollRun(
+        committedSummary,
+        isGuest,
+        context,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        controller: controller,
+      );
 
-      Future<void> prepareInvoices() async {
+      // 2. Run PDF generation & ZIP download asynchronously in background
+      if (paidResults.isNotEmpty) {
         final preloadedAssets = preloadedAssetsFuture == null
             ? null
             : await preloadedAssetsFuture;
-        await _generateAndSaveZipSafe(
-          context,
-          paidResults,
-          committedSummary.periodLabel,
-          companyProfile,
-          controller,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-          preloadedAssets: preloadedAssets,
-          savePermission: zipSavePermission.future,
+        unawaited(
+          _generateAndSaveZipSafe(
+            context,
+            paidResults,
+            committedSummary.periodLabel,
+            companyProfile,
+            controller,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            preloadedAssets: preloadedAssets,
+          ),
         );
-      }
-
-      final invoiceFuture = paidResults.isEmpty
-          ? Future<void>.value()
-          : prepareInvoices();
-
-      try {
-        await _commitPayrollRun(
-          committedSummary,
-          isGuest,
-          context,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-          controller: controller,
-        );
-        zipSavePermission.complete(true);
-        await invoiceFuture;
-      } catch (_) {
-        if (!zipSavePermission.isCompleted) {
-          zipSavePermission.complete(false);
-        }
-        await invoiceFuture;
-        rethrow;
+      } else {
+        controller.dismiss();
       }
 
       unawaited(
@@ -1714,12 +1694,7 @@ class PayrollRunner {
         ),
       );
 
-      controller.update(
-        progress: 1.0,
-        label: 'payroll_completed'.tr(),
-        forceLabel: true,
-      );
-      await Future.delayed(const Duration(milliseconds: 200));
+      return committedSummary;
     } catch (error, stackTrace) {
       if (!isGuest) {
         ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
@@ -1736,9 +1711,6 @@ class PayrollRunner {
       controller.dismiss();
       return null;
     }
-
-    controller.dismiss();
-    return committedSummary;
   }
 
   Future<void> _sendNotificationsInBackground(
@@ -2341,9 +2313,16 @@ class PayrollRunner {
       var pdfDone = 0;
       Object? firstPdfError;
       StackTrace? firstPdfStack;
-      const progressBatchSize = 1;
+      DateTime lastProgressReport = DateTime.now();
 
-      void reportPdfProgress() {
+      void reportPdfProgress({bool force = false}) {
+        final now = DateTime.now();
+        if (!force &&
+            pdfDone != successful.length &&
+            now.difference(lastProgressReport).inMilliseconds < 100) {
+          return;
+        }
+        lastProgressReport = now;
         controller?.update(
           progress: 0.10 + (0.80 * pdfDone / successful.length),
           label: 'generating_invoices_progress'.tr(
@@ -2367,10 +2346,7 @@ class PayrollRunner {
             workerBatches[workerIndex],
             (completed) {
               pdfDone += completed;
-              if (pdfDone == successful.length ||
-                  pdfDone % progressBatchSize == 0) {
-                reportPdfProgress();
-              }
+              reportPdfProgress(force: pdfDone == successful.length);
             },
           );
           invoiceFiles.addAll(files);
@@ -2453,14 +2429,24 @@ class PayrollRunner {
         zipFile = await _writeZipToWritableDir(fileName, zipData);
       }
 
-      if (context.mounted) {
+      controller?.update(
+        progress: 1.0,
+        label: 'payroll_completed'.tr(),
+        forceLabel: true,
+      );
+      await Future.delayed(const Duration(milliseconds: 350));
+      controller?.dismiss();
+
+      final targetContext = rootNavigatorKey.currentContext ?? (context.mounted ? context : null);
+      if (targetContext != null && targetContext.mounted) {
         FlashySnackBar.show(
-          context,
+          targetContext,
           message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
         );
       }
       unawaited(FileOpener.open(zipFile.path));
     } catch (e) {
+      controller?.dismiss();
       rethrow;
     }
   }

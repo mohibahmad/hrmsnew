@@ -514,6 +514,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
   }
 
+  void onSidebarPayrollClicked() {
+    _snoozedThisVisit = false;
+    _lastShownReminderKey = null;
+    _lastShownReminderDay = null;
+    _schedulePayrollReminderCheck(force: true);
+  }
+
   void _scheduleAttendanceFetch() {
     _attendanceDebounce?.cancel();
     _attendanceDebounce = Timer(const Duration(milliseconds: 75), () {

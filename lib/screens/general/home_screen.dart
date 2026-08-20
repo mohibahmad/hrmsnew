@@ -1053,6 +1053,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _selectedTimeOffWorker = null;
                         _activatedScreens[_getStackIndex()] = true;
                       });
+
+                      if (index == 2 && (subIndex == 1 || (subIndex == null && _selectedSubIndex == 1))) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _payrollKey.currentState?.onSidebarPayrollClicked();
+                        });
+                      }
                     },
                     onBackToLogin: _handleBackToLogin,
                   ),

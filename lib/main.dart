@@ -20,7 +20,7 @@ import 'services/error_reporter.dart';
 import 'services/preferences_service.dart';
 import 'widgets/session_timeout_gate.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -155,7 +155,7 @@ class HRMSApp extends ConsumerWidget {
     final sessionSettings = ref.watch(sessionTimeoutSettingsProvider);
 
     return MaterialApp(
-      navigatorKey: _rootNavigatorKey,
+      navigatorKey: rootNavigatorKey,
       title: 'HRMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -201,7 +201,7 @@ class HRMSApp extends ConsumerWidget {
                 context: 'sessionTimeoutSignOut',
               );
             }
-            _rootNavigatorKey.currentState?.pushAndRemoveUntil(
+            rootNavigatorKey.currentState?.pushAndRemoveUntil(
               noTransitionRoute(builder: (_) => const LoginScreen()),
               (route) => false,
             );
