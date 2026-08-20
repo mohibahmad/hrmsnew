@@ -222,14 +222,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           padding: const EdgeInsets.fromLTRB(40.0, 22.0, 40.0, 0.0),
           child: _buildSearchBar(),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Expanded(
           child: filtered.isEmpty
               ? SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40.0,
-                    vertical: 22.0,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 22.0),
                   child: _buildEmptyState(),
                 )
               : ListView.builder(
