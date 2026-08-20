@@ -226,10 +226,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final salaryVal = PayrollService.extractSalary(_salaryStr);
     _salaryCtrl.text = salaryVal == 0
         ? ''
-        : PayrollService.formatFullNumber(
-            salaryVal,
-            locale: context.locale.toString(),
-          );
+        : PayrollService.formatFullNumber(salaryVal);
 
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
@@ -874,10 +871,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final text = (value ?? '').toString().trim();
     final salaryVal = PayrollService.extractSalary(text);
     if (salaryVal == 0) return '';
-    return PayrollService.formatFullNumber(
-      salaryVal,
-      locale: context.locale.toString(),
-    );
+    // Always use en_US locale for input fields so comma separators display correctly.
+    return PayrollService.formatFullNumber(salaryVal);
   }
 
   Future<void> _generateAndShowInvoice() async {
