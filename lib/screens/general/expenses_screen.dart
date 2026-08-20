@@ -800,7 +800,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       cellAspectRatio: 1.0,
       selectedColor: const Color(0xFFFF0004),
       cellBorderRadius: BorderRadius.circular(6),
-      allowFutureMonths: true,
+      disableFutureDays: true,
     );
   }
 

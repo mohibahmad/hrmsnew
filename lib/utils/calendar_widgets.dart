@@ -105,6 +105,7 @@ class CalendarGrid extends StatelessWidget {
   final int? selectedDay;
   final ValueChanged<int> onDaySelected;
   final bool disablePastDays;
+  final bool disableFutureDays;
   final double spacing;
   final double cellAspectRatio;
   final Color selectedColor;
@@ -116,6 +117,7 @@ class CalendarGrid extends StatelessWidget {
     this.selectedDay,
     required this.onDaySelected,
     this.disablePastDays = false,
+    this.disableFutureDays = false,
     this.spacing = 6,
     this.cellAspectRatio = 1.0,
     this.selectedColor = const Color(0xFF0247C4),
@@ -143,11 +145,13 @@ class CalendarGrid extends StatelessWidget {
           final day = currentDay;
           final cellDate = DateTime(date.year, date.month, day);
           final isPast = disablePastDays && cellDate.isBefore(todayDate);
+          final isFuture = disableFutureDays && cellDate.isAfter(todayDate);
+          final isDisabled = isPast || isFuture;
           rowChildren.add(CalendarDayCell(
             day: '$day',
             isSelected: selectedDay != null && day == selectedDay,
-            isDisabled: isPast,
-            onTap: isPast ? null : () => onDaySelected(day),
+            isDisabled: isDisabled,
+            onTap: isDisabled ? null : () => onDaySelected(day),
             cellAspectRatio: cellAspectRatio,
             selectedColor: selectedColor,
             cellBorderRadius: cellBorderRadius,
@@ -175,6 +179,7 @@ class ModalCalendar extends StatelessWidget {
   final bool disablePastDays;
   final bool disablePastMonths;
   final bool allowFutureMonths;
+  final bool disableFutureDays;
   final bool showBorder;
   final Radius weekdayBorderRadius;
   final double cellAspectRatio;
@@ -191,6 +196,7 @@ class ModalCalendar extends StatelessWidget {
     this.disablePastDays = false,
     this.disablePastMonths = false,
     this.allowFutureMonths = false,
+    this.disableFutureDays = false,
     this.showBorder = true,
     this.weekdayBorderRadius = const Radius.circular(3),
     this.cellAspectRatio = 1.0,
@@ -274,6 +280,7 @@ class ModalCalendar extends StatelessWidget {
           selectedDay: selectedDay,
           onDaySelected: onDaySelected,
           disablePastDays: disablePastDays,
+          disableFutureDays: disableFutureDays,
           cellAspectRatio: cellAspectRatio,
           spacing: spacing,
           selectedColor: selectedColor,

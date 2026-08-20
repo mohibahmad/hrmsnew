@@ -79,6 +79,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool _reminderCheckPending = false;
   bool _reminderCheckForcePending = false;
   bool _reminderDialogOpen = false;
+  bool _snoozedThisVisit = false;
           String? _lastShownReminderKey;
   DateTime? _lastShownReminderDay;
   bool _workersLoaded = false;
@@ -160,6 +161,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.isActive && (!oldWidget.isActive || widget.activationToken != oldWidget.activationToken)) {
+      _snoozedThisVisit = false;
+      _lastShownReminderKey = null;
+      _lastShownReminderDay = null;
                   _schedulePayrollReminderCheck(force: false);
       if (!_isGuest && _payrollDocs.isNotEmpty) _scheduleAttendanceFetch();
     }
@@ -862,6 +866,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     final window = PayrollReminderWindow(payrollMonth: _payrollMonth, dueDate: _payPeriodEnd, dayOffset: offset);
 
                         if (!force) {
+      if (_snoozedThisVisit) return;
       if (await PreferencesService.isPayrollReminderIgnored(window.suppressionKey)) return;
       if (await PreferencesService.isPayrollReminderSnoozed(window.suppressionKey, now: now)) return;
     }
@@ -937,8 +942,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     switch (action) {
       case _PayrollReminderAction.remindLater:
-        await PreferencesService.snoozePayrollReminder(window.suppressionKey, now: now);
-        if (mounted) setState(() => _selectedFilter = 'All');
+        if (mounted) {
+          setState(() {
+            _snoozedThisVisit = true;
+            _selectedFilter = 'All';
+          });
+        }
       case _PayrollReminderAction.ignore:
         final nextPeriod = PayrollService.nextPayDayPeriod(
           PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
