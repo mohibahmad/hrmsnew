@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
 import '../../utils/firestore_record_utils.dart';
@@ -1504,15 +1505,32 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, _, _) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-          child: FadeTransition(
-            opacity: anim,
-            child: Dialog(
+        final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 12 * anim.value,
+                  sigmaY: 12 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: anim,
+                  child: Container(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  ),
+                ),
+              ),
+            ),
+            ScaleTransition(
+              scale: curve,
+              child: FadeTransition(
+                opacity: anim,
+                child: Dialog(
               backgroundColor: Colors.transparent,
               elevation: 0,
               insetPadding: const EdgeInsets.symmetric(
@@ -1651,9 +1669,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               ),
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
+  },
+);
   }
 
   @override

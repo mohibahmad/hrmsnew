@@ -1079,13 +1079,13 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(
-                  sigmaX: 6 * anim.value,
-                  sigmaY: 6 * anim.value,
+                  sigmaX: 12 * anim.value,
+                  sigmaY: 12 * anim.value,
                 ),
                 child: FadeTransition(
                   opacity: fade,
                   child: Container(
-                    color: const Color(0xFF000000).withValues(alpha: 0.35),
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
                   ),
                 ),
               ),
@@ -1131,13 +1131,13 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(
-                  sigmaX: 6 * anim.value,
-                  sigmaY: 6 * anim.value,
+                  sigmaX: 12 * anim.value,
+                  sigmaY: 12 * anim.value,
                 ),
                 child: FadeTransition(
                   opacity: fade,
                   child: Container(
-                    color: const Color(0xFF000000).withValues(alpha: 0.35),
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
                   ),
                 ),
               ),

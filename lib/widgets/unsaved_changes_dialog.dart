@@ -20,15 +20,18 @@ class UnsavedChangesDialog {
         return Stack(
           fit: StackFit.expand,
           children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(
-                sigmaX: 10 * animation.value,
-                sigmaY: 10 * animation.value,
-              ),
-              child: Container(
-                color: const Color(
-                  0xFF0F172A,
-                ).withValues(alpha: 0.35 * animation.value),
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 12 * animation.value,
+                  sigmaY: 12 * animation.value,
+                ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: Container(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  ),
+                ),
               ),
             ),
             FadeTransition(
