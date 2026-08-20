@@ -268,6 +268,11 @@ class PreferencesService {
     await prefs.setString('$_payrollReminderSnoozedPrefix$periodKey', snoozedUntil.toIso8601String());
   }
 
+  static Future<void> clearPayrollSnooze(String periodKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_payrollReminderSnoozedPrefix$periodKey');
+  }
+
   static Future<void> ignorePayrollReminder(String periodKey) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('$_payrollReminderIgnoredPrefix$periodKey', true);
