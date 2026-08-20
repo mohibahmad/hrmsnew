@@ -11,6 +11,8 @@ import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../services/dummy_data.dart';
 import '../utils/ui_helpers.dart';
+import '../services/preferences_service.dart';
+import '../services/error_reporter.dart';
 
 class NotificationSidebar extends ConsumerStatefulWidget {
   final VoidCallback onClose;
@@ -36,7 +38,10 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
   late AuthService _authService;
   late FirestoreService _firestore;
 
-  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+  bool get _isGuest =>
+      PreferencesService.cachedIsGuest ||
+      (_authService.currentUser?.isAnonymous ?? false) ||
+      _authService.currentUser == null;
 
   @override
   void initState() {
@@ -463,10 +468,11 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
           ),
           Row(
             children: [
-              if (_notifications.length > 1)
+              if (_notifications.isNotEmpty)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () async {
                       final confirmed = await DeleteDialog.show(
                         context: context,
@@ -476,11 +482,18 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                       );
                       if (confirmed) {
                         if (!_isGuest) {
-                          await _firestore.clearAllNotifications();
-                        } else {
-                          DummyData.notifications.clear();
-                          await DummyData.saveToPrefs();
+                          try {
+                            await _firestore.clearAllNotifications();
+                          } catch (e, st) {
+                            ErrorReporter.report(
+                              e,
+                              st,
+                              context: 'clearAllNotifications',
+                            );
+                          }
                         }
+                        DummyData.notifications.clear();
+                        await DummyData.saveToPrefs();
                         if (mounted) {
                           setState(() {
                             _notifications.clear();

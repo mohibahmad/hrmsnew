@@ -1159,6 +1159,20 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         AppDateUtils.parseDdMmYyyy((_joiningDate ?? '').trim());
     if (joiningDate == null) return;
 
+    final hasProfileImage =
+        _profileImageBytes != null ||
+        (_existingProfileImageUrl != null &&
+            _existingProfileImageUrl!.isNotEmpty);
+    if (!hasProfileImage) {
+      FlashySnackBar.show(
+        context,
+        message: 'profile_image_required'.tr(),
+        isError: true,
+      );
+      setState(() => _activeTabIndex = 0);
+      return;
+    }
+
     final hasFrontId =
         _frontIdBytes != null ||
         (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
@@ -2122,198 +2136,216 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                         isCvUploaded: _isCvUploaded,
                         onUploadCvTap: _pickCv,
                         onDeleteCvTap: () {
+                          bool popped = false;
                           showGeneralDialog(
                             context: context,
                             barrierDismissible: true,
                             barrierLabel: 'DeleteCvDialog',
-                            barrierColor: const Color(
-                              0xFF0F172A,
-                            ).withValues(alpha: 0.3),
+                            barrierColor: Colors.transparent,
                             transitionDuration: const Duration(
                               milliseconds: 400,
                             ),
                             pageBuilder:
-                                (context, animation, secondaryAnimation) =>
+                                (dialogContext, animation, secondaryAnimation) =>
                                     const SizedBox(),
-                            transitionBuilder: (context, animation, secondaryAnimation, child) {
+                            transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
                               final curve = CurvedAnimation(
                                 parent: animation,
                                 curve: Curves.easeOutBack,
                               );
-                              return BackdropFilter(
-                                filter: ui.ImageFilter.blur(
-                                  sigmaX: 12 * animation.value,
-                                  sigmaY: 12 * animation.value,
-                                ),
-                                child: FadeTransition(
-                                  opacity: animation,
-                                  child: ScaleTransition(
-                                    scale: curve,
-                                    child: Dialog(
-                                      backgroundColor: Colors.transparent,
-                                      child: Container(
-                                        width: 380,
-                                        padding: const EdgeInsets.all(28),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFFFFF),
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(
-                                                0xFF000000,
-                                              ).withValues(alpha: 0.15),
-                                              blurRadius: 24,
-                                              offset: const Offset(0, 8),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 64,
-                                              height: 64,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFFEE2E2),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.warning_rounded,
-                                                  color: Color(0xFFEF4444),
-                                                  size: 36,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            Text(
-                                              'confirm_delete'.tr(),
-                                              style: const TextStyle(
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w800,
-                                                color: Color(0xFF000000),
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              'delete_cv_confirmation'.tr(),
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: Color(0xFF64748B),
-                                                fontWeight: FontWeight.w400,
-                                                height: 1.4,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 28),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () => Navigator.of(
-                                                      context,
-                                                    ).pop(),
-                                                    behavior:
-                                                        HitTestBehavior.opaque,
-                                                    child: Container(
-                                                      height: 48,
-                                                      alignment:
-                                                          Alignment.center,
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFFF1F5F9,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                      ),
-                                                      child: Text(
-                                                        'cancel'.tr(),
-                                                        style: const TextStyle(
-                                                          color: Color(
-                                                            0xFF000000,
-                                                          ),
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontFamily: 'SF Pro',
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 16),
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                      setState(() {
-                                                        _cvBytes = null;
-                                                        _cvName = null;
-                                                        _existingCvUrl = null;
-                                                        _isCvUploaded = false;
-                                                      });
-                                                    },
-                                                    behavior:
-                                                        HitTestBehavior.opaque,
-                                                    child: Container(
-                                                      height: 48,
-                                                      alignment:
-                                                          Alignment.center,
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFFEF4444,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color:
-                                                                const Color(
-                                                                  0xFFEF4444,
-                                                                ).withValues(
-                                                                  alpha: 0.2,
-                                                                ),
-                                                            blurRadius: 8,
-                                                            offset:
-                                                                const Offset(
-                                                                  0,
-                                                                  4,
-                                                                ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: Text(
-                                                        'delete'.tr(),
-                                                        style: const TextStyle(
-                                                          color: Color(
-                                                            0xFFFFFFFF,
-                                                          ),
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontFamily: 'SF Pro',
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                              void safePop([VoidCallback? action]) {
+                                if (popped) return;
+                                popped = true;
+                                action?.call();
+                                final nav = Navigator.of(dialogContext);
+                                if (nav.canPop()) {
+                                  nav.pop();
+                                }
+                              }
+
+                              return Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: BackdropFilter(
+                                      filter: ui.ImageFilter.blur(
+                                        sigmaX: 12 * animation.value,
+                                        sigmaY: 12 * animation.value,
+                                      ),
+                                      child: FadeTransition(
+                                        opacity: animation,
+                                        child: Container(
+                                          color: const Color(0xFF0247C4).withValues(alpha: 0.18),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale: curve,
+                                      child: Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        child: Container(
+                                          width: 380,
+                                          padding: const EdgeInsets.all(28),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(
+                                                  0xFF000000,
+                                                ).withValues(alpha: 0.15),
+                                                blurRadius: 24,
+                                                offset: const Offset(0, 8),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 64,
+                                                height: 64,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFFEE2E2),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.warning_rounded,
+                                                    color: Color(0xFFEF4444),
+                                                    size: 36,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 20),
+                                              Text(
+                                                'confirm_delete'.tr(),
+                                                style: const TextStyle(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFF000000),
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                'delete_cv_confirmation'.tr(),
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFF64748B),
+                                                  fontWeight: FontWeight.w400,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 28),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () => safePop(),
+                                                      behavior:
+                                                          HitTestBehavior.opaque,
+                                                      child: Container(
+                                                        height: 48,
+                                                        alignment:
+                                                            Alignment.center,
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(
+                                                            0xFFF1F5F9,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                6,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          'cancel'.tr(),
+                                                          style: const TextStyle(
+                                                            color: Color(
+                                                              0xFF000000,
+                                                            ),
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontFamily: 'SF Pro',
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () {
+                                                        safePop(() {
+                                                          setState(() {
+                                                            _cvBytes = null;
+                                                            _cvName = null;
+                                                            _existingCvUrl = null;
+                                                            _isCvUploaded = false;
+                                                          });
+                                                        });
+                                                      },
+                                                      behavior:
+                                                          HitTestBehavior.opaque,
+                                                      child: Container(
+                                                        height: 48,
+                                                        alignment:
+                                                            Alignment.center,
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(
+                                                            0xFFEF4444,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                6,
+                                                              ),
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFEF4444,
+                                                                  ).withValues(
+                                                                    alpha: 0.2,
+                                                                  ),
+                                                              blurRadius: 8,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    4,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: Text(
+                                                          'delete'.tr(),
+                                                          style: const TextStyle(
+                                                            color: Color(
+                                                              0xFFFFFFFF,
+                                                            ),
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontFamily: 'SF Pro',
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               );
                             },
                           );
@@ -2415,176 +2447,205 @@ class WorkerDetailFormSection extends StatelessWidget {
     final now = DateTime.now();
     final maximumDate = DateTime(now.year - 18, now.month, now.day);
     DateTime selected = initialDate;
+    bool popped = false;
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, secondaryAnim, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-          child: FadeTransition(
-            opacity: anim,
-            child: Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 40,
-              ),
-              child: Center(
-                child: StatefulBuilder(
-                  builder: (_, setPickerState) {
-                    return Container(
-                      width: 380,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF0247C4,
-                            ).withValues(alpha: 0.18),
-                            blurRadius: 40,
-                            offset: const Offset(0, 12),
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.calendar,
-                                  size: 20,
-                                  color: Color(0xFF0247C4),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'date_of_birth'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF111827),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.exclamationmark_circle,
-                                  size: 14,
-                                  color: Color(0xFF6B7280),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'worker_must_be_18'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 200,
-                            child: CupertinoDatePicker(
-                              mode: CupertinoDatePickerMode.date,
-                              initialDateTime: initialDate,
-                              minimumDate: DateTime(1950),
-                              maximumDate: maximumDate,
-                              onDateTimeChanged: (DateTime newDate) {
-                                setPickerState(() {
-                                  selected = newDate;
-                                });
-                              },
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => Navigator.of(ctx).pop(),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          'cancel'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF374151),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      onDateSelected(selected);
-                                      Navigator.of(ctx).pop();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF0247C4),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          'done'.tr(),
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+        final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        void safePop([VoidCallback? action]) {
+          if (popped) return;
+          popped = true;
+          action?.call();
+          final nav = Navigator.of(ctx);
+          if (nav.canPop()) {
+            nav.pop();
+          }
+        }
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 12 * anim.value,
+                  sigmaY: 12 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: anim,
+                  child: Container(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  ),
                 ),
               ),
             ),
-          ),
+            ScaleTransition(
+              scale: curve,
+              child: FadeTransition(
+                opacity: anim,
+                child: Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 40,
+                  ),
+                  child: Center(
+                    child: StatefulBuilder(
+                      builder: (_, setPickerState) {
+                        return Container(
+                          width: 380,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF0247C4,
+                                ).withValues(alpha: 0.18),
+                                blurRadius: 40,
+                                offset: const Offset(0, 12),
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      CupertinoIcons.calendar,
+                                      size: 20,
+                                      color: Color(0xFF0247C4),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'date_of_birth'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111827),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      CupertinoIcons.exclamationmark_circle,
+                                      size: 14,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'worker_must_be_18'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF6B7280),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 200,
+                                child: CupertinoDatePicker(
+                                  mode: CupertinoDatePickerMode.date,
+                                  initialDateTime: initialDate,
+                                  minimumDate: DateTime(1950),
+                                  maximumDate: maximumDate,
+                                  onDateTimeChanged: (DateTime newDate) {
+                                    setPickerState(() {
+                                      selected = newDate;
+                                    });
+                                  },
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => safePop(),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF3F4F6),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'cancel'.tr(),
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF374151),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          safePop(() => onDateSelected(selected));
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF0247C4),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'done'.tr(),
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -2920,166 +2981,189 @@ class WorkerDetailFormSection extends StatelessWidget {
             right: 12,
             child: GestureDetector(
               onTap: () {
+                bool popped = false;
                 showGeneralDialog(
                   context: context,
                   barrierDismissible: true,
                   barrierLabel: 'RemoveProfileImage',
-                  barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                  barrierColor: Colors.transparent,
                   transitionDuration: const Duration(milliseconds: 400),
-                  pageBuilder: (context, animation, secondaryAnimation) =>
+                  pageBuilder: (dialogContext, animation, secondaryAnimation) =>
                       const SizedBox(),
                   transitionBuilder:
-                      (context, animation, secondaryAnimation, child) {
+                      (dialogContext, animation, secondaryAnimation, child) {
                         final curve = CurvedAnimation(
                           parent: animation,
                           curve: Curves.easeOutBack,
                         );
-                        return BackdropFilter(
-                          filter: ui.ImageFilter.blur(
-                            sigmaX: 12 * animation.value,
-                            sigmaY: 12 * animation.value,
-                          ),
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(
-                              scale: curve,
-                              child: Dialog(
-                                backgroundColor: Colors.transparent,
-                                child: Container(
-                                  width: 380,
-                                  padding: const EdgeInsets.all(28),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFFFFF),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF000000,
-                                        ).withValues(alpha: 0.15),
-                                        blurRadius: 24,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 64,
-                                        height: 64,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFFEE2E2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.warning_rounded,
-                                            color: Color(0xFFEF4444),
-                                            size: 36,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Text(
-                                        'remove_profile_image'.tr(),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'remove_profile_image_desc'.tr(),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF64748B),
-                                          fontWeight: FontWeight.w400,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 28),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () =>
-                                                  Navigator.of(context).pop(),
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                height: 48,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFF1F5F9,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  'cancel'.tr(),
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF000000),
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'SF Pro',
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                Navigator.of(context).pop();
-                                                onDeleteProfileTap?.call();
-                                              },
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                height: 48,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFEF4444,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: const Color(
-                                                        0xFFEF4444,
-                                                      ).withValues(alpha: 0.2),
-                                                      blurRadius: 8,
-                                                      offset: const Offset(
-                                                        0,
-                                                        4,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Text(
-                                                  'remove'.tr(),
-                                                  style: const TextStyle(
-                                                    color: Color(0xFFFFFFFF),
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'SF Pro',
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                        void safePop([VoidCallback? action]) {
+                          if (popped) return;
+                          popped = true;
+                          action?.call();
+                          final nav = Navigator.of(dialogContext);
+                          if (nav.canPop()) {
+                            nav.pop();
+                          }
+                        }
+
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: BackdropFilter(
+                                filter: ui.ImageFilter.blur(
+                                  sigmaX: 12 * animation.value,
+                                  sigmaY: 12 * animation.value,
+                                ),
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: Container(
+                                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                            FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: curve,
+                                child: Dialog(
+                                  backgroundColor: Colors.transparent,
+                                  child: Container(
+                                    width: 380,
+                                    padding: const EdgeInsets.all(28),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFFFF),
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF000000,
+                                          ).withValues(alpha: 0.15),
+                                          blurRadius: 24,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFFEE2E2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.warning_rounded,
+                                              color: Color(0xFFEF4444),
+                                              size: 36,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Text(
+                                          'remove_profile_image'.tr(),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF000000),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'remove_profile_image_desc'.tr(),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF64748B),
+                                            fontWeight: FontWeight.w400,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 28),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () => safePop(),
+                                                behavior: HitTestBehavior.opaque,
+                                                child: Container(
+                                                  height: 48,
+                                                  alignment: Alignment.center,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFFF1F5F9,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(
+                                                    'cancel'.tr(),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF000000),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontFamily: 'SF Pro',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  safePop(() {
+                                                    onDeleteProfileTap?.call();
+                                                  });
+                                                },
+                                                behavior: HitTestBehavior.opaque,
+                                                child: Container(
+                                                  height: 48,
+                                                  alignment: Alignment.center,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFFEF4444,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: const Color(
+                                                          0xFFEF4444,
+                                                        ).withValues(alpha: 0.2),
+                                                        blurRadius: 8,
+                                                        offset: const Offset(
+                                                          0,
+                                                          4,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Text(
+                                                    'remove'.tr(),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFFFFFFFF),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontFamily: 'SF Pro',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
                       },
                 );

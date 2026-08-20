@@ -1500,6 +1500,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     );
     if (selected.isBefore(min)) selected = min;
     if (selected.isAfter(max)) selected = max;
+    bool popped = false;
 
     showGeneralDialog(
       context: context,
@@ -1510,6 +1511,16 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, _, _) {
         final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        void safePop([VoidCallback? action]) {
+          if (popped) return;
+          popped = true;
+          action?.call();
+          final nav = Navigator.of(ctx);
+          if (nav.canPop()) {
+            nav.pop();
+          }
+        }
+
         return Stack(
           children: [
             Positioned.fill(
@@ -1608,7 +1619,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                               children: [
                                 Expanded(
                                   child: GestureDetector(
-                                    onTap: () => Navigator.of(ctx).pop(),
+                                    onTap: () => safePop(),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 12,
@@ -1634,8 +1645,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 Expanded(
                                   child: GestureDetector(
                                     onTap: () {
-                                      onDateSelected(selected);
-                                      Navigator.of(ctx).pop();
+                                      safePop(() => onDateSelected(selected));
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(

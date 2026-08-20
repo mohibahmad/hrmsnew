@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -144,199 +145,231 @@ void showCupertinoDatePickerDialog({
     selected = maximumDate;
   }
 
+  bool popped = false;
+
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Date Picker',
-    barrierColor: AppColors.primaryBlue.withValues(alpha: 0.5),
+    barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (_, _, _) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, secondaryAnim, child) {
-      return ScaleTransition(
-        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-        child: FadeTransition(
-          opacity: anim,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 40,
-            ),
-            child: Center(
-              child: StatefulBuilder(
-                builder: (_, setPickerState) {
-                  return Container(
-                    width: 380,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF0247C4,
-                          ).withValues(alpha: 0.18),
-                          blurRadius: 40,
-                          offset: const Offset(0, 12),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                CupertinoIcons.calendar,
-                                size: 20,
-                                color: AppColors.primaryBlue,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (fieldKey == 'dob')
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.exclamationmark_circle,
-                                  size: 14,
-                                  color: AppColors.textDarkGrey,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'worker_must_be_18'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textDarkGrey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 200,
-                          child: CupertinoDatePicker(
-                            mode: CupertinoDatePickerMode.date,
-                            initialDateTime: selected,
-                            minimumDate: minimumDate,
-                            maximumDate: maximumDate,
-                            onDateTimeChanged: (DateTime newDate) {
-                              setPickerState(() {
-                                selected = newDate;
-                              });
-                            },
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => Navigator.of(ctx).pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.disabledFill,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'cancel'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF374151),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    if (fieldKey == 'dob' &&
-                                        !Validators.isAtLeast18(selected)) {
-                                      FlashySnackBar.show(
-                                        ctx,
-                                        message: 'worker_must_be_18'.tr(),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    if (fieldKey == 'joiningDate' &&
-                                        selected.isAfter(DateTime.now())) {
-                                      FlashySnackBar.show(
-                                        ctx,
-                                        message: 'joining_date_cannot_be_future'
-                                            .tr(),
-                                        isError: true,
-                                      );
-                                      return;
-                                    }
-                                    final dateStr = AppDateUtils.formatDate(
-                                      selected,
-                                    );
-                                    onDateSelected(dateStr);
-                                    setDialogState(() {});
-                                    Navigator.of(ctx).pop();
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryBlue,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'done'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+      final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+      void safePop([VoidCallback? action]) {
+        if (popped) return;
+        popped = true;
+        action?.call();
+        final nav = Navigator.of(ctx);
+        if (nav.canPop()) {
+          nav.pop();
+        }
+      }
+
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(
+                sigmaX: 12 * anim.value,
+                sigmaY: 12 * anim.value,
+              ),
+              child: FadeTransition(
+                opacity: anim,
+                child: Container(
+                  color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                ),
               ),
             ),
           ),
-        ),
+          ScaleTransition(
+            scale: curve,
+            child: FadeTransition(
+              opacity: anim,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 40,
+                ),
+                child: Center(
+                  child: StatefulBuilder(
+                    builder: (_, setPickerState) {
+                      return Container(
+                        width: 380,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF0247C4,
+                              ).withValues(alpha: 0.18),
+                              blurRadius: 40,
+                              offset: const Offset(0, 12),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.calendar,
+                                    size: 20,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (fieldKey == 'dob')
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      CupertinoIcons.exclamationmark_circle,
+                                      size: 14,
+                                      color: AppColors.textDarkGrey,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'worker_must_be_18'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textDarkGrey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 200,
+                              child: CupertinoDatePicker(
+                                mode: CupertinoDatePickerMode.date,
+                                initialDateTime: selected,
+                                minimumDate: minimumDate,
+                                maximumDate: maximumDate,
+                                onDateTimeChanged: (DateTime newDate) {
+                                  setPickerState(() {
+                                    selected = newDate;
+                                  });
+                                },
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => safePop(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.disabledFill,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'cancel'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF374151),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        if (fieldKey == 'dob' &&
+                                            !Validators.isAtLeast18(selected)) {
+                                          FlashySnackBar.show(
+                                            ctx,
+                                            message: 'worker_must_be_18'.tr(),
+                                            isError: true,
+                                          );
+                                          return;
+                                        }
+                                        if (fieldKey == 'joiningDate' &&
+                                            selected.isAfter(DateTime.now())) {
+                                          FlashySnackBar.show(
+                                            ctx,
+                                            message: 'joining_date_cannot_be_future'
+                                                .tr(),
+                                            isError: true,
+                                          );
+                                          return;
+                                        }
+                                        final dateStr = AppDateUtils.formatDate(
+                                          selected,
+                                        );
+                                        safePop(() {
+                                          onDateSelected(dateStr);
+                                          setDialogState(() {});
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryBlue,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'done'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     },
   );

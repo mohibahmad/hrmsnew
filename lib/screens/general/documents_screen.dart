@@ -319,7 +319,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           Text(
             _searchQuery.isNotEmpty
                 ? 'no_search_results'.tr()
-                : 'no_workers_added_yet'.tr(),
+                : 'no_documents_uploaded_yet'.tr(),
             style: const TextStyle(
               color: Color(0xFF0247C4),
               fontSize: 16,
