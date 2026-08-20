@@ -249,7 +249,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         const SizedBox(height: 20),
         _buildPrimaryButton(label: 'send_reset_link'.tr(), onPressed: _sendResetEmail),
         const SizedBox(height: 18),
-        Center(child: _buildTapText(label: 'back'.tr(), onTap: () => Navigator.of(context).pop())),
+        Center(child: _buildTapText(label: 'back'.tr(), onTap: () {
+          final route = ModalRoute.of(context);
+          if (route != null && route.isCurrent) {
+            Navigator.of(context).pop();
+          }
+        })),
         const SizedBox(height: 20),
       ],
     );
@@ -290,7 +295,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _buildPrimaryButton(label: 'back_to_login'.tr(), onPressed: () => Navigator.of(context).pop(true)),
+        _buildPrimaryButton(label: 'back_to_login'.tr(), onPressed: () {
+          final route = ModalRoute.of(context);
+          if (route != null && route.isCurrent) {
+            Navigator.of(context).pop(true);
+          }
+        }),
         const SizedBox(height: 18),
         Center(child: _buildTapText(label: 'resend_email'.tr(), onTap: _isLoading ? null : _sendResetEmail)),
         const SizedBox(height: 20),

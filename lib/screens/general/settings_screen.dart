@@ -223,7 +223,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               children: [
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: isSending ? null : () => Navigator.of(dialogContext).pop(),
+                                    onPressed: isSending
+                                        ? null
+                                        : () {
+                                            final route = ModalRoute.of(dialogContext);
+                                            if (route != null && route.isCurrent) {
+                                              Navigator.of(dialogContext).pop();
+                                            }
+                                          },
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: const Color(0xFF475569),
                                       side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -463,7 +470,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: GestureDetector(
-                                onTap: dialogIsDeleting ? null : () => Navigator.of(dialogContext).pop(),
+                                onTap: dialogIsDeleting
+                                    ? null
+                                    : () {
+                                        final route = ModalRoute.of(dialogContext);
+                                        if (route != null && route.isCurrent) {
+                                          Navigator.of(dialogContext).pop();
+                                        }
+                                      },
                                 behavior: HitTestBehavior.opaque,
                                 child: Container(
                                   height: 48, alignment: Alignment.center,

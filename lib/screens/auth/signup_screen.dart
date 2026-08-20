@@ -22,7 +22,6 @@ import 'login_screen.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
-
   @override
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
@@ -86,12 +85,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _openLogin() {
     if (!mounted || _anyLoading) return;
-    Navigator.of(context).pushReplacement(authTransitionRoute(builder: (_) => const LoginScreen()));
+    Navigator.of(
+      context,
+    ).pushReplacement(authTransitionRoute(builder: (_) => const LoginScreen()));
   }
 
   void _openHome() {
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(authTransitionRoute(builder: (_) => const HomeScreen()));
+    Navigator.of(
+      context,
+    ).pushReplacement(authTransitionRoute(builder: (_) => const HomeScreen()));
   }
 
   Future<void> _handleGoogleLogin() async {
@@ -104,29 +107,60 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
       if (await _firestoreService.isCurrentUserDeleted()) {
         await _authService.signOut();
-        if (mounted) FlashySnackBar.show(context, message: 'account_deleted_contact'.tr(), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'account_deleted_contact'.tr(),
+            isError: true,
+          );
         return;
       }
 
       final profile = await _firestoreService.getUserProfile();
       if (profile == null) {
         await _authService.signOut();
-        if (mounted) FlashySnackBar.show(context, message: 'user_not_found'.tr(), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'user_not_found'.tr(),
+            isError: true,
+          );
         return;
       }
 
       if (!mounted) return;
-      FlashySnackBar.show(context, title: 'success'.tr(), message: 'welcome_back'.tr());
+      FlashySnackBar.show(
+        context,
+        title: 'success'.tr(),
+        message: 'welcome_back'.tr(),
+      );
       _openHome();
     } on GoogleSignInException catch (e) {
-      if (e.code == GoogleSignInExceptionCode.canceled || e.code == GoogleSignInExceptionCode.interrupted) return;
-      if (mounted) FlashySnackBar.show(context, message: 'google_login_failed'.tr(), isError: true);
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted)
+        return;
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'google_login_failed'.tr(),
+          isError: true,
+        );
     } on FirebaseAuthException catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupGoogle');
-      if (mounted) FlashySnackBar.show(context, message: 'google_login_failed'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'google_login_failed'.tr(),
+          isError: true,
+        );
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupGoogle');
-      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -138,11 +172,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       await _authService.signInAnonymously();
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
-        FlashySnackBar.show(context, title: 'success'.tr(), message: 'continuing_as_guest'.tr());
+        FlashySnackBar.show(
+          context,
+          title: 'success'.tr(),
+          message: 'continuing_as_guest'.tr(),
+        );
         _openHome();
       }
     } catch (_) {
-      if (mounted) FlashySnackBar.show(context, message: 'guest_login_failed'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'guest_login_failed'.tr(),
+          isError: true,
+        );
     } finally {
       if (mounted) setState(() => _isGuestLoading = false);
     }
@@ -158,7 +201,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       try {
         await _authService.signOut();
       } catch (signOutError, signOutStack) {
-        ErrorReporter.report(signOutError, signOutStack, context: 'signupAuthCleanupSignOut');
+        ErrorReporter.report(
+          signOutError,
+          signOutStack,
+          context: 'signupAuthCleanupSignOut',
+        );
       }
       return false;
     }
@@ -180,28 +227,52 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         isDeleted = await _firestoreService.isEmailDeleted(email);
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'signupDeletedEmailCheck');
-        if (mounted) FlashySnackBar.show(context, message: 'network_error'.tr(), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'network_error'.tr(),
+            isError: true,
+          );
         return;
       }
 
       if (isDeleted) {
-        if (mounted) FlashySnackBar.show(context, message: 'account_deleted_contact'.tr(), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'account_deleted_contact'.tr(),
+            isError: true,
+          );
         return;
       }
 
-      final credential = await _authService.signUp(email: email, password: _passwordController.text);
+      final credential = await _authService.signUp(
+        email: email,
+        password: _passwordController.text,
+      );
       final emailLocalPart = Validators.nameFromEmail(email);
 
-      try { await credential.user?.updateDisplayName(emailLocalPart); }
-      catch (e, st) { ErrorReporter.report(e, st, context: 'signupDisplayName'); }
+      try {
+        await credential.user?.updateDisplayName(emailLocalPart);
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupDisplayName');
+      }
 
       try {
-        await _firestoreService.createUserProfile(username: emailLocalPart, email: email, phone: '');
+        await _firestoreService.createUserProfile(
+          username: emailLocalPart,
+          email: email,
+          phone: '',
+        );
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'signupCreateProfile');
         final deleted = await _cleanupIncompleteSignup(credential.user);
         if (!deleted && mounted) {
-          FlashySnackBar.show(context, message: 'signup_recovery_required'.tr(), isError: true);
+          FlashySnackBar.show(
+            context,
+            message: 'signup_recovery_required'.tr(),
+            isError: true,
+          );
           return;
         }
         rethrow;
@@ -210,26 +281,51 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       try {
         await _firestoreService.addNotification({
           'type': 'welcome',
-          'title': 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
+          'title': 'notif_title_welcome'.tr(
+            namedArgs: {'name': emailLocalPart},
+          ),
           'message': 'notif_msg_welcome'.tr(),
           'data': {'name': emailLocalPart},
         });
-      } catch (e, st) { ErrorReporter.report(e, st, context: 'signupWelcomeNotification'); }
-
-      if (mounted) {
-        try { await offerBiometricLogin(context: context, email: email, password: _passwordController.text); }
-        catch (e, st) { ErrorReporter.report(e, st, context: 'signupBiometricOffer'); }
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
       }
 
       if (mounted) {
-        FlashySnackBar.show(context, title: 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}), message: 'notif_msg_welcome'.tr());
+        try {
+          await offerBiometricLogin(
+            context: context,
+            email: email,
+            password: _passwordController.text,
+          );
+        } catch (e, st) {
+          ErrorReporter.report(e, st, context: 'signupBiometricOffer');
+        }
+      }
+
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          title: 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
+          message: 'notif_msg_welcome'.tr(),
+        );
         _openHome();
       }
     } on FirebaseAuthException catch (e) {
-      if (mounted) FlashySnackBar.show(context, message: _firebaseSignupError(e), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: _firebaseSignupError(e),
+          isError: true,
+        );
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupEmail');
-      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -243,10 +339,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       'weak-password' => 'weak_password'.tr(),
       'operation-not-allowed' => 'email_accounts_not_enabled'.tr(),
       'too-many-requests' => 'too_many_requests'.tr(),
-      'network-request-failed' || 'network-error' || 'unavailable' => 'network_error'.tr(),
-      _ => (e.message?.toLowerCase().contains('network') ?? false)
+      'network-request-failed' ||
+      'network-error' ||
+      'unavailable' => 'network_error'.tr(),
+      _ =>
+        (e.message?.toLowerCase().contains('network') ?? false)
             ? 'network_error'.tr()
-            : 'signup_failed'.tr(namedArgs: {'code': e.code, 'message': e.message ?? ''}),
+            : 'signup_failed'.tr(
+                namedArgs: {'code': e.code, 'message': e.message ?? ''},
+              ),
     };
   }
 
@@ -284,15 +385,37 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             clipBehavior: Clip.hardEdge,
             children: [
               Positioned(
-                top: 50, left: 100, right: 40,
+                top: 50,
+                left: 100,
+                right: 40,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('welcome_to_hrms'.tr(), maxLines: 1,
-                        style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display', height: 0.9, letterSpacing: 1.8)),
+                    Text(
+                      'welcome_to_hrms'.tr(),
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 58,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFFFFFF),
+                        fontFamily: 'SF Pro Display',
+                        height: 0.9,
+                        letterSpacing: 1.8,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-                    Text('welcome_banner_subtitle'.tr(), maxLines: 2,
-                        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), fontFamily: 'SF Pro Display', height: 1.2, letterSpacing: 1.8)),
+                    Text(
+                      'welcome_banner_subtitle'.tr(),
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFFFFFF),
+                        fontFamily: 'SF Pro Display',
+                        height: 1.2,
+                        letterSpacing: 1.8,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -308,18 +431,39 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
                       border: Border(
-                        left: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
-                        right: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
-                        bottom: BorderSide(color: const Color(0xFF000000), width: 20 * scale),
+                        left: BorderSide(
+                          color: const Color(0xFF000000),
+                          width: 20 * scale,
+                        ),
+                        right: BorderSide(
+                          color: const Color(0xFF000000),
+                          width: 20 * scale,
+                        ),
+                        bottom: BorderSide(
+                          color: const Color(0xFF000000),
+                          width: 20 * scale,
+                        ),
                       ),
                       boxShadow: [
-                        const BoxShadow(color: Colors.white, blurRadius: 0, spreadRadius: 3),
-                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(10, 9)),
+                        const BoxShadow(
+                          color: Colors.white,
+                          blurRadius: 0,
+                          spreadRadius: 3,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 30,
+                          offset: const Offset(10, 9),
+                        ),
                       ],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.asset('assets/dashboard_mockup.png', fit: BoxFit.cover, alignment: Alignment.topLeft),
+                      child: Image.asset(
+                        'assets/dashboard_mockup.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topLeft,
+                      ),
                     ),
                   ),
                 ),
@@ -343,13 +487,34 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Center(child: Image.asset('assets/app_icon.png', height: 120, fit: BoxFit.contain)),
+                Center(
+                  child: Image.asset(
+                    'assets/app_icon.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                ),
                 const SizedBox(height: 10),
-                Text('create_account'.tr(),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Colors.black, letterSpacing: -0.5, height: 1.2)),
+                Text(
+                  'create_account'.tr(),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                    height: 1.2,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('signup_subtitle'.tr(),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade800, height: 1.0)),
+                Text(
+                  'signup_subtitle'.tr(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade800,
+                    height: 1.0,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 _buildSignupForm(),
                 const SizedBox(height: 24),
@@ -360,7 +525,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 if (_googleEnabled) ...[
                   buildSocialButton(
                     text: 'continue_with_google'.tr(),
-                    icon: SvgPicture.asset('assets/google_icon.svg', width: 18, height: 18),
+                    icon: SvgPicture.asset(
+                      'assets/google_icon.svg',
+                      width: 18,
+                      height: 18,
+                    ),
                     isLoading: _isGoogleLoading,
                     onPressed: _anyLoading ? null : _handleGoogleLogin,
                     backgroundColor: Colors.white,
@@ -370,24 +539,41 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ],
                 buildSocialButton(
                   text: 'continue_as_guest'.tr(),
-                  icon: SvgPicture.asset('assets/guest_icon.svg', width: 18, height: 18,
-                      colorFilter: const ColorFilter.mode(Color(0xFF0044C9), BlendMode.srcIn)),
+                  icon: SvgPicture.asset(
+                    'assets/guest_icon.svg',
+                    width: 18,
+                    height: 18,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFF0044C9),
+                      BlendMode.srcIn,
+                    ),
+                  ),
                   isLoading: _isGuestLoading,
                   onPressed: _anyLoading ? null : _handleGuestLogin,
                   backgroundColor: Colors.white,
                   textColor: const Color(0xFF0044C9),
-                  border: BorderSide(color: const Color(0xFF0044C9).withOpacity(0.4), width: 1.2),
+                  border: BorderSide(
+                    color: const Color(0xFF0044C9).withOpacity(0.4),
+                    width: 1.2,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Center(
                   child: RichText(
                     text: TextSpan(
                       text: 'already_have_account'.tr(),
-                      style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500, ),
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                       children: [
                         TextSpan(
                           text: 'sign_in'.tr(),
-                          style: const TextStyle(color: Color(0xFFFF1014), fontWeight: FontWeight.w500, ),
+                          style: const TextStyle(
+                            color: Color(0xFFFF1014),
+                            fontWeight: FontWeight.w500,
+                          ),
                           recognizer: _signInRecognizer,
                         ),
                       ],
@@ -406,7 +592,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   Widget _buildSignupForm() {
     return Form(
       key: _formKey,
-      autovalidateMode: _submitted ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
+      autovalidateMode: _submitted
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -418,8 +606,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'email_required'.tr();
-              if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) return 'email_invalid'.tr();
+              if (value == null || value.trim().isEmpty)
+                return 'email_required'.tr();
+              if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim()))
+                return 'email_invalid'.tr();
               return null;
             },
           ),
@@ -445,10 +635,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             isPassword: true,
             enabled: !_anyLoading,
             textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) { if (!_anyLoading) _handleSignUp(); },
+            onFieldSubmitted: (_) {
+              if (!_anyLoading) _handleSignUp();
+            },
             validator: (value) {
-              if (value == null || value.isEmpty) return 'confirm_password_required'.tr();
-              if (value != _passwordController.text) return 'passwords_do_not_match'.tr();
+              if (value == null || value.isEmpty)
+                return 'confirm_password_required'.tr();
+              if (value != _passwordController.text)
+                return 'passwords_do_not_match'.tr();
               return null;
             },
           ),
@@ -467,12 +661,28 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           backgroundColor: const Color(0xFF0044C9),
           foregroundColor: const Color(0xFFFFFFFF),
           disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           elevation: 0,
         ),
         child: _isLoading
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF))))
-            : Text('create_account'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF), )),
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                ),
+              )
+            : Text(
+                'create_account'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFFFFFF),
+                ),
+              ),
       ),
     );
   }
@@ -483,7 +693,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         Expanded(child: Divider(color: Colors.grey.shade300)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('or'.tr(), style: TextStyle(color: Colors.grey.shade400, fontSize: 13, )),
+          child: Text(
+            'or'.tr(),
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          ),
         ),
         Expanded(child: Divider(color: Colors.grey.shade300)),
       ],
@@ -494,13 +707,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     return GestureDetector(
       onTap: () => showLanguageModal(context),
       child: Container(
-        width: 42, height: 42,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Center(child: Image.asset('assets/langauge_icon.png', width: 24, height: 24, color: const Color(0xFF0044C9))),
+        child: Center(
+          child: Image.asset(
+            'assets/langauge_icon.png',
+            width: 24,
+            height: 24,
+            color: const Color(0xFF0044C9),
+          ),
+        ),
       ),
     );
   }

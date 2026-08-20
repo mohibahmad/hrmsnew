@@ -157,7 +157,12 @@ class _LogoutDialogContent extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(false),
+                      onTap: () {
+                        final route = ModalRoute.of(context);
+                        if (route != null && route.isCurrent) {
+                          Navigator.of(context).pop(false);
+                        }
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         height: 48,
@@ -180,7 +185,12 @@ class _LogoutDialogContent extends StatelessWidget {
                   const SizedBox(width: 16),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(true),
+                      onTap: () {
+                        final route = ModalRoute.of(context);
+                        if (route != null && route.isCurrent) {
+                          Navigator.of(context).pop(true);
+                        }
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         height: 48,
