@@ -76,47 +76,53 @@ class InvoiceService {
     final isNegativeNet = _parseValue(netSalary) < 0;
 
     pdf.addPage(
-      pw.MultiPage(
+      pw.Page(
         theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(24, 28, 24, 40),
-        build: (context) => _buildContent(
-          logoImage: logoImage,
-          stampImage: stampImage,
-          employeeImage: employeeImage,
-          companyName: companyName,
-          companyAddress: companyAddress,
-          companyEmail: companyEmail,
-          companyPhone: companyPhone,
-          companyId: companyId,
-          employeeName: employeeName,
-          position: position,
-          email: email,
-          payPeriod: payPeriod,
-          invoiceNumber: invoiceNumber,
-          now: now,
-          detectedCurrency: detectedCurrency,
-          dailyRate: dailyRate,
-          totalWorkDays: totalWorkDays,
-          grossPay: grossPay,
-          hasOvertime: hasOvertime,
-          overtimeAmount: overtimeAmount,
-          overtimePay: overtimePay,
-          hasAbsentDeduction: hasAbsentDeduction,
-          absentDeduction: absentDeduction,
-          absents: absents,
-          hasLeaveDeduction: hasLeaveDeduction,
-          leaveDeduction: leaveDeduction,
-          deductibleLeaveDays: deductibleLeaveDays,
-          hasDeductions: hasDeductions,
-          totalDeductions: totalDeductions,
-          netSalary: netSalary,
-          isNegativeNet: isNegativeNet,
-          salary: salary,
-          invoiceLeaves: invoiceLeaves,
-          paymentMethod: paymentMethod,
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            ..._buildContent(
+              logoImage: logoImage,
+              stampImage: stampImage,
+              employeeImage: employeeImage,
+              companyName: companyName,
+              companyAddress: companyAddress,
+              companyEmail: companyEmail,
+              companyPhone: companyPhone,
+              companyId: companyId,
+              employeeName: employeeName,
+              position: position,
+              email: email,
+              payPeriod: payPeriod,
+              invoiceNumber: invoiceNumber,
+              now: now,
+              detectedCurrency: detectedCurrency,
+              dailyRate: dailyRate,
+              totalWorkDays: totalWorkDays,
+              grossPay: grossPay,
+              hasOvertime: hasOvertime,
+              overtimeAmount: overtimeAmount,
+              overtimePay: overtimePay,
+              hasAbsentDeduction: hasAbsentDeduction,
+              absentDeduction: absentDeduction,
+              absents: absents,
+              hasLeaveDeduction: hasLeaveDeduction,
+              leaveDeduction: leaveDeduction,
+              deductibleLeaveDays: deductibleLeaveDays,
+              hasDeductions: hasDeductions,
+              totalDeductions: totalDeductions,
+              netSalary: netSalary,
+              isNegativeNet: isNegativeNet,
+              salary: salary,
+              invoiceLeaves: invoiceLeaves,
+              paymentMethod: paymentMethod,
+            ),
+            pw.Spacer(),
+            _buildFooter(),
+          ],
         ),
-        footer: (context) => _buildFooter(),
       ),
     );
 
@@ -139,17 +145,39 @@ class InvoiceService {
   static pw.Font? _cachedParsedFont;
   static pw.Font? _cachedThemeFont;
   static pw.ThemeData? _cachedTheme;
-  static Uint8List? _cachedLogoBytes;
-  static String? _cachedLogoUrl;
   static pw.MemoryImage? _cachedLogoImage;
-  static Uint8List? _cachedStampBytes;
-  static String? _cachedStampUrl;
   static pw.MemoryImage? _cachedStampImage;
 
-  static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
-    if (fontBytes != null) {
+  static void warmupCache({
+    Uint8List? fontBytes,
+    Uint8List? logoBytes,
+    Uint8List? stampBytes,
+  }) {
+    if (fontBytes != null && fontBytes.isNotEmpty && _cachedParsedFont == null) {
+      try {
+        final font = pw.Font.ttf(
+          fontBytes.buffer.asByteData(fontBytes.offsetInBytes, fontBytes.lengthInBytes),
+        );
+        _cachedParsedFont = font;
+        _cachedThemeFont = font;
+        _cachedTheme = PdfHelpers.buildTheme(font);
+      } catch (_) {}
+    }
+    if (logoBytes != null && logoBytes.isNotEmpty && _cachedLogoImage == null) {
+      try {
+        _cachedLogoImage = pw.MemoryImage(logoBytes);
+      } catch (_) {}
+    }
+    if (stampBytes != null && stampBytes.isNotEmpty && _cachedStampImage == null) {
+      try {
+        _cachedStampImage = pw.MemoryImage(stampBytes);
+      } catch (_) {}
+    }
+  }
 
-      if (_cachedParsedFont != null) return _cachedParsedFont;
+  static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
+    if (_cachedParsedFont != null) return _cachedParsedFont;
+    if (fontBytes != null && fontBytes.isNotEmpty) {
       try {
         final font = pw.Font.ttf(
           fontBytes.buffer.asByteData(fontBytes.offsetInBytes, fontBytes.lengthInBytes),
@@ -160,9 +188,10 @@ class InvoiceService {
     }
     return PdfHelpers.loadFont();
   }
+
   static pw.ThemeData _createTheme(pw.Font? font) {
     final cached = _cachedTheme;
-    if (cached != null && identical(font, _cachedThemeFont)) return cached;
+    if (cached != null && (font == null || identical(font, _cachedThemeFont))) return cached;
     final theme = PdfHelpers.buildTheme(font);
     _cachedThemeFont = font;
     _cachedTheme = theme;
@@ -170,47 +199,31 @@ class InvoiceService {
   }
 
   static Future<pw.MemoryImage?> _loadLogo(Uint8List? companyLogoBytes, String? companyLogoUrl) async {
-    try {
-      if (_cachedLogoImage != null) {
-        if (companyLogoBytes != null && identical(companyLogoBytes, _cachedLogoBytes)) {
-          return _cachedLogoImage;
-        }
-        if (companyLogoBytes == null && companyLogoUrl == _cachedLogoUrl) {
-          return _cachedLogoImage;
-        }
+    if (_cachedLogoImage != null) return _cachedLogoImage;
+    if (companyLogoBytes != null && companyLogoBytes.isNotEmpty) {
+      try {
+        final image = pw.MemoryImage(companyLogoBytes);
+        _cachedLogoImage = image;
+        return image;
+      } catch (_) {
+        return null;
       }
-      final bytes = companyLogoBytes ?? await resolveCompanyLogoBytes(companyLogoUrl);
-      if (bytes == null || bytes.isEmpty) return null;
-      final image = pw.MemoryImage(bytes);
-      _cachedLogoBytes = companyLogoBytes;
-      _cachedLogoUrl = companyLogoUrl;
-      _cachedLogoImage = image;
-      return image;
-    } catch (_) {
-      return null;
     }
+    return null;
   }
 
   static Future<pw.MemoryImage?> _loadStamp(Uint8List? companyStampBytes, String? companyStampImageUrl) async {
-    try {
-      if (_cachedStampImage != null) {
-        if (companyStampBytes != null && identical(companyStampBytes, _cachedStampBytes)) {
-          return _cachedStampImage;
-        }
-        if (companyStampBytes == null && companyStampImageUrl == _cachedStampUrl) {
-          return _cachedStampImage;
-        }
+    if (_cachedStampImage != null) return _cachedStampImage;
+    if (companyStampBytes != null && companyStampBytes.isNotEmpty) {
+      try {
+        final image = pw.MemoryImage(companyStampBytes);
+        _cachedStampImage = image;
+        return image;
+      } catch (_) {
+        return null;
       }
-      final bytes = companyStampBytes ?? await resolveCompanyStampBytes(companyStampImageUrl);
-      if (bytes == null || bytes.isEmpty) return null;
-      final image = pw.MemoryImage(bytes);
-      _cachedStampBytes = companyStampBytes;
-      _cachedStampUrl = companyStampImageUrl;
-      _cachedStampImage = image;
-      return image;
-    } catch (_) {
-      return null;
     }
+    return null;
   }
 
   static List<pw.Widget> _buildContent({

@@ -346,6 +346,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
 
   Widget _buildWorkforceHeaderItem({VoidCallback? onTap}) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -390,6 +391,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     VoidCallback? onTap,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 50),
@@ -482,6 +484,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     VoidCallback? onTap,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Stack(
         children: [

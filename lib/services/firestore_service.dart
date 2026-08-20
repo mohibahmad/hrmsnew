@@ -1652,22 +1652,24 @@ class FirestoreService {
       records = await getMonthlyAttendanceRecords(targetMonth);
     }
 
-    records.sort((a, b) {
-      final aDate = AppDateUtils.attendanceRecordDate(a);
-      final bDate = AppDateUtils.attendanceRecordDate(b);
-      if (aDate == null && bDate == null) return 0;
-      if (aDate == null) return 1;
-      if (bDate == null) return -1;
-      final byDate = bDate.compareTo(aDate);
-      if (byDate != 0) return byDate;
-      final aUpdated =
-          AppDateUtils.dateFromValue(a['updatedAt'] ?? a['createdAt']) ??
-          DateTime(1970);
-      final bUpdated =
-          AppDateUtils.dateFromValue(b['updatedAt'] ?? b['createdAt']) ??
-          DateTime(1970);
-      return bUpdated.compareTo(aUpdated);
-    });
+    if (preFetchedRecords == null) {
+      records.sort((a, b) {
+        final aDate = AppDateUtils.attendanceRecordDate(a);
+        final bDate = AppDateUtils.attendanceRecordDate(b);
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        final byDate = bDate.compareTo(aDate);
+        if (byDate != 0) return byDate;
+        final aUpdated =
+            AppDateUtils.dateFromValue(a['updatedAt'] ?? a['createdAt']) ??
+            DateTime(1970);
+        final bUpdated =
+            AppDateUtils.dateFromValue(b['updatedAt'] ?? b['createdAt']) ??
+            DateTime(1970);
+        return bUpdated.compareTo(aUpdated);
+      });
+    }
 
     final workerIdentity = <String, dynamic>{
       'id': normalizedWorkerId,

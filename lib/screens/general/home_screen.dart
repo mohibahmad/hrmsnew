@@ -74,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showNotifications = false;
   bool _showWorkersAttendance = false;
 
-  final List<bool> _activatedScreens = List.filled(13, false);
+  final List<bool> _activatedScreens = List.filled(13, true);
 
   final GlobalKey<WorkersScreenState> _workersKey =
       GlobalKey<WorkersScreenState>();
@@ -172,59 +172,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return 0;
   }
 
+  final Map<int, Widget> _cachedScreens = {};
+
   Widget _getScreen(int index) {
-    return switch (index) {
-      1 => WorkersScreen(
-        key: _workersKey,
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-      ),
-      2 => AttendanceScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-        onWorkersAttendanceTap: () => setState(() {
-          _showWorkersAttendance = true;
-          _activatedScreens[11] = true;
-        }),
-      ),
-      3 => PayrollScreen(
-        key: _payrollKey,
-        isActive: _getStackIndex() == 3,
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        activationToken: _payrollActivationToken,
-        onNotificationTap: _toggleNotifications,
-      ),
-      4 => TimeOffScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-        onAssignTimeOff: (worker) => _openAssignTimeOff(worker: worker),
-      ),
-      5 => AssetsScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-      ),
-      6 => HolidaysScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-      ),
-      7 => ExpensesScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-      ),
-      8 => SettingsScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        isGuest: _isGuest,
-        onNotificationTap: _toggleNotifications,
-      ),
-      9 => AssignTimeOffScreen(
+    if (index == 9) {
+      return AssignTimeOffScreen(
         key: _assignTimeOffKey,
         onBack: () => setState(() {
           _showAssignTimeOff = false;
@@ -233,14 +185,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onProfileTap: _openProfile,
         onNotificationTap: _toggleNotifications,
         initialWorker: _selectedTimeOffWorker,
-      ),
-      10 => DocumentsScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _toggleNotifications,
-      ),
-      _ => const SizedBox.shrink(),
-    };
+      );
+    }
+    return _cachedScreens.putIfAbsent(index, () {
+      return switch (index) {
+        1 => WorkersScreen(
+          key: _workersKey,
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        ),
+        2 => AttendanceScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+          onWorkersAttendanceTap: () => setState(() {
+            _showWorkersAttendance = true;
+            _activatedScreens[11] = true;
+          }),
+        ),
+        3 => PayrollScreen(
+          key: _payrollKey,
+          isActive: true,
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          activationToken: _payrollActivationToken,
+          onNotificationTap: _toggleNotifications,
+        ),
+        4 => TimeOffScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+          onAssignTimeOff: (worker) => _openAssignTimeOff(worker: worker),
+        ),
+        5 => AssetsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        ),
+        6 => HolidaysScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        ),
+        7 => ExpensesScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        ),
+        8 => SettingsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          isGuest: _isGuest,
+          onNotificationTap: _toggleNotifications,
+        ),
+        10 => DocumentsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        ),
+        _ => const SizedBox.shrink(),
+      };
+    });
   }
 
   static num _parseAmount(dynamic value) {
