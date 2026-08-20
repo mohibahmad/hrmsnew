@@ -1516,6 +1516,7 @@
   "paid_workers": "Employés Payés",
   "session_security": "Sécurité de la session",
   "enable_session_timeout": "Activer le délai d'expiration de session",
+  "session_timeout_description": "Verrouiller automatiquement l'application après une période d'inactivité",
   "session_timeout_duration": "Durée d'inactivité",
   "1_minute": "1 minute",
   "3_minutes": "3 minutes",

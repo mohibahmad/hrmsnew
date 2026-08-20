@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
@@ -108,8 +109,17 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   bool get isPayrollReminderDataReady =>
       _workersLoaded && _payrollLoaded && _salaryPayDay != null;
 
-  List<Map<String, dynamic>> get _currentPayablePayrollWorkers =>
-      _payableWorkersForPeriod(_payrollMonth);
+  List<Map<String, dynamic>> get _currentPayablePayrollWorkers => _payrollDocs
+      .where(
+        (worker) =>
+            !PayrollService.isPayrollRecordPaid(worker) &&
+            PayrollService.workerEmployedDuringPeriod(worker, _payPeriodEnd) &&
+            PayrollService.hasPayableSalary(
+              worker,
+              companyCurrency: _companyCurrency,
+            ),
+      )
+      .toList(growable: false);
 
   List<Map<String, dynamic>> get _filteredEmployees {
     final filtered =
@@ -438,6 +448,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   void _combinePayroll() {
+    if (!_workersLoaded || !_payrollLoaded) {
+      _isLoading = true;
+      return;
+    }
+
     _payrollDocs = PayrollService.combinePayroll(
       _workersList,
       _rawPayrollDocs,
@@ -463,7 +478,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     }
 
-    _isLoading = false;
+    _isLoading = !(_workersLoaded && _payrollLoaded);
     if (_selectedFilter == 'Pay' && _currentPayablePayrollWorkers.isEmpty)
       _selectedFilter = 'All';
     _schedulePayrollReminderCheck();
@@ -510,7 +525,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   void _scheduleAttendanceFetch() {
     _attendanceDebounce?.cancel();
-    _attendanceDebounce = Timer(const Duration(microseconds: 1), () {
+    _attendanceDebounce = Timer(const Duration(milliseconds: 75), () {
       if (_isLoadingAttendance) {
         _attendanceFetchPending = true;
         return;
@@ -987,23 +1002,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   Future<void> _maybeShowPayrollReminder({bool force = false}) async {
-    // ignore: avoid_print
-    print(
-      '[REMINDER] _maybeShowPayrollReminder called. force=$force isActive=${widget.isActive} isLoading=$_isLoading workersLoaded=$_workersLoaded payrollLoaded=$_payrollLoaded dialogOpen=$_reminderDialogOpen forcePending=$_reminderCheckForcePending',
-    );
     if (!widget.isActive ||
         _isLoading ||
         !_workersLoaded ||
         !_payrollLoaded ||
         _reminderDialogOpen) {
-      // ignore: avoid_print
-      print('[REMINDER] BLOCKED by guard-1');
       return;
     }
 
     if (!force && _reminderCheckForcePending) {
-      // ignore: avoid_print
-      print('[REMINDER] BLOCKED by forcePending');
       return;
     }
 
@@ -1015,14 +1022,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payPeriodEnd.day,
     );
     final offset = today.difference(normalizedEnd).inDays;
-    // ignore: avoid_print
-    print(
-      '[REMINDER] today=$today normalizedEnd=$normalizedEnd offset=$offset',
-    );
 
     if (offset < -3 || offset > 7) {
-      // ignore: avoid_print
-      print('[REMINDER] BLOCKED by offset range check');
       return;
     }
 
@@ -1031,46 +1032,31 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       dueDate: _payPeriodEnd,
       dayOffset: offset,
     );
-    // ignore: avoid_print
-    print(
-      '[REMINDER] suppressionKey=${window.suppressionKey} snoozedThisVisit=$_snoozedThisVisit',
-    );
 
     if (!force) {
       if (_snoozedThisVisit) {
-        print('[REMINDER] BLOCKED by _snoozedThisVisit');
         return;
-      } // ignore: avoid_print
+      }
       final ignored = await PreferencesService.isPayrollReminderIgnored(
         window.suppressionKey,
       );
-      // ignore: avoid_print
-      print('[REMINDER] isIgnored=$ignored');
       if (ignored) return;
       final snoozed = await PreferencesService.isPayrollReminderSnoozed(
         window.suppressionKey,
         now: now,
       );
-      // ignore: avoid_print
-      print('[REMINDER] isSnoozed=$snoozed');
       if (snoozed) {
         await PreferencesService.clearPayrollSnooze(window.suppressionKey);
       }
     }
 
     final payableWorkers = _payableWorkersForPeriod(window.payrollMonth);
-    // ignore: avoid_print
-    print(
-      '[REMINDER] payableWorkers=${payableWorkers.length} lastShownKey=$_lastShownReminderKey lastShownDay=$_lastShownReminderDay',
-    );
     if (payableWorkers.isEmpty) {
-      print('[REMINDER] BLOCKED by no payable workers');
       return;
-    } // ignore: avoid_print
+    }
     if (!mounted || !widget.isActive) {
-      print('[REMINDER] BLOCKED by mounted/isActive after await');
       return;
-    } // ignore: avoid_print
+    }
 
     final excludedLateJoiners = PayrollService.excludedLateJoinersForPeriod(
       _workersList,
@@ -1655,6 +1641,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       );
     }
 
+    final filteredEmployees = _isLoading
+        ? const <Map<String, dynamic>>[]
+        : _filteredEmployees;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: Column(
@@ -1675,13 +1665,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                   _buildListHeader(),
                   const SizedBox(height: 20),
                   _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 80),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : _filteredEmployees.isEmpty
+                      ? _buildShimmerTable()
+                      : filteredEmployees.isEmpty
                       ? _buildEmptyState()
-                      : _buildTable(),
+                      : _buildTable(filteredEmployees),
                 ],
               ),
             ),
@@ -2566,7 +2553,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
   }
 
-  Widget _buildTable() {
+  Widget _buildTable(List<Map<String, dynamic>> employees) {
     final tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
       440.0,
       1200.0,
@@ -2621,13 +2608,154 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _filteredEmployees.length,
+              itemCount: employees.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, index) =>
-                  _buildEmployeeRow(_filteredEmployees[index]),
+              itemBuilder: (_, index) => _buildEmployeeRow(employees[index]),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerTable() {
+    final tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
+      440.0,
+      1200.0,
+    );
+
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: Container(
+          height: tableHeight,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Text(
+                          'worker_name_header'.tr(),
+                          style: _headerStyle(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Text('position'.tr(), style: _headerStyle()),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Text('contact_no'.tr(), style: _headerStyle()),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('status_header'.tr(), style: _headerStyle()),
+                    ),
+                    const SizedBox(width: 24),
+                  ],
+                ),
+              ),
+              Container(height: 1, color: const Color(0xFFF7F8FC)),
+              Expanded(
+                child: Shimmer.fromColors(
+                  baseColor: const Color(0xFFE5E7EB),
+                  highlightColor: const Color(0xFFF3F4F6),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 6,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, _) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8FA),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 24),
+                              child: Row(
+                                children: [
+                                  _PayrollShimmerBlock(
+                                    width: 40,
+                                    height: 40,
+                                    radius: 20,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _PayrollShimmerBlock(
+                                        width: 110,
+                                        height: 14,
+                                      ),
+                                      SizedBox(height: 7),
+                                      _PayrollShimmerBlock(
+                                        width: 150,
+                                        height: 11,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 24),
+                              child: _PayrollShimmerBlock(
+                                width: 96,
+                                height: 14,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 24),
+                              child: _PayrollShimmerBlock(
+                                width: 105,
+                                height: 14,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: _PayrollShimmerBlock(width: 70, height: 14),
+                          ),
+                          SizedBox(width: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -3597,6 +3725,30 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     color: const Color(0xFF004FDE),
     colorBlendMode: BlendMode.srcIn,
   );
+}
+
+class _PayrollShimmerBlock extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+
+  const _PayrollShimmerBlock({
+    required this.width,
+    required this.height,
+    this.radius = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
 }
 
 class _PayrollInvoiceShareButton extends StatefulWidget {

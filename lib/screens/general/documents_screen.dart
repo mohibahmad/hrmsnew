@@ -25,6 +25,7 @@ import '../../services/firestore_service.dart';
 import '../../services/upload_service.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import '../workers/add_worker_flow.dart' show DocPreview, PdfPagePreview;
 
 class DocumentsScreen extends ConsumerStatefulWidget {
@@ -79,7 +80,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           if (!mounted) return;
           setState(() {
             _workers = snapshot.docs
-                .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+                .map(
+                  (doc) => {
+                    ...doc.data() as Map<String, dynamic>,
+                    'id': doc.id,
+                  },
+                )
                 .toList();
             _isLoading = false;
           });
@@ -104,7 +110,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (q.isEmpty) return _workers;
     return _workers.where((w) {
       final name = (w['name'] ?? '').toString().toLowerCase();
-      final position = (w['position'] ?? w['role'] ?? w['jobPosition'] ?? '').toString().toLowerCase();
+      final position = (w['position'] ?? w['role'] ?? w['jobPosition'] ?? '')
+          .toString()
+          .toLowerCase();
       return name.contains(q) || position.contains(q);
     }).toList();
   }
@@ -117,20 +125,20 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         Expanded(
           child: _editingWorker != null
               ? _editingShimmer
-                  ? _buildEditPageShimmer()
-                  : _EditDocumentsPage(
-                      worker: _editingWorker!,
-                      onDocumentsUpdated: () => setState(() {}),
-                      onBack: () {
-                        _editingShimmerTimer?.cancel();
-                        setState(() {
-                          _editingWorker = null;
-                          _editingShimmer = false;
-                        });
-                      },
-                      onNotificationTap: widget.onNotificationTap,
-                      onProfileTap: widget.onProfileTap,
-                    )
+                    ? _buildEditPageShimmer()
+                    : _EditDocumentsPage(
+                        worker: _editingWorker!,
+                        onDocumentsUpdated: () => setState(() {}),
+                        onBack: () {
+                          _editingShimmerTimer?.cancel();
+                          setState(() {
+                            _editingWorker = null;
+                            _editingShimmer = false;
+                          });
+                        },
+                        onNotificationTap: widget.onNotificationTap,
+                        onProfileTap: widget.onProfileTap,
+                      )
               : _buildWorkerList(),
         ),
       ],
@@ -140,7 +148,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   Widget _buildHeader() {
     return Container(
       height: 94,
-      padding: EdgeInsets.only(left: _editingWorker != null ? 16 : 40, right: 40),
+      padding: EdgeInsets.only(
+        left: _editingWorker != null ? 16 : 40,
+        right: 40,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
@@ -153,7 +164,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               child: const SizedBox(
                 width: 32,
                 height: 32,
-                child: Icon(Icons.arrow_back_ios_new, color: Color(0xFF000000), size: 24),
+                child: Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Color(0xFF000000),
+                  size: 24,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -164,7 +179,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             children: [
               Text(
                 _editingWorker != null
-                    ? (_editingWorker!['name'] ?? 'worker_fallback'.tr()).toString()
+                    ? (_editingWorker!['name'] ?? 'worker_fallback'.tr())
+                          .toString()
                     : 'workforce'.tr(),
                 style: const TextStyle(
                   color: Color(0xFF000000),
@@ -177,14 +193,36 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildWorkerList() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return LayoutBuilder(
+        builder: (context, constraints) => Padding(
+          padding: const EdgeInsets.fromLTRB(40, 22, 40, 22),
+          child: Column(
+            children: [
+              const ScreenSearchShimmer(height: 48),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ScreenTableShimmer(
+                  height: constraints.maxHeight - 68,
+                  columnFlexes: const [3, 2],
+                  showHeader: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final filtered = _filteredWorkers;
     return Column(
@@ -198,13 +236,17 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         Expanded(
           child: filtered.isEmpty
               ? SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 22.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40.0,
+                    vertical: 22.0,
+                  ),
                   child: _buildEmptyState(),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 22.0),
                   itemCount: filtered.length,
-                  itemBuilder: (context, index) => _buildWorkerCard(filtered[index]),
+                  itemBuilder: (context, index) =>
+                      _buildWorkerCard(filtered[index]),
                 ),
         ),
       ],
@@ -223,8 +265,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SvgPicture.asset('assets/search icon.svg', width: 24, height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFFBDBDBD), BlendMode.srcIn)),
+          SvgPicture.asset(
+            'assets/search icon.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFBDBDBD),
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
@@ -232,7 +281,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'search_workers_name_position'.tr(),
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14, ),
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -255,21 +304,40 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   Widget _buildEmptyState() {
-    final dynamicHeight = (MediaQuery.of(context).size.height - 230).clamp(440.0, 1200.0);
+    final dynamicHeight = (MediaQuery.of(context).size.height - 230).clamp(
+      440.0,
+      1200.0,
+    );
     return Container(
       width: double.infinity,
       height: dynamicHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
-              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_workers_added_yet'.tr(),
-            style: const TextStyle(color: Color(0xFF0247C4), fontSize: 16, fontWeight: FontWeight.w600, ),
+            _searchQuery.isNotEmpty
+                ? 'no_search_results'.tr()
+                : 'no_workers_added_yet'.tr(),
+            style: const TextStyle(
+              color: Color(0xFF0247C4),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
@@ -304,43 +372,83 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFEEEEEE)),
-            boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
-              WorkerAvatar(imageUrl: worker['profileImage']?.toString(), name: name, size: 48),
+              WorkerAvatar(
+                imageUrl: worker['profileImage']?.toString(),
+                name: name,
+                size: 48,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF000000))),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
                     if (position.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(LocalizationHelper.localizePosition(position), maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[500], )),
+                      Text(
+                        LocalizationHelper.localizePosition(position),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                      ),
                     ],
                   ],
                 ),
               ),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0247C4).withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF0247C4).withOpacity(0.2)),
+                  border: Border.all(
+                    color: const Color(0xFF0247C4).withOpacity(0.2),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16,
-                        colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
+                    SvgPicture.asset(
+                      'assets/edit_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF0247C4),
+                        BlendMode.srcIn,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Text('edit_documents'.tr(),
-                        style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w600, )),
+                    Text(
+                      'edit_documents'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF0247C4),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -352,12 +460,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   Widget _shimmerBlock({double? width, required double height}) => Container(
-        width: width ?? double.infinity,
-        height: height,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-      );
+    width: width ?? double.infinity,
+    height: height,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(6),
+    ),
+  );
 
-  Widget _shimmerBox({double? width, required double height}) => Shimmer.fromColors(
+  Widget _shimmerBox({double? width, required double height}) =>
+      Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
         child: _shimmerBlock(width: width, height: height),
@@ -377,9 +489,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(flex: 1, child: _editShimmerColumn(isCvColumn: false)),
+                  Expanded(
+                    flex: 1,
+                    child: _editShimmerColumn(isCvColumn: false),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(flex: 1, child: _editShimmerColumn(isCvColumn: true)),
+                  Expanded(
+                    flex: 1,
+                    child: _editShimmerColumn(isCvColumn: true),
+                  ),
                 ],
               ),
             ),
@@ -392,7 +510,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   Widget _editShimmerColumn({required bool isCvColumn}) {
     if (isCvColumn) {
-
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -408,7 +525,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         ],
       );
     }
-
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,7 +582,17 @@ class _EditDocumentsPage extends ConsumerStatefulWidget {
 
 class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   static const double _idPreviewHeight = 270;
-  static const List<String> _cvAllowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'doc', 'docx'];
+  static const List<String> _cvAllowedExtensions = [
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'bmp',
+    'pdf',
+    'doc',
+    'docx',
+  ];
 
   bool _isUploading = false;
   String? _downloadingField;
@@ -486,7 +612,8 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
   String get _workerId => (widget.worker['id'] ?? '').toString().trim();
 
-  String get _workerName => (widget.worker['name'] ?? 'worker_fallback'.tr()).toString().trim();
+  String get _workerName =>
+      (widget.worker['name'] ?? 'worker_fallback'.tr()).toString().trim();
 
   String? _firstNonEmpty(List<String?> values) {
     for (final v in values) {
@@ -497,32 +624,32 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   String? get _existingFrontId => _firstNonEmpty([
-        widget.worker['frontId']?.toString(),
-        widget.worker['front_id']?.toString(),
-        widget.worker['idFront']?.toString(),
-        widget.worker['frontID']?.toString(),
-        widget.worker['id_front']?.toString(),
-      ]);
+    widget.worker['frontId']?.toString(),
+    widget.worker['front_id']?.toString(),
+    widget.worker['idFront']?.toString(),
+    widget.worker['frontID']?.toString(),
+    widget.worker['id_front']?.toString(),
+  ]);
 
   String? get _existingBackId => _firstNonEmpty([
-        widget.worker['backId']?.toString(),
-        widget.worker['back_id']?.toString(),
-        widget.worker['idBack']?.toString(),
-        widget.worker['backID']?.toString(),
-        widget.worker['id_back']?.toString(),
-      ]);
+    widget.worker['backId']?.toString(),
+    widget.worker['back_id']?.toString(),
+    widget.worker['idBack']?.toString(),
+    widget.worker['backID']?.toString(),
+    widget.worker['id_back']?.toString(),
+  ]);
 
   String? get _existingCv => _firstNonEmpty([
-        widget.worker['cv']?.toString(),
-        widget.worker['cvUrl']?.toString(),
-        widget.worker['cv_url']?.toString(),
-      ]);
+    widget.worker['cv']?.toString(),
+    widget.worker['cvUrl']?.toString(),
+    widget.worker['cv_url']?.toString(),
+  ]);
 
   String? get _existingCvName => _firstNonEmpty([
-        widget.worker['cvFileName']?.toString(),
-        widget.worker['cv_file_name']?.toString(),
-        widget.worker['cvName']?.toString(),
-      ]);
+    widget.worker['cvFileName']?.toString(),
+    widget.worker['cv_file_name']?.toString(),
+    widget.worker['cvName']?.toString(),
+  ]);
 
   @override
   void initState() {
@@ -565,7 +692,10 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   String _documentErrorMessage(Object error) {
-    return error.toString().replaceFirst(RegExp(r'^(Exception|StateError|Bad state):\s*'), '').trim();
+    return error
+        .toString()
+        .replaceFirst(RegExp(r'^(Exception|StateError|Bad state):\s*'), '')
+        .trim();
   }
 
   Future<void> _pickFile(String field) async {
@@ -580,53 +710,98 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       final file = result.files.first;
 
       if (file.size > UploadService.maxFileBytes) {
-        if (mounted) FlashySnackBar.show(context, message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+            isError: true,
+          );
         return;
       }
 
       final bytes = await file.readAsBytes();
 
       if (bytes.isEmpty) {
-        if (mounted) FlashySnackBar.show(context, message: 'upload_failed'.tr(namedArgs: {'error': 'Failed to pick file'.tr()}), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'upload_failed'.tr(
+              namedArgs: {'error': 'Failed to pick file'.tr()},
+            ),
+            isError: true,
+          );
         return;
       }
 
       if (bytes.length > UploadService.maxFileBytes) {
-        if (mounted) FlashySnackBar.show(context, message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+            isError: true,
+          );
         return;
       }
 
       setState(() {
-        if (field == 'frontId') { _frontIdBytes = bytes; _frontIdName = file.name; }
-        else if (field == 'backId') { _backIdBytes = bytes; _backIdName = file.name; }
-        else if (field == 'cv') { _cvBytes = bytes; _cvName = file.name; _isCvUploaded = true; }
+        if (field == 'frontId') {
+          _frontIdBytes = bytes;
+          _frontIdName = file.name;
+        } else if (field == 'backId') {
+          _backIdBytes = bytes;
+          _backIdName = file.name;
+        } else if (field == 'cv') {
+          _cvBytes = bytes;
+          _cvName = file.name;
+          _isCvUploaded = true;
+        }
       });
 
       await _uploadAndSave(field);
     } catch (error) {
-      if (mounted) FlashySnackBar.show(context, message: 'upload_failed'.tr(namedArgs: {'error': _documentErrorMessage(error)}), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': _documentErrorMessage(error)},
+          ),
+          isError: true,
+        );
     }
   }
 
-  Future<void> _downloadFile(String? url, Uint8List? bytes, String defaultName, {String? field}) async {
+  Future<void> _downloadFile(
+    String? url,
+    Uint8List? bytes,
+    String defaultName, {
+    String? field,
+  }) async {
     if (_downloadingField != null) return;
     setState(() => _downloadingField = field);
     try {
       Uint8List? fileBytes = bytes;
 
-      if ((fileBytes == null || fileBytes.isEmpty) && url != null && url.trim().isNotEmpty) {
+      if ((fileBytes == null || fileBytes.isEmpty) &&
+          url != null &&
+          url.trim().isNotEmpty) {
         if (url.startsWith('data:')) {
           final commaIdx = url.indexOf(',');
-          if (commaIdx != -1) fileBytes = base64Decode(url.substring(commaIdx + 1));
+          if (commaIdx != -1)
+            fileBytes = base64Decode(url.substring(commaIdx + 1));
         } else {
           try {
             final downloaded = await UploadService.downloadRemoteFile(
-              url: url, folder: 'documents', fallbackFileName: defaultName, fallbackMimeType: 'application/octet-stream',
+              url: url,
+              folder: 'documents',
+              fallbackFileName: defaultName,
+              fallbackMimeType: 'application/octet-stream',
             );
             fileBytes = downloaded.bytes;
           } catch (_) {
             try {
-              fileBytes = await FirebaseStorage.instance.refFromURL(url).getData();
+              fileBytes = await FirebaseStorage.instance
+                  .refFromURL(url)
+                  .getData();
             } catch (_) {}
           }
         }
@@ -634,18 +809,34 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
       if (fileBytes != null && fileBytes.isNotEmpty) {
         final result = await FilePicker.saveFile(
-          dialogTitle: 'download_file'.tr(), fileName: defaultName, bytes: fileBytes,
+          dialogTitle: 'download_file'.tr(),
+          fileName: defaultName,
+          bytes: fileBytes,
         );
         if (result != null && result.trim().isNotEmpty) {
           await io.File(result).writeAsBytes(fileBytes, flush: true);
-          if (mounted) FlashySnackBar.show(context, message: 'file_downloaded_successfully'.tr());
+          if (mounted)
+            FlashySnackBar.show(
+              context,
+              message: 'file_downloaded_successfully'.tr(),
+            );
           await FileOpener.open(result);
         }
       } else {
-        if (mounted) FlashySnackBar.show(context, message: 'could_not_download_file'.tr(), isError: true);
+        if (mounted)
+          FlashySnackBar.show(
+            context,
+            message: 'could_not_download_file'.tr(),
+            isError: true,
+          );
       }
     } catch (_) {
-      if (mounted) FlashySnackBar.show(context, message: 'could_not_download_file'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_download_file'.tr(),
+          isError: true,
+        );
     } finally {
       if (mounted) setState(() => _downloadingField = null);
     }
@@ -658,10 +849,19 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     String? fileName;
     String? existingUrl;
 
-    if (field == 'frontId') { bytes = _frontIdBytes; fileName = _frontIdName; existingUrl = _existingFrontId; }
-    else if (field == 'backId') { bytes = _backIdBytes; fileName = _backIdName; existingUrl = _existingBackId; }
-    else if (field == 'cv') { bytes = _cvBytes; fileName = _cvName; existingUrl = _existingCv; }
-    else {
+    if (field == 'frontId') {
+      bytes = _frontIdBytes;
+      fileName = _frontIdName;
+      existingUrl = _existingFrontId;
+    } else if (field == 'backId') {
+      bytes = _backIdBytes;
+      fileName = _backIdName;
+      existingUrl = _existingBackId;
+    } else if (field == 'cv') {
+      bytes = _cvBytes;
+      fileName = _cvName;
+      existingUrl = _existingCv;
+    } else {
       return;
     }
 
@@ -670,11 +870,21 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     }
 
     if (!_isGuest && _workerId.isEmpty) {
-      if (mounted) FlashySnackBar.show(context, message: 'upload_failed'.tr(namedArgs: {'error': 'Worker not found'.tr()}), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': 'Worker not found'.tr()},
+          ),
+          isError: true,
+        );
       return;
     }
 
-    setState(() { _isUploading = true; _uploadingField = field; });
+    setState(() {
+      _isUploading = true;
+      _uploadingField = field;
+    });
     String? newlyUploadedUrl;
 
     try {
@@ -682,17 +892,36 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
       if (bytes != null) {
         if (_isGuest) {
-          url = 'data:${mimeTypeForExtension(fileName ?? 'file')};base64,${base64Encode(bytes)}';
+          url =
+              'data:${mimeTypeForExtension(fileName ?? 'file')};base64,${base64Encode(bytes)}';
         } else {
-          final folder = field == 'frontId' ? 'front_ids' : field == 'backId' ? 'back_ids' : 'cvs';
-          final results = await UploadService.uploadFiles(files: [
-            UploadFile(folder: folder, fileName: fileName ?? 'file', bytes: bytes, mimeType: mimeTypeForExtension(fileName ?? 'file')),
-          ]);
+          final folder = field == 'frontId'
+              ? 'front_ids'
+              : field == 'backId'
+              ? 'back_ids'
+              : 'cvs';
+          final results = await UploadService.uploadFiles(
+            files: [
+              UploadFile(
+                folder: folder,
+                fileName: fileName ?? 'file',
+                bytes: bytes,
+                mimeType: mimeTypeForExtension(fileName ?? 'file'),
+              ),
+            ],
+          );
 
           if (results.isEmpty || !results.first.isSuccess) {
-            throw Exception(results.isEmpty
-                ? 'file_upload_failed'.tr(namedArgs: {'file': fileName ?? 'file'})
-                : results.first.error ?? 'file_upload_failed'.tr(namedArgs: {'file': fileName ?? 'file'}));
+            throw Exception(
+              results.isEmpty
+                  ? 'file_upload_failed'.tr(
+                      namedArgs: {'file': fileName ?? 'file'},
+                    )
+                  : results.first.error ??
+                        'file_upload_failed'.tr(
+                          namedArgs: {'file': fileName ?? 'file'},
+                        ),
+            );
           }
 
           url = results.first.url;
@@ -703,7 +932,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       }
 
       if (url == null || url.trim().isEmpty) {
-        throw Exception('file_upload_failed'.tr(namedArgs: {'file': fileName ?? 'file'}));
+        throw Exception(
+          'file_upload_failed'.tr(namedArgs: {'file': fileName ?? 'file'}),
+        );
       }
 
       final updates = _buildUpdatesMap(field, url, fileName);
@@ -712,8 +943,12 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         final idx = DummyData.workers.indexWhere((w) {
           final wId = (w['id'] ?? '').toString();
           final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-          final targetEmail = (widget.worker['email'] ?? '').toString().trim().toLowerCase();
-          return (wId.isNotEmpty && wId == _workerId) || (wEmail.isNotEmpty && wEmail == targetEmail);
+          final targetEmail = (widget.worker['email'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          return (wId.isNotEmpty && wId == _workerId) ||
+              (wEmail.isNotEmpty && wEmail == targetEmail);
         });
         if (idx != -1) {
           DummyData.workers[idx].addAll(updates);
@@ -744,13 +979,28 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ErrorReporter.report(e, s, context: 'documentsRollbackNewFile');
         }
       }
-      if (mounted) FlashySnackBar.show(context, message: 'upload_failed'.tr(namedArgs: {'error': _documentErrorMessage(error)}), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': _documentErrorMessage(error)},
+          ),
+          isError: true,
+        );
     } finally {
-      if (mounted) setState(() { _isUploading = false; _uploadingField = null; });
+      if (mounted)
+        setState(() {
+          _isUploading = false;
+          _uploadingField = null;
+        });
     }
   }
 
-  Map<String, dynamic> _buildUpdatesMap(String field, String url, String? fileName) {
+  Map<String, dynamic> _buildUpdatesMap(
+    String field,
+    String url,
+    String? fileName,
+  ) {
     final updates = <String, dynamic>{'name': _workerName};
 
     if (field == 'frontId') {
@@ -790,35 +1040,14 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     if (url == null || url.isEmpty) return;
 
     final lower = url.toLowerCase();
-    if (!isPdf && !isDoc) isPdf = lower.endsWith('.pdf') || lower.contains('application/pdf') || lower.contains('/pdf/');
-    if (!isPdf && !isDoc) isDoc = lower.endsWith('.doc') || lower.endsWith('.docx');
+    if (!isPdf && !isDoc)
+      isPdf =
+          lower.endsWith('.pdf') ||
+          lower.contains('application/pdf') ||
+          lower.contains('/pdf/');
+    if (!isPdf && !isDoc)
+      isDoc = lower.endsWith('.doc') || lower.endsWith('.docx');
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'close'.tr(),
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (ctx, _, _) => _FullScreenDocumentViewer(url: url, label: label, isImage: isImage, isPdf: isPdf, isDoc: isDoc, pdfBytes: pdfBytes, heightFactor: 0.8),
-      transitionBuilder: (ctx, anim, _, child) {
-        final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
-        final scale = Tween<double>(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 6 * anim.value, sigmaY: 6 * anim.value),
-                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withOpacity(0.35))),
-              ),
-            ),
-            FadeTransition(opacity: fade, child: ScaleTransition(scale: scale, child: child)),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showImagePreviewDialog(BuildContext context, {Uint8List? bytes, String? url, required bool isPdf}) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -826,21 +1055,92 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (ctx, _, _) => _FullScreenDocumentViewer(
-        url: url ?? '', label: 'document'.tr(), isImage: !isPdf, isPdf: isPdf,
-        pdfBytes: bytes, imageBytes: isPdf ? null : bytes,
+        url: url,
+        label: label,
+        isImage: isImage,
+        isPdf: isPdf,
+        isDoc: isDoc,
+        pdfBytes: pdfBytes,
+        heightFactor: 0.8,
       ),
       transitionBuilder: (ctx, anim, _, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
-        final scale = Tween<double>(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
+        final scale = Tween<double>(
+          begin: 0.92,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
         return Stack(
           children: [
             Positioned.fill(
               child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 6 * anim.value, sigmaY: 6 * anim.value),
-                child: FadeTransition(opacity: fade, child: Container(color: const Color(0xFF000000).withOpacity(0.35))),
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 6 * anim.value,
+                  sigmaY: 6 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: fade,
+                  child: Container(
+                    color: const Color(0xFF000000).withOpacity(0.35),
+                  ),
+                ),
               ),
             ),
-            FadeTransition(opacity: fade, child: ScaleTransition(scale: scale, child: child)),
+            FadeTransition(
+              opacity: fade,
+              child: ScaleTransition(scale: scale, child: child),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showImagePreviewDialog(
+    BuildContext context, {
+    Uint8List? bytes,
+    String? url,
+    required bool isPdf,
+  }) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'close'.tr(),
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, _, _) => _FullScreenDocumentViewer(
+        url: url ?? '',
+        label: 'document'.tr(),
+        isImage: !isPdf,
+        isPdf: isPdf,
+        pdfBytes: bytes,
+        imageBytes: isPdf ? null : bytes,
+      ),
+      transitionBuilder: (ctx, anim, _, child) {
+        final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        final scale = Tween<double>(
+          begin: 0.92,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 6 * anim.value,
+                  sigmaY: 6 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: fade,
+                  child: Container(
+                    color: const Color(0xFF000000).withOpacity(0.35),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: fade,
+              child: ScaleTransition(scale: scale, child: child),
+            ),
           ],
         );
       },
@@ -856,8 +1156,14 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('personal_documentation'.tr(),
-                style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, )),
+            Text(
+              'personal_documentation'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF000000),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 24),
             IntrinsicHeight(
               child: Row(
@@ -884,30 +1190,53 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           height: 36,
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('id_card_label'.tr(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, )),
+            child: Text(
+              'id_card_label'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-          decoration: BoxDecoration(color: const Color(0xFFF2F3F6), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F3F6),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildIdFieldHeader('upload_front_side'.tr(), 'frontId', _existingFrontId, _frontIdBytes, _frontIdName),
+              _buildIdFieldHeader(
+                'upload_front_side'.tr(),
+                'frontId',
+                _existingFrontId,
+                _frontIdBytes,
+                _frontIdName,
+              ),
               const SizedBox(height: 12),
               _buildIdUploadBox(
-                label: 'upload_front_id_hint'.tr(), field: 'frontId', bytes: _frontIdBytes,
-                fileName: _frontIdName, existingUrl: _existingFrontId,
+                label: 'upload_front_id_hint'.tr(),
+                field: 'frontId',
+                bytes: _frontIdBytes,
+                fileName: _frontIdName,
+                existingUrl: _existingFrontId,
                 onTap: () => _pickFile('frontId'),
               ),
               const SizedBox(height: 12),
-              _buildIdFieldHeader('upload_back_side'.tr(), 'backId', _existingBackId, _backIdBytes, _backIdName),
+              _buildIdFieldHeader(
+                'upload_back_side'.tr(),
+                'backId',
+                _existingBackId,
+                _backIdBytes,
+                _backIdName,
+              ),
               const SizedBox(height: 12),
               _buildIdUploadBox(
-                label: 'upload_back_id_hint'.tr(), field: 'backId', bytes: _backIdBytes,
-                fileName: _backIdName, existingUrl: _existingBackId,
+                label: 'upload_back_id_hint'.tr(),
+                field: 'backId',
+                bytes: _backIdBytes,
+                fileName: _backIdName,
+                existingUrl: _existingBackId,
                 onTap: () => _pickFile('backId'),
               ),
             ],
@@ -917,20 +1246,35 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildIdFieldHeader(String labelText, String field, String? existingUrl, Uint8List? bytes, String? fileName) {
-    final hasFile = bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
+  Widget _buildIdFieldHeader(
+    String labelText,
+    String field,
+    String? existingUrl,
+    Uint8List? bytes,
+    String? fileName,
+  ) {
+    final hasFile =
+        bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
     final defaultName = field == 'frontId' ? 'front_id' : 'back_id';
 
     return Row(
       children: [
         GestureDetector(
           onTap: () => _pickFile(field),
-          child: Text(labelText, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, )),
+          child: Text(
+            labelText,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
         ),
         const Spacer(),
         if (hasFile) ...[
           _buildIconButton(
-            onTap: () => _downloadFile(existingUrl, bytes, fileName ?? defaultName, field: field),
+            onTap: () => _downloadFile(
+              existingUrl,
+              bytes,
+              fileName ?? defaultName,
+              field: field,
+            ),
             icon: Icons.file_download_outlined,
             label: 'download'.tr(),
             isLoading: _downloadingField == field,
@@ -942,7 +1286,12 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildIconButton({required VoidCallback onTap, required IconData icon, required String label, bool isLoading = false}) {
+  Widget _buildIconButton({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+    bool isLoading = false,
+  }) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -950,18 +1299,39 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6),
-            boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 2))],
+            color: const Color(0xFF000000),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withOpacity(0.25),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isLoading)
-                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               else
                 Icon(icon, color: Colors.white, size: 16),
               const SizedBox(width: 5),
-              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, )),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -974,14 +1344,31 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          color: const Color(0xFF000000),
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, )),
+            Text(
+              'edit'.tr(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
             const SizedBox(width: 6),
-            SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+            SvgPicture.asset(
+              'assets/edit_icon.svg',
+              height: 14,
+              width: 14,
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
+            ),
           ],
         ),
       ),
@@ -989,7 +1376,8 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildCvSection() {
-    final hasCv = _isCvUploaded || (_existingCv != null && _existingCv!.isNotEmpty);
+    final hasCv =
+        _isCvUploaded || (_existingCv != null && _existingCv!.isNotEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -999,24 +1387,58 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('upload_cv_label'.tr(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, )),
+              Text(
+                'upload_cv_label'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const Spacer(),
               if (hasCv) ...[
                 GestureDetector(
-                  onTap: () => _downloadFile(_existingCv, _cvBytes, _cvName ?? 'cv', field: 'cv'),
+                  onTap: () => _downloadFile(
+                    _existingCv,
+                    _cvBytes,
+                    _cvName ?? 'cv',
+                    field: 'cv',
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_downloadingField == 'cv')
-                          const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         else
-                          const Icon(Icons.file_download_outlined, color: Colors.white, size: 14),
+                          const Icon(
+                            Icons.file_download_outlined,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         const SizedBox(width: 4),
-                        Text('download'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, )),
+                        Text(
+                          'download'.tr(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1036,17 +1458,33 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
   }
 
   Widget _buildIdUploadBox({
-    required String label, required String field, Uint8List? bytes, String? fileName, String? existingUrl, VoidCallback? onTap,
+    required String label,
+    required String field,
+    Uint8List? bytes,
+    String? fileName,
+    String? existingUrl,
+    VoidCallback? onTap,
   }) {
-    final hasFile = bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
+    final hasFile =
+        bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
     final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
     final cleanName = (fileName ?? '').toLowerCase();
-    final isPdf = cleanName.endsWith('.pdf') || cleanUrl.endsWith('.pdf') || cleanUrl.startsWith('data:application/pdf');
-    final decodedDataImage = existingUrl == null ? null : _decodeDataUrl(existingUrl);
+    final isPdf =
+        cleanName.endsWith('.pdf') ||
+        cleanUrl.endsWith('.pdf') ||
+        cleanUrl.startsWith('data:application/pdf');
+    final decodedDataImage = existingUrl == null
+        ? null
+        : _decodeDataUrl(existingUrl);
 
     final boxContent = GestureDetector(
       onTap: hasFile
-          ? () => _showImagePreviewDialog(context, bytes: bytes, url: existingUrl, isPdf: isPdf)
+          ? () => _showImagePreviewDialog(
+              context,
+              bytes: bytes,
+              url: existingUrl,
+              isPdf: isPdf,
+            )
           : onTap,
       child: Container(
         height: _idPreviewHeight,
@@ -1056,7 +1494,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: hasFile ? const Color(0xFF0B50C3).withOpacity(0.5) : Colors.grey.shade200,
+            color: hasFile
+                ? const Color(0xFF0B50C3).withOpacity(0.5)
+                : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
         ),
@@ -1067,29 +1507,53 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                   if (isPdf)
                     PdfPagePreview(cvBytes: bytes, existingCvUrl: existingUrl)
                   else if (bytes != null)
-                    Image.memory(bytes, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildIdPlaceholder(label, hasFile))
-                  else if (existingUrl != null && existingUrl.startsWith('http'))
-                    CachedNetworkImage(imageUrl: existingUrl, fit: BoxFit.cover,
-                        errorWidget: (_, _, _) => _buildIdPlaceholder(label, hasFile))
+                    Image.memory(
+                      bytes,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
+                  else if (existingUrl != null &&
+                      existingUrl.startsWith('http'))
+                    CachedNetworkImage(
+                      imageUrl: existingUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
                   else if (decodedDataImage != null)
-                    Image.memory(decodedDataImage, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildIdPlaceholder(label, hasFile))
+                    Image.memory(
+                      decodedDataImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
                   else
                     _buildIdPlaceholder(label, hasFile),
                   Positioned(
-                    bottom: 0, left: 0, right: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       color: Colors.black.withOpacity(0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.greenAccent,
+                            size: 14,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
-                            child: Text(fileName ?? 'file_uploaded'.tr(),
-                                style: const TextStyle(color: Colors.white, fontSize: 11, )),
+                            child: Text(
+                              fileName ?? 'file_uploaded'.tr(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -1111,7 +1575,10 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF0B50C3).withOpacity(0.5), width: 2),
+            border: Border.all(
+              color: const Color(0xFF0B50C3).withOpacity(0.5),
+              width: 2,
+            ),
           ),
         ),
       );
@@ -1124,11 +1591,26 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset('assets/Id card.png', width: 50, height: 50, fit: BoxFit.contain),
+        Image.asset(
+          'assets/Id card.png',
+          width: 50,
+          height: 50,
+          fit: BoxFit.contain,
+        ),
         const SizedBox(height: 12),
-        Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500, )),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade400,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text('tap_to_select_file'.tr(), style: TextStyle(color: Colors.grey.shade300, fontSize: 12, )),
+        Text(
+          'tap_to_select_file'.tr(),
+          style: TextStyle(color: Colors.grey.shade300, fontSize: 12),
+        ),
       ],
     );
   }
@@ -1145,23 +1627,44 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         alignment: Alignment.center,
         children: [
           Positioned(
-            top: 12, bottom: 12, left: 24, right: 24,
+            top: 12,
+            bottom: 12,
+            left: 24,
+            right: 24,
             child: Container(
               clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(height: 16, width: 200, color: Colors.grey.shade300),
+                    Container(
+                      height: 16,
+                      width: 200,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 8),
-                    Container(height: 10, width: 150, color: Colors.grey.shade300),
+                    Container(
+                      height: 10,
+                      width: 150,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 40),
-                    ...List.generate(8, (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(height: 12, width: double.infinity, color: Colors.grey.shade300),
-                    )),
+                    ...List.generate(
+                      8,
+                      (index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          height: 12,
+                          width: double.infinity,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1173,26 +1676,58 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               GestureDetector(
                 onTap: () => _pickFile('cv'),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(color: const Color(0xFF000000), borderRadius: BorderRadius.circular(6)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF000000),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('upload'.tr(),
-                          style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600, fontSize: 15, )),
+                      Text(
+                        'upload'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      SvgPicture.asset('assets/Upload_profile.svg', height: 18, width: 18,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                      SvgPicture.asset(
+                        'assets/Upload_profile.svg',
+                        height: 18,
+                        width: 18,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.92), borderRadius: BorderRadius.circular(20)),
-                child: Text('upload_cv_hint'.tr(), textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFF4B5563), fontSize: 12, fontWeight: FontWeight.w500, )),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'upload_cv_hint'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF4B5563),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1213,22 +1748,43 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
   Widget _buildCvPreview() {
     final cvUrl = _existingCv;
-    final detectedName = (_cvName == null || _cvName!.trim().isEmpty) ? _cleanFileName(cvUrl ?? '') : _cvName!.trim();
+    final detectedName = (_cvName == null || _cvName!.trim().isEmpty)
+        ? _cleanFileName(cvUrl ?? '')
+        : _cvName!.trim();
     final lower = detectedName.toLowerCase();
     final lowerUrl = (cvUrl ?? '').toLowerCase();
 
-    final isPdf = lower.endsWith('.pdf') || lowerUrl.startsWith('data:application/pdf');
-    final isImage = lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
-        lower.endsWith('.gif') || lower.endsWith('.webp') || lower.endsWith('.bmp') || lowerUrl.startsWith('data:image/');
+    final isPdf =
+        lower.endsWith('.pdf') || lowerUrl.startsWith('data:application/pdf');
+    final isImage =
+        lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp') ||
+        lowerUrl.startsWith('data:image/');
     final isDoc = lower.endsWith('.doc') || lower.endsWith('.docx');
 
     void onTapCv() {
       if (_cvBytes != null) {
         final mime = mimeTypeForExtension(_cvName ?? 'file');
-        _viewDocument('data:$mime;base64,${base64Encode(_cvBytes!)}', isImage, _cvName ?? 'cv_resume'.tr(),
-            isPdf: isPdf, isDoc: isDoc, pdfBytes: _cvBytes);
+        _viewDocument(
+          'data:$mime;base64,${base64Encode(_cvBytes!)}',
+          isImage,
+          _cvName ?? 'cv_resume'.tr(),
+          isPdf: isPdf,
+          isDoc: isDoc,
+          pdfBytes: _cvBytes,
+        );
       } else if (cvUrl != null && cvUrl.isNotEmpty) {
-        _viewDocument(cvUrl, isImage, _cvName ?? 'cv_resume'.tr(), isPdf: isPdf, isDoc: isDoc);
+        _viewDocument(
+          cvUrl,
+          isImage,
+          _cvName ?? 'cv_resume'.tr(),
+          isPdf: isPdf,
+          isDoc: isDoc,
+        );
       }
     }
 
@@ -1236,15 +1792,31 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
     if (isImage) {
       previewContent = _cvBytes != null
-          ? Image.memory(_cvBytes!, fit: BoxFit.cover, filterQuality: FilterQuality.high)
+          ? Image.memory(
+              _cvBytes!,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            )
           : (cvUrl != null && cvUrl.isNotEmpty
-              ? CachedNetworkImage(imageUrl: cvUrl, fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => const Center(child: Icon(Icons.broken_image, size: 48)))
-              : const SizedBox.shrink());
+                ? CachedNetworkImage(
+                    imageUrl: cvUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) =>
+                        const Center(child: Icon(Icons.broken_image, size: 48)),
+                  )
+                : const SizedBox.shrink());
     } else if (isPdf) {
-      previewContent = PdfPagePreview(cvBytes: _cvBytes, existingCvUrl: cvUrl, fit: BoxFit.cover);
+      previewContent = PdfPagePreview(
+        cvBytes: _cvBytes,
+        existingCvUrl: cvUrl,
+        fit: BoxFit.cover,
+      );
     } else if (isDoc) {
-      previewContent = DocPreview(docBytes: _cvBytes, docName: _cvName, docUrl: cvUrl);
+      previewContent = DocPreview(
+        docBytes: _cvBytes,
+        docName: _cvName,
+        docUrl: cvUrl,
+      );
     } else {
       previewContent = Center(
         child: Column(
@@ -1252,7 +1824,10 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           children: [
             const Icon(Icons.description, size: 48, color: Color(0xFF0247C4)),
             const SizedBox(height: 12),
-            Text(_cvName ?? 'cv_resume'.tr(), style: TextStyle(color: Colors.grey.shade600, fontSize: 13, )),
+            Text(
+              _cvName ?? 'cv_resume'.tr(),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
           ],
         ),
       );
@@ -1271,7 +1846,8 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           alignment: Alignment.center,
           children: [
             Positioned.fill(
-              top: 8, bottom: 8,
+              top: 8,
+              bottom: 8,
               child: FractionallySizedBox(
                 widthFactor: 0.76,
                 child: Container(
@@ -1279,7 +1855,13 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(6),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 3))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: previewContent,
                 ),
@@ -1323,7 +1905,10 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
 
   Future<void> _openDocument() async {
     if (!mounted) return;
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
       final source = widget.url?.trim() ?? '';
@@ -1334,15 +1919,23 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       if (bytes.isEmpty) {
         if (isHttpUrl(source)) {
           try {
-            bytes = await FirebaseStorage.instance.refFromURL(source).getData(UploadService.maxFileBytes) ?? Uint8List(0);
+            bytes =
+                await FirebaseStorage.instance
+                    .refFromURL(source)
+                    .getData(UploadService.maxFileBytes) ??
+                Uint8List(0);
           } catch (_) {
             final downloaded = await UploadService.downloadRemoteFile(
-              url: source, folder: 'document_previews', fallbackFileName: 'document.pdf', fallbackMimeType: 'application/pdf',
+              url: source,
+              folder: 'document_previews',
+              fallbackFileName: 'document.pdf',
+              fallbackMimeType: 'application/pdf',
             );
             bytes = downloaded.bytes;
           }
         } else if (source.startsWith('data:application/pdf')) {
-          if (!source.contains(',')) throw FormatException('invalid_pdf_data'.tr());
+          if (!source.contains(','))
+            throw FormatException('invalid_pdf_data'.tr());
           bytes = base64Decode(source.split(',').last);
         } else {
           throw StateError('failed_to_load_pdf'.tr());
@@ -1350,14 +1943,25 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       }
 
       if (bytes.isEmpty) throw StateError('failed_to_load_pdf'.tr());
-      if (bytes.length > UploadService.maxFileBytes) throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
+      if (bytes.length > UploadService.maxFileBytes)
+        throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
 
       final document = await PdfDocument.openData(bytes);
-      if (!mounted) { await document.close(); return; }
+      if (!mounted) {
+        await document.close();
+        return;
+      }
 
-      setState(() { _document = document; _isLoading = false; });
+      setState(() {
+        _document = document;
+        _isLoading = false;
+      });
     } catch (error) {
-      if (mounted) setState(() { _error = error.toString(); _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _error = error.toString();
+          _isLoading = false;
+        });
     }
   }
 
@@ -1368,9 +1972,19 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0247C4))),
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Color(0xFF0247C4),
+              ),
+            ),
             const SizedBox(height: 12),
-            Text('loading_pdf'.tr(), style: const TextStyle(fontSize: 13, color: Colors.grey, )),
+            Text(
+              'loading_pdf'.tr(),
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -1383,7 +1997,10 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
             const SizedBox(height: 12),
-            Text('failed_to_load_pdf'.tr(), style: TextStyle(fontSize: 13, color: Colors.grey.shade600, )),
+            Text(
+              'failed_to_load_pdf'.tr(),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
           ],
         ),
       );
@@ -1391,22 +2008,31 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
 
     final document = _document;
     if (document == null) {
-      return Center(child: Text('no_pages_found'.tr(), style: const TextStyle(color: Colors.grey, )));
+      return Center(
+        child: Text(
+          'no_pages_found'.tr(),
+          style: const TextStyle(color: Colors.grey),
+        ),
+      );
     }
 
     return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {
-        ui.PointerDeviceKind.touch,
-        ui.PointerDeviceKind.mouse,
-        ui.PointerDeviceKind.trackpad,
-        ui.PointerDeviceKind.stylus,
-      }),
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          ui.PointerDeviceKind.touch,
+          ui.PointerDeviceKind.mouse,
+          ui.PointerDeviceKind.trackpad,
+          ui.PointerDeviceKind.stylus,
+        },
+      ),
       child: Scrollbar(
         controller: _scrollController,
         child: ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.all(8),
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           itemCount: document.pagesCount,
           itemBuilder: (_, index) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -1453,9 +2079,16 @@ class _LazyPdfPageState extends State<_LazyPdfPage> {
         backgroundColor: '#ffffff',
       );
       if (!mounted) return;
-      setState(() { _imageBytes = pageImage?.bytes; _loading = false; });
+      setState(() {
+        _imageBytes = pageImage?.bytes;
+        _loading = false;
+      });
     } catch (error) {
-      if (mounted) setState(() { _error = error.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = error.toString();
+          _loading = false;
+        });
     } finally {
       await page?.close();
     }
@@ -1464,13 +2097,29 @@ class _LazyPdfPageState extends State<_LazyPdfPage> {
   @override
   Widget build(BuildContext context) {
     if (_imageBytes != null) {
-      return Image.memory(_imageBytes!, fit: BoxFit.fitWidth, filterQuality: FilterQuality.high, width: double.infinity);
+      return Image.memory(
+        _imageBytes!,
+        fit: BoxFit.fitWidth,
+        filterQuality: FilterQuality.high,
+        width: double.infinity,
+      );
     }
     if (_error != null) {
-      return Container(height: 200, alignment: Alignment.center, child: const Icon(Icons.error_outline, color: Color(0xFFEF4444)));
+      return Container(
+        height: 200,
+        alignment: Alignment.center,
+        child: const Icon(Icons.error_outline, color: Color(0xFFEF4444)),
+      );
     }
-    return Container(height: 200, alignment: Alignment.center,
-        child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+    return Container(
+      height: 200,
+      alignment: Alignment.center,
+      child: const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
   }
 }
 
@@ -1496,7 +2145,8 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   });
 
   @override
-  State<_FullScreenDocumentViewer> createState() => _FullScreenDocumentViewerState();
+  State<_FullScreenDocumentViewer> createState() =>
+      _FullScreenDocumentViewerState();
 }
 
 class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
@@ -1511,18 +2161,46 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
 
   Widget _buildImageContent(String failedToLoadText) {
     if (widget.imageBytes != null) {
-      return Image.memory(widget.imageBytes!, width: double.infinity, height: double.infinity, fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Center(child: Text(failedToLoadText, style: const TextStyle(color: Color(0xFF9E9E9E)))));
+      return Image.memory(
+        widget.imageBytes!,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Center(
+          child: Text(
+            failedToLoadText,
+            style: const TextStyle(color: Color(0xFF9E9E9E)),
+          ),
+        ),
+      );
     }
 
     if (widget.url.startsWith('data:')) {
-      return Image.memory(_base64ToBytes(widget.url), width: double.infinity, height: double.infinity, fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Center(child: Text(failedToLoadText, style: const TextStyle(color: Color(0xFF9E9E9E)))));
+      return Image.memory(
+        _base64ToBytes(widget.url),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Center(
+          child: Text(
+            failedToLoadText,
+            style: const TextStyle(color: Color(0xFF9E9E9E)),
+          ),
+        ),
+      );
     }
 
     return CachedNetworkImage(
-      imageUrl: widget.url, width: double.infinity, height: double.infinity, fit: BoxFit.cover,
-      placeholder: (_, _) => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: Color(0xFF0247C4)))),
+      imageUrl: widget.url,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      placeholder: (_, _) => const SizedBox(
+        height: 200,
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF0247C4)),
+        ),
+      ),
       errorWidget: (_, _, _) => Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -1530,7 +2208,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
           children: [
             const Icon(Icons.broken_image, size: 48, color: Color(0xFF9E9E9E)),
             const SizedBox(height: 10),
-            Text(failedToLoadText, style: const TextStyle(color: Color(0xFF9E9E9E))),
+            Text(
+              failedToLoadText,
+              style: const TextStyle(color: Color(0xFF9E9E9E)),
+            ),
           ],
         ),
       ),
@@ -1540,39 +2221,78 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : (size.width * 0.92);
-    final maxPreviewHeight = (size.height * widget.heightFactor + 0.2 - 70).clamp(160.0, 600.0);
-    final previewHeight = (size.height * (widget.heightFactor + 0.15)).clamp(160.0, maxPreviewHeight).toDouble();
+    final previewWidth = size.width > 720
+        ? (size.width * 0.85).clamp(450.0, 720.0)
+        : (size.width * 0.92);
+    final maxPreviewHeight = (size.height * widget.heightFactor + 0.2 - 70)
+        .clamp(160.0, 600.0);
+    final previewHeight = (size.height * (widget.heightFactor + 0.15))
+        .clamp(160.0, maxPreviewHeight)
+        .toDouble();
 
     final failedToLoadText = 'failed_to_load'.tr();
-    final cleanTitle = cleanUploadedDocumentFileName(widget.label, fallback: 'document'.tr());
-    final cleanFileName = cleanUploadedDocumentFileName(widget.url, fallback: 'document'.tr());
+    final cleanTitle = cleanUploadedDocumentFileName(
+      widget.label,
+      fallback: 'document'.tr(),
+    );
+    final cleanFileName = cleanUploadedDocumentFileName(
+      widget.url,
+      fallback: 'document'.tr(),
+    );
 
     final content = ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: size.height * (widget.heightFactor + 0.1)),
+      constraints: BoxConstraints(
+        maxHeight: size.height * (widget.heightFactor + 0.1),
+      ),
       child: Container(
         width: previewWidth,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.25), blurRadius: 24, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withOpacity(0.25),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(color: Color(0xFFF7F8FA), borderRadius: BorderRadius.vertical(top: Radius.circular(14))),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+              ),
               child: Row(
                 children: [
-                  Expanded(child: Text(cleanTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, fontWeight: FontWeight.w600, ))),
+                  Expanded(
+                    child: Text(
+                      cleanTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(color: const Color(0xFF1A1A1A).withOpacity(0.06), shape: BoxShape.circle),
-                      child: const Icon(Icons.close, color: Color(0xFF1A1A1A), size: 18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A).withOpacity(0.06),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Color(0xFF1A1A1A),
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -1582,8 +2302,14 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
             SizedBox(
               height: previewHeight,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
-                child: _buildPreviewContent(previewHeight, cleanFileName, failedToLoadText),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(14),
+                ),
+                child: _buildPreviewContent(
+                  previewHeight,
+                  cleanFileName,
+                  failedToLoadText,
+                ),
               ),
             ),
           ],
@@ -1595,25 +2321,44 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
       onTap: () => Navigator.of(context).pop(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Center(child: GestureDetector(onTap: () {}, child: content)),
+        body: Center(
+          child: GestureDetector(onTap: () {}, child: content),
+        ),
       ),
     );
   }
 
-  Widget _buildPreviewContent(double previewHeight, String cleanFileName, String failedToLoadText) {
+  Widget _buildPreviewContent(
+    double previewHeight,
+    String cleanFileName,
+    String failedToLoadText,
+  ) {
     if (widget.isPdf) {
-      return Container(color: const Color(0xFFFFFFFF), width: double.infinity,
-          child: _FullScreenPdfPreview(url: widget.url, bytes: widget.pdfBytes));
+      return Container(
+        color: const Color(0xFFFFFFFF),
+        width: double.infinity,
+        child: _FullScreenPdfPreview(url: widget.url, bytes: widget.pdfBytes),
+      );
     }
 
     if (widget.isDoc) {
-      return Container(color: const Color(0xFFFFFFFF), width: double.infinity,
-          child: DocPreview(docUrl: widget.url, docName: widget.label));
+      return Container(
+        color: const Color(0xFFFFFFFF),
+        width: double.infinity,
+        child: DocPreview(docUrl: widget.url, docName: widget.label),
+      );
     }
 
     if (widget.isImage) {
-      return Container(color: const Color(0xFFFFFFFF), width: double.infinity,
-          child: InteractiveViewer(minScale: 0.5, maxScale: 4.0, child: _buildImageContent(failedToLoadText)));
+      return Container(
+        color: const Color(0xFFFFFFFF),
+        width: double.infinity,
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: _buildImageContent(failedToLoadText),
+        ),
+      );
     }
 
     return SizedBox(
@@ -1622,44 +2367,85 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.picture_as_pdf, size: 64, color: Color(0xFFEF4444)),
+            const Icon(
+              Icons.picture_as_pdf,
+              size: 64,
+              color: Color(0xFFEF4444),
+            ),
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(cleanFileName, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 14, fontWeight: FontWeight.w600, )),
+              child: Text(
+                cleanFileName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (widget.url.startsWith('http') || widget.url.startsWith('file')) ...[
+                if (widget.url.startsWith('http') ||
+                    widget.url.startsWith('file')) ...[
                   GestureDetector(
                     onTap: () async {
                       final ctx = context;
                       try {
                         final uri = Uri.tryParse(widget.url);
                         if (uri == null) throw const FormatException();
-                        final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        final opened = await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
                         if (!opened && ctx.mounted) {
-                          FlashySnackBar.show(ctx, message: 'failed_to_load'.tr(), isError: true);
+                          FlashySnackBar.show(
+                            ctx,
+                            message: 'failed_to_load'.tr(),
+                            isError: true,
+                          );
                         }
                       } catch (_) {
                         if (ctx.mounted) {
-                          FlashySnackBar.show(ctx, message: 'failed_to_load'.tr(), isError: true);
+                          FlashySnackBar.show(
+                            ctx,
+                            message: 'failed_to_load'.tr(),
+                            isError: true,
+                          );
                         }
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                      decoration: BoxDecoration(color: const Color(0xFF0247C4), borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 11,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0247C4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.open_in_new, color: Colors.white, size: 16),
+                          const Icon(
+                            Icons.open_in_new,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
-                          Text('open_document'.tr(),
-                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
+                          Text(
+                            'open_document'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1669,10 +2455,22 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                    child: Text('close'.tr(),
-                        style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w600, )),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'close'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],

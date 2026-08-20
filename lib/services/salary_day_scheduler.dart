@@ -175,23 +175,93 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
   for (final candidate in localCandidates) {
     final source = (candidate ?? '').trim();
     if (source.isEmpty || !visited.add(source)) continue;
+
+    // 1. Check if it's base64
+    if (source.startsWith('data:image/')) {
+      final bytes = await ImageLoader.load(
+        source: source,
+        maxSizeBytes: 5 * 1024 * 1024,
+      );
+      if (bytes != null && bytes.isNotEmpty) return bytes;
+    }
+
+    // 2. Check if it's a remote URL
     final uri = Uri.tryParse(source);
-    final isRemote = uri != null &&
+    final isRemote =
+        uri != null &&
         (uri.scheme.toLowerCase() == 'http' ||
             uri.scheme.toLowerCase() == 'https');
-    if (isRemote) continue;
-    final bytes = await ImageLoader.load(
-      source: source,
-      maxSizeBytes: 5 * 1024 * 1024,
-      timeout: const Duration(seconds: 2),
-      convertToPng: true,
-    );
-    if (bytes != null && bytes.isNotEmpty) return bytes;
+
+    if (isRemote) {
+      // Try to load from Cache Manager
+      try {
+        final cacheManager = DefaultCacheManager();
+        final fileInfo = await cacheManager.getFileFromCache(source);
+        if (fileInfo != null) {
+          final bytes = await fileInfo.file.readAsBytes();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (_) {}
+    } else {
+      // 3. It's a local file path candidate
+      try {
+        final cleanedPath = source.startsWith('file://')
+            ? Uri.parse(source).toFilePath()
+            : source;
+        final file = File(cleanedPath);
+        if (file.existsSync()) {
+          final bytes = file.readAsBytesSync();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (_) {}
+    }
   }
 
-  return isStamp
-      ? InvoiceService.resolveCompanyStampBytes(remoteSource)
-      : InvoiceService.resolveCompanyLogoBytes(remoteSource);
+  // 4. Try remoteSource in cache or local
+  final rSource = remoteSource.trim();
+  if (rSource.isNotEmpty) {
+    final uri = Uri.tryParse(rSource);
+    final isRemote =
+        uri != null &&
+        (uri.scheme.toLowerCase() == 'http' ||
+            uri.scheme.toLowerCase() == 'https');
+    if (isRemote) {
+      try {
+        final cacheManager = DefaultCacheManager();
+        final fileInfo = await cacheManager.getFileFromCache(rSource);
+        if (fileInfo != null) {
+          final bytes = await fileInfo.file.readAsBytes();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (_) {}
+    } else {
+      try {
+        final file = File(rSource);
+        if (file.existsSync()) {
+          final bytes = file.readAsBytesSync();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // 5. Fallback: download remoteSource and cache it in Cache Manager
+  try {
+    final bytes = isStamp
+        ? await InvoiceService.resolveCompanyStampBytes(remoteSource)
+        : await InvoiceService.resolveCompanyLogoBytes(remoteSource);
+    if (bytes != null && bytes.isNotEmpty && rSource.isNotEmpty) {
+      final uri = Uri.tryParse(rSource);
+      if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+        DefaultCacheManager()
+            .putFile(rSource, bytes)
+            .catchError((_) => File(''));
+      }
+    }
+    return bytes;
+  } catch (_) {
+    return null;
+  }
 }
 
 Future<Map<String, dynamic>> _loadLocaleTranslations(
@@ -287,9 +357,7 @@ class _PayrollInvoiceIsolateWorker {
     }
   }
 
-  Future<Map<String, Object>?> generate(
-    Map<String, Object?> workerArgs,
-  ) async {
+  Future<Map<String, Object>?> generate(Map<String, Object?> workerArgs) async {
     if (_closed) return null;
     final responsePort = ReceivePort();
     _pendingResponses.add(responsePort);
@@ -1515,6 +1583,9 @@ class PayrollRunner {
       );
       if (selectedResults == null) return null;
 
+      // Allow dialog close transition to finish smoothly before triggering CPU-heavy processing
+      await Future.delayed(const Duration(milliseconds: 300));
+
       committedSummary = PayrollRunSummary(
         runDate: summary.runDate,
         totalWorkers: selectedResults.length,
@@ -2244,9 +2315,7 @@ class PayrollRunner {
       if (pool.isEmpty) {
         throw StateError('Unable to start payroll PDF workers');
       }
-      final spawnMs = DateTime.now()
-          .difference(spawnStartedAt)
-          .inMilliseconds;
+      final spawnMs = DateTime.now().difference(spawnStartedAt).inMilliseconds;
 
       var nextPdfIndex = 0;
       var pdfDone = 0;
@@ -2266,10 +2335,7 @@ class PayrollRunner {
         controller.update(
           progress: 0.60 + (0.28 * pdfDone / successful.length),
           label: 'generating_invoices_progress'.tr(
-            namedArgs: {
-              'done': '$pdfDone',
-              'total': '${successful.length}',
-            },
+            namedArgs: {'done': '$pdfDone', 'total': '${successful.length}'},
           ),
           forceLabel: true,
         );
@@ -2294,9 +2360,9 @@ class PayrollRunner {
 
       var timedOut = false;
       try {
-        await Future.wait(pool.map(drainQueue)).timeout(
-          deadline.difference(DateTime.now()),
-        );
+        await Future.wait(
+          pool.map(drainQueue),
+        ).timeout(deadline.difference(DateTime.now()));
       } on TimeoutException {
         timedOut = true;
         stopRequested = true;
@@ -2421,7 +2487,10 @@ class PayrollRunner {
         convertToPng: false,
       );
       if (bytes != null && bytes.isNotEmpty) {
-        DefaultCacheManager().putFile(source, bytes).catchError((_) => File(''));
+        // ignore: invalid_return_type_for_catch_error
+        DefaultCacheManager()
+            .putFile(source, bytes)
+            .catchError((_) => File(''));
       }
       return bytes;
     } catch (_) {
@@ -2471,7 +2540,6 @@ class PayrollRunner {
     }
     if (urlToIndexes.isEmpty) return results;
 
-    const pool = 48;
     var completed = 0;
     void report() {
       if (workers.isEmpty) return;
@@ -2493,12 +2561,20 @@ class PayrollRunner {
     );
 
     if (missUrls.isNotEmpty) {
-      // 1) Download raw bytes for cache misses in parallel.
+      // 1) Download raw bytes for cache misses, with bounded concurrency (limit 12).
       final rawByUrl = <String, Uint8List?>{};
-      final futures = missUrls.map((u) async {
-        rawByUrl[u] = await _loadWorkerProfileImageRaw(u);
-      }).toList();
-      await Future.wait(futures);
+      var urlIndex = 0;
+      Future<void> worker() async {
+        while (true) {
+          final idx = urlIndex++;
+          if (idx >= missUrls.length) break;
+          final u = missUrls[idx];
+          rawByUrl[u] = await _loadWorkerProfileImageRaw(u);
+        }
+      }
+
+      final poolSize = missUrls.length < 12 ? missUrls.length : 12;
+      await Future.wait(List.generate(poolSize, (_) => worker()));
 
       // 2) Compress the newly loaded raws in parallel (isolate) and cache the
       //    final bytes so later runs skip both download and compression.

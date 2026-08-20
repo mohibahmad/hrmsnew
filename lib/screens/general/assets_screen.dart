@@ -17,6 +17,7 @@ import '../../services/firestore_service.dart';
 import '../../utils/utils.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 
 String _adts(dynamic value) {
   DateTime? dt;
@@ -40,14 +41,30 @@ String _formatPositionTitleCase(dynamic value) {
   final text = (value ?? '').toString().trim();
   if (text.isEmpty) return '';
 
-  const acronyms = {'hr', 'it', 'qa', 'ui', 'ux', 'ui/ux', 'ceo', 'cto', 'cfo', 'coo', 'php', 'sql'};
+  const acronyms = {
+    'hr',
+    'it',
+    'qa',
+    'ui',
+    'ux',
+    'ui/ux',
+    'ceo',
+    'cto',
+    'cfo',
+    'coo',
+    'php',
+    'sql',
+  };
 
-  return text.split(RegExp(r'\s+')).map((word) {
-    final lower = word.toLowerCase();
-    return acronyms.contains(lower)
-        ? lower.toUpperCase()
-        : '${lower[0].toUpperCase()}${lower.substring(1)}';
-  }).join(' ');
+  return text
+      .split(RegExp(r'\s+'))
+      .map((word) {
+        final lower = word.toLowerCase();
+        return acronyms.contains(lower)
+            ? lower.toUpperCase()
+            : '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
 }
 
 bool _assetBool(dynamic value, {bool defaultValue = false}) {
@@ -179,7 +196,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             if (aTime == null && bTime == null) return 0;
             if (aTime == null) return -1;
             if (bTime == null) return 1;
-            if (aTime is Timestamp && bTime is Timestamp) return bTime.compareTo(aTime);
+            if (aTime is Timestamp && bTime is Timestamp)
+              return bTime.compareTo(aTime);
             return 0;
           });
 
@@ -211,7 +229,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     _workersSub = _firestore.workersStream.listen((snapshot) {
       if (!mounted) return;
       _setWorkerOptions(
-        snapshot.docs.map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id}),
+        snapshot.docs.map(
+          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        ),
       );
       setState(() {});
     }, onError: (_) {});
@@ -226,15 +246,21 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   bool _isAssetEligibleWorker(Map<String, dynamic> worker) {
-    final status = (worker['employmentStatus'] ??
-            worker['workerStatus'] ??
-            worker['status'] ??
-            'Active')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final status =
+        (worker['employmentStatus'] ??
+                worker['workerStatus'] ??
+                worker['status'] ??
+                'Active')
+            .toString()
+            .trim()
+            .toLowerCase();
 
-    return !const {'inactive', 'terminated', 'deleted', 'archived'}.contains(status);
+    return !const {
+      'inactive',
+      'terminated',
+      'deleted',
+      'archived',
+    }.contains(status);
   }
 
   void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
@@ -243,7 +269,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         .toList();
 
     _workersMap = {for (final w in named) _workerOption(w): w};
-    _workerNames = named.where(_isAssetEligibleWorker).map(_workerOption).toList();
+    _workerNames = named
+        .where(_isAssetEligibleWorker)
+        .map(_workerOption)
+        .toList();
   }
 
   String? _optionForAsset(AssetData asset) {
@@ -264,7 +293,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
     final assetName = asset.name.trim().toLowerCase();
     for (final entry in _workersMap.entries) {
-      final workerName = (entry.value['name'] ?? '').toString().trim().toLowerCase();
+      final workerName = (entry.value['name'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       if (workerName == assetName) return entry.key;
     }
 
@@ -293,7 +325,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     try {
       final parts = dateStr.split('/');
       if (parts.length == 3) {
-        return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        return DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
       }
     } catch (_) {}
 
@@ -306,19 +342,26 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     required String position,
     required BuildContext ctx,
   }) {
-    final allEmpty = (selectedWorkerName == null || selectedWorkerName.trim().isEmpty) &&
+    final allEmpty =
+        (selectedWorkerName == null || selectedWorkerName.trim().isEmpty) &&
         assetType.isEmpty &&
         position.isEmpty;
 
     if (allEmpty) {
-      FlashySnackBar.show(ctx, message: 'please_fill_all_fields'.tr(), isError: true);
+      FlashySnackBar.show(
+        ctx,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (selectedWorkerName == null || selectedWorkerName.trim().isEmpty) {
       FlashySnackBar.show(
         ctx,
-        message: 'field_is_required'.tr(namedArgs: {'field': 'worker_name'.tr()}),
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'worker_name'.tr()},
+        ),
         isError: true,
       );
       return false;
@@ -336,7 +379,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     if (assetType.isEmpty) {
       FlashySnackBar.show(
         ctx,
-        message: 'field_is_required'.tr(namedArgs: {'field': 'asset_type'.tr()}),
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'asset_type'.tr()},
+        ),
         isError: true,
       );
       return false;
@@ -367,9 +412,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     final profileImage = workerData['profileImage']?.toString() ?? '';
     final email = workerData['email']?.toString() ?? '';
     final phone = workerData['phone']?.toString() ?? '';
-    final cnic = (workerData['cnic'] ?? workerData['nationalId'])?.toString() ?? '';
+    final cnic =
+        (workerData['cnic'] ?? workerData['nationalId'])?.toString() ?? '';
     final dateOfJoining = _adts(workerData['dateOfJoining']);
-    final joiningDate = _adts(workerData['joiningDate'] ?? workerData['dateOfJoining']);
+    final joiningDate = _adts(
+      workerData['joiningDate'] ?? workerData['dateOfJoining'],
+    );
 
     return {
       'workerId': workerId,
@@ -405,7 +453,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               backgroundColor: const Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
@@ -419,7 +469,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
-                          onPressed: isSaving ? null : () => Navigator.of(ctx).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(ctx).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -438,17 +490,31 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         const Spacer(),
                         ElevatedButton(
                           style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(const Color(0xFF0247C4)),
-                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
+                            backgroundColor: WidgetStateProperty.all(
+                              const Color(0xFF0247C4),
+                            ),
+                            shape: WidgetStateProperty.all(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
                             elevation: WidgetStateProperty.all(0),
-                            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-                            minimumSize: WidgetStateProperty.all(const Size(0, 36)),
+                            padding: WidgetStateProperty.all(
+                              const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            minimumSize: WidgetStateProperty.all(
+                              const Size(0, 36),
+                            ),
                           ),
                           onPressed: isSaving
                               ? null
                               : () async {
                                   final assetType = typeController.text.trim();
-                                  final position = positionController.text.trim();
+                                  final position = positionController.text
+                                      .trim();
 
                                   if (!_validateAssetForm(
                                     selectedWorkerName: selectedWorkerName,
@@ -459,15 +525,18 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     return;
                                   }
 
-                                  if (isReturned && returnedDate.isBefore(loanedDate)) {
+                                  if (isReturned &&
+                                      returnedDate.isBefore(loanedDate)) {
                                     returnedDate = loanedDate;
                                   }
 
-                                  final workerData = _workersMap[selectedWorkerName];
+                                  final workerData =
+                                      _workersMap[selectedWorkerName];
                                   if (workerData == null) {
                                     FlashySnackBar.show(
                                       ctx,
-                                      message: 'please_select_valid_worker'.tr(),
+                                      message: 'please_select_valid_worker'
+                                          .tr(),
                                       isError: true,
                                     );
                                     return;
@@ -475,26 +544,40 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
                                   setModalState(() => isSaving = true);
 
-                                  final workerId = (workerData['id'] ?? '').toString();
-                                  final workerName = (workerData['name'] ?? '').toString();
-                                  final profileImage = workerData['profileImage']?.toString();
+                                  final workerId = (workerData['id'] ?? '')
+                                      .toString();
+                                  final workerName = (workerData['name'] ?? '')
+                                      .toString();
+                                  final profileImage =
+                                      workerData['profileImage']?.toString();
 
                                   try {
-                                    final policies = await _firestore.getPolicies();
+                                    final policies = await _firestore
+                                        .getPolicies();
                                     if (!mounted) return;
 
                                     final assetPolicy = policies
-                                        .where((p) => p['typeId'] == 'Asset Policy')
+                                        .where(
+                                          (p) => p['typeId'] == 'Asset Policy',
+                                        )
                                         .toList();
 
                                     if (assetPolicy.isNotEmpty) {
                                       final maxAssets =
-                                          int.tryParse(assetPolicy.first['maxAssetsPerWorker']?.toString() ?? '3') ?? 3;
+                                          int.tryParse(
+                                            assetPolicy
+                                                    .first['maxAssetsPerWorker']
+                                                    ?.toString() ??
+                                                '3',
+                                          ) ??
+                                          3;
 
                                       final assignedCount = _assets.where((a) {
-                                        final wId = (a.workerId ?? '').toString();
+                                        final wId = (a.workerId ?? '')
+                                            .toString();
                                         return !a.isReturned &&
-                                            (wId == workerId || a.name == workerName);
+                                            (wId == workerId ||
+                                                a.name == workerName);
                                       }).length;
 
                                       if (assignedCount >= maxAssets) {
@@ -502,9 +585,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         if (!ctx.mounted) return;
                                         FlashySnackBar.show(
                                           ctx,
-                                          message: 'worker_asset_limit_reached'.tr(
-                                            namedArgs: {'maxAssets': '$maxAssets'},
-                                          ),
+                                          message: 'worker_asset_limit_reached'
+                                              .tr(
+                                                namedArgs: {
+                                                  'maxAssets': '$maxAssets',
+                                                },
+                                              ),
                                           isError: true,
                                         );
                                         return;
@@ -521,13 +607,17 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     isReturned: isReturned,
                                   );
 
-                                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                  final isGuest =
+                                      _authService.currentUser?.isAnonymous ??
+                                      false;
 
                                   if (isGuest) {
                                     final guestAsset = {
                                       ...assetMap,
                                       'dateLoaned': _formatDate(loanedDate),
-                                      'dateReturned': isReturned ? _formatDate(returnedDate) : null,
+                                      'dateReturned': isReturned
+                                          ? _formatDate(returnedDate)
+                                          : null,
                                     };
 
                                     setState(() {
@@ -538,14 +628,23 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                           position,
                                           assetType,
                                           _formatDate(loanedDate),
-                                          isReturned ? _formatDate(returnedDate) : '',
+                                          isReturned
+                                              ? _formatDate(returnedDate)
+                                              : '',
                                           isReturned,
                                           workerId: workerId,
                                           profileImage: profileImage,
-                                          email: workerData['email']?.toString(),
-                                          phone: workerData['phone']?.toString(),
-                                          cnic: (workerData['cnic'] ?? workerData['nationalId'])?.toString(),
-                                          dateOfJoining: _adts(workerData['dateOfJoining']),
+                                          email: workerData['email']
+                                              ?.toString(),
+                                          phone: workerData['phone']
+                                              ?.toString(),
+                                          cnic:
+                                              (workerData['cnic'] ??
+                                                      workerData['nationalId'])
+                                                  ?.toString(),
+                                          dateOfJoining: _adts(
+                                            workerData['dateOfJoining'],
+                                          ),
                                         ),
                                       );
                                       DummyData.assets.insert(0, guestAsset);
@@ -561,7 +660,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                       if (!ctx.mounted) return;
                                       FlashySnackBar.show(
                                         ctx,
-                                        message: 'failed_to_add_asset'.tr(namedArgs: {'error': e.toString()}),
+                                        message: 'failed_to_add_asset'.tr(
+                                          namedArgs: {'error': e.toString()},
+                                        ),
                                         isError: true,
                                       );
                                       return;
@@ -572,7 +673,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   Navigator.of(ctx).pop();
                                   FlashySnackBar.show(
                                     ctx,
-                                    message: 'successfully_added_asset'.tr(namedArgs: {'name': workerName}),
+                                    message: 'successfully_added_asset'.tr(
+                                      namedArgs: {'name': workerName},
+                                    ),
                                   );
                                   if (parentContext.mounted) {
                                     tryShowFirstMilestoneRateUs('asset');
@@ -582,7 +685,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : Text(
                                   'save'.tr(),
@@ -611,54 +717,72 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           optionsBuilder: (TextEditingValue textValue) {
                             if (textValue.text.isEmpty) return _workerNames;
                             return _workerNames.where(
-                              (name) => name.toLowerCase().contains(textValue.text.toLowerCase()),
+                              (name) => name.toLowerCase().contains(
+                                textValue.text.toLowerCase(),
+                              ),
                             );
                           },
-                          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-                            return Container(
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: controller,
-                                      focusNode: focusNode,
-                                      decoration: InputDecoration.collapsed(
-                                        hintText: 'worker_name_hint'.tr(),
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey.shade400,
-                                          fontSize: 14,
+                          fieldViewBuilder:
+                              (context, controller, focusNode, onSubmitted) {
+                                return Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: controller,
+                                          focusNode: focusNode,
+                                          decoration: InputDecoration.collapsed(
+                                            hintText: 'worker_name_hint'.tr(),
+                                            hintStyle: TextStyle(
+                                              color: Colors.grey.shade400,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          onChanged: (val) {
+                                            setModalState(() {
+                                              selectedWorkerName =
+                                                  val.trim().isEmpty
+                                                  ? null
+                                                  : val.trim();
+                                              if (_workersMap.containsKey(
+                                                val.trim(),
+                                              )) {
+                                                positionController.text =
+                                                    _formatPositionTitleCase(
+                                                      _workersMap[val
+                                                          .trim()]!['position'],
+                                                    );
+                                              }
+                                            });
+                                          },
                                         ),
                                       ),
-                                      style: const TextStyle(
-                                        fontSize: 14,
+                                      const Icon(
+                                        Icons.arrow_drop_down,
                                         color: Colors.black,
-                                        fontWeight: FontWeight.w500,
+                                        size: 24,
                                       ),
-                                      onChanged: (val) {
-                                        setModalState(() {
-                                          selectedWorkerName = val.trim().isEmpty ? null : val.trim();
-                                          if (_workersMap.containsKey(val.trim())) {
-                                            positionController.text = _formatPositionTitleCase(
-                                              _workersMap[val.trim()]!['position'],
-                                            );
-                                          }
-                                        });
-                                      },
-                                    ),
+                                    ],
                                   ),
-                                  const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
-                                ],
-                              ),
-                            );
-                          },
+                                );
+                              },
                           optionsViewBuilder: (context, onSelected, options) {
                             return Align(
                               alignment: Alignment.topLeft,
@@ -668,15 +792,23 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 borderRadius: BorderRadius.zero,
                                 shadowColor: Colors.black.withOpacity(0.12),
                                 child: Container(
-                                  constraints: const BoxConstraints(maxHeight: 220, maxWidth: 420),
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 220,
+                                    maxWidth: 420,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                                    border: Border.all(
+                                      color: const Color(0xFFE5E7EB),
+                                      width: 1,
+                                    ),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.zero,
                                     child: ListView.separated(
-                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
                                       shrinkWrap: true,
                                       itemCount: options.length,
                                       separatorBuilder: (_, _) => const Divider(
@@ -690,10 +822,17 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         final option = options.elementAt(index);
                                         return InkWell(
                                           onTap: () => onSelected(option),
-                                          splashColor: const Color(0xFF0247C4).withOpacity(0.06),
-                                          highlightColor: const Color(0xFF0247C4).withOpacity(0.04),
+                                          splashColor: const Color(
+                                            0xFF0247C4,
+                                          ).withOpacity(0.06),
+                                          highlightColor: const Color(
+                                            0xFF0247C4,
+                                          ).withOpacity(0.04),
                                           child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 10,
+                                            ),
                                             child: Text(
                                               option,
                                               style: const TextStyle(
@@ -714,9 +853,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             setModalState(() {
                               selectedWorkerName = val;
                               if (_workersMap.containsKey(val)) {
-                                positionController.text = _formatPositionTitleCase(
-                                  _workersMap[val]!['position'],
-                                );
+                                positionController.text =
+                                    _formatPositionTitleCase(
+                                      _workersMap[val]!['position'],
+                                    );
                               }
                             });
                           },
@@ -724,9 +864,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('asset_type'.tr(), typeController, 'asset_type_hint'.tr(), maxLength: 50),
+                    _buildModalTextField(
+                      'asset_type'.tr(),
+                      typeController,
+                      'asset_type_hint'.tr(),
+                      maxLength: 50,
+                    ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('position'.tr(), positionController, 'position_hint'.tr(), readOnly: true),
+                    _buildModalTextField(
+                      'position'.tr(),
+                      positionController,
+                      'position_hint'.tr(),
+                      readOnly: true,
+                    ),
                     const SizedBox(height: 16),
                     _buildModalDatePicker(
                       ctx,
@@ -737,12 +887,15 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         context: ctx,
                         initialDate: loanedDate,
                         minimumDate: DateTime(2000),
-                        maximumDate: DateTime.now().add(const Duration(days: 365)),
+                        maximumDate: DateTime.now().add(
+                          const Duration(days: 365),
+                        ),
                         title: 'date_loaned'.tr(),
                         onDateSelected: (picked) {
                           setModalState(() {
                             loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate)) returnedDate = loanedDate;
+                            if (returnedDate.isBefore(loanedDate))
+                              returnedDate = loanedDate;
                           });
                         },
                       ),
@@ -766,7 +919,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             if (val == null) return;
                             setModalState(() {
                               isReturned = val;
-                              if (isReturned && returnedDate.isBefore(loanedDate)) {
+                              if (isReturned &&
+                                  returnedDate.isBefore(loanedDate)) {
                                 returnedDate = loanedDate;
                               }
                             });
@@ -787,7 +941,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           minimumDate: loanedDate,
                           maximumDate: DateTime.now(),
                           title: 'returned_date'.tr(),
-                          onDateSelected: (picked) => setModalState(() => returnedDate = picked),
+                          onDateSelected: (picked) =>
+                              setModalState(() => returnedDate = picked),
                         ),
                       ),
                     ],
@@ -804,7 +959,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   void _showEditAssetModal(AssetData data) {
     String? selectedWorkerName = _optionForAsset(data);
     final typeController = TextEditingController(text: data.type);
-    final positionController = TextEditingController(text: _formatPositionTitleCase(data.position));
+    final positionController = TextEditingController(
+      text: _formatPositionTitleCase(data.position),
+    );
     final now = DateTime.now();
     final minimumAssetDate = DateTime(1900, 1, 1);
 
@@ -826,7 +983,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               backgroundColor: const Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
@@ -840,7 +999,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.black),
-                          onPressed: isSaving ? null : () => Navigator.of(ctx).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(ctx).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -856,17 +1017,31 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         const Spacer(),
                         ElevatedButton(
                           style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(const Color(0xFF0247C4)),
-                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                            backgroundColor: WidgetStateProperty.all(
+                              const Color(0xFF0247C4),
+                            ),
+                            shape: WidgetStateProperty.all(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
                             elevation: WidgetStateProperty.all(0),
-                            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-                            minimumSize: WidgetStateProperty.all(const Size(0, 36)),
+                            padding: WidgetStateProperty.all(
+                              const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            minimumSize: WidgetStateProperty.all(
+                              const Size(0, 36),
+                            ),
                           ),
                           onPressed: isSaving
                               ? null
                               : () async {
                                   final assetType = typeController.text.trim();
-                                  final position = positionController.text.trim();
+                                  final position = positionController.text
+                                      .trim();
 
                                   if (!_validateAssetForm(
                                     selectedWorkerName: selectedWorkerName,
@@ -877,26 +1052,43 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     return;
                                   }
 
-                                  if (isReturned && returnedDate.isBefore(loanedDate)) {
+                                  if (isReturned &&
+                                      returnedDate.isBefore(loanedDate)) {
                                     returnedDate = loanedDate;
                                   }
 
-                                  final workerData = _workersMap[selectedWorkerName];
+                                  final workerData =
+                                      _workersMap[selectedWorkerName];
                                   if (workerData == null) {
-                                    FlashySnackBar.show(ctx, message: 'no_workers_found'.tr(), isError: true);
+                                    FlashySnackBar.show(
+                                      ctx,
+                                      message: 'no_workers_found'.tr(),
+                                      isError: true,
+                                    );
                                     return;
                                   }
 
                                   setModalState(() => isSaving = true);
 
-                                  final workerId = (workerData['id'] ?? '').toString();
-                                  final workerName = (workerData['name'] ?? '').toString();
-                                  final profileImage = workerData['profileImage']?.toString();
+                                  final workerId = (workerData['id'] ?? '')
+                                      .toString();
+                                  final workerName = (workerData['name'] ?? '')
+                                      .toString();
+                                  final profileImage =
+                                      workerData['profileImage']?.toString();
                                   final email = workerData['email']?.toString();
                                   final phone = workerData['phone']?.toString();
-                                  final cnic = (workerData['cnic'] ?? workerData['nationalId'])?.toString();
-                                  final dateOfJoining = _adts(workerData['dateOfJoining']);
-                                  final joiningDate = _adts(workerData['joiningDate'] ?? workerData['dateOfJoining']);
+                                  final cnic =
+                                      (workerData['cnic'] ??
+                                              workerData['nationalId'])
+                                          ?.toString();
+                                  final dateOfJoining = _adts(
+                                    workerData['dateOfJoining'],
+                                  );
+                                  final joiningDate = _adts(
+                                    workerData['joiningDate'] ??
+                                        workerData['dateOfJoining'],
+                                  );
 
                                   final assetMap = _buildAssetMap(
                                     workerData: workerData,
@@ -907,18 +1099,24 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     isReturned: isReturned,
                                   );
 
-                                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                  final isGuest =
+                                      _authService.currentUser?.isAnonymous ??
+                                      false;
 
                                   if (isGuest) {
                                     setState(() {
-                                      final idx = _assets.indexWhere((a) => a.id == data.id);
+                                      final idx = _assets.indexWhere(
+                                        (a) => a.id == data.id,
+                                      );
                                       if (idx != -1) {
                                         _assets[idx] = AssetData(
                                           workerName,
                                           position,
                                           assetType,
                                           _formatDate(loanedDate),
-                                          isReturned ? _formatDate(returnedDate) : '',
+                                          isReturned
+                                              ? _formatDate(returnedDate)
+                                              : '',
                                           isReturned,
                                           id: data.id,
                                           workerId: workerId,
@@ -930,11 +1128,16 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         );
                                       }
 
-                                      final dummyIdx = DummyData.assets.indexWhere((asset) {
-                                        return (data.workerId ?? '').isNotEmpty
-                                            ? asset['workerId'] == data.workerId
-                                            : asset['name'] == data.name && asset['type'] == data.type;
-                                      });
+                                      final dummyIdx = DummyData.assets
+                                          .indexWhere((asset) {
+                                            return (data.workerId ?? '')
+                                                    .isNotEmpty
+                                                ? asset['workerId'] ==
+                                                      data.workerId
+                                                : asset['name'] == data.name &&
+                                                      asset['type'] ==
+                                                          data.type;
+                                          });
 
                                       if (dummyIdx != -1) {
                                         DummyData.assets[dummyIdx] = assetMap;
@@ -954,7 +1157,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                         if (!ctx.mounted) return;
                                         FlashySnackBar.show(
                                           ctx,
-                                          message: 'failed_to_update_asset'.tr(namedArgs: {'error': e.toString()}),
+                                          message: 'failed_to_update_asset'.tr(
+                                            namedArgs: {'error': e.toString()},
+                                          ),
                                           isError: true,
                                         );
                                         return;
@@ -968,7 +1173,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                             position,
                                             assetType,
                                             _formatDate(loanedDate),
-                                            isReturned ? _formatDate(returnedDate) : '',
+                                            isReturned
+                                                ? _formatDate(returnedDate)
+                                                : '',
                                             isReturned,
                                             id: data.id,
                                             workerId: workerId,
@@ -985,13 +1192,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
                                   if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop();
-                                  FlashySnackBar.show(ctx, message: 'asset_updated'.tr());
+                                  FlashySnackBar.show(
+                                    ctx,
+                                    message: 'asset_updated'.tr(),
+                                  );
                                 },
                           child: isSaving
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : Text(
                                   'save'.tr(),
@@ -1014,7 +1227,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         setModalState(() {
                           selectedWorkerName = val;
                           if (val != null && _workersMap.containsKey(val)) {
-                            positionController.text = _formatPositionTitleCase(_workersMap[val]!['position']);
+                            positionController.text = _formatPositionTitleCase(
+                              _workersMap[val]!['position'],
+                            );
                           } else {
                             positionController.text = '';
                           }
@@ -1022,9 +1237,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('asset_type'.tr(), typeController, 'asset_type_hint'.tr(), maxLength: 50),
+                    _buildModalTextField(
+                      'asset_type'.tr(),
+                      typeController,
+                      'asset_type_hint'.tr(),
+                      maxLength: 50,
+                    ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('position'.tr(), positionController, 'position_hint'.tr(), readOnly: true),
+                    _buildModalTextField(
+                      'position'.tr(),
+                      positionController,
+                      'position_hint'.tr(),
+                      readOnly: true,
+                    ),
                     const SizedBox(height: 16),
                     _buildModalDatePicker(
                       ctx,
@@ -1035,12 +1260,15 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         context: ctx,
                         initialDate: loanedDate,
                         minimumDate: DateTime(2000),
-                        maximumDate: DateTime.now().add(const Duration(days: 365)),
+                        maximumDate: DateTime.now().add(
+                          const Duration(days: 365),
+                        ),
                         title: 'date_loaned'.tr(),
                         onDateSelected: (picked) {
                           setModalState(() {
                             loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate)) returnedDate = loanedDate;
+                            if (returnedDate.isBefore(loanedDate))
+                              returnedDate = loanedDate;
                           });
                         },
                       ),
@@ -1064,7 +1292,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             if (val == null) return;
                             setModalState(() {
                               isReturned = val;
-                              if (isReturned && returnedDate.isBefore(loanedDate)) {
+                              if (isReturned &&
+                                  returnedDate.isBefore(loanedDate)) {
                                 returnedDate = loanedDate;
                               }
                             });
@@ -1085,7 +1314,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                           minimumDate: loanedDate,
                           maximumDate: DateTime.now(),
                           title: 'returned_date'.tr(),
-                          onDateSelected: (picked) => setModalState(() => returnedDate = picked),
+                          onDateSelected: (picked) =>
+                              setModalState(() => returnedDate = picked),
                         ),
                       ),
                     ],
@@ -1131,10 +1361,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             controller: controller,
             readOnly: readOnly,
             maxLength: maxLength,
-            buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+            buildCounter:
+                (_, {required currentLength, required isFocused, maxLength}) =>
+                    null,
             decoration: InputDecoration.collapsed(
               hintText: hintText,
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             ),
             style: TextStyle(
               fontSize: 14,
@@ -1185,10 +1417,14 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
                 isEmpty ? 'no_workers_found'.tr() : hintText,
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
               ),
               isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.black,
+                size: 24,
+              ),
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.black,
@@ -1197,7 +1433,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               items: items.map((val) {
                 return DropdownMenuItem<String>(
                   value: val,
-                  child: Text(val, style: const TextStyle(fontWeight: FontWeight.w500, )),
+                  child: Text(
+                    val,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 );
               }).toList(),
               onChanged: isEmpty ? null : onChanged,
@@ -1248,7 +1487,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     ),
                   ),
                 ),
-                Icon(Icons.calendar_month, color: Colors.grey.shade400, size: 20),
+                Icon(
+                  Icons.calendar_month,
+                  color: Colors.grey.shade400,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -1265,17 +1508,26 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     required String title,
     required ValueChanged<DateTime> onDateSelected,
   }) {
-    DateTime min =
-        DateTime(minimumDate.year, minimumDate.month, minimumDate.day);
-    DateTime max =
-        DateTime(maximumDate.year, maximumDate.month, maximumDate.day);
+    DateTime min = DateTime(
+      minimumDate.year,
+      minimumDate.month,
+      minimumDate.day,
+    );
+    DateTime max = DateTime(
+      maximumDate.year,
+      maximumDate.month,
+      maximumDate.day,
+    );
     if (min.isAfter(max)) {
       final tmp = min;
       min = max;
       max = tmp;
     }
-    DateTime selected =
-        DateTime(initialDate.year, initialDate.month, initialDate.day);
+    DateTime selected = DateTime(
+      initialDate.year,
+      initialDate.month,
+      initialDate.day,
+    );
     if (selected.isBefore(min)) selected = min;
     if (selected.isAfter(max)) selected = max;
 
@@ -1294,7 +1546,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             child: Dialog(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
               child: Center(
                 child: StatefulBuilder(
                   builder: (_, setPickerState) {
@@ -1324,7 +1579,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                             child: Row(
                               children: [
-                                const Icon(CupertinoIcons.calendar, size: 20, color: Color(0xFF0247C4)),
+                                const Icon(
+                                  CupertinoIcons.calendar,
+                                  size: 20,
+                                  color: Color(0xFF0247C4),
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   title,
@@ -1346,7 +1605,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                               minimumDate: min,
                               maximumDate: max,
                               onDateTimeChanged: (newDate) => setPickerState(
-                                () => selected = DateTime(newDate.year, newDate.month, newDate.day),
+                                () => selected = DateTime(
+                                  newDate.year,
+                                  newDate.month,
+                                  newDate.day,
+                                ),
                               ),
                             ),
                           ),
@@ -1358,7 +1621,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                   child: GestureDetector(
                                     onTap: () => Navigator.of(ctx).pop(),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
                                         borderRadius: BorderRadius.circular(6),
@@ -1384,7 +1649,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                       Navigator.of(ctx).pop();
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFF0247C4),
                                         borderRadius: BorderRadius.circular(6),
@@ -1445,13 +1712,14 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   ),
                   const SizedBox(height: 24),
                   _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(40.0),
-                          child: Center(child: CircularProgressIndicator()),
+                      ? ScreenTableShimmer(
+                          height: (MediaQuery.of(context).size.height - 279)
+                              .clamp(495.0, 1200.0),
+                          columnFlexes: const [3, 2, 2, 2],
                         )
                       : filtered.isEmpty
-                          ? _buildEmptyState()
-                          : _buildDataTable(filtered),
+                      ? _buildEmptyState()
+                      : _buildDataTable(filtered),
                 ],
               ),
             ),
@@ -1517,7 +1785,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   'assets/search icon.svg',
                   width: 24,
                   height: 24,
-                  colorFilter: const ColorFilter.mode(Color(0xFFBDBDBD), BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFBDBDBD),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1531,7 +1802,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: 'search_assets_hint'.tr(),
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -1545,7 +1819,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[400],
+                      ),
                     ),
                   ),
               ],
@@ -1570,10 +1848,17 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               minimumSize: const Size(140, 50),
               fixedSize: const Size.fromHeight(50),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               elevation: 0,
             ),
-            icon: Image.asset('assets/asset_icon.png', width: 20, height: 20, color: Colors.white),
+            icon: Image.asset(
+              'assets/asset_icon.png',
+              width: 20,
+              height: 20,
+              color: Colors.white,
+            ),
             label: Text(
               'assign_assets'.tr(),
               style: const TextStyle(
@@ -1589,7 +1874,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   Widget _buildDataTable(List<AssetData> assets) {
-    final tableHeight = (MediaQuery.of(context).size.height - 279).clamp(495.0, 1200.0);
+    final tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
+      495.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,
@@ -1603,11 +1891,41 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('worker_name'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('position'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('type_header'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('date_loaned'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('date_returned_header'.tr()))),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('worker_name'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('position'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('type_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('date_loaned'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('date_returned_header'.tr()),
+                  ),
+                ),
                 const SizedBox(width: 48),
               ],
             ),
@@ -1649,7 +1967,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     }
 
     final dateReturnedText = data.dateReturned.trim();
-    final isInUse = dateReturnedText.isEmpty ||
+    final isInUse =
+        dateReturnedText.isEmpty ||
         dateReturnedText.toLowerCase() == _inUseKey ||
         dateReturnedText.toLowerCase() == 'in_use' ||
         dateReturnedText == '__IN_USE__';
@@ -1668,7 +1987,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: Row(
                 children: [
-                  WorkerAvatar(imageUrl: profileImage, name: data.name, size: 40),
+                  WorkerAvatar(
+                    imageUrl: profileImage,
+                    name: data.name,
+                    size: 40,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -1694,7 +2017,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 _formatPositionTitleCase(data.position),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF000000), ),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF000000),
+                ),
               ),
             ),
           ),
@@ -1706,7 +2033,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 data.type,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
+                style: const TextStyle(fontSize: 15, color: Color(0xFF000000)),
               ),
             ),
           ),
@@ -1715,10 +2042,13 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Text(
-                AppDateUtils.fromValueLocalized(data.dateLoaned, locale: context.locale.toString()),
+                AppDateUtils.fromValueLocalized(
+                  data.dateLoaned,
+                  locale: context.locale.toString(),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
+                style: const TextStyle(fontSize: 15, color: Color(0xFF000000)),
               ),
             ),
           ),
@@ -1729,13 +2059,18 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               child: Text(
                 isInUse
                     ? 'in_use'.tr()
-                    : AppDateUtils.fromValueLocalized(data.dateReturned, locale: context.locale.toString()),
+                    : AppDateUtils.fromValueLocalized(
+                        data.dateReturned,
+                        locale: context.locale.toString(),
+                      ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: data.isReturned ? Colors.green : const Color(0xFFFF0004),
+                  color: data.isReturned
+                      ? Colors.green
+                      : const Color(0xFFFF0004),
                 ),
               ),
             ),
@@ -1790,7 +2125,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               if (mounted) {
                 FlashySnackBar.show(
                   context,
-                  message: 'failed_to_delete_record'.tr(namedArgs: {'error': e.toString()}),
+                  message: 'failed_to_delete_record'.tr(
+                    namedArgs: {'error': e.toString()},
+                  ),
                   isError: true,
                 );
               }
@@ -1807,7 +2144,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   'assets/edit_icon.svg',
                   width: 16,
                   height: 16,
-                  colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF0247C4),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1830,7 +2170,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   'assets/delete_icon.svg',
                   width: 16,
                   height: 16,
-                  colorFilter: const ColorFilter.mode(const Color(0xFFFF0004), BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(
+                    const Color(0xFFFF0004),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1850,7 +2193,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   Widget _buildEmptyState() {
-    final containerHeight = (MediaQuery.of(context).size.height - 279).clamp(495.0, 1200.0);
+    final containerHeight = (MediaQuery.of(context).size.height - 279).clamp(
+      495.0,
+      1200.0,
+    );
 
     return Container(
       width: double.infinity,
@@ -1869,13 +2215,18 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             'assets/placeholder_workers.svg',
             width: 120,
             height: 100,
-            colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
           ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
+              _searchQuery.isNotEmpty
+                  ? 'no_search_results'.tr()
+                  : 'no_assets_found'.tr(),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,

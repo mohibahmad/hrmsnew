@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/attendance_service.dart';
@@ -1311,10 +1312,7 @@ class _WorkersAttendanceScreenState
     final holiday = _todayNonWorkingDay;
 
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: bgGray,
-        body: Center(child: CircularProgressIndicator(color: primaryBlue)),
-      );
+      return _buildLoadingView(context);
     }
 
     if (_errorMessage != null) {
@@ -1326,10 +1324,7 @@ class _WorkersAttendanceScreenState
             child: Text(
               'error_occurred'.tr(namedArgs: {'error': _errorMessage!}),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: textDark,
-                fontSize: 15,
-              ),
+              style: const TextStyle(color: textDark, fontSize: 15),
             ),
           ),
         ),
@@ -1506,6 +1501,177 @@ class _WorkersAttendanceScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingView(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgGray,
+      resizeToAvoidBottomInset: false,
+      body: ExcludeSemantics(
+        child: IgnorePointer(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!widget.hideSidebar)
+                const SizedBox(
+                  width: 270,
+                  child: ColoredBox(color: Color(0xFF0247C4)),
+                ),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    Expanded(
+                      child: Shimmer.fromColors(
+                        baseColor: const Color(0xFFE5E7EB),
+                        highlightColor: const Color(0xFFF3F4F6),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _AttendanceShimmerBlock(
+                                height: 50,
+                                width: double.infinity,
+                                radius: 6,
+                              ),
+                              const SizedBox(height: 32),
+                              Expanded(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      flex: 65,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(
+                                            height: 43,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: _AttendanceShimmerBlock(
+                                                width: 170,
+                                                height: 20,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Expanded(
+                                            child: _buildLoadingListCard(
+                                              showActions: true,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 35,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(
+                                            height: 43,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                _AttendanceShimmerBlock(
+                                                  width: 145,
+                                                  height: 20,
+                                                ),
+                                                _AttendanceShimmerBlock(
+                                                  width: 90,
+                                                  height: 43,
+                                                  radius: 6,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Expanded(
+                                            child: _buildLoadingListCard(
+                                              showActions: false,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingListCard({required bool showActions}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 6,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, _) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F8FC),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              const _AttendanceShimmerBlock(width: 44, height: 44, radius: 22),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AttendanceShimmerBlock(width: 110, height: 14),
+                    SizedBox(height: 7),
+                    _AttendanceShimmerBlock(width: 145, height: 11),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (showActions) ...[
+                const _AttendanceShimmerBlock(width: 58, height: 34, radius: 6),
+                const SizedBox(width: 8),
+                const _AttendanceShimmerBlock(width: 58, height: 34, radius: 6),
+                const SizedBox(width: 8),
+                const _AttendanceShimmerBlock(width: 58, height: 34, radius: 6),
+              ] else ...[
+                const _AttendanceShimmerBlock(
+                  width: 64,
+                  height: 30,
+                  radius: 15,
+                ),
+                const SizedBox(width: 8),
+                const _AttendanceShimmerBlock(width: 28, height: 28, radius: 6),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1924,10 +2090,7 @@ class _WorkersAttendanceScreenState
               },
               decoration: InputDecoration(
                 hintText: 'search_workers_name_position'.tr(),
-                hintStyle: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 14,
-                ),
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -2003,7 +2166,7 @@ class _WorkersAttendanceScreenState
 
           int availableLeaveAllowanceForType(String type) {
             final normType = TimeOffService.normalizeLeaveType(type);
-                                                                                                final isCurrentLeave =
+            final isCurrentLeave =
                 todayRecord['status'] == 'Leave' &&
                 TimeOffService.normalizeLeaveType(initialType) == normType;
             if (isCurrentLeave) {
@@ -2018,7 +2181,7 @@ class _WorkersAttendanceScreenState
                   excludingRecordId: linkedTimeOffId,
                 );
               }
-                                                        final now = DateTime.now();
+              final now = DateTime.now();
               final currentRecord = TimeOffService.activeLeaveForWorker(
                 workerData,
                 _timeOffRecords,
@@ -2156,9 +2319,7 @@ class _WorkersAttendanceScreenState
                         color: const Color(0xFFFFFFFF),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(
-                              0xFF000000,
-                            ).withOpacity(0.2),
+                            color: const Color(0xFF000000).withOpacity(0.2),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -2399,9 +2560,7 @@ class _WorkersAttendanceScreenState
                                       decoration: InputDecoration.collapsed(
                                         hintText: 'enter_reason_hint'.tr(),
                                         hintStyle: TextStyle(
-                                          color: Colors.black.withOpacity(
-                                            0.38,
-                                          ),
+                                          color: Colors.black.withOpacity(0.38),
                                           fontSize: 13,
                                         ),
                                       ),
@@ -2453,9 +2612,13 @@ class _WorkersAttendanceScreenState
                                                       .trim()
                                                       .isEmpty) ||
                                               (titleKey == 'edit_attendance' &&
-                                                  selectedStatus == initialStatus &&
-                                                  selectedLeaveType == initialType &&
-                                                  reasonController.text.trim() == initialReason.trim())
+                                                  selectedStatus ==
+                                                      initialStatus &&
+                                                  selectedLeaveType ==
+                                                      initialType &&
+                                                  reasonController.text
+                                                          .trim() ==
+                                                      initialReason.trim())
                                           ? null
                                           : () async {
                                               if (dialogIsSaving) return;
@@ -2870,10 +3033,7 @@ class _WorkersAttendanceScreenState
             Text(
               'attendance_disabled_company_off'.tr(),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: textMuted,
-              ),
+              style: const TextStyle(fontSize: 14, color: textMuted),
             ),
           ],
         ],
@@ -2990,8 +3150,10 @@ class _WorkersAttendanceScreenState
 
     final visibleAttendance = _visibleTodayAttendance;
     if (visibleAttendance.isEmpty) {
-      final dynamicHeight =
-          (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
+      final dynamicHeight = (MediaQuery.of(context).size.height - 350).clamp(
+        600.0,
+        1200.0,
+      );
       return Container(
         width: double.infinity,
         height: dynamicHeight,
@@ -3104,6 +3266,30 @@ class _WorkersAttendanceScreenState
   }
 }
 
+class _AttendanceShimmerBlock extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+
+  const _AttendanceShimmerBlock({
+    required this.width,
+    required this.height,
+    this.radius = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
 class WorkerListItem extends StatelessWidget {
   final Map<String, dynamic> data;
   final int index;
@@ -3159,10 +3345,7 @@ class WorkerListItem extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   (data["email"] ?? '').toString(),
-                  style: const TextStyle(
-                    color: textMuted,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: textMuted, fontSize: 13),
                   maxLines: 1,
                 ),
               ],

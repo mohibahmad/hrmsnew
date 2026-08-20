@@ -25,6 +25,7 @@ import '../../utils/utils.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/custom_timeframe_dropdown.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import 'workers_attendance_screen.dart';
 
 const Color _kPrimaryBlue = AppColors.buttonBlue;
@@ -72,18 +73,18 @@ class AttendanceRecord {
   });
 
   String get localizedWorkType => switch (workType) {
-        'Full Time' => 'full_time'.tr(),
-        'Part Time' => 'part_time'.tr(),
-        'Contract' => 'contract'.tr(),
-        _ => workType,
-      };
+    'Full Time' => 'full_time'.tr(),
+    'Part Time' => 'part_time'.tr(),
+    'Contract' => 'contract'.tr(),
+    _ => workType,
+  };
 
   String get localizedAttendanceType => switch (attendanceType) {
-        'On-Site' => 'on_site'.tr(),
-        'Remote' => 'remote'.tr(),
-        'Hybrid' => 'hybrid'.tr(),
-        _ => attendanceType,
-      };
+    'On-Site' => 'on_site'.tr(),
+    'Remote' => 'remote'.tr(),
+    'Hybrid' => 'hybrid'.tr(),
+    _ => attendanceType,
+  };
 }
 
 class AttendanceScreen extends ConsumerStatefulWidget {
@@ -228,7 +229,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         _loadAttendanceForTimeframe();
       },
       onError: (_) {
-        if (mounted) setState(() { _workersLoaded = true; _isLoading = false; });
+        if (mounted)
+          setState(() {
+            _workersLoaded = true;
+            _isLoading = false;
+          });
       },
     );
 
@@ -250,38 +255,56 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     _cachedFiltered = null;
     _filterCacheKey = '';
 
-    final periodAttendance = _rawAttendanceDocs
-        .where((r) => AppDateUtils.isAttendanceRecordWithinPeriod(r, _selectedTimeframe))
-        .toList()
-      ..sort((a, b) {
-        final aDate = AppDateUtils.attendanceRecordDate(a);
-        final bDate = AppDateUtils.attendanceRecordDate(b);
-        if (aDate == null && bDate == null) return 0;
-        if (aDate == null) return 1;
-        if (bDate == null) return -1;
-        final byDate = bDate.compareTo(aDate);
-        if (byDate != 0) return byDate;
-        return (b['id'] ?? '').toString().compareTo((a['id'] ?? '').toString());
-      });
+    final periodAttendance =
+        _rawAttendanceDocs
+            .where(
+              (r) => AppDateUtils.isAttendanceRecordWithinPeriod(
+                r,
+                _selectedTimeframe,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final aDate = AppDateUtils.attendanceRecordDate(a);
+            final bDate = AppDateUtils.attendanceRecordDate(b);
+            if (aDate == null && bDate == null) return 0;
+            if (aDate == null) return 1;
+            if (bDate == null) return -1;
+            final byDate = bDate.compareTo(aDate);
+            if (byDate != 0) return byDate;
+            return (b['id'] ?? '').toString().compareTo(
+              (a['id'] ?? '').toString(),
+            );
+          });
 
-    _attendanceDocs = AttendanceService.combineAttendance(
-      workersList: _workersList,
-      rawAttendanceDocs: periodAttendance,
-    ).map((record) {
-      final recordDate = AppDateUtils.attendanceRecordDate(record);
-      final statusDate = recordDate ??
-          (_selectedTimeframe == 'Today' ? AppDateUtils.periodStart('Today', DateTime.now()) : null);
+    _attendanceDocs =
+        AttendanceService.combineAttendance(
+          workersList: _workersList,
+          rawAttendanceDocs: periodAttendance,
+        ).map((record) {
+          final recordDate = AppDateUtils.attendanceRecordDate(record);
+          final statusDate =
+              recordDate ??
+              (_selectedTimeframe == 'Today'
+                  ? AppDateUtils.periodStart('Today', DateTime.now())
+                  : null);
 
-      if (statusDate != null &&
-          TimeOffService.isWorkerOnLeave(record, _timeOffRecords, onDate: statusDate)) {
-        return {...record, 'status': 'Leave'};
-      }
-      return record;
-    }).toList();
+          if (statusDate != null &&
+              TimeOffService.isWorkerOnLeave(
+                record,
+                _timeOffRecords,
+                onDate: statusDate,
+              )) {
+            return {...record, 'status': 'Leave'};
+          }
+          return record;
+        }).toList();
 
     if (_workersLoaded && _attendanceLoaded) _isLoading = false;
 
-    final countable = _selectedTimeframe == 'Today' ? _attendanceDocs : periodAttendance;
+    final countable = _selectedTimeframe == 'Today'
+        ? _attendanceDocs
+        : periodAttendance;
     final counts = AttendanceService.countRecordsByStatus(
       countable,
       _timeOffRecords,
@@ -297,14 +320,24 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final now = DateTime.now();
     final start = AppDateUtils.periodStart(_selectedTimeframe, now);
     final periodEndDate = AppDateUtils.periodEnd(_selectedTimeframe, now);
-    final end = DateTime(periodEndDate.year, periodEndDate.month, periodEndDate.day, 23, 59, 59, 999);
+    final end = DateTime(
+      periodEndDate.year,
+      periodEndDate.month,
+      periodEndDate.day,
+      23,
+      59,
+      59,
+      999,
+    );
 
     final requestId = ++_attendanceRequestId;
     final requestedPeriod = _selectedTimeframe;
     _streamSnapshotDelivered = false;
 
     if (_isGuest) {
-      _rawAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+      _rawAttendanceDocs = List<Map<String, dynamic>>.from(
+        DummyData.attendance,
+      );
       _attendanceLoaded = true;
       _combineAttendance();
       return;
@@ -316,25 +349,66 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   void _subscribeAttendanceStream(DateTime start, DateTime end, int requestId) {
     _attendanceSub?.cancel();
-    _attendanceSub = _firestore.attendanceStreamForPeriod(start: start, end: end).listen(
-      (snapshot) {
-        if (!mounted || requestId != _attendanceRequestId) return;
-        setState(() {
-          _rawAttendanceDocs = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
-          _attendanceLoaded = true;
-          _streamSnapshotDelivered = true;
-          _combineAttendance();
-        });
-        _refreshAttendancePreview();
-      },
-      onError: (e) {
-        ErrorReporter.report(e, StackTrace.current, context: 'attendanceScreenStream');
-        if (!mounted || requestId != _attendanceRequestId) return;
-        _streamSnapshotDelivered = false;
-        _firestore.getAttendanceForPeriod(start, end).then((snapshot) {
-          if (!mounted || requestId != _attendanceRequestId) return;
+    _attendanceSub = _firestore
+        .attendanceStreamForPeriod(start: start, end: end)
+        .listen(
+          (snapshot) {
+            if (!mounted || requestId != _attendanceRequestId) return;
+            setState(() {
+              _rawAttendanceDocs = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _attendanceLoaded = true;
+              _streamSnapshotDelivered = true;
+              _combineAttendance();
+            });
+            _refreshAttendancePreview();
+          },
+          onError: (e) {
+            ErrorReporter.report(
+              e,
+              StackTrace.current,
+              context: 'attendanceScreenStream',
+            );
+            if (!mounted || requestId != _attendanceRequestId) return;
+            _streamSnapshotDelivered = false;
+            _firestore
+                .getAttendanceForPeriod(start, end)
+                .then((snapshot) {
+                  if (!mounted || requestId != _attendanceRequestId) return;
+                  setState(() {
+                    _rawAttendanceDocs = snapshot.docs
+                        .map(
+                          (d) => {
+                            ...d.data() as Map<String, dynamic>,
+                            'id': d.id,
+                          },
+                        )
+                        .toList();
+                    _attendanceLoaded = true;
+                    _combineAttendance();
+                  });
+                  _refreshAttendancePreview();
+                })
+                .catchError((_) {});
+          },
+        );
+  }
+
+  void _fetchAttendanceFallback(
+    DateTime start,
+    DateTime end,
+    int requestId,
+    String requestedPeriod,
+  ) {
+    _firestore
+        .getAttendanceForPeriod(start, end)
+        .then((snapshot) {
+          if (!mounted ||
+              requestId != _attendanceRequestId ||
+              requestedPeriod != _selectedTimeframe)
+            return;
+          if (_streamSnapshotDelivered) return;
           setState(() {
             _rawAttendanceDocs = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
@@ -343,27 +417,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             _combineAttendance();
           });
           _refreshAttendancePreview();
-        }).catchError((_) {});
-      },
-    );
-  }
-
-  void _fetchAttendanceFallback(DateTime start, DateTime end, int requestId, String requestedPeriod) {
-    _firestore.getAttendanceForPeriod(start, end).then((snapshot) {
-      if (!mounted || requestId != _attendanceRequestId || requestedPeriod != _selectedTimeframe) return;
-      if (_streamSnapshotDelivered) return;
-      setState(() {
-        _rawAttendanceDocs = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
-        _attendanceLoaded = true;
-        _combineAttendance();
-      });
-      _refreshAttendancePreview();
-    }).catchError((_) {
-      if (!mounted || requestId != _attendanceRequestId || requestedPeriod != _selectedTimeframe) return;
-      if (mounted) setState(() { _attendanceLoaded = true; _isLoading = false; });
-    });
+        })
+        .catchError((_) {
+          if (!mounted ||
+              requestId != _attendanceRequestId ||
+              requestedPeriod != _selectedTimeframe)
+            return;
+          if (mounted)
+            setState(() {
+              _attendanceLoaded = true;
+              _isLoading = false;
+            });
+        });
   }
 
   String _getTimeframeTitle() {
@@ -378,15 +443,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredRecords {
-    final key = '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
-    if (_cachedFiltered != null && _filterCacheKey == key) return _cachedFiltered!;
+    final key =
+        '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
+    if (_cachedFiltered != null && _filterCacheKey == key)
+      return _cachedFiltered!;
 
     _filterCacheKey = key;
     final query = _searchQuery.toLowerCase();
 
     _cachedFiltered = _attendanceDocs.where((doc) {
       if (AppDateUtils.attendanceRecordDate(doc) != null &&
-          !AppDateUtils.isAttendanceRecordWithinPeriod(doc, _selectedTimeframe)) {
+          !AppDateUtils.isAttendanceRecordWithinPeriod(
+            doc,
+            _selectedTimeframe,
+          )) {
         return false;
       }
 
@@ -417,7 +487,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       worker: doc,
       attendanceRecords: _rawAttendanceDocs,
       timeOffRecords: _timeOffRecords,
-      range: AttendanceReportService.rangeForPeriod(periodOverride ?? _selectedTimeframe),
+      range: AttendanceReportService.rangeForPeriod(
+        periodOverride ?? _selectedTimeframe,
+      ),
     );
   }
 
@@ -425,7 +497,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final notifier = _attendancePreviewNotifier;
     final workerDoc = _attendancePreviewWorkerDoc;
     if (notifier != null && workerDoc != null) {
-      notifier.value = _filterWorkerRecords(workerDoc, periodOverride: _selectedTimeframe);
+      notifier.value = _filterWorkerRecords(
+        workerDoc,
+        periodOverride: _selectedTimeframe,
+      );
     }
   }
 
@@ -437,7 +512,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   void _dismissShareDropdown() {
     _removeShareDropdownOverlay();
-    if (mounted && _isShareDropdownOpen) setState(() => _isShareDropdownOpen = false);
+    if (mounted && _isShareDropdownOpen)
+      setState(() => _isShareDropdownOpen = false);
   }
 
   void _showShareDropdown() {
@@ -447,7 +523,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final buttonRender = buttonContext?.findRenderObject();
     final overlayState = Overlay.maybeOf(context);
 
-    if (buttonRender is! RenderBox || !buttonRender.attached || overlayState == null) return;
+    if (buttonRender is! RenderBox ||
+        !buttonRender.attached ||
+        overlayState == null)
+      return;
 
     final size = buttonRender.size;
 
@@ -457,7 +536,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           GestureDetector(
             onTap: _dismissShareDropdown,
             behavior: HitTestBehavior.opaque,
-            child: Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
+            child: Container(
+              color: Colors.transparent,
+              width: double.infinity,
+              height: double.infinity,
+            ),
           ),
           Positioned(
             width: size.width,
@@ -492,7 +575,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
                           color: Colors.transparent,
                           child: Row(
                             children: [
@@ -502,7 +588,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: isSelected ? const Color(0xFF0247C4) : Colors.grey.shade400,
+                                    color: isSelected
+                                        ? const Color(0xFF0247C4)
+                                        : Colors.grey.shade400,
                                     width: 1.5,
                                   ),
                                 ),
@@ -525,7 +613,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                   _localizeSharePeriod(option),
                                   style: TextStyle(
                                     fontSize: 17.0,
-                                    color: isSelected ? _kPrimaryBlue : Colors.grey.shade400,
+                                    color: isSelected
+                                        ? _kPrimaryBlue
+                                        : Colors.grey.shade400,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
@@ -578,7 +668,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       const cellWidth = (availableWidth - (gap * 6)) / 7;
       const colPitch = cellWidth + gap;
       const rowPitch = cellWidth + gap;
-      final headerHeight = measuredHeaderHeight() > 0 ? measuredHeaderHeight() : 18.0 + 10.0 + 12.0 + 30.0;
+      final headerHeight = measuredHeaderHeight() > 0
+          ? measuredHeaderHeight()
+          : 18.0 + 10.0 + 12.0 + 30.0;
 
       final adjustedDy = position.dy - headerHeight;
       if (adjustedDy < 0) return null;
@@ -603,7 +695,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               backgroundColor: const Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
@@ -621,7 +715,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           Positioned(
                             left: 0,
                             child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.black,
+                                size: 20,
+                              ),
                               onPressed: () => Navigator.of(ctx).pop(),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -642,16 +740,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _kPrimaryBlue,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
                                 minimumSize: const Size(0, 32),
                               ),
                               onPressed: selectedDates.isEmpty
                                   ? null
-                                  : () => Navigator.of(ctx).pop(selectedDates.toList()..sort()),
+                                  : () => Navigator.of(
+                                      ctx,
+                                    ).pop(selectedDates.toList()..sort()),
                               child: Text(
-                                'generate'.tr(namedArgs: {'count': selectedDates.length.toString()}),
+                                'generate'.tr(
+                                  namedArgs: {
+                                    'count': selectedDates.length.toString(),
+                                  },
+                                ),
                                 style: const TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
@@ -666,7 +775,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     const SizedBox(height: 16),
                     Listener(
                       onPointerDown: (event) {
-                        dragAnchorDate = dateAtPosition(event.localPosition, calendarDate);
+                        dragAnchorDate = dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
                         dragStartPosition = event.localPosition;
                         dragMoved = false;
                         selectionBeforeDrag = Set<DateTime>.from(selectedDates);
@@ -674,13 +786,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       },
                       onPointerMove: (event) {
                         if (dragStartPosition != null && !dragMoved) {
-                          final dx = (event.localPosition.dx - dragStartPosition!.dx).abs();
-                          final dy = (event.localPosition.dy - dragStartPosition!.dy).abs();
+                          final dx =
+                              (event.localPosition.dx - dragStartPosition!.dx)
+                                  .abs();
+                          final dy =
+                              (event.localPosition.dy - dragStartPosition!.dy)
+                                  .abs();
                           if (dx > 5 || dy > 5) dragMoved = true;
                         }
                         if (!dragMoved || dragAnchorDate == null) return;
 
-                        final current = dateAtPosition(event.localPosition, calendarDate);
+                        final current = dateAtPosition(
+                          event.localPosition,
+                          calendarDate,
+                        );
                         if (current == null) return;
                         dragCurrentPosition = event.localPosition;
 
@@ -688,13 +807,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           selectedDates
                             ..clear()
                             ..addAll(selectionBeforeDrag);
-                          final isDragRemoving = selectionBeforeDrag.contains(dragAnchorDate);
-                          final start = dragAnchorDate!.isBefore(current) ? dragAnchorDate! : current;
-                          final end = dragAnchorDate!.isAfter(current) ? dragAnchorDate! : current;
-                                                                              final safeStart = start.isAfter(today) ? today : start;
+                          final isDragRemoving = selectionBeforeDrag.contains(
+                            dragAnchorDate,
+                          );
+                          final start = dragAnchorDate!.isBefore(current)
+                              ? dragAnchorDate!
+                              : current;
+                          final end = dragAnchorDate!.isAfter(current)
+                              ? dragAnchorDate!
+                              : current;
+                          final safeStart = start.isAfter(today)
+                              ? today
+                              : start;
                           final safeEnd = end.isAfter(today) ? today : end;
-                          for (var d = safeStart; !d.isAfter(safeEnd); d = d.add(const Duration(days: 1))) {
-                            isDragRemoving ? selectedDates.remove(d) : selectedDates.add(d);
+                          for (
+                            var d = safeStart;
+                            !d.isAfter(safeEnd);
+                            d = d.add(const Duration(days: 1))
+                          ) {
+                            isDragRemoving
+                                ? selectedDates.remove(d)
+                                : selectedDates.add(d);
                           }
                         });
                       },
@@ -704,12 +837,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           final isFuture = date.isAfter(today);
                           setModalState(() {
                             final exists = selectedDates.any(
-                              (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+                              (d) =>
+                                  d.year == date.year &&
+                                  d.month == date.month &&
+                                  d.day == date.day,
                             );
-                                                                                    if (isFuture && !exists) return;
+                            if (isFuture && !exists) return;
                             exists
                                 ? selectedDates.removeWhere(
-                                    (d) => d.year == date.year && d.month == date.month && d.day == date.day)
+                                    (d) =>
+                                        d.year == date.year &&
+                                        d.month == date.month &&
+                                        d.day == date.day,
+                                  )
                                 : selectedDates.add(date);
                           });
                         }
@@ -724,13 +864,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         calendarDate,
                         selectedDates,
                         (_) {},
-                        (newDate) => setModalState(() => calendarDate = newDate),
+                        (newDate) =>
+                            setModalState(() => calendarDate = newDate),
                         dragAnchor: dragAnchorDate,
                         dragCurrent: dragMoved && dragCurrentPosition != null
                             ? dateAtPosition(dragCurrentPosition!, calendarDate)
                             : null,
                         isDragRemoving:
-                            dragMoved && dragAnchorDate != null && selectionBeforeDrag.contains(dragAnchorDate),
+                            dragMoved &&
+                            dragAnchorDate != null &&
+                            selectionBeforeDrag.contains(dragAnchorDate),
                         headerKey: calendarHeaderKey,
                       ),
                     ),
@@ -747,7 +890,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     if (result != null && result.isNotEmpty) {
       _dismissShareDropdown();
       setState(() => _selectedSharePeriod = 'Custom');
-      await _generateAndShareAttendance('Custom', startDate: result.first, endDate: result.last);
+      await _generateAndShareAttendance(
+        'Custom',
+        startDate: result.first,
+        endDate: result.last,
+      );
     }
   }
 
@@ -762,7 +909,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
       if (period == 'Custom') {
         if (startDate == null || endDate == null) {
-          FlashySnackBar.show(context, message: 'please_select_date_range'.tr(), isError: true);
+          FlashySnackBar.show(
+            context,
+            message: 'please_select_date_range'.tr(),
+            isError: true,
+          );
           return;
         }
         range = AttendanceDateRange(
@@ -774,7 +925,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
-                        final reportNow = DateTime.now();
+      final reportNow = DateTime.now();
       final reportToday = DateTime(
         reportNow.year,
         reportNow.month,
@@ -809,12 +960,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       await File(outputFile).writeAsBytes(csvBytes);
 
       if (mounted) {
-        FlashySnackBar.show(context, message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}));
+        FlashySnackBar.show(
+          context,
+          message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}),
+        );
         await FileOpener.open(outputFile);
       }
     } catch (e) {
       if (mounted) {
-        FlashySnackBar.show(context, message: 'error_generating_report'.tr(namedArgs: {'error': '$e'}), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'error_generating_report'.tr(namedArgs: {'error': '$e'}),
+          isError: true,
+        );
       }
     }
   }
@@ -830,7 +988,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     return endDay.isAfter(today);
   }
 
-  List<List<dynamic>> _buildReportRows(String period, AttendanceDateRange range) {
+  List<List<dynamic>> _buildReportRows(
+    String period,
+    AttendanceDateRange range,
+  ) {
     final rows = <List<dynamic>>[];
     final periodLabel = _localizeSharePeriod(period);
     final rangeLabel =
@@ -852,7 +1013,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     rows.add(['Attendance Report - $periodLabel']);
     rows.add(['Period: $rangeLabel']);
-    rows.add(['Generated On: ${AttendanceReportService.csvTextDate(DateTime.now()).trim()}']);
+    rows.add([
+      'Generated On: ${AttendanceReportService.csvTextDate(DateTime.now()).trim()}',
+    ]);
     rows.add(['total_present'.tr(), overallPresents]);
     rows.add(['total_absent'.tr(), overallAbsents]);
     rows.add(['total_on_leave'.tr(), overallLeaves]);
@@ -877,12 +1040,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       range: range,
     );
 
-    final name = (worker['name'] ?? worker['workerName'] ?? 'Worker').toString();
+    final name = (worker['name'] ?? worker['workerName'] ?? 'Worker')
+        .toString();
     final email = (worker['email'] ?? '').toString();
     final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final position = (worker['position'] ?? worker['role'] ?? '').toString();
-    final workType = (worker['type1'] ?? worker['workType'] ?? 'Full Time').toString();
-    final attendanceType = (worker['type2'] ?? worker['attendanceType'] ?? 'On-Site').toString();
+    final workType = (worker['type1'] ?? worker['workType'] ?? 'Full Time')
+        .toString();
+    final attendanceType =
+        (worker['type2'] ?? worker['attendanceType'] ?? 'On-Site').toString();
 
     rows.add(['${'report_worker'.tr()}: $name']);
     rows.add(['${'report_email'.tr()}: $email']);
@@ -892,14 +1058,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     rows.add(['${'attendance_type'.tr()}: $attendanceType']);
     rows.add([]);
 
-    rows.add(['report_date'.tr(), 'report_status'.tr(), 'work_type'.tr(), 'attendance_type'.tr(), 'report_reason_notes'.tr()]);
+    rows.add([
+      'report_date'.tr(),
+      'report_status'.tr(),
+      'work_type'.tr(),
+      'attendance_type'.tr(),
+      'report_reason_notes'.tr(),
+    ]);
 
     if (snapshot.records.isEmpty) {
       rows.add(['no_attendance_records_period'.tr(), '', '', '', '']);
     } else {
       for (final record in snapshot.records) {
         rows.add([
-          AttendanceReportService.csvTextDate(AttendanceReportService.recordDateForRecord(record)),
+          AttendanceReportService.csvTextDate(
+            AttendanceReportService.recordDateForRecord(record),
+          ),
           record['status'] ?? '-',
           record['workType'] ?? workType,
           record['attendanceType'] ?? attendanceType,
@@ -913,7 +1087,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     rows.add(['total_present'.tr(), snapshot.presents]);
     rows.add(['total_absent'.tr(), snapshot.absents]);
     rows.add(['total_leave'.tr(), snapshot.leaves]);
-    rows.add(['attendance_percent'.tr(), snapshot.percentage.toStringAsFixed(1)]);
+    rows.add([
+      'attendance_percent'.tr(),
+      snapshot.percentage.toStringAsFixed(1),
+    ]);
     rows.add([]);
   }
 
@@ -953,19 +1130,36 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           valueListenable: notifier,
           builder: (_, filteredRecords, _) {
             final now = DateTime.now();
-            final range = AttendanceReportService.rangeForPeriod(previewPeriod, referenceDate: now);
+            final range = AttendanceReportService.rangeForPeriod(
+              previewPeriod,
+              referenceDate: now,
+            );
             final filteredForRange = filteredRecords.where((record) {
-              final recordDate = AttendanceReportService.recordDateForRecord(record);
+              final recordDate = AttendanceReportService.recordDateForRecord(
+                record,
+              );
               if (recordDate == null) return false;
-              final day = DateTime(recordDate.year, recordDate.month, recordDate.day);
+              final day = DateTime(
+                recordDate.year,
+                recordDate.month,
+                recordDate.day,
+              );
               return !day.isBefore(range.start) && !day.isAfter(range.end);
             }).toList();
 
             final totalDays = filteredForRange.length;
-            final absents = filteredForRange.where((d) => d['status'] == 'Absent').length;
-            final leaves = filteredForRange.where((d) => d['status'] == 'Leave').length;
-            final presents = filteredForRange.where((d) => d['status'] == 'Present').length;
-            final percentage = totalDays > 0 ? (presents / totalDays) * 100 : 0.0;
+            final absents = filteredForRange
+                .where((d) => d['status'] == 'Absent')
+                .length;
+            final leaves = filteredForRange
+                .where((d) => d['status'] == 'Leave')
+                .length;
+            final presents = filteredForRange
+                .where((d) => d['status'] == 'Present')
+                .length;
+            final percentage = totalDays > 0
+                ? (presents / totalDays) * 100
+                : 0.0;
 
             return WorkerAttendancePreviewCard(
               record: record,
@@ -1009,30 +1203,48 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   GestureDetector(
-                    onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1)),
+                    onTap: () => onMonthChanged(
+                      DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                    ),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
+                      child: Icon(
+                        Icons.chevron_left,
+                        size: 20,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                  Text(monthYearStr,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, )),
+                  Text(
+                    monthYearStr,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   GestureDetector(
-                    onTap: () => onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1)),
+                    onTap: () => onMonthChanged(
+                      DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                    ),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
               Row(
-                children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                    .map((day) => _buildWeekdayLabel(day, _kPrimaryBlue))
-                    .expand((w) => [w, const SizedBox(width: 8)])
-                    .toList()
-                  ..removeLast(),
+                children:
+                    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        .map((day) => _buildWeekdayLabel(day, _kPrimaryBlue))
+                        .expand((w) => [w, const SizedBox(width: 8)])
+                        .toList()
+                      ..removeLast(),
               ),
               const SizedBox(height: 12),
             ],
@@ -1055,7 +1267,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: Container(
         height: 18,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+        ),
         child: Text(
           day.toUpperCase(),
           style: const TextStyle(
@@ -1077,8 +1292,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     DateTime? dragCurrent,
     bool isDragRemoving = false,
   }) {
-    final daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
-    final firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    final daysInMonth = DateTime(
+      calendarDate.year,
+      calendarDate.month + 1,
+      0,
+    ).day;
+    final firstWeekday = DateTime(
+      calendarDate.year,
+      calendarDate.month,
+      1,
+    ).weekday;
     final startOffset = firstWeekday == 7 ? 0 : firstWeekday;
 
     final dragRange = <DateTime>{};
@@ -1103,10 +1326,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           final day = currentDay;
           final date = DateTime(calendarDate.year, calendarDate.month, day);
           final isSelected = selectedDates.any(
-            (d) => d.year == date.year && d.month == date.month && d.day == date.day,
+            (d) =>
+                d.year == date.year &&
+                d.month == date.month &&
+                d.day == date.day,
           );
           final isDragPreview = dragRange.contains(date) && !isDragRemoving;
-          rowChildren.add(_buildDayCell('$day', isSelected, isDragPreview, () => onDaySelected(date), date));
+          rowChildren.add(
+            _buildDayCell(
+              '$day',
+              isSelected,
+              isDragPreview,
+              () => onDaySelected(date),
+              date,
+            ),
+          );
           currentDay++;
         } else {
           rowChildren.add(_buildDayCell('', false, false, null, null));
@@ -1121,8 +1355,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, bool isSelected, bool isDragPreview, VoidCallback? onTap, DateTime? date) {
-    if (day.isEmpty) return const Expanded(child: AspectRatio(aspectRatio: 1, child: SizedBox()));
+  Widget _buildDayCell(
+    String day,
+    bool isSelected,
+    bool isDragPreview,
+    VoidCallback? onTap,
+    DateTime? date,
+  ) {
+    if (day.isEmpty)
+      return const Expanded(
+        child: AspectRatio(aspectRatio: 1, child: SizedBox()),
+      );
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -1140,7 +1383,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: isHighlighted ? selectedBg : Colors.transparent,
-              border: Border.all(color: isHighlighted ? selectedBg : Colors.grey.shade300, width: 1),
+              border: Border.all(
+                color: isHighlighted ? selectedBg : Colors.grey.shade300,
+                width: 1,
+              ),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -1170,7 +1416,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           _buildHeader(context),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 40.0,
+                vertical: 24.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1224,9 +1473,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         ),
         const SizedBox(height: 20),
         if (_isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 80),
-            child: Center(child: CircularProgressIndicator()),
+          ScreenTableShimmer(
+            height: (MediaQuery.of(context).size.height - 350).clamp(
+              600.0,
+              1200.0,
+            ),
+            columnFlexes: const [3, 2, 2, 2],
           )
         else if (filtered.isEmpty)
           _buildEmptyState()
@@ -1266,7 +1518,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           const SizedBox(width: 20),
           MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
+            child: GestureDetector(
+              onTap: widget.onProfileTap,
+              child: const UserAvatar(),
+            ),
           ),
         ],
       ),
@@ -1288,8 +1543,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SvgPicture.asset('assets/search icon.svg', width: 24, height: 24,
-                    colorFilter: const ColorFilter.mode(Color(0xFFBDBDBD), BlendMode.srcIn)),
+                SvgPicture.asset(
+                  'assets/search icon.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFBDBDBD),
+                    BlendMode.srcIn,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
@@ -1297,13 +1559,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     onChanged: (val) {
                       _searchQuery = val;
                       _searchDebounce?.cancel();
-                      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
-                        if (mounted) setState(() {});
-                      });
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 250),
+                        () {
+                          if (mounted) setState(() {});
+                        },
+                      );
                     },
                     decoration: InputDecoration(
                       hintText: 'search_workers_name_position'.tr(),
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -1319,7 +1587,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(left: 8),
-                        child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                        child: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.grey[400],
+                        ),
                       ),
                     ),
                   ),
@@ -1332,23 +1604,30 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
-              if (_isGuest) { showGuestRestrictionDialog(context); return; }
+              if (_isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
               if (widget.onWorkersAttendanceTap != null) {
                 widget.onWorkersAttendanceTap!();
               } else {
-                Navigator.of(context).push(PageRouteBuilder(
-                  pageBuilder: (_, _, _) => WorkersAttendanceScreen(
-                    onNotificationTap: widget.onNotificationTap,
-                    onProfileTap: widget.onProfileTap,
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (_, _, _) => WorkersAttendanceScreen(
+                      onNotificationTap: widget.onNotificationTap,
+                      onProfileTap: widget.onProfileTap,
+                    ),
+                    transitionsBuilder: (_, _, _, child) => child,
+                    transitionDuration: Duration.zero,
                   ),
-                  transitionsBuilder: (_, _, _, child) => child,
-                  transitionDuration: Duration.zero,
-                ));
+                );
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _kPrimaryBlue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24),
             ),
@@ -1376,8 +1655,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         child: GestureDetector(
           key: _shareButtonKey,
           onTap: () {
-            if (_isGuest) { showGuestRestrictionDialog(context); return; }
-            _isShareDropdownOpen ? _dismissShareDropdown() : _showShareDropdown();
+            if (_isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
+            _isShareDropdownOpen
+                ? _dismissShareDropdown()
+                : _showShareDropdown();
           },
           child: Container(
             height: 50,
@@ -1408,7 +1692,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF), size: 30),
+                const Icon(
+                  Icons.arrow_drop_down,
+                  color: Color(0xFFFFFFFF),
+                  size: 30,
+                ),
               ],
             ),
           ),
@@ -1421,39 +1709,63 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final isToday = _selectedTimeframe == 'Today';
     return Row(
       children: [
-        Expanded(child: _buildSummaryCard(
-          title: 'total_workers'.tr(), count: '${_workersList.length}',
-          iconAsset: 'assets/total_workers.svg', countColor: _kPrimaryBlue,
-        )),
+        Expanded(
+          child: _buildSummaryCard(
+            title: 'total_workers'.tr(),
+            count: '${_workersList.length}',
+            iconAsset: 'assets/total_workers.svg',
+            countColor: _kPrimaryBlue,
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildSummaryCard(
-          title: isToday ? 'Present'.tr() : 'present_days'.tr(), count: '$_presentCount',
-          iconAsset: 'assets/present_worker.svg', countColor: _kGreenPresent,
-        )),
+        Expanded(
+          child: _buildSummaryCard(
+            title: isToday ? 'Present'.tr() : 'present_days'.tr(),
+            count: '$_presentCount',
+            iconAsset: 'assets/present_worker.svg',
+            countColor: _kGreenPresent,
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildSummaryCard(
-          title: isToday ? 'Absent'.tr() : 'absent_days'.tr(), count: '$_absentCount',
-          iconAsset: 'assets/absent.svg', countColor: _kRedAbsent,
-        )),
+        Expanded(
+          child: _buildSummaryCard(
+            title: isToday ? 'Absent'.tr() : 'absent_days'.tr(),
+            count: '$_absentCount',
+            iconAsset: 'assets/absent.svg',
+            countColor: _kRedAbsent,
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildSummaryCard(
-          title: isToday ? 'On leave'.tr() : 'leave_days'.tr(), count: '$_leaveCount',
-          iconAsset: 'assets/leave.svg', countColor: _kOrangeLeave,
-        )),
+        Expanded(
+          child: _buildSummaryCard(
+            title: isToday ? 'On leave'.tr() : 'leave_days'.tr(),
+            count: '$_leaveCount',
+            iconAsset: 'assets/leave.svg',
+            countColor: _kOrangeLeave,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildSummaryCard({
-    required String title, required String count,
-    required String iconAsset, required Color countColor,
+    required String title,
+    required String count,
+    required String iconAsset,
+    required Color countColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Row(
@@ -1463,11 +1775,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _kTextDark, ),
-                    overflow: TextOverflow.ellipsis, maxLines: 1),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _kTextDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
                 const SizedBox(height: 12),
-                Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: countColor, ),
-                    overflow: TextOverflow.ellipsis, maxLines: 1),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: countColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ],
             ),
           ),
@@ -1518,7 +1846,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => setState(() { _selectedTab = filterKey; _cachedFiltered = null; _filterCacheKey = ''; }),
+        onTap: () => setState(() {
+          _selectedTab = filterKey;
+          _cachedFiltered = null;
+          _filterCacheKey = '';
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
@@ -1540,21 +1872,40 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildEmptyState() {
-    final dynamicHeight = (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
+    final dynamicHeight = (MediaQuery.of(context).size.height - 350).clamp(
+      600.0,
+      1200.0,
+    );
     return Container(
       width: double.infinity,
       height: dynamicHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
-              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isNotEmpty ? 'no_search_results'.tr() : 'no_attendance_records'.tr(),
-            style: const TextStyle(color: _kPrimaryBlue, fontSize: 16, fontWeight: FontWeight.w600, ),
+            _searchQuery.isNotEmpty
+                ? 'no_search_results'.tr()
+                : 'no_attendance_records'.tr(),
+            style: const TextStyle(
+              color: _kPrimaryBlue,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
@@ -1564,20 +1915,44 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
-    final tableHeight = (MediaQuery.of(context).size.height - 350).clamp(600.0, 1200.0);
+    final tableHeight = (MediaQuery.of(context).size.height - 350).clamp(
+      600.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('worker_name_header'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('status_header'.tr()))),
-                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('work_type'.tr()))),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('worker_name_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('status_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('work_type'.tr()),
+                  ),
+                ),
                 Expanded(flex: 2, child: _tableHeader('position'.tr())),
                 const SizedBox(width: 48),
               ],
@@ -1610,7 +1985,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         onTap: () => _showAttendancePreview(context, doc),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(color: const Color(0xFFF6F8FA), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F8FA),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -1619,17 +1997,36 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   padding: const EdgeInsets.only(right: 24),
                   child: Row(
                     children: [
-                      WorkerAvatar(imageUrl: doc['profileImage']?.toString(), name: name, size: 40),
+                      WorkerAvatar(
+                        imageUrl: doc['profileImage']?.toString(),
+                        name: name,
+                        size: 40,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _kTextDark, ),
-                                maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: _kTextDark,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 4),
-                            Text(email, style: const TextStyle(fontSize: 14, color: Colors.black, ),
-                                overflow: TextOverflow.ellipsis, maxLines: 1),
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ],
                         ),
                       ),
@@ -1637,21 +2034,33 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   ),
                 ),
               ),
-              Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(right: 24), child: _buildStatusText(doc))),
               Expanded(
                 flex: 2,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 24),
-                  child: Text(LocalizationHelper.localizeType1(workType),
-                      style: const TextStyle(fontSize: 15, color: _kTextDark, ),
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  child: _buildStatusText(doc),
                 ),
               ),
               Expanded(
                 flex: 2,
-                child: Text(LocalizationHelper.localizePosition(role),
-                    style: const TextStyle(fontSize: 15, color: _kTextDark, ),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 24),
+                  child: Text(
+                    LocalizationHelper.localizeType1(workType),
+                    style: const TextStyle(fontSize: 15, color: _kTextDark),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  LocalizationHelper.localizePosition(role),
+                  style: const TextStyle(fontSize: 15, color: _kTextDark),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               SizedBox(
                 width: 48,
@@ -1659,7 +2068,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () => _showAttendancePreview(context, doc),
-                    child: const Icon(Icons.visibility, color: Colors.black, size: 24),
+                    child: const Icon(
+                      Icons.visibility,
+                      color: Colors.black,
+                      size: 24,
+                    ),
                   ),
                 ),
               ),
@@ -1672,9 +2085,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   Widget _buildStatusText(Map<String, dynamic> worker) {
     if (_selectedTimeframe != 'Today') {
-      return const Text('******',
-          style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600, ),
-          maxLines: 2, overflow: TextOverflow.ellipsis);
+      return const Text(
+        '******',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
     }
 
     final status = (worker['status'] ?? '').toString();
@@ -1687,15 +2107,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     return Text(
       status.isEmpty ? '-' : status.toLowerCase().tr(),
-      style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600, ),
+      style: TextStyle(
+        color: textColor,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
   }
 
   Widget _tableHeader(String title) {
-    return Text(title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ));
+    return Text(
+      title,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: Color(0xFF000000),
+      ),
+    );
   }
 }
 
@@ -1722,10 +2152,12 @@ class WorkerAttendancePreviewCard extends StatefulWidget {
   });
 
   @override
-  State<WorkerAttendancePreviewCard> createState() => _WorkerAttendancePreviewCardState();
+  State<WorkerAttendancePreviewCard> createState() =>
+      _WorkerAttendancePreviewCardState();
 }
 
-class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCard> {
+class _WorkerAttendancePreviewCardState
+    extends State<WorkerAttendancePreviewCard> {
   bool _isExporting = false;
 
   static const Color _primaryBlue = Color(0xFF0A51D0);
@@ -1737,10 +2169,14 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
   static const Color _darkOrange = Color(0xFFFF8A00);
 
   int get _totalRecords => widget.workerRecords.length;
-  int get _presents => widget.workerRecords.where((d) => d['status'] == 'Present').length;
-  int get _absents => widget.workerRecords.where((d) => d['status'] == 'Absent').length;
-  int get _leaves => widget.workerRecords.where((d) => d['status'] == 'Leave').length;
-  double get _percentage => _totalRecords > 0 ? (_presents / _totalRecords) * 100 : 0.0;
+  int get _presents =>
+      widget.workerRecords.where((d) => d['status'] == 'Present').length;
+  int get _absents =>
+      widget.workerRecords.where((d) => d['status'] == 'Absent').length;
+  int get _leaves =>
+      widget.workerRecords.where((d) => d['status'] == 'Leave').length;
+  double get _percentage =>
+      _totalRecords > 0 ? (_presents / _totalRecords) * 100 : 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1750,11 +2186,21 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
         width: 500,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
-          boxShadow: [BoxShadow(color: const Color(0xFF000000).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [_buildBlueHeader(context), _buildMiddleSummary(), _buildBottomDetails()],
+          children: [
+            _buildBlueHeader(context),
+            _buildMiddleSummary(),
+            _buildBottomDetails(),
+          ],
         ),
       ),
     );
@@ -1770,23 +2216,49 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
+                icon: const Icon(
+                  Icons.close,
+                  color: Color(0xFFFFFFFF),
+                  size: 20,
+                ),
                 onPressed: () => Navigator.of(context).pop(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-              Text('worker_attendance_preview'.tr(),
-                  style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              Text(
+                'worker_attendance_preview'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
                     icon: _isExporting
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                        : SvgPicture.asset('assets/share1.svg', width: 20, height: 20,
-                            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : SvgPicture.asset(
+                            'assets/share1.svg',
+                            width: 20,
+                            height: 20,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
+                          ),
                     onPressed: _isExporting ? null : () => _exportCsv(context),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -1803,7 +2275,9 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               WorkerAvatar(
-                imageUrl: widget.record.profileImage, name: widget.record.name, size: 60,
+                imageUrl: widget.record.profileImage,
+                name: widget.record.name,
+                size: 60,
                 border: Border.all(color: _primaryBlue, width: 2),
               ),
               const SizedBox(width: 16),
@@ -1811,19 +2285,40 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.record.name,
-                        style: const TextStyle(color: Color(0xFF333333), fontSize: 16, fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis, maxLines: 1),
+                    Text(
+                      widget.record.name,
+                      style: const TextStyle(
+                        color: Color(0xFF333333),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        SvgPicture.asset('assets/email.svg', height: 12, width: 12,
-                            colorFilter: const ColorFilter.mode(Color(0xFF666666), BlendMode.srcIn)),
+                        SvgPicture.asset(
+                          'assets/email.svg',
+                          height: 12,
+                          width: 12,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFF666666),
+                            BlendMode.srcIn,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: Text(widget.record.email,
-                              style: const TextStyle(color: Color(0xFF666666), fontSize: 13, fontWeight: FontWeight.w400),
-                              overflow: TextOverflow.ellipsis, maxLines: 1),
+                          child: Text(
+                            widget.record.email,
+                            style: const TextStyle(
+                              color: Color(0xFF666666),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
@@ -1844,17 +2339,50 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(width: 140, child: _buildStatCard('total_presents'.tr(), '$_presents', _lightGreenBg, _darkGreen, _presentIcon)),
+          SizedBox(
+            width: 140,
+            child: _buildStatCard(
+              'total_presents'.tr(),
+              '$_presents',
+              _lightGreenBg,
+              _darkGreen,
+              _presentIcon,
+            ),
+          ),
           const SizedBox(width: 10),
-          SizedBox(width: 140, child: _buildStatCard('total_absent'.tr(), '$_absents', _lightRedBg, _darkRed, _absentIcon)),
+          SizedBox(
+            width: 140,
+            child: _buildStatCard(
+              'total_absent'.tr(),
+              '$_absents',
+              _lightRedBg,
+              _darkRed,
+              _absentIcon,
+            ),
+          ),
           const SizedBox(width: 10),
-          SizedBox(width: 140, child: _buildStatCard('total_leaves'.tr(), '$_leaves', _lightOrangeBg, _darkOrange, _leaveIcon)),
+          SizedBox(
+            width: 140,
+            child: _buildStatCard(
+              'total_leaves'.tr(),
+              '$_leaves',
+              _lightOrangeBg,
+              _darkOrange,
+              _leaveIcon,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, Color bgColor, Color iconColor, Widget Function(Color) iconBuilder) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    Color bgColor,
+    Color iconColor,
+    Widget Function(Color) iconBuilder,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
@@ -1871,10 +2399,31 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black)),
-                Text('days_label'.tr(), style: const TextStyle(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                Text(
+                  'days_label'.tr(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1885,7 +2434,8 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
 
   Widget _presentIcon(Color color) => _statusIcon(color, Icons.check_circle);
   Widget _absentIcon(Color color) => _statusIcon(color, Icons.cancel);
-  Widget _leaveIcon(Color color) => _statusIcon(color, Icons.work, smallSize: 10);
+  Widget _leaveIcon(Color color) =>
+      _statusIcon(color, Icons.work, smallSize: 10);
 
   Widget _statusIcon(Color color, IconData badge, {double smallSize = 14}) {
     return SizedBox(
@@ -1893,8 +2443,15 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       height: 32,
       child: Stack(
         children: [
-          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
-          Positioned(bottom: 0, right: 0, child: Icon(badge, color: color, size: smallSize)),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Icon(Icons.person, color: color, size: 28),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Icon(badge, color: color, size: smallSize),
+          ),
         ],
       ),
     );
@@ -1912,11 +2469,31 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
               child: _buildDetailCard(
                 title: 'attendance_label'.tr(),
                 rows: [
-                  _detailRow('total_working_days'.tr(), '$_totalRecords ${_totalRecords == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}', Colors.black),
-                  _detailRow('total_presents'.tr(), '$_presents ${_presents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}', _darkGreen),
-                  _detailRow('total_absents'.tr(), '$_absents ${_absents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}', _darkRed),
-                  _detailRow('total_leaves'.tr(), '$_leaves ${_leaves == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}', _darkOrange),
-                  _detailRow('attendance_percentage'.tr(), '${_percentage.toStringAsFixed(1)}%', _primaryBlue),
+                  _detailRow(
+                    'total_working_days'.tr(),
+                    '$_totalRecords ${_totalRecords == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
+                    Colors.black,
+                  ),
+                  _detailRow(
+                    'total_presents'.tr(),
+                    '$_presents ${_presents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
+                    _darkGreen,
+                  ),
+                  _detailRow(
+                    'total_absents'.tr(),
+                    '$_absents ${_absents == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
+                    _darkRed,
+                  ),
+                  _detailRow(
+                    'total_leaves'.tr(),
+                    '$_leaves ${_leaves == 1 ? 'day_unit'.tr() : 'days_unit'.tr()}',
+                    _darkOrange,
+                  ),
+                  _detailRow(
+                    'attendance_percentage'.tr(),
+                    '${_percentage.toStringAsFixed(1)}%',
+                    _primaryBlue,
+                  ),
                 ],
               ),
             ),
@@ -1926,9 +2503,21 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
               child: _buildDetailCard(
                 title: 'worker_information'.tr(),
                 rows: [
-                  _detailRow('position'.tr(), LocalizationHelper.localizePosition(widget.record.role), Colors.black),
-                  _detailRow('work_type'.tr(), widget.record.localizedWorkType, Colors.black),
-                  _detailRow('attendance_type'.tr(), widget.record.localizedAttendanceType, Colors.black),
+                  _detailRow(
+                    'position'.tr(),
+                    LocalizationHelper.localizePosition(widget.record.role),
+                    Colors.black,
+                  ),
+                  _detailRow(
+                    'work_type'.tr(),
+                    widget.record.localizedWorkType,
+                    Colors.black,
+                  ),
+                  _detailRow(
+                    'attendance_type'.tr(),
+                    widget.record.localizedAttendanceType,
+                    Colors.black,
+                  ),
                 ],
               ),
             ),
@@ -1949,7 +2538,14 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _primaryBlue)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: _primaryBlue,
+            ),
+          ),
           const SizedBox(height: 10),
           ...rows,
         ],
@@ -1963,13 +2559,29 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w500),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(value, textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 13, color: valueColor, fontWeight: FontWeight.w500),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                color: valueColor,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -1992,7 +2604,9 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
     rows.add(['worker_attendance_preview'.tr()]);
     rows.add(['${'report_worker'.tr()}: ${widget.record.name}']);
     rows.add(['${'report_email'.tr()}: ${widget.record.email}']);
-    rows.add(['${'report_position'.tr()}: ${LocalizationHelper.localizePosition(widget.record.role)}']);
+    rows.add([
+      '${'report_position'.tr()}: ${LocalizationHelper.localizePosition(widget.record.role)}',
+    ]);
     rows.add([]);
     rows.add(['total_working_days'.tr(), _totalRecords]);
     rows.add(['total_present'.tr(), _presents]);
@@ -2000,7 +2614,13 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
     rows.add(['total_leave'.tr(), _leaves]);
     rows.add(['attendance_percent'.tr(), _percentage.toStringAsFixed(1)]);
     rows.add([]);
-    rows.add(['report_date'.tr(), 'report_status'.tr(), 'work_type'.tr(), 'attendance_type'.tr(), 'report_reason_notes'.tr()]);
+    rows.add([
+      'report_date'.tr(),
+      'report_status'.tr(),
+      'work_type'.tr(),
+      'attendance_type'.tr(),
+      'report_reason_notes'.tr(),
+    ]);
 
     final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords)
       ..sort((a, b) {
@@ -2014,7 +2634,9 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
 
     for (final att in sortedRecords) {
       rows.add([
-        AttendanceReportService.csvTextDate(AttendanceReportService.recordDateForRecord(att)),
+        AttendanceReportService.csvTextDate(
+          AttendanceReportService.recordDateForRecord(att),
+        ),
         att['status'] ?? '-',
         att['workType'] ?? widget.record.workType,
         att['attendanceType'] ?? widget.record.attendanceType,
@@ -2041,12 +2663,19 @@ class _WorkerAttendancePreviewCardState extends State<WorkerAttendancePreviewCar
       await File(outputFile).writeAsBytes(csvBytes);
 
       if (context.mounted) {
-        FlashySnackBar.show(context, message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}));
+        FlashySnackBar.show(
+          context,
+          message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}),
+        );
         await FileOpener.open(outputFile);
       }
     } catch (e) {
       if (context.mounted) {
-        FlashySnackBar.show(context, message: 'error_exporting_csv'.tr(namedArgs: {'error': e.toString()}), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'error_exporting_csv'.tr(namedArgs: {'error': e.toString()}),
+          isError: true,
+        );
       }
     }
   }

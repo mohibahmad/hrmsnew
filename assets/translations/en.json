@@ -1519,6 +1519,7 @@
   "paid_workers": "Paid Workers",
   "session_security": "Session Security",
   "enable_session_timeout": "Enable Session Timeout",
+  "session_timeout_description": "Automatically lock the app after a period of inactivity",
   "session_timeout_duration": "Inactivity Duration",
   "1_minute": "1 Minute",
   "3_minutes": "3 Minutes",

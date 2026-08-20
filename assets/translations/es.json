@@ -1516,6 +1516,7 @@
   "paid_workers": "Trabajadores Pagados",
   "session_security": "Seguridad de la sesión",
   "enable_session_timeout": "Habilitar tiempo de espera de sesión",
+  "session_timeout_description": "Bloquear automáticamente la aplicación tras un período de inactividad",
   "session_timeout_duration": "Duración de inactividad",
   "1_minute": "1 minuto",
   "3_minutes": "3 minutos",

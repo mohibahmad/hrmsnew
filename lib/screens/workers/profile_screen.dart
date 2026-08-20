@@ -1270,7 +1270,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                     Text(
                       _sessionTimeoutEnabled
                           ? 'session_locked_message'.tr(namedArgs: {'minutes': _sessionTimeoutDuration.toString()})
-                          : 'enable_session_timeout'.tr(),
+                          : 'session_timeout_description'.tr(),
                       style: const TextStyle(
                         fontSize: 13,
                         color: _kGreyText,

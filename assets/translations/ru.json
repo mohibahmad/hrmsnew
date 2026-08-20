@@ -1516,6 +1516,7 @@
   "paid_workers": "Оплаченные работники",
   "session_security": "Безопасность сессии",
   "enable_session_timeout": "Включить тайм-аут сессии",
+  "session_timeout_description": "Автоматически блокировать приложение после периода неактивности",
   "session_timeout_duration": "Время неактивности",
   "1_minute": "1 минута",
   "3_minutes": "3 минуты",

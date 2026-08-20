@@ -19,6 +19,7 @@ import '../../services/time_off_export_service.dart';
 import '../../services/time_off_service.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 import 'assign_time_off.dart';
 
 const _kBlue = Color(0xFF0247C4);
@@ -195,7 +196,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     );
   }
 
-  String _normalizedValue(dynamic value) => (value ?? '').toString().trim().toLowerCase();
+  String _normalizedValue(dynamic value) =>
+      (value ?? '').toString().trim().toLowerCase();
 
   String _localizedLeaveType(String type) {
     return switch (TimeOffService.normalizeLeaveType(type)) {
@@ -274,7 +276,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       return 1;
     }
 
-    final byName = _normalizedValue(a['name']).compareTo(_normalizedValue(b['name']));
+    final byName = _normalizedValue(
+      a['name'],
+    ).compareTo(_normalizedValue(b['name']));
     if (byName != 0) return byName;
 
     return (a['id'] ?? '').toString().compareTo((b['id'] ?? '').toString());
@@ -678,8 +682,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     final combined = <Map<String, dynamic>>[];
 
     for (final worker in _workersList) {
-      final allowNameMatch =
-          (worker['email'] ?? '').toString().trim().isEmpty;
+      final allowNameMatch = (worker['email'] ?? '').toString().trim().isEmpty;
 
       bool workerMatches(Map<String, dynamic> r) =>
           WorkerIdentity.recordsMatch(r, worker, allowName: allowNameMatch);
@@ -857,9 +860,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   ),
                   const SizedBox(height: 16),
                   if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 80),
-                      child: Center(child: CircularProgressIndicator()),
+                    ScreenTableShimmer(
+                      height: (MediaQuery.of(context).size.height - 329).clamp(
+                        440.0,
+                        1200.0,
+                      ),
+                      columnFlexes: const [3, 2, 2, 2],
                     )
                   else if (filtered.isEmpty)
                     _buildEmptyState()
@@ -1012,7 +1018,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               if (i < allFilters.length - 1)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+                  child: Container(
+                    width: 1,
+                    height: 16,
+                    color: const Color(0xFFE5E7EB).withOpacity(0.5),
+                  ),
                 ),
             ],
           ],
@@ -2030,9 +2040,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       decoration: BoxDecoration(
                         color: LeaveColors.getBgColor(type),
                         borderRadius: BorderRadius.circular(5),
-                        border: Border.all(
-                          color: color.withOpacity(0.25),
-                        ),
+                        border: Border.all(color: color.withOpacity(0.25)),
                       ),
                       child: Text(
                         '${_localizedLeaveType(type)}: '

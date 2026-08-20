@@ -19,6 +19,7 @@ import '../../utils/utils.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/custom_timeframe_dropdown.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -112,7 +113,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         final amount = numericAmount is num
             ? numericAmount.toDouble()
             : PayrollService.extractSalary(
-                (data['netSalaryFormatted'] ?? data['netSalary'] ?? '').toString(),
+                (data['netSalaryFormatted'] ?? data['netSalary'] ?? '')
+                    .toString(),
               );
 
         if (amount.isFinite && amount > 0) amounts[payrollKey] = amount;
@@ -140,7 +142,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   void _loadDummyData() {
-    _expensesDocs = DummyData.expenses.map((e) => Map<String, dynamic>.from(e)).toList();
+    _expensesDocs = DummyData.expenses
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
 
     final activePayroll = PayrollService.paidPayrollRecordsForActiveWorkers(
       DummyData.workers,
@@ -150,7 +154,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     for (final record in activePayroll) {
       final payrollKey = (record['payrollKey'] ?? '').toString().trim();
       if (payrollKey.isEmpty) continue;
-      final netSalary = record['netSalary'] is num ? (record['netSalary'] as num).toDouble() : 0.0;
+      final netSalary = record['netSalary'] is num
+          ? (record['netSalary'] as num).toDouble()
+          : 0.0;
       if (netSalary > 0) _payrollAmountsByKey[payrollKey] = netSalary;
     }
 
@@ -159,17 +165,22 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   List<Map<String, dynamic>> _sortExpenses(List docs) {
-    final list = docs
-        .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-        .toList()
-      ..sort((a, b) {
-        final aTime = AppDateUtils.dateFromValue(a['createdAt']) ?? AppDateUtils.dateFromValue(a['date']);
-        final bTime = AppDateUtils.dateFromValue(b['createdAt']) ?? AppDateUtils.dateFromValue(b['date']);
-        if (aTime == null && bTime == null) return 0;
-        if (aTime == null) return 1;
-        if (bTime == null) return -1;
-        return bTime.compareTo(aTime);
-      });
+    final list =
+        docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .toList()
+          ..sort((a, b) {
+            final aTime =
+                AppDateUtils.dateFromValue(a['createdAt']) ??
+                AppDateUtils.dateFromValue(a['date']);
+            final bTime =
+                AppDateUtils.dateFromValue(b['createdAt']) ??
+                AppDateUtils.dateFromValue(b['date']);
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return bTime.compareTo(aTime);
+          });
     return list;
   }
 
@@ -196,26 +207,28 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     _expensesDocs = dummyList.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
-  double get _totalExpenseSum => _expensesDocs.fold(0.0, (sum, doc) => sum + _expenseAmount(doc));
+  double get _totalExpenseSum =>
+      _expensesDocs.fold(0.0, (sum, doc) => sum + _expenseAmount(doc));
 
   double get _selectedPeriodExpenseSum => _expensesDocs.fold(0.0, (sum, doc) {
-        if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
-          return sum + _expenseAmount(doc);
-        }
-        return sum;
-      });
+    if (AppDateUtils.isTimestampWithinPeriod(doc['date'], _selectedPeriod)) {
+      return sum + _expenseAmount(doc);
+    }
+    return sum;
+  });
 
   String get _selectedPeriodExpenseTitle => switch (_selectedPeriod) {
-        'Today' => 'today_expense'.tr(),
-        'Week' || 'This Week' => 'this_week_expense'.tr(),
-        '6 Month' || 'Last 6 Months' => 'last_6_months_expense'.tr(),
-        'Yearly' || 'This Year' => 'this_year_expense'.tr(),
-        'All Time' => 'all_time_expense'.tr(),
-        _ => 'this_month_expense'.tr(),
-      };
+    'Today' => 'today_expense'.tr(),
+    'Week' || 'This Week' => 'this_week_expense'.tr(),
+    '6 Month' || 'Last 6 Months' => 'last_6_months_expense'.tr(),
+    'Yearly' || 'This Year' => 'this_year_expense'.tr(),
+    'All Time' => 'all_time_expense'.tr(),
+    _ => 'this_month_expense'.tr(),
+  };
 
   double _expenseAmount(Map<String, dynamic> expense) {
-    final isSalary = (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
+    final isSalary =
+        (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
 
     if (isSalary && payrollKey.isNotEmpty) {
@@ -229,39 +242,68 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   bool _isPayrollExpense(Map<String, dynamic> expense) {
     final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
-    final sourceType = (expense['sourceType'] ?? '').toString().trim().toLowerCase();
+    final sourceType = (expense['sourceType'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     return payrollKey.isNotEmpty || sourceType == 'payroll';
   }
 
   String _expenseDisplayName(Map<String, dynamic> expense) {
     final name = (expense['name'] ?? '').toString().trim();
-    final category = (expense['category'] ?? '').toString().trim().toLowerCase();
+    final category = (expense['category'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     if (category != 'salary') return name;
-    return name.replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '').trim();
+    return name
+        .replaceFirst(RegExp(r'^salary\s*[-–—:]\s*', caseSensitive: false), '')
+        .trim();
   }
 
   String _formatCurrency(double amount) {
     final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     if (amount.abs() >= 1e3) {
-      return CurrencyUtils.formatCompactLocale(amount, context.locale.toString(), symbol: symbol);
+      return CurrencyUtils.formatCompactLocale(
+        amount,
+        context.locale.toString(),
+        symbol: symbol,
+      );
     }
     try {
-      return NumberFormat.currency(locale: context.locale.toString(), symbol: symbol, decimalDigits: 2).format(amount);
+      return NumberFormat.currency(
+        locale: context.locale.toString(),
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
     } catch (_) {
-      return NumberFormat.currency(locale: 'en_US', symbol: symbol, decimalDigits: 2).format(amount);
+      return NumberFormat.currency(
+        locale: 'en_US',
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
     }
   }
 
   String _formatFullCurrency(double amount) {
     final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     try {
-      return NumberFormat.currency(locale: context.locale.toString(), symbol: symbol, decimalDigits: 0).format(amount);
+      return NumberFormat.currency(
+        locale: context.locale.toString(),
+        symbol: symbol,
+        decimalDigits: 0,
+      ).format(amount);
     } catch (_) {
-      return NumberFormat.currency(locale: 'en_US', symbol: symbol, decimalDigits: 0).format(amount);
+      return NumberFormat.currency(
+        locale: 'en_US',
+        symbol: symbol,
+        decimalDigits: 0,
+      ).format(amount);
     }
   }
 
-  String _localizedExpenseDate(dynamic value) => AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
+  String _localizedExpenseDate(dynamic value) =>
+      AppDateUtils.fromValueLocalized(value, locale: context.locale.toString());
 
   List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
@@ -287,16 +329,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     DummyData.saveToPrefs();
   }
 
-  void _updateExpenseInGuest(String docId, Map<String, dynamic> updatedMap, {String? payrollKey, double? amt}) {
+  void _updateExpenseInGuest(
+    String docId,
+    Map<String, dynamic> updatedMap, {
+    String? payrollKey,
+    double? amt,
+  }) {
     setState(() {
       final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
-      if (idx != -1) _expensesDocs[idx] = {..._expensesDocs[idx], ...updatedMap, 'id': docId};
-      if (payrollKey != null && amt != null) _payrollAmountsByKey[payrollKey] = amt;
+      if (idx != -1)
+        _expensesDocs[idx] = {
+          ..._expensesDocs[idx],
+          ...updatedMap,
+          'id': docId,
+        };
+      if (payrollKey != null && amt != null)
+        _payrollAmountsByKey[payrollKey] = amt;
     });
 
     final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
     if (dummyIdx != -1) {
-      DummyData.expenses[dummyIdx] = {...DummyData.expenses[dummyIdx], ...updatedMap, 'id': docId};
+      DummyData.expenses[dummyIdx] = {
+        ...DummyData.expenses[dummyIdx],
+        ...updatedMap,
+        'id': docId,
+      };
     }
 
     if (payrollKey != null && amt != null) {
@@ -308,10 +365,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   void _updatePayrollRecordWithAmount(String payrollKey, double amt) {
     Map<String, dynamic> buildUpdated(Map<String, dynamic> record) {
-      final baseSalary = PayrollService.extractSalary(record['salary'] ?? record['salaryAmount']);
+      final baseSalary = PayrollService.extractSalary(
+        record['salary'] ?? record['salaryAmount'],
+      );
       final overtime = amt >= baseSalary ? amt - baseSalary : 0.0;
       final absenceDeduction = amt < baseSalary ? baseSalary - amt : 0.0;
-      final formatted = PayrollService.formatAmountInCurrency(amt, _currencyCode);
+      final formatted = PayrollService.formatAmountInCurrency(
+        amt,
+        _currencyCode,
+      );
 
       return {
         ...record,
@@ -336,12 +398,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       (r) => (r['payrollKey'] ?? '').toString().trim() == payrollKey,
     );
     if (payrollIdx != -1) {
-      DummyData.payroll[payrollIdx] = buildUpdated(DummyData.payroll[payrollIdx]);
+      DummyData.payroll[payrollIdx] = buildUpdated(
+        DummyData.payroll[payrollIdx],
+      );
     }
 
     PreferencesService.getGuestPayroll().then((guestPayroll) {
       if (guestPayroll == null) return;
-      final idx = guestPayroll.indexWhere((p) => (p['payrollKey'] ?? '').toString().trim() == payrollKey);
+      final idx = guestPayroll.indexWhere(
+        (p) => (p['payrollKey'] ?? '').toString().trim() == payrollKey,
+      );
       if (idx != -1) {
         guestPayroll[idx] = buildUpdated(guestPayroll[idx]);
         PreferencesService.setGuestPayroll(guestPayroll);
@@ -359,10 +425,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     if (payrollKey != null) {
       final normalized = payrollKey.trim();
-      DummyData.payroll.removeWhere((r) => (r['payrollKey'] ?? '').toString().trim() == normalized);
+      DummyData.payroll.removeWhere(
+        (r) => (r['payrollKey'] ?? '').toString().trim() == normalized,
+      );
       PreferencesService.getGuestPayroll().then((guestPayroll) {
         if (guestPayroll == null) return;
-        guestPayroll.removeWhere((p) => (p['payrollKey'] ?? '').toString().trim() == normalized);
+        guestPayroll.removeWhere(
+          (p) => (p['payrollKey'] ?? '').toString().trim() == normalized,
+        );
         PreferencesService.setGuestPayroll(guestPayroll);
       });
     }
@@ -386,21 +456,30 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       final isPayroll = _isPayrollExpense(doc);
 
       if (_isGuest) {
-        _deleteExpenseFromGuest(docId, payrollKey: isPayroll ? payrollKey : null);
+        _deleteExpenseFromGuest(
+          docId,
+          payrollKey: isPayroll ? payrollKey : null,
+        );
       } else {
         if (isPayroll) {
-          await _firestore.deletePayrollLinkedExpense(expenseId: docId, payrollKey: payrollKey);
+          await _firestore.deletePayrollLinkedExpense(
+            expenseId: docId,
+            payrollKey: payrollKey,
+          );
         } else {
           await _firestore.deleteExpense(docId);
         }
       }
 
-      if (mounted) FlashySnackBar.show(context, message: 'expense_deleted'.tr());
+      if (mounted)
+        FlashySnackBar.show(context, message: 'expense_deleted'.tr());
     } catch (e) {
       if (!mounted) return;
       FlashySnackBar.show(
         context,
-        message: 'failed_to_delete_record'.tr(namedArgs: {'error': e.toString()}),
+        message: 'failed_to_delete_record'.tr(
+          namedArgs: {'error': e.toString()},
+        ),
         isError: true,
       );
     }
@@ -413,15 +492,25 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     required Future<void> Function(Map<String, dynamic>) onSave,
   }) async {
     final isEdit = initialData != null;
-    final categoryController = TextEditingController(text: isEdit ? initialData['category']?.toString() ?? '' : '');
+    final categoryController = TextEditingController(
+      text: isEdit ? initialData['category']?.toString() ?? '' : '',
+    );
     final amountController = TextEditingController(
-      text: isEdit ? NumberFormat('#,##0.##').format(_expenseAmount(initialData)) : '',
+      text: isEdit
+          ? NumberFormat('#,##0.##').format(_expenseAmount(initialData))
+          : '',
     );
     final descriptionController = TextEditingController(
-      text: isEdit ? initialData['name']?.toString() ?? initialData['description']?.toString() ?? '' : '',
+      text: isEdit
+          ? initialData['name']?.toString() ??
+                initialData['description']?.toString() ??
+                ''
+          : '',
     );
 
-    final parsedDate = isEdit ? AppDateUtils.dateFromValue(initialData['date']) ?? DateTime.now() : DateTime.now();
+    final parsedDate = isEdit
+        ? AppDateUtils.dateFromValue(initialData['date']) ?? DateTime.now()
+        : DateTime.now();
     int selectedDay = parsedDate.day;
     DateTime calendarDate = DateTime(parsedDate.year, parsedDate.month, 1);
     var isSaving = false;
@@ -433,7 +522,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               backgroundColor: Colors.white,
               elevation: 10,
               child: Container(
@@ -474,12 +565,18 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       descriptionController: descriptionController,
                       calendarDate: calendarDate,
                       selectedDay: selectedDay,
-                      onDaySelected: (day) => setModalState(() => selectedDay = day),
+                      onDaySelected: (day) =>
+                          setModalState(() => selectedDay = day),
                       onMonthChanged: (newDate) {
                         setModalState(() {
                           calendarDate = newDate;
-                          final daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
-                          if (selectedDay > daysInNewMonth) selectedDay = daysInNewMonth;
+                          final daysInNewMonth = DateTime(
+                            newDate.year,
+                            newDate.month + 1,
+                            0,
+                          ).day;
+                          if (selectedDay > daysInNewMonth)
+                            selectedDay = daysInNewMonth;
                         });
                       },
                     ),
@@ -512,13 +609,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       fontWeight: FontWeight.w600,
     );
 
-
-
     final textWidth = (TextPainter(
       text: TextSpan(text: buttonText, style: buttonTextStyle),
       textDirection: Directionality.of(ctx),
-    )..layout())
-        .width;
+    )..layout()).width;
 
     return Row(
       children: [
@@ -533,8 +627,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             ),
           ),
         ),
-        Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF000000), )),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF000000),
+          ),
+        ),
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
@@ -543,9 +643,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 backgroundColor: const Color(0xFF0247C4),
                 disabledBackgroundColor: const Color(0xFF0247C4),
                 disabledForegroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 minimumSize: const Size(80, 32),
               ),
               onPressed: isSaving ? null : onSave,
@@ -554,7 +659,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       width: textWidth,
                       height: 20,
                       child: const Center(
-                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     )
                   : Text(buttonText, style: buttonTextStyle),
@@ -579,15 +691,27 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _buildModalTextField('expense_category'.tr(), categoryController, hintText: 'please_enter_category'.tr(), maxLength: 50)),
+            Expanded(
+              child: _buildModalTextField(
+                'expense_category'.tr(),
+                categoryController,
+                hintText: 'please_enter_category'.tr(),
+                maxLength: 50,
+              ),
+            ),
             const SizedBox(width: 16),
-            Expanded(child: _buildModalTextField(
-              'amount_header'.tr(), amountController,
-              hintText: 'hint_amount'.tr(),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              isAmount: true,
-              prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
-            )),
+            Expanded(
+              child: _buildModalTextField(
+                'amount_header'.tr(),
+                amountController,
+                hintText: 'hint_amount'.tr(),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                isAmount: true,
+                prefixText: '${CurrencyUtils.symbolFor(_currencyCode)} ',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -598,8 +722,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('expense_title'.tr(),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
+                  Text(
+                    'expense_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF000000),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     height: 215,
@@ -619,14 +749,21 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: InputBorder.none,
                       ),
-                      style: const TextStyle(fontSize: 15, color: Colors.black, ),
+                      style: const TextStyle(fontSize: 15, color: Colors.black),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 16),
-            Expanded(child: _buildModalCalendar(calendarDate, selectedDay, onDaySelected, onMonthChanged)),
+            Expanded(
+              child: _buildModalCalendar(
+                calendarDate,
+                selectedDay,
+                onDaySelected,
+                onMonthChanged,
+              ),
+            ),
           ],
         ),
       ],
@@ -646,18 +783,32 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final description = descriptionController.text.trim();
 
     if (category.isEmpty || amountText.isEmpty || description.isEmpty) {
-      FlashySnackBar.show(context, message: 'please_fill_all_fields'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
       return null;
     }
 
     final amt = double.tryParse(amountText.replaceAll(',', ''));
     if (amt == null || !amt.isFinite || amt <= 0) {
-      FlashySnackBar.show(context, message: 'please_enter_valid_amount'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_valid_amount'.tr(),
+        isError: true,
+      );
       return null;
     }
 
     final date = DateTime(calendarDate.year, calendarDate.month, selectedDay);
-    return {'date': date, 'category': category, 'amount': amt, 'name': description, 'description': description};
+    return {
+      'date': date,
+      'category': category,
+      'amount': amt,
+      'name': description,
+      'description': description,
+    };
   }
 
   Future<void> _showAddExpenseModal(BuildContext parentContext) async {
@@ -678,10 +829,22 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             await _firestore.addExpense(expenseMap);
           }
           if (!context.mounted) return;
-          FlashySnackBar.show(parentContext, message: 'successfully_added_expense'.tr(namedArgs: {'name': expenseMap['category']}));
+          FlashySnackBar.show(
+            parentContext,
+            message: 'successfully_added_expense'.tr(
+              namedArgs: {'name': expenseMap['category']},
+            ),
+          );
           tryShowFirstMilestoneRateUs('expense');
         } catch (e) {
-          if (mounted) FlashySnackBar.show(context, message: 'failed_to_add_expense'.tr(namedArgs: {'error': e.toString()}), isError: true);
+          if (mounted)
+            FlashySnackBar.show(
+              context,
+              message: 'failed_to_add_expense'.tr(
+                namedArgs: {'error': e.toString()},
+              ),
+              isError: true,
+            );
           rethrow;
         }
       },
@@ -701,24 +864,48 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       onSave: (updatedMap) async {
         final docId = (doc['id'] ?? '').toString().trim();
         final wasPayroll = _isPayrollExpense(doc);
-        final payrollKey = wasPayroll ? (doc['payrollKey'] ?? '').toString().trim() : '';
+        final payrollKey = wasPayroll
+            ? (doc['payrollKey'] ?? '').toString().trim()
+            : '';
         final amt = updatedMap['amount'] as double;
 
         try {
           if (_isGuest) {
-            _updateExpenseInGuest(docId, updatedMap, payrollKey: wasPayroll ? payrollKey : null, amt: wasPayroll ? amt : null);
+            _updateExpenseInGuest(
+              docId,
+              updatedMap,
+              payrollKey: wasPayroll ? payrollKey : null,
+              amt: wasPayroll ? amt : null,
+            );
           } else if (wasPayroll && payrollKey.isNotEmpty) {
             await _firestore.updatePayrollLinkedExpense(
-              expenseId: docId, payrollKey: payrollKey, expenseData: updatedMap, netAmount: amt, currency: _currencyCode,
+              expenseId: docId,
+              payrollKey: payrollKey,
+              expenseData: updatedMap,
+              netAmount: amt,
+              currency: _currencyCode,
             );
           } else {
             await _firestore.updateExpense(docId, updatedMap);
           }
-          if (mounted) FlashySnackBar.show(context, message: 'expense_updated'.tr());
+          if (mounted)
+            FlashySnackBar.show(context, message: 'expense_updated'.tr());
         } on ArgumentError catch (e) {
-          if (mounted) FlashySnackBar.show(context, message: e.message?.toString() ?? 'failed_to_update_expense'.tr(), isError: true);
+          if (mounted)
+            FlashySnackBar.show(
+              context,
+              message: e.message?.toString() ?? 'failed_to_update_expense'.tr(),
+              isError: true,
+            );
         } catch (e) {
-          if (mounted) FlashySnackBar.show(context, message: 'failed_to_update_expense'.tr(namedArgs: {'error': e.toString()}), isError: true);
+          if (mounted)
+            FlashySnackBar.show(
+              context,
+              message: 'failed_to_update_expense'.tr(
+                namedArgs: {'error': e.toString()},
+              ),
+              isError: true,
+            );
         }
       },
     );
@@ -733,7 +920,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     bool isAmount = false,
     String? prefixText,
   }) {
-    const fieldStyle = TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w500, );
+    const fieldStyle = TextStyle(
+      fontSize: 15,
+      color: Colors.black,
+      fontWeight: FontWeight.w500,
+    );
     final textField = TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -745,8 +936,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               const ThousandsSeparatorInputFormatter(),
             ]
           : maxLength != null
-              ? [LengthLimitingTextInputFormatter(maxLength)]
-              : const <TextInputFormatter>[],
+          ? [LengthLimitingTextInputFormatter(maxLength)]
+          : const <TextInputFormatter>[],
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Colors.grey),
@@ -761,14 +952,23 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           height: 44,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
-
 
           child: prefixText == null
               ? textField
@@ -826,13 +1026,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   _buildListHeader(),
                   const SizedBox(height: 16),
                   _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 80),
-                          child: Center(child: CircularProgressIndicator()),
+                      ? ScreenTableShimmer(
+                          height: (MediaQuery.of(context).size.height - 409)
+                              .clamp(495.0, 1200.0),
+                          columnFlexes: const [3, 2, 2, 2],
                         )
                       : filtered.isEmpty
-                          ? _buildEmptyState()
-                          : _buildDataTable(filtered),
+                      ? _buildEmptyState()
+                      : _buildDataTable(filtered),
                 ],
               ),
             ),
@@ -856,14 +1057,23 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('expenses'.tr(),
-                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, )),
+              Text(
+                'expenses'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFF000000),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
         ],
       ),
     );
@@ -884,8 +1094,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SvgPicture.asset('assets/search icon.svg', width: 20, height: 20,
-                    colorFilter: const ColorFilter.mode(Color(0xFFBDBDBD), BlendMode.srcIn)),
+                SvgPicture.asset(
+                  'assets/search icon.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFBDBDBD),
+                    BlendMode.srcIn,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
@@ -893,7 +1110,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
                       hintText: 'search_expenses_hint'.tr(),
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -908,7 +1128,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[400],
+                      ),
                     ),
                   ),
               ],
@@ -923,13 +1147,28 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0247C4),
               minimumSize: const Size(150, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               elevation: 0,
             ),
-            icon: SvgPicture.asset('assets/add_expense.svg', width: 18, height: 18,
-                colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
-            label: Text('add_expenses'.tr(),
-                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
+            icon: SvgPicture.asset(
+              'assets/add_expense.svg',
+              width: 18,
+              height: 18,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: Text(
+              'add_expenses'.tr(),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],
@@ -939,19 +1178,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget _buildSummaryCards() {
     return Row(
       children: [
-        Expanded(child: _buildCard(
-          title: _selectedPeriodExpenseTitle,
-          titleColor: const Color(0xFF0247C4),
-          amount: _formatCurrency(_selectedPeriodExpenseSum),
-          iconWidget: SvgPicture.asset('assets/expense_month.svg', width: 44, height: 44),
-        )),
+        Expanded(
+          child: _buildCard(
+            title: _selectedPeriodExpenseTitle,
+            titleColor: const Color(0xFF0247C4),
+            amount: _formatCurrency(_selectedPeriodExpenseSum),
+            iconWidget: SvgPicture.asset(
+              'assets/expense_month.svg',
+              width: 44,
+              height: 44,
+            ),
+          ),
+        ),
         const SizedBox(width: 24),
-        Expanded(child: _buildCard(
-          title: 'total_expense'.tr(),
-          titleColor: Color(0xFFFF1014),
-          amount: _formatCurrency(_totalExpenseSum),
-          iconWidget: SvgPicture.asset('assets/total_expense.svg', width: 44, height: 44),
-        )),
+        Expanded(
+          child: _buildCard(
+            title: 'total_expense'.tr(),
+            titleColor: Color(0xFFFF1014),
+            amount: _formatCurrency(_totalExpenseSum),
+            iconWidget: SvgPicture.asset(
+              'assets/total_expense.svg',
+              width: 44,
+              height: 44,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -976,16 +1227,30 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(fontSize: 15, color: titleColor, fontWeight: FontWeight.bold, ),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 12),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(amount,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF000000), ),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF000000),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -1001,11 +1266,24 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('expenses_list'.tr(),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
+        Text(
+          'expenses_list'.tr(),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF000000),
+          ),
+        ),
         CustomTimeframeDropdown(
           selectedPeriod: _selectedPeriod,
-          options: const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year', 'All Time'],
+          options: const [
+            'Today',
+            'This Week',
+            'This Month',
+            'Last 6 Months',
+            'This Year',
+            'All Time',
+          ],
           onChanged: (value) {
             setState(() {
               _selectedPeriod = value;
@@ -1018,21 +1296,54 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
-    final tableHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
+    final tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
+      495.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('expense_title'.tr()))),
-                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(left: 40, right: 16), child: _tableHeader('expense_category'.tr()))),
-                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 16), child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center))),
-                Expanded(flex: 2, child: _tableHeader('amount_header'.tr(), textAlign: TextAlign.center)),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader('expense_title'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 40, right: 16),
+                    child: _tableHeader('expense_category'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _tableHeader(
+                      'date_header'.tr(),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _tableHeader(
+                    'amount_header'.tr(),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 const SizedBox(width: 48),
               ],
             ),
@@ -1053,47 +1364,98 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _tableHeader(String title, {TextAlign? textAlign}) {
-    return Text(title, textAlign: textAlign,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ),
-        maxLines: 1, overflow: TextOverflow.ellipsis);
+    return Text(
+      title,
+      textAlign: textAlign,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: Color(0xFF000000),
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   Widget _buildDataRow(Map<String, dynamic> doc) {
     final name = _expenseDisplayName(doc);
     final date = _localizedExpenseDate(doc['date']);
-    final category = LocalizationHelper.localizeExpenseCategory((doc['category'] ?? '').toString());
+    final category = LocalizationHelper.localizeExpenseCategory(
+      (doc['category'] ?? '').toString(),
+    );
     final amount = _expenseAmount(doc);
 
     return GestureDetector(
       onTap: () => _editExpense(doc),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: const Color(0xFFF6F8FA), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F8FA),
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Row(
           children: [
-            Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Text(name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF000000), ),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-            )),
-            Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(left: 40, right: 16),
-              child: Text(category,
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-            )),
-            Expanded(flex: 3, child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Text(date, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: Color(0xFF000000), ),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            )),
-            Expanded(flex: 2, child: Text(
-              _isPayrollExpense(doc) ? _formatFullCurrency(amount) : _formatCurrency(amount),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Color(0xFF0247C4), fontWeight: FontWeight.w600, ),
-            )),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF000000),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 40, right: 16),
+                child: Text(
+                  category,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Text(
+                  date,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                _isPayrollExpense(doc)
+                    ? _formatFullCurrency(amount)
+                    : _formatCurrency(amount),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF0247C4),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             _buildActionMenu(doc),
           ],
         ),
@@ -1108,7 +1470,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         tooltip: '',
         icon: const Icon(Icons.more_vert, color: Colors.black),
         offset: const Offset(0, 40),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFCBCBCB))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: const BorderSide(color: Color(0xFFCBCBCB)),
+        ),
         color: const Color(0xFFFBFBFC),
         elevation: 4,
         onSelected: (value) {
@@ -1124,11 +1489,24 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             height: 36,
             child: Row(
               children: [
-                SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16,
-                    colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
+                SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF0247C4),
+                    BlendMode.srcIn,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text('edit_expense'.tr(),
-                    style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, )),
+                Text(
+                  'edit_expense'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFF0247C4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1137,11 +1515,24 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             height: 36,
             child: Row(
               children: [
-                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16,
-                    colorFilter: const ColorFilter.mode(Color(0xFFFF1014), BlendMode.srcIn)),
+                SvgPicture.asset(
+                  'assets/delete_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFFF1014),
+                    BlendMode.srcIn,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text('delete'.tr(),
-                    style: const TextStyle(color: Color(0xFFFF1014), fontSize: 13, fontWeight: FontWeight.w500, )),
+                Text(
+                  'delete'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFFFF1014),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1151,23 +1542,41 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Widget _buildEmptyState() {
-    final containerHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
+    final containerHeight = (MediaQuery.of(context).size.height - 409).clamp(
+      495.0,
+      1200.0,
+    );
     return Container(
       width: double.infinity,
       height: containerHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
-              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 16),
-          Text('add_expenses'.tr(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), )),
+          Text(
+            'add_expenses'.tr(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0247C4),
+            ),
+          ),
         ],
       ),
     );
   }
 }
-

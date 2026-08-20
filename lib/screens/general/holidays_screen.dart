@@ -18,6 +18,7 @@ import '../../services/preferences_service.dart';
 import '../../utils/utils.dart';
 import '../../widgets/clickable_gesture_detector.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/screen_table_shimmer.dart';
 
 class HolidaysScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -56,8 +57,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
-  static final List<String> _calendarMonths =
-      LocalizationHelper.englishMonthNames.sublist(1);
+  static final List<String> _calendarMonths = LocalizationHelper
+      .englishMonthNames
+      .sublist(1);
 
   @override
   void didChangeDependencies() {
@@ -103,7 +105,8 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             if (aTime == null && bTime == null) return 0;
             if (aTime == null) return -1;
             if (bTime == null) return 1;
-            if (aTime is Timestamp && bTime is Timestamp) return bTime.compareTo(aTime);
+            if (aTime is Timestamp && bTime is Timestamp)
+              return bTime.compareTo(aTime);
             return 0;
           });
 
@@ -116,7 +119,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               final savedDays = <int>{};
               for (final value in rawDays) {
                 final day = _intValue(value);
-                if (day != null && day >= DateTime.monday && day <= DateTime.sunday) {
+                if (day != null &&
+                    day >= DateTime.monday &&
+                    day <= DateTime.sunday) {
                   savedDays.add(day);
                 }
               }
@@ -139,13 +144,19 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           final maxDay = DateTime(year ?? 2024, monthNumber + 1, 0).day;
           if (day < 1 || day > maxDay) continue;
 
-          tempMap.putIfAbsent(month, () => []).add(HolidayItem(
-            day, name, data['isEnabled'] != false,
-            id: doc.id,
-            month: month,
-            year: year,
-            isRecurring: data['isRecurring'] == true,
-          ));
+          tempMap
+              .putIfAbsent(month, () => [])
+              .add(
+                HolidayItem(
+                  day,
+                  name,
+                  data['isEnabled'] != false,
+                  id: doc.id,
+                  month: month,
+                  year: year,
+                  isRecurring: data['isRecurring'] == true,
+                ),
+              );
         }
 
         setState(() {
@@ -178,7 +189,8 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     final normalized = raw.toLowerCase();
     for (final month in _calendarMonths) {
       final lower = month.toLowerCase();
-      if (lower == normalized || lower.substring(0, 3) == normalized) return month;
+      if (lower == normalized || lower.substring(0, 3) == normalized)
+        return month;
     }
     return null;
   }
@@ -195,26 +207,40 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     for (final entry in DummyData.holidays.entries) {
       for (final holiday in entry.value) {
         final storedDate = _storedHolidayDate(holiday['date']);
-        final month = _canonicalMonth(holiday['month']) ??
-            (storedDate == null ? _canonicalMonth(entry.key) : _calendarMonths[storedDate.month - 1]);
+        final month =
+            _canonicalMonth(holiday['month']) ??
+            (storedDate == null
+                ? _canonicalMonth(entry.key)
+                : _calendarMonths[storedDate.month - 1]);
         final day = _intValue(holiday['day']) ?? storedDate?.day;
         final name = (holiday['name'] ?? '').toString().trim();
         final entryYear = int.tryParse(entry.key);
-        final year = _intValue(holiday['year']) ?? storedDate?.year ?? entryYear;
+        final year =
+            _intValue(holiday['year']) ?? storedDate?.year ?? entryYear;
 
         if (month == null || day == null || name.isEmpty) continue;
 
         final monthNumber = _calendarMonths.indexOf(month) + 1;
-        final maxDay = DateTime(year ?? DateTime.now().year, monthNumber + 1, 0).day;
+        final maxDay = DateTime(
+          year ?? DateTime.now().year,
+          monthNumber + 1,
+          0,
+        ).day;
         if (day < 1 || day > maxDay) continue;
 
-        result.putIfAbsent(month, () => []).add(HolidayItem(
-          day, name, holiday['isEnabled'] != false,
-          month: month,
-          year: year,
-          isRecurring: holiday['isRecurring'] == true,
-          storageKey: entry.key,
-        ));
+        result
+            .putIfAbsent(month, () => [])
+            .add(
+              HolidayItem(
+                day,
+                name,
+                holiday['isEnabled'] != false,
+                month: month,
+                year: year,
+                isRecurring: holiday['isRecurring'] == true,
+                storageKey: entry.key,
+              ),
+            );
       }
     }
     return result;
@@ -223,7 +249,8 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   bool _matchesGuestHoliday(Map<String, dynamic> holiday, HolidayItem item) {
     final storedDate = _storedHolidayDate(holiday['date']);
     final day = _intValue(holiday['day']) ?? storedDate?.day;
-    return day == item.day && (holiday['name'] ?? '').toString().trim() == item.name;
+    return day == item.day &&
+        (holiday['name'] ?? '').toString().trim() == item.name;
   }
 
   bool _isDuplicateHoliday({
@@ -248,7 +275,8 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     return false;
   }
 
-  String _weekdayLabel(int day) => (LocalizationHelper.weekdayKeys[day] ?? '').tr();
+  String _weekdayLabel(int day) =>
+      (LocalizationHelper.weekdayKeys[day] ?? '').tr();
 
   String _localizeMonth(String month) {
     final canonical = _canonicalMonth(month) ?? month;
@@ -265,23 +293,38 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
       builder: (dialogCtx) => StatefulBuilder(
         builder: (_, setModalState) {
-          final offDays = LocalizationHelper.weekdayKeys.keys.where((d) => !selectedDays.contains(d)).toList();
+          final offDays = LocalizationHelper.weekdayKeys.keys
+              .where((d) => !selectedDays.contains(d))
+              .toList();
 
           return AlertDialog(
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            title: Text('company_work_days'.tr(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, )),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            title: Text(
+              'company_work_days'.tr(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             content: SizedBox(
               width: 520,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('company_work_days_help'.tr(),
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14, )),
+                  Text(
+                    'company_work_days_help'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 20),
-                  _buildWorkDaysSectionTitle(icon: Icons.business_center_rounded, title: 'working_days'.tr(), color: const Color(0xFF0247C4)),
+                  _buildWorkDaysSectionTitle(
+                    icon: Icons.business_center_rounded,
+                    title: 'working_days'.tr(),
+                    color: const Color(0xFF0247C4),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -293,53 +336,101 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                         showCheckmark: true,
                         selectedColor: const Color(0xFFDCE8FF),
                         checkmarkColor: const Color(0xFF0247C4),
-                        side: BorderSide(color: selected ? const Color(0xFF0247C4) : const Color(0xFFCBD5E1)),
+                        side: BorderSide(
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : const Color(0xFFCBD5E1),
+                        ),
                         label: Text(_weekdayLabel(day)),
-                        onSelected: (value) => setModalState(() => value ? selectedDays.add(day) : selectedDays.remove(day)),
+                        onSelected: (value) => setModalState(
+                          () => value
+                              ? selectedDays.add(day)
+                              : selectedDays.remove(day),
+                        ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  _buildWorkDaysSectionTitle(icon: Icons.weekend_rounded, title: 'company_off_days'.tr(), color: const Color(0xFFD81B1F)),
+                  _buildWorkDaysSectionTitle(
+                    icon: Icons.weekend_rounded,
+                    title: 'company_off_days'.tr(),
+                    color: const Color(0xFFD81B1F),
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    offDays.isEmpty ? 'none'.tr() : offDays.map(_weekdayLabel).join(', '),
-                    style: const TextStyle(color: Color(0xFF64748B), ),
+                    offDays.isEmpty
+                        ? 'none'.tr()
+                        : offDays.map(_weekdayLabel).join(', '),
+                    style: const TextStyle(color: Color(0xFF64748B)),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: isSaving ? null : () => Navigator.of(dialogCtx).pop(), child: Text('cancel'.tr())),
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () => Navigator.of(dialogCtx).pop(),
+                child: Text('cancel'.tr()),
+              ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0247C4), foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: isSaving
                     ? null
                     : () async {
                         setModalState(() => isSaving = true);
                         if (selectedDays.isEmpty) {
                           setModalState(() => isSaving = false);
-                          FlashySnackBar.show(context, message: 'select_at_least_one_work_day'.tr(), isError: true);
+                          FlashySnackBar.show(
+                            context,
+                            message: 'select_at_least_one_work_day'.tr(),
+                            isError: true,
+                          );
                           return;
                         }
                         try {
                           if (_isGuest) {
-                            await PreferencesService.setCompanyWorkingDays(selectedDays);
+                            await PreferencesService.setCompanyWorkingDays(
+                              selectedDays,
+                            );
                           } else {
-                            await _firestore.setCompanyWorkingDays(selectedDays);
+                            await _firestore.setCompanyWorkingDays(
+                              selectedDays,
+                            );
                           }
                           if (!mounted || !dialogCtx.mounted) return;
-                          setState(() => _companyWorkingDays = Set<int>.from(selectedDays));
+                          setState(
+                            () => _companyWorkingDays = Set<int>.from(
+                              selectedDays,
+                            ),
+                          );
                           Navigator.of(dialogCtx).pop();
-                          FlashySnackBar.show(context, message: 'company_work_days_saved'.tr());
+                          FlashySnackBar.show(
+                            context,
+                            message: 'company_work_days_saved'.tr(),
+                          );
                         } catch (_) {
                           if (!context.mounted) return;
                           setModalState(() => isSaving = false);
-                          FlashySnackBar.show(context, message: 'failed_to_save_record'.tr(), isError: true);
+                          FlashySnackBar.show(
+                            context,
+                            message: 'failed_to_save_record'.tr(),
+                            isError: true,
+                          );
                         }
                       },
                 child: isSaving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text('save'.tr()),
               ),
             ],
@@ -380,42 +471,79 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.black,
+                        size: 20,
+                      ),
                       onPressed: isSaving ? null : onClose,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
                   ),
-                  Text(dialogTitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF000000), )),
+                  Text(
+                    dialogTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF000000),
+                    ),
+                  ),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0247C4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         minimumSize: const Size(0, 32),
                       ),
                       onPressed: isSaving ? null : onSave,
                       child: isSaving
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Text('save'.tr(),
-                              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, )),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'save'.tr(),
+                              style: const TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            Text('holiday_name'.tr(),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF000000), )),
+            Text(
+              'holiday_name'.tr(),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF000000),
+              ),
+            ),
             const SizedBox(height: 6),
             Container(
               height: 38,
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(4),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.centerLeft,
               child: TextField(
@@ -423,13 +551,25 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                 inputFormatters: [LengthLimitingTextInputFormatter(50)],
                 decoration: InputDecoration.collapsed(
                   hintText: 'enter_holiday_name'.tr(),
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, ),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
                 ),
-                style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500, ),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            _buildModalCalendar(calendarDate, selectedDay, onDaySelected, onMonthChanged),
+            _buildModalCalendar(
+              calendarDate,
+              selectedDay,
+              onDaySelected,
+              onMonthChanged,
+            ),
           ],
         ),
       ),
@@ -458,29 +598,53 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               if (selectedDay == 0 && holidayName.isEmpty) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'please_fill_all_fields'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'please_fill_all_fields'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
               if (holidayName.isEmpty) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'please_enter_holiday_name'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'please_enter_holiday_name'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
               final alreadyExists = _isGuest
-                  ? (_holidaysByMonth[selectedMonthName] ?? []).any((h) => h.day == selectedDay && h.name == holidayName)
-                  : _isDuplicateHoliday(name: holidayName, month: selectedMonthName, day: selectedDay, year: calendarDate.year, isRecurring: false);
+                  ? (_holidaysByMonth[selectedMonthName] ?? []).any(
+                      (h) => h.day == selectedDay && h.name == holidayName,
+                    )
+                  : _isDuplicateHoliday(
+                      name: holidayName,
+                      month: selectedMonthName,
+                      day: selectedDay,
+                      year: calendarDate.year,
+                      isRecurring: false,
+                    );
 
               if (alreadyExists) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'holiday_already_exists'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'holiday_already_exists'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
-              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+              final dateObj = DateTime(
+                calendarDate.year,
+                calendarDate.month,
+                selectedDay,
+              );
               final holidayMap = {
                 'date': dateObj,
                 'name': holidayName,
@@ -493,16 +657,27 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               try {
                 if (_isGuest) {
                   setState(() {
-                    _holidaysByMonth.putIfAbsent(selectedMonthName, () => []).insert(0, HolidayItem(
-                      selectedDay, holidayName, true,
-                      month: selectedMonthName, year: calendarDate.year,
-                    ));
-                    DummyData.holidays.putIfAbsent(selectedMonthName, () => []).insert(0, {
-                      'date': '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}',
-                      'name': holidayName,
-                      'isEnabled': true,
-                      'isRecurring': false,
-                    });
+                    _holidaysByMonth
+                        .putIfAbsent(selectedMonthName, () => [])
+                        .insert(
+                          0,
+                          HolidayItem(
+                            selectedDay,
+                            holidayName,
+                            true,
+                            month: selectedMonthName,
+                            year: calendarDate.year,
+                          ),
+                        );
+                    DummyData.holidays
+                        .putIfAbsent(selectedMonthName, () => [])
+                        .insert(0, {
+                          'date':
+                              '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}',
+                          'name': holidayName,
+                          'isEnabled': true,
+                          'isRecurring': false,
+                        });
                     DummyData.saveToPrefs();
                   });
                 } else {
@@ -511,14 +686,25 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               } catch (e) {
                 if (!ctx.mounted) return;
                 setModalState(() => isSaving = false);
-                FlashySnackBar.show(ctx, message: 'failed_to_add_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'failed_to_add_holiday'.tr(
+                    namedArgs: {'error': e.toString()},
+                  ),
+                  isError: true,
+                );
                 return;
               }
 
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop();
               if (parentContext.mounted) {
-                FlashySnackBar.show(parentContext, message: 'successfully_added_holiday'.tr(namedArgs: {'name': holidayName}));
+                FlashySnackBar.show(
+                  parentContext,
+                  message: 'successfully_added_holiday'.tr(
+                    namedArgs: {'name': holidayName},
+                  ),
+                );
                 tryShowFirstMilestoneRateUs('holiday');
               }
             }
@@ -534,7 +720,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               onMonthChanged: (newDate) {
                 setModalState(() {
                   calendarDate = newDate;
-                  final maxDay = DateTime(newDate.year, newDate.month + 1, 0).day;
+                  final maxDay = DateTime(
+                    newDate.year,
+                    newDate.month + 1,
+                    0,
+                  ).day;
                   if (selectedDay > maxDay) selectedDay = maxDay;
                 });
               },
@@ -573,18 +763,31 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               if (holidayName.isEmpty) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'please_enter_holiday_name'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'please_enter_holiday_name'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
-              if (!_isGuest && _isDuplicateHoliday(
-                name: holidayName, month: selectedMonthName,
-                day: selectedDay, year: calendarDate.year,
-                isRecurring: item.isRecurring, excludingId: item.id, excludingItem: item,
-              )) {
+              if (!_isGuest &&
+                  _isDuplicateHoliday(
+                    name: holidayName,
+                    month: selectedMonthName,
+                    day: selectedDay,
+                    year: calendarDate.year,
+                    isRecurring: item.isRecurring,
+                    excludingId: item.id,
+                    excludingItem: item,
+                  )) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'holiday_already_exists'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'holiday_already_exists'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
@@ -592,11 +795,19 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               if (!_isGuest && holidayId.isEmpty) {
                 setModalState(() => isSaving = false);
                 if (!ctx.mounted) return;
-                FlashySnackBar.show(ctx, message: 'unexpected_error'.tr(), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'unexpected_error'.tr(),
+                  isError: true,
+                );
                 return;
               }
 
-              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+              final dateObj = DateTime(
+                calendarDate.year,
+                calendarDate.month,
+                selectedDay,
+              );
 
               try {
                 if (_isGuest) {
@@ -606,11 +817,16 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                     Map<String, dynamic>? updatedHoliday;
 
                     if (oldList != null) {
-                      final idx = oldList.indexWhere((h) => _matchesGuestHoliday(h, item));
+                      final idx = oldList.indexWhere(
+                        (h) => _matchesGuestHoliday(h, item),
+                      );
                       if (idx != -1) {
-                        updatedHoliday = Map<String, dynamic>.from(oldList[idx]);
+                        updatedHoliday = Map<String, dynamic>.from(
+                          oldList[idx],
+                        );
                         oldList.removeAt(idx);
-                        if (oldList.isEmpty) DummyData.holidays.remove(storageKey);
+                        if (oldList.isEmpty)
+                          DummyData.holidays.remove(storageKey);
                       }
                     }
 
@@ -620,7 +836,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                     updatedHoliday['date'] =
                         '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
 
-                    DummyData.holidays.putIfAbsent(selectedMonthName, () => []).insert(0, updatedHoliday);
+                    DummyData.holidays
+                        .putIfAbsent(selectedMonthName, () => [])
+                        .insert(0, updatedHoliday);
                     DummyData.saveToPrefs();
                     _holidaysByMonth = _guestHolidayGroups();
                   });
@@ -634,13 +852,20 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               } catch (e) {
                 if (!ctx.mounted) return;
                 setModalState(() => isSaving = false);
-                FlashySnackBar.show(ctx, message: 'failed_to_update_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                FlashySnackBar.show(
+                  ctx,
+                  message: 'failed_to_update_holiday'.tr(
+                    namedArgs: {'error': e.toString()},
+                  ),
+                  isError: true,
+                );
                 return;
               }
 
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop();
-              if (mounted) FlashySnackBar.show(context, message: 'holiday_updated'.tr());
+              if (mounted)
+                FlashySnackBar.show(context, message: 'holiday_updated'.tr());
             }
 
             return _buildHolidayDialog(
@@ -654,7 +879,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               onMonthChanged: (newDate) {
                 setModalState(() {
                   calendarDate = newDate;
-                  final maxDay = DateTime(newDate.year, newDate.month + 1, 0).day;
+                  final maxDay = DateTime(
+                    newDate.year,
+                    newDate.month + 1,
+                    0,
+                  ).day;
                   if (selectedDay > maxDay) selectedDay = maxDay;
                 });
               },
@@ -679,7 +908,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       setState(() {
         final monthList = _holidaysByMonth[item.month];
         if (monthList != null) {
-          monthList.removeWhere((h) => h.day == item.day && h.name == item.name);
+          monthList.removeWhere(
+            (h) => h.day == item.day && h.name == item.name,
+          );
           if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
         }
       });
@@ -692,21 +923,33 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       }
 
       await DummyData.saveToPrefs();
-      if (mounted) FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      if (mounted)
+        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
       return;
     }
 
     final holidayId = item.id?.trim() ?? '';
     if (holidayId.isEmpty) {
-      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
       return;
     }
 
     try {
       await _firestore.deleteHoliday(holidayId);
-      if (mounted) FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      if (mounted)
+        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
     } catch (_) {
-      if (mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+      if (mounted)
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
     }
   }
 
@@ -752,10 +995,15 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   _buildHolidayListHeader(),
                   const SizedBox(height: 16),
                   _isLoading
-                      ? const Padding(padding: EdgeInsets.all(40.0), child: Center(child: CircularProgressIndicator()))
+                      ? ScreenTableShimmer(
+                          height: (MediaQuery.of(context).size.height - 430)
+                              .clamp(460.0, 1200.0),
+                          columnFlexes: const [3, 2, 2],
+                          showLeadingAvatar: false,
+                        )
                       : _holidaysByMonth.values.every((l) => l.isEmpty)
-                          ? _buildEmptyState()
-                          : _buildFilledState(),
+                      ? _buildEmptyState()
+                      : _buildFilledState(),
                 ],
               ),
             ),
@@ -779,15 +1027,24 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('workforce'.tr(),
-                  style: const TextStyle(color: Color(0xFF000000), fontSize: 28, fontWeight: FontWeight.w800, )),
+              Text(
+                'workforce'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFF000000),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 4),
             ],
           ),
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(onTap: widget.onProfileTap, child: const UserAvatar()),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
         ],
       ),
     );
@@ -802,18 +1059,33 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('work_schedule'.tr(),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
+              Text(
+                'work_schedule'.tr(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF000000),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('company_work_days_help'.tr(),
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3, )),
+              Text(
+                'company_work_days_help'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(width: 16),
         ElevatedButton.icon(
           onPressed: () {
-            if (_isGuest) { showGuestRestrictionDialog(context); return; }
+            if (_isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
             _showCompanyWorkDaysModal();
           },
           style: ElevatedButton.styleFrom(
@@ -821,12 +1093,24 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
             foregroundColor: const Color(0xFFFFFFFF),
             minimumSize: const Size(32, 50),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
             elevation: 0,
           ),
-          icon: const Icon(Icons.edit_calendar_rounded, size: 22, color: Color(0xFFFFFFFF)),
-          label: Text('set_workdays'.tr(),
-              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
+          icon: const Icon(
+            Icons.edit_calendar_rounded,
+            size: 22,
+            color: Color(0xFFFFFFFF),
+          ),
+          label: Text(
+            'set_workdays'.tr(),
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ],
     );
@@ -836,14 +1120,26 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Flexible(child: Text('holiday_list'.tr(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF000000), ))),
+        Flexible(
+          child: Text(
+            'holiday_list'.tr(),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF000000),
+            ),
+          ),
+        ),
         const SizedBox(width: 16),
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: ElevatedButton.icon(
             onPressed: () {
-              if (_isGuest) { if (!mounted) return; showGuestRestrictionDialog(context); return; }
+              if (_isGuest) {
+                if (!mounted) return;
+                showGuestRestrictionDialog(context);
+                return;
+              }
               if (!mounted) return;
               _showAddHolidayModal(context);
             },
@@ -851,13 +1147,28 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               backgroundColor: const Color(0xFF0247C4),
               minimumSize: const Size(32, 50),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
               elevation: 0,
             ),
-            icon: SvgPicture.asset('assets/holidays_icon.svg', width: 22, height: 22,
-                colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn)),
-            label: Text('add_holiday'.tr(),
-                style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500, )),
+            icon: SvgPicture.asset(
+              'assets/holidays_icon.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: Text(
+              'add_holiday'.tr(),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
       ],
@@ -865,8 +1176,14 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   }
 
   Widget _buildCompanyWorkDaysSummary() {
-    final workingDays = LocalizationHelper.weekdayKeys.keys.where(_companyWorkingDays.contains).map(_weekdayLabel).join(', ');
-    final offDays = LocalizationHelper.weekdayKeys.keys.where((d) => !_companyWorkingDays.contains(d)).map(_weekdayLabel).join(', ');
+    final workingDays = LocalizationHelper.weekdayKeys.keys
+        .where(_companyWorkingDays.contains)
+        .map(_weekdayLabel)
+        .join(', ');
+    final offDays = LocalizationHelper.weekdayKeys.keys
+        .where((d) => !_companyWorkingDays.contains(d))
+        .map(_weekdayLabel)
+        .join(', ');
 
     return Container(
       width: double.infinity,
@@ -878,21 +1195,43 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildDaySummary(Icons.business_center_rounded, 'working_days'.tr(), workingDays, const Color(0xFF0247C4))),
+          Expanded(
+            child: _buildDaySummary(
+              Icons.business_center_rounded,
+              'working_days'.tr(),
+              workingDays,
+              const Color(0xFF0247C4),
+            ),
+          ),
           const SizedBox(width: 24),
-          Expanded(child: _buildDaySummary(Icons.weekend_rounded, 'company_off_days'.tr(), offDays.isEmpty ? 'none'.tr() : offDays, const Color(0xFFD81B1F))),
+          Expanded(
+            child: _buildDaySummary(
+              Icons.weekend_rounded,
+              'company_off_days'.tr(),
+              offDays.isEmpty ? 'none'.tr() : offDays,
+              const Color(0xFFD81B1F),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDaySummary(IconData icon, String title, String days, Color color) {
+  Widget _buildDaySummary(
+    IconData icon,
+    String title,
+    String days,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
           width: 38,
           height: 38,
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(9)),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(9),
+          ),
           child: Icon(icon, color: color, size: 21),
         ),
         const SizedBox(width: 12),
@@ -900,11 +1239,25 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700, )),
+              Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(days, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF334155), fontSize: 14, fontWeight: FontWeight.w500, )),
+              Text(
+                days,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -912,40 +1265,55 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     );
   }
 
-  Widget _buildWorkDaysSectionTitle({required IconData icon, required String title, required Color color}) {
+  Widget _buildWorkDaysSectionTitle({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
     return Row(
       children: [
         Container(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Icon(icon, color: color, size: 19),
         ),
         const SizedBox(width: 10),
-        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700, )),
+        Text(
+          title,
+          style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
 
   Widget _buildFilledState() {
-    final months = _holidaysByMonth.keys
-        .where((m) => _holidaysByMonth[m]!.isNotEmpty)
-        .toList()
-      ..sort((a, b) {
-        final aIdx = _calendarMonths.indexOf(a);
-        final bIdx = _calendarMonths.indexOf(b);
-        if (aIdx == -1 && bIdx == -1) return a.compareTo(b);
-        if (aIdx == -1) return 1;
-        if (bIdx == -1) return -1;
-        return aIdx.compareTo(bIdx);
-      });
+    final months =
+        _holidaysByMonth.keys
+            .where((m) => _holidaysByMonth[m]!.isNotEmpty)
+            .toList()
+          ..sort((a, b) {
+            final aIdx = _calendarMonths.indexOf(a);
+            final bIdx = _calendarMonths.indexOf(b);
+            if (aIdx == -1 && bIdx == -1) return a.compareTo(b);
+            if (aIdx == -1) return 1;
+            if (bIdx == -1) return -1;
+            return aIdx.compareTo(bIdx);
+          });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: months.map((month) => Padding(
-        padding: const EdgeInsets.only(bottom: 24.0),
-        child: _buildMonthGroup(month, _holidaysByMonth[month]!),
-      )).toList(),
+      children: months
+          .map(
+            (month) => Padding(
+              padding: const EdgeInsets.only(bottom: 24.0),
+              child: _buildMonthGroup(month, _holidaysByMonth[month]!),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -962,8 +1330,14 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_localizeMonth(month),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF000000), fontWeight: FontWeight.w600, )),
+        Text(
+          _localizeMonth(month),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF000000),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 12),
         ...sorted.map(_buildListItem),
       ],
@@ -974,22 +1348,38 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-            child: Text('${item.day}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF000000), )),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${item.day}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF000000),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               '${LocalizationHelper.localizeHolidayName(item.name)}${item.isRecurring ? ' (Every Year)' : ''}',
-              style: const TextStyle(fontSize: 15, color: Color(0xFF000000), fontWeight: FontWeight.w500, ),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF000000),
+                fontWeight: FontWeight.w500,
+              ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -1000,10 +1390,14 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               final value = !item.isEnabled;
               if (_isGuest) {
                 setState(() => item.isEnabled = value);
-                final monthList = DummyData.holidays[item.storageKey ?? item.month];
+                final monthList =
+                    DummyData.holidays[item.storageKey ?? item.month];
                 if (monthList != null) {
                   for (final h in monthList) {
-                    if (_matchesGuestHoliday(h, item)) { h['isEnabled'] = value; break; }
+                    if (_matchesGuestHoliday(h, item)) {
+                      h['isEnabled'] = value;
+                      break;
+                    }
                   }
                 }
                 DummyData.saveToPrefs();
@@ -1011,18 +1405,33 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               }
 
               final holidayId = item.id?.trim() ?? '';
-              if (holidayId.isEmpty || _updatingHolidayIds.contains(holidayId)) {
-                if (holidayId.isEmpty && mounted) FlashySnackBar.show(context, message: 'unexpected_error'.tr(), isError: true);
+              if (holidayId.isEmpty ||
+                  _updatingHolidayIds.contains(holidayId)) {
+                if (holidayId.isEmpty && mounted)
+                  FlashySnackBar.show(
+                    context,
+                    message: 'unexpected_error'.tr(),
+                    isError: true,
+                  );
                 return;
               }
 
-              setState(() { _updatingHolidayIds.add(holidayId); item.isEnabled = value; });
+              setState(() {
+                _updatingHolidayIds.add(holidayId);
+                item.isEnabled = value;
+              });
               try {
                 await _firestore.updateHoliday(holidayId, {'isEnabled': value});
               } catch (e) {
                 if (mounted) {
                   setState(() => item.isEnabled = !value);
-                  FlashySnackBar.show(context, message: 'error_updating_holiday'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                  FlashySnackBar.show(
+                    context,
+                    message: 'error_updating_holiday'.tr(
+                      namedArgs: {'error': e.toString()},
+                    ),
+                    isError: true,
+                  );
                 }
               } finally {
                 if (mounted) {
@@ -1039,12 +1448,16 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               height: 28,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                color: item.isEnabled ? const Color(0xFF0247C4) : const Color(0xFFD1D5DB),
+                color: item.isEnabled
+                    ? const Color(0xFF0247C4)
+                    : const Color(0xFFD1D5DB),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                alignment: item.isEnabled ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: item.isEnabled
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
                   width: 22,
                   height: 22,
@@ -1052,7 +1465,13 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1061,13 +1480,23 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           const SizedBox(width: 8),
           PopupMenuButton<String>(
             tooltip: '',
-            icon: const Icon(Icons.more_vert, color: Color(0xFF000000), size: 20),
+            icon: const Icon(
+              Icons.more_vert,
+              color: Color(0xFF000000),
+              size: 20,
+            ),
             offset: const Offset(0, 40),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: Color(0xFFCBCBCB))),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: Color(0xFFCBCBCB)),
+            ),
             color: const Color(0xFFFBFBFC),
             elevation: 4,
             onSelected: (value) {
-              if (_isGuest) { showGuestRestrictionDialog(context); return; }
+              if (_isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
               if (value == 'edit') {
                 _editHoliday(item);
               } else if (value == 'delete') {
@@ -1075,16 +1504,58 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               }
             },
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'edit', height: 36, child: Row(children: [
-                SvgPicture.asset('assets/edit_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Color(0xFF0247C4), BlendMode.srcIn)),
-                const SizedBox(width: 8),
-                Text('edit'.tr(), style: const TextStyle(color: Color(0xFF0247C4), fontSize: 13, fontWeight: FontWeight.w500, )),
-              ])),
-              PopupMenuItem(value: 'delete', height: 36, child: Row(children: [
-                SvgPicture.asset('assets/delete_icon.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Color(0xFFFF1014), BlendMode.srcIn)),
-                const SizedBox(width: 8),
-                Text('delete'.tr(), style: const TextStyle(color: Color(0xFFFF1014), fontSize: 13, fontWeight: FontWeight.w500, )),
-              ])),
+              PopupMenuItem(
+                value: 'edit',
+                height: 36,
+                child: Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/edit_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF0247C4),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'edit'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF0247C4),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                height: 36,
+                child: Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/delete_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFFFF1014),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'delete'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFF1014),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -1093,22 +1564,42 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   }
 
   Widget _buildEmptyState() {
-    final containerHeight = (MediaQuery.of(context).size.height - 329).clamp(440.0, 1200.0);
+    final containerHeight = (MediaQuery.of(context).size.height - 329).clamp(
+      440.0,
+      1200.0,
+    );
     return Container(
       width: double.infinity,
       height: containerHeight,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: const Color(0xFFFFFFFF), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset('assets/placeholder_workers.svg', width: 120, height: 100,
-              colorFilter: const ColorFilter.mode(Color(0xFFCBCBCB), BlendMode.srcIn)),
+          SvgPicture.asset(
+            'assets/placeholder_workers.svg',
+            width: 120,
+            height: 100,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFCBCBCB),
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text('no_holidays_found'.tr(), textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF0247C4), )),
+            child: Text(
+              'no_holidays_found'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0247C4),
+              ),
+            ),
           ),
         ],
       ),
