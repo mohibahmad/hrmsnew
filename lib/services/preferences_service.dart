@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
+import 'payroll_service.dart';
 
 class PreferencesService {
   static const String _guestKey = 'is_guest';
@@ -442,6 +443,11 @@ class PreferencesService {
       await prefs.remove(key);
     }
 
+    final ignoredPeriodKeys = prefs.getKeys().where((key) => key.startsWith('payroll_ignored_period_dates_')).toList();
+    for (final key in ignoredPeriodKeys) {
+      await prefs.remove(key);
+    }
+
     if (!preserveBiometricCredentials) {
       await clearBiometricCredentials();
     }
@@ -451,5 +457,33 @@ class PreferencesService {
     _cachedCompanyCurrency = null;
     _cachedIsGuest = false;
     _cachedIsPremium = false;
+  }
+
+  static Future<void> saveIgnoredPeriod(String periodKey, DateTime start, DateTime end) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = '${start.toIso8601String()}_${end.toIso8601String()}';
+    await prefs.setString('payroll_ignored_period_dates_$periodKey', value);
+  }
+
+  static Future<List<PayrollPeriod>> getIgnoredPeriods() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<PayrollPeriod> list = [];
+    const prefix = 'payroll_ignored_period_dates_';
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith(prefix)) {
+        final val = prefs.getString(key);
+        if (val != null) {
+          final parts = val.split('_');
+          if (parts.length == 2) {
+            final start = DateTime.tryParse(parts[0]);
+            final end = DateTime.tryParse(parts[1]);
+            if (start != null && end != null) {
+              list.add(PayrollPeriod(start: start, end: end));
+            }
+          }
+        }
+      }
+    }
+    return list;
   }
 }

@@ -90,6 +90,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   DateTime _payPeriodStart = PayrollService.payPeriodStart(DateTime.now());
   DateTime _payPeriodEnd = PayrollService.payPeriodEnd(DateTime.now());
   bool _isUserSelectedCycle = false;
+  List<PayrollPeriod> _ignoredPeriods = [];
 
   Map<String, dynamic>? _workerForPayroll;
 
@@ -159,7 +160,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.isActive && (!oldWidget.isActive || widget.activationToken != oldWidget.activationToken)) {
-                  _schedulePayrollReminderCheck(force: true);
+                  _schedulePayrollReminderCheck(force: false);
       if (!_isGuest && _payrollDocs.isNotEmpty) _scheduleAttendanceFetch();
     }
 
@@ -213,6 +214,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return lastPaid == null;
   }
 
+  bool get _isPayDayLocked {
+    return _rawPayrollDocs.any((doc) => doc['status'] == 'Paid');
+  }
+
   PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
     final startStr = profile?['payrollCycleStart']?.toString();
     final endStr = profile?['payrollCycleEnd']?.toString();
@@ -235,29 +240,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _reconcilePayrollPeriod() async {
     if (!mounted || !_workersLoaded || !_payrollLoaded || _isUserSelectedCycle) return;
 
-    final lastPaid = PayrollService.latestSettledPayrollCycle(
-      _workersList,
-      _rawPayrollDocs,
-      companyCurrency: _companyCurrency,
-    );
+    final newPeriod = _trueCurrentPayrollCycle();
 
-    if (lastPaid != null && _payPeriodStart.isBefore(lastPaid.end)) {
-      final payDay = _salaryPayDay;
-      final lastDayOfMonth = DateTime(lastPaid.end.year, lastPaid.end.month + 1, 0).day;
-      final isFullCalendarMonth = lastPaid.start.day == 1 && lastPaid.end.day == lastDayOfMonth;
-      final anchor = isFullCalendarMonth ? lastPaid.end.add(const Duration(days: 1)) : lastPaid.end;
-      final newPeriod = payDay != null
-          ? PayrollService.transitionPayDayPeriod(currentStart: anchor, payDay: payDay)
-          : PayrollService.getNextFullMonthlyCycleAfter(lastPaid.end, 0);
-
-      if (!PayrollService.payrollPeriodsEqual(newPeriod, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
-        setState(() {
-          _payPeriodStart = newPeriod.start;
-          _payPeriodEnd = newPeriod.end;
-          _payrollMonth = DateTime(newPeriod.end.year, newPeriod.end.month, 1);
-          _combinePayroll();
-        });
-      }
+    if (!PayrollService.payrollPeriodsEqual(newPeriod, PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd))) {
+      setState(() {
+        _payPeriodStart = newPeriod.start;
+        _payPeriodEnd = newPeriod.end;
+        _payrollMonth = DateTime(newPeriod.end.year, newPeriod.end.month, 1);
+        _combinePayroll();
+      });
     }
   }
 
@@ -286,7 +277,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   Future<void> _loadCompanySettings() async {
     final profile = _isGuest ? await PreferencesService.getGuestProfileData() : await _firestore.getUserProfile();
+    final ignored = await PreferencesService.getIgnoredPeriods();
     if (!mounted) return;
+    setState(() {
+      _ignoredPeriods = ignored;
+    });
 
     var companyCurrency = CurrencyUtils.normalize(profile?['currency']);
     final salaryPayDay = _payDayFromProfile(profile);
@@ -800,7 +795,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
-                        onTap: () => Navigator.of(dialogContext).pop(),
+                        onTap: () {
+                          final route = ModalRoute.of(dialogContext);
+                          if (route != null && route.isCurrent) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        },
                         child: const SizedBox(width: 32, height: 32, child: Icon(Icons.close_rounded, color: Color(0xFFFFFFFF), size: 21)),
                       ),
                     ),
@@ -908,21 +908,29 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_, _, _) => const SizedBox(),
-      transitionBuilder: (dialogContext, animation, _, _) => _buildBlurDialog(
-        dialogContext: dialogContext,
-        animation: animation,
-        builder: (_) => _desktopDialogShell(
+      transitionBuilder: (dialogContext, animation, _, _) {
+        void safePop<T>([T? result]) {
+          final route = ModalRoute.of(dialogContext);
+          if (route != null && route.isCurrent) {
+            Navigator.of(dialogContext).pop(result);
+          }
+        }
+        return _buildBlurDialog(
           dialogContext: dialogContext,
-          title: offset > 0 ? 'overdue_payroll'.tr() : 'pay_due_reminder'.tr(),
-          width: 560,
-          content: _buildReminderContent(offset, status, dueDate, payableWorkers),
-          actions: [
-            _desktopDialogButton(label: 'remind_me_later'.tr(), onTap: () => Navigator.pop(dialogContext, _PayrollReminderAction.remindLater)),
-            if (offset > 0) _desktopDialogButton(label: 'ignore'.tr(), onTap: () => Navigator.pop(dialogContext, _PayrollReminderAction.ignore)),
-            _desktopDialogButton(label: 'pay'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, _PayrollReminderAction.viewPayable)),
-          ],
-        ),
-      ),
+          animation: animation,
+          builder: (_) => _desktopDialogShell(
+            dialogContext: dialogContext,
+            title: offset > 0 ? 'overdue_payroll'.tr() : 'pay_due_reminder'.tr(),
+            width: 560,
+            content: _buildReminderContent(offset, status, dueDate, payableWorkers),
+            actions: [
+              _desktopDialogButton(label: 'remind_me_later'.tr(), onTap: () => safePop(_PayrollReminderAction.remindLater)),
+              if (offset > 0) _desktopDialogButton(label: 'ignore'.tr(), onTap: () => safePop(_PayrollReminderAction.ignore)),
+              _desktopDialogButton(label: 'pay'.tr(), primary: true, onTap: () => safePop(_PayrollReminderAction.viewPayable)),
+            ],
+          ),
+        );
+      },
     );
 
     _reminderDialogOpen = false;
@@ -953,6 +961,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
 
         await PreferencesService.ignorePayrollReminder(window.suppressionKey);
+        await PreferencesService.saveIgnoredPeriod(window.suppressionKey, _payPeriodStart, _payPeriodEnd);
         if (!_isGuest) {
           await _firestore.updateUserProfile({
             'payrollCycleStart': nextPeriod.start.toIso8601String(),
@@ -961,6 +970,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         }
         if (!mounted) break;
         setState(() {
+          _ignoredPeriods.add(PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd));
           _payPeriodStart = nextPeriod.start;
           _payPeriodEnd = nextPeriod.end;
           _payrollMonth = DateTime(nextPeriod.end.year, nextPeriod.end.month, 1);
@@ -1076,7 +1086,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _showSetPayDayDialog() async {
     if (_isGuest) { showGuestRestrictionDialog(context); return; }
 
-            var selectedDay = (_salaryPayDay ?? DateTime.now().day).clamp(1, 28).toInt();
+    var selectedDay = (_salaryPayDay ?? DateTime.now().day).clamp(1, 28).toInt();
     final day = await showGeneralDialog<int>(
       context: context,
       barrierDismissible: true,
@@ -1084,114 +1094,153 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_, _, _) => const SizedBox(),
-      transitionBuilder: (dialogContext, animation, _, _) => _buildBlurDialog(
-        dialogContext: dialogContext,
-        animation: animation,
-        builder: (_) => StatefulBuilder(
-          builder: (_, setDialogState) => _desktopDialogShell(
-            dialogContext: dialogContext,
-            title: 'set_salary_day'.tr(),
-            width: 540,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('salary_day_help'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.35, )),
-                const SizedBox(height: 18),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.2),
-                  itemCount: 28,
-                  itemBuilder: (context, index) {
-                    final value = index + 1;
-                    final selected = value == selectedDay;
-                    return MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () => setDialogState(() => selectedDay = value),
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: selected ? const Color(0xFF004FDE) : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: selected ? const Color(0xFF004FDE) : const Color(0xFFE5E7EB)),
+      transitionBuilder: (dialogContext, animation, _, _) {
+        void safePop<T>([T? result]) {
+          final route = ModalRoute.of(dialogContext);
+          if (route != null && route.isCurrent) {
+            Navigator.of(dialogContext).pop(result);
+          }
+        }
+        return _buildBlurDialog(
+          dialogContext: dialogContext,
+          animation: animation,
+          builder: (_) => StatefulBuilder(
+            builder: (_, setDialogState) => _desktopDialogShell(
+              dialogContext: dialogContext,
+              title: 'set_salary_day'.tr(),
+              width: 540,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('salary_day_help'.tr(), style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.35, )),
+                  const SizedBox(height: 18),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 7,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.2,
+                    ),
+                    itemCount: 28,
+                    itemBuilder: (context, index) {
+                      final value = index + 1;
+                      final selected = value == selectedDay;
+                      return MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => setDialogState(() => selectedDay = value),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: selected ? const Color(0xFF004FDE) : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: selected ? const Color(0xFF004FDE) : const Color(0xFFE5E7EB)),
+                            ),
+                            child: Text('$value',
+                                style: TextStyle(
+                                  color: selected ? const Color(0xFFFFFFFF) : const Color(0xFF0F172A),
+                                  fontSize: 14,
+                                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                )),
                           ),
-                          child: Text('$value',
-                              style: TextStyle(
-                                color: selected ? const Color(0xFFFFFFFF) : const Color(0xFF0F172A),
-                                fontSize: 14,
-                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                              )),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                _desktopDialogButton(label: 'cancel'.tr(), onTap: () => safePop()),
+
+                if (_salaryPayDay != null)
+                  _desktopDialogButton(label: 'Clear Pay Day', onTap: () => safePop(0)),
+                _desktopDialogButton(label: 'save'.tr(), primary: true, onTap: () => safePop(selectedDay)),
               ],
             ),
-            actions: [
-              _desktopDialogButton(label: 'cancel'.tr(), onTap: () => Navigator.pop(dialogContext)),
-
-              if (_salaryPayDay != null)
-                _desktopDialogButton(label: 'Clear Pay Day', onTap: () => Navigator.pop(dialogContext, 0)),
-              _desktopDialogButton(label: 'save'.tr(), primary: true, onTap: () => Navigator.pop(dialogContext, selectedDay)),
-            ],
           ),
-        ),
-      ),
+        );
+      },
     );
 
     if (day == null || !mounted) return;
-if (day == 0) {
-  try {
-    await _firestore.updateUserProfile({
-      'salaryPayDay': null,
-      'payrollCycleStart': null,
-      'payrollCycleEnd': null,
-    });
+    if (day == 0) {
+      if (_isPayDayLocked) {
+        FlashySnackBar.show(
+          context,
+          message: 'Payroll has already been processed. Cancel/reset the processed payroll before clearing the Pay Day.',
+          isError: true,
+        );
+        return;
+      }
+      try {
+        await _firestore.updateUserProfile({
+          'salaryPayDay': null,
+          'payrollCycleStart': null,
+          'payrollCycleEnd': null,
+        });
 
-    if (!mounted) return;
+        if (!mounted) return;
 
-    final now = DateTime.now();
+        final now = DateTime.now();
 
-    setState(() {
-      _salaryPayDay = null;
-      _payPeriodStart = PayrollService.payPeriodStart(now);
-      _payPeriodEnd = PayrollService.payPeriodEnd(now);
-      _payrollMonth = DateTime(now.year, now.month, 1);
-      _selectedFilter = 'All';
-      _combinePayroll();
-    });
+        setState(() {
+          _salaryPayDay = null;
+          _payPeriodStart = PayrollService.payPeriodStart(now);
+          _payPeriodEnd = PayrollService.payPeriodEnd(now);
+          _payrollMonth = DateTime(now.year, now.month, 1);
+          _selectedFilter = 'All';
+          _combinePayroll();
+        });
 
-    FlashySnackBar.show(
-      context,
-      message: 'Pay Day cleared successfully.',
-    );
-  } catch (error, stackTrace) {
-    ErrorReporter.report(
-      error,
-      stackTrace,
-      context: 'ClearSalaryPayDay',
-    );
+        FlashySnackBar.show(
+          context,
+          message: 'Pay Day cleared successfully.',
+        );
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'ClearSalaryPayDay',
+        );
 
-    if (mounted) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'failed_to_save_record'.tr(),
+            isError: true,
+          );
+        }
+      }
+
+      return;
+    }
+
+    if (_isPayDayLocked) {
       FlashySnackBar.show(
         context,
-        message: 'failed_to_save_record'.tr(),
+        message: 'Payroll has already been processed. Cancel/reset the processed payroll before changing the Pay Day.',
         isError: true,
       );
+      return;
     }
-  }
 
-  return;
-}
+    if (day == _salaryPayDay) return;
+
     try {
       final payDay = day.clamp(1, 28);
+      final lastPaid = PayrollService.latestSettledPayrollCycle(
+        _workersList,
+        _rawPayrollDocs,
+        companyCurrency: _companyCurrency,
+      );
+      final currentStart = lastPaid != null ? lastPaid.end : PayrollService.payPeriodStart(DateTime.now());
       final period = PayrollService.transitionPayDayPeriod(
-        currentStart: _payPeriodStart,
+        currentStart: currentStart,
         payDay: payDay,
-        isFirstCycle: _isFirstCycle,
+        isFirstCycle: lastPaid == null,
       );
 
       await _firestore.updateUserProfile({
@@ -1615,6 +1664,16 @@ if (day == 0) {
 
       final existing = map[key];
       map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
+    }
+
+    for (final period in _ignoredPeriods) {
+      final key = PayrollService.periodKeyPair(period.start, period.end);
+      if (!map.containsKey(key)) {
+        map[key] = (
+          period: period,
+          paidCount: 0,
+        );
+      }
     }
 
     final currentCycle = _trueCurrentPayrollCycle();
@@ -2211,6 +2270,19 @@ if (day == 0) {
   PayrollPeriod _trueCurrentPayrollCycle() {
     final payDay = _salaryPayDay;
     if (_isFirstCycle) {
+      final currentPeriod = PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd);
+      final expectedDay = payDay ?? 0;
+      final bool matchesPayDay;
+      if (expectedDay <= 0) {
+        final lastDayOfMonth = DateTime(currentPeriod.end.year, currentPeriod.end.month + 1, 0).day;
+        matchesPayDay = currentPeriod.start.day == 1 && currentPeriod.end.day == lastDayOfMonth;
+      } else {
+        matchesPayDay = currentPeriod.start.day == expectedDay && currentPeriod.end.day == expectedDay;
+      }
+      if (matchesPayDay && currentPeriod.end.isAfter(currentPeriod.start)) {
+        return currentPeriod;
+      }
+
       final now = DateTime.now();
       if (payDay != null) {
         return PayrollService.transitionPayDayPeriod(
@@ -2232,6 +2304,7 @@ if (day == 0) {
       payDay: payDay ?? 0,
       companyCurrency: _companyCurrency,
       referenceDate: DateTime.now(),
+      persistedCycle: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
       advanceIfFullyPaid: true,
     );
   }

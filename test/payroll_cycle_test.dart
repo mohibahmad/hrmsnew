@@ -446,69 +446,146 @@ void main() {
     expect(PayrollService.periodDateKey(p.end), '2026-09-16');
   });
 
-  test('Example 1) Last Paid Jul12-Aug12, PayDay 12->20 => Aug20-Sep20', () {
-    final jul12 = DateTime(2026, 7, 12);
-    final aug12 = DateTime(2026, 8, 12);
-    final records = [
-      paidRecord(workerId: 'w1', start: jul12, end: aug12),
-      paidRecord(workerId: 'w2', start: jul12, end: aug12),
-      paidRecord(workerId: 'w3', start: jul12, end: aug12),
-      paidRecord(workerId: 'w4', start: jul12, end: aug12),
-    ];
+  test('Test 1: No payroll history. No Pay Day => current calendar month', () {
+    final refDate = DateTime(2026, 8, 20);
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: const [],
+      payDay: 0,
+      referenceDate: refDate,
+    );
+    expect(PayrollService.periodDateKey(p.start), '2026-08-01');
+    expect(PayrollService.periodDateKey(p.end), '2026-08-31');
+  });
+
+  test('Test 2: Set Pay Day = 10 before any payroll is Paid => previous 10 -> current 10', () {
+    final refDate = DateTime(2026, 8, 20);
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: const [],
+      payDay: 10,
+      referenceDate: refDate,
+    );
+    expect(PayrollService.periodDateKey(p.start), '2026-07-10');
+    expect(PayrollService.periodDateKey(p.end), '2026-08-10');
+  });
+
+  test('Test 3: Change 10 -> 20 before any payroll is Paid => previous 20 -> current 20', () {
+    final refDate = DateTime(2026, 8, 19);
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: const [],
+      payDay: 20,
+      referenceDate: refDate,
+    );
+    expect(PayrollService.periodDateKey(p.start), '2026-07-20');
+    expect(PayrollService.periodDateKey(p.end), '2026-08-20');
+  });
+
+  test('Test 4: Pay all workers for the cycle => next cycle becomes 20 -> next month 20', () {
+    final start20 = DateTime(2026, 7, 20);
+    final end20 = DateTime(2026, 8, 20);
+    final records = workers4
+        .map((w) => paidRecord(workerId: w['workerId'] as String, start: start20, end: end20))
+        .toList();
 
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
       payrollRecords: records,
       payDay: 20,
-      referenceDate: DateTime(2026, 8, 19),
+      referenceDate: DateTime(2026, 8, 21),
     );
-
     expect(PayrollService.periodDateKey(p.start), '2026-08-20');
     expect(PayrollService.periodDateKey(p.end), '2026-09-20');
   });
 
-  test('Example 2) Last Paid Jul12-Aug12, PayDay 12->9 => Sep9-Oct9', () {
-    final jul12 = DateTime(2026, 7, 12);
-    final aug12 = DateTime(2026, 8, 12);
-    final records = [
-      paidRecord(workerId: 'w1', start: jul12, end: aug12),
-      paidRecord(workerId: 'w2', start: jul12, end: aug12),
-      paidRecord(workerId: 'w3', start: jul12, end: aug12),
-      paidRecord(workerId: 'w4', start: jul12, end: aug12),
-    ];
+  test('Test 5: Try to change Pay Day after a Paid cycle exists => Existing Pay Day and current cycle unchanged', () {
+    final start20 = DateTime(2026, 7, 20);
+    final end20 = DateTime(2026, 8, 20);
+    final records = workers4
+        .map((w) => paidRecord(workerId: w['workerId'] as String, start: start20, end: end20))
+        .toList();
 
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
       payrollRecords: records,
-      payDay: 9,
-      referenceDate: DateTime(2026, 8, 19),
+      payDay: 10,
+      referenceDate: DateTime(2026, 8, 21),
     );
-
-    expect(PayrollService.periodDateKey(p.start), '2026-09-09');
-    expect(PayrollService.periodDateKey(p.end), '2026-10-09');
+    expect(PayrollService.periodDateKey(p.start), '2026-08-20');
+    expect(PayrollService.periodDateKey(p.end), '2026-09-20');
   });
 
-  test('Acceptance) Last Paid Jul12-Aug12, PayDay 12->11 with persisted Aug11-Sep11 => single current cycle Aug11-Sep11', () {
-    final jul12 = DateTime(2026, 7, 12);
-    final aug12 = DateTime(2026, 8, 12);
-    final aug11 = DateTime(2026, 8, 11);
-    final sep11 = DateTime(2026, 9, 11);
+  test('Test 6: Try Clear Pay Day after a Paid cycle exists => blocked (cycle and pay day unchanged)', () {
+    final start20 = DateTime(2026, 7, 20);
+    final end20 = DateTime(2026, 8, 20);
+    final records = workers4
+        .map((w) => paidRecord(workerId: w['workerId'] as String, start: start20, end: end20))
+        .toList();
+
+    final p = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: records,
+      payDay: 0,
+      referenceDate: DateTime(2026, 8, 21),
+    );
+    expect(PayrollService.periodDateKey(p.start), '2026-08-20');
+    expect(PayrollService.periodDateKey(p.end), '2026-09-20');
+  });
+
+  test('Test H: After cancelling/resetting all processed payroll history, changing or clearing Pay Day should work normally again', () {
+    final start20 = DateTime(2026, 7, 20);
+    final end20 = DateTime(2026, 8, 20);
+    final records = workers4
+        .map((w) => paidRecord(workerId: w['workerId'] as String, start: start20, end: end20))
+        .toList();
+
+    final pLocked = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: records,
+      payDay: 10,
+      referenceDate: DateTime(2026, 8, 21),
+    );
+    expect(PayrollService.periodDateKey(pLocked.start), '2026-08-20');
+    expect(PayrollService.periodDateKey(pLocked.end), '2026-09-20');
+
+    final cancelledRecords = workers4
+        .map((w) => paidRecord(workerId: w['workerId'] as String, start: start20, end: end20, paid: false))
+        .toList();
+
+    final pChange = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: cancelledRecords,
+      payDay: 10,
+      referenceDate: DateTime(2026, 8, 21),
+    );
+    expect(PayrollService.periodDateKey(pChange.start), '2026-07-10');
+    expect(PayrollService.periodDateKey(pChange.end), '2026-08-10');
+
+    final pClear = PayrollService.resolveCurrentPayrollPeriod(
+      workersList: workers4,
+      payrollRecords: cancelledRecords,
+      payDay: 0,
+      referenceDate: DateTime(2026, 8, 21),
+    );
+    expect(PayrollService.periodDateKey(pClear.start), '2026-08-01');
+    expect(PayrollService.periodDateKey(pClear.end), '2026-08-31');
+  });
+
+  test('Test: Even one Paid worker counts as processed payroll history and blocks Pay Day change/clear', () {
+    final start20 = DateTime(2026, 7, 20);
+    final end20 = DateTime(2026, 8, 20);
     final records = [
-      paidRecord(workerId: 'w1', start: jul12, end: aug12),
-      paidRecord(workerId: 'w2', start: jul12, end: aug12),
-      paidRecord(workerId: 'w3', start: jul12, end: aug12),
-      paidRecord(workerId: 'w4', start: jul12, end: aug12),
+      paidRecord(workerId: 'w1', start: start20, end: end20, paid: true),
     ];
 
     final p = PayrollService.resolveCurrentPayrollPeriod(
       workersList: workers4,
       payrollRecords: records,
-      payDay: 11,
-      referenceDate: DateTime(2026, 8, 19),
-      persistedCycle: PayrollPeriod(start: aug11, end: sep11),
+      payDay: 10,
+      referenceDate: DateTime(2026, 8, 21),
     );
-
-    expect(PayrollService.periodDateKey(p.start), '2026-08-11');
-    expect(PayrollService.periodDateKey(p.end), '2026-09-11');
+    expect(PayrollService.periodDateKey(p.start), '2026-07-20');
+    expect(PayrollService.periodDateKey(p.end), '2026-08-20');
   });
 }

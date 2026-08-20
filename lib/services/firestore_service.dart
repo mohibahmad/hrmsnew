@@ -1193,7 +1193,7 @@ class FirestoreService {
       if (startDate != null && endDate != null) {
         final normStart = DateTime(startDate.year, startDate.month, startDate.day);
         final normEnd = DateTime(endDate.year, endDate.month, endDate.day);
-        if (normDate.isBefore(normStart) || normDate.isAfter(normEnd)) continue;
+        if (normDate.isBefore(normStart) || !normDate.isBefore(normEnd)) continue;
       } else {
         if (date.year != targetMonth.year || date.month != targetMonth.month) continue;
       }
@@ -1242,7 +1242,7 @@ class FirestoreService {
     final DateTime toDateExclusive;
     if (startDate != null && endDate != null) {
       fromDate = DateTime(startDate.year, startDate.month, startDate.day);
-      toDateExclusive = DateTime(endDate.year, endDate.month, endDate.day + 1);
+      toDateExclusive = DateTime(endDate.year, endDate.month, endDate.day);
     } else {
       final now = month ?? DateTime.now();
       fromDate = DateTime(now.year, now.month, 1);
@@ -1308,7 +1308,7 @@ class FirestoreService {
         final data = doc.data() as Map<String, dynamic>;
         if (data['type'] == 'company_work_days') continue;
         if (data['isEnabled'] == false) continue;
-        for (var date = start; !date.isAfter(end); date = date.add(const Duration(days: 1))) {
+        for (var date = start; date.isBefore(end); date = date.add(const Duration(days: 1))) {
           final holidayDate = AppDateUtils.holidayRecordDate(data, fallbackYear: date.year);
           if (holidayDate != null && holidayDate.month == date.month && holidayDate.day == date.day && _holidayAppliesToYear(data, date.year)) {
             dates.add(DateTime(date.year, date.month, date.day));
@@ -1339,7 +1339,7 @@ class FirestoreService {
     if (coll == null) return const Stream.empty();
     return coll
         .where('attendanceDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('attendanceDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .where('attendanceDate', isLessThan: Timestamp.fromDate(end))
         .orderBy('attendanceDate', descending: true)
         .snapshots();
   }
@@ -1349,7 +1349,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     return await coll
         .where('attendanceDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('attendanceDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .where('attendanceDate', isLessThan: Timestamp.fromDate(end))
         .get();
   }
 

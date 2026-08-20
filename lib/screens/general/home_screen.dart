@@ -199,7 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onNotificationTap: _toggleNotifications,
           onWorkersAttendanceTap: () => setState(() { _showWorkersAttendance = true; _activatedScreens[11] = true; }),
         ),
-      3 => PayrollScreen(key: _payrollKey, onLogout: _handleLogout, onProfileTap: _openProfile, activationToken: _payrollActivationToken, onNotificationTap: _toggleNotifications),
+      3 => PayrollScreen(key: _payrollKey, isActive: _getStackIndex() == 3, onLogout: _handleLogout, onProfileTap: _openProfile, activationToken: _payrollActivationToken, onNotificationTap: _toggleNotifications),
       4 => TimeOffScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications, onAssignTimeOff: (worker) => _openAssignTimeOff(worker: worker)),
       5 => AssetsScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
       6 => HolidaysScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),

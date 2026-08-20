@@ -651,7 +651,7 @@ class TimeOffService {
       final dates = selectedDatesForRecord(record).where((date) {
         if (date.isAfter(today)) return false;
         if (normStart != null && normEnd != null) {
-          return !date.isBefore(normStart) && !date.isAfter(normEnd);
+          return !date.isBefore(normStart) && date.isBefore(normEnd);
         }
         return date.year == month.year && date.month == month.month;
       });
