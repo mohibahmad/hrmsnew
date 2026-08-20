@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -13,19 +12,14 @@ import '../screens/general/pricing_screen.dart';
 import '../services/preferences_service.dart';
 
 Widget _blurDialogTransition(Animation<double> animation, Widget child) {
-  final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+  final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
   return Stack(
     fit: StackFit.expand,
     children: [
-      BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 10 * animation.value,
-          sigmaY: 10 * animation.value,
-        ),
+      FadeTransition(
+        opacity: animation,
         child: Container(
-          color: const Color(
-            0xFF0F172A,
-          ).withValues(alpha: 0.35 * animation.value),
+          color: const Color(0xFF0F172A).withValues(alpha: 0.45),
         ),
       ),
       FadeTransition(
@@ -298,15 +292,10 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 10 * widget.animation.value,
-            sigmaY: 10 * widget.animation.value,
-          ),
+        FadeTransition(
+          opacity: widget.animation,
           child: Container(
-            color: const Color(
-              0xFF0F172A,
-            ).withValues(alpha: 0.35 * widget.animation.value),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.45),
           ),
         ),
         FadeTransition(

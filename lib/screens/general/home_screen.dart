@@ -58,11 +58,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  static final Tween<double> _dashboardFadeTween = Tween<double>(
-    begin: 0,
-    end: 1,
-  );
-
   late int _selectedIndex;
   late int _selectedSubIndex;
 
@@ -1070,58 +1065,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             return IndexedStack(
                               index: stackIndex,
                               children: [
-                                _activatedScreens[0]
-                                    ? (_dashboardReady
-                                          ? TweenAnimationBuilder<double>(
-                                              key: ValueKey(stackIndex == 0),
-                                              tween: _dashboardFadeTween,
-                                              duration: const Duration(
-                                                milliseconds: 650,
-                                              ),
-                                              curve: Curves.easeOutQuart,
-                                              builder:
-                                                  (
-                                                    context,
-                                                    value,
-                                                    child,
-                                                  ) => Opacity(
-                                                    opacity: value,
-                                                    child: Transform.translate(
-                                                      offset: Offset(
-                                                        0,
-                                                        15 * (1 - value),
-                                                      ),
-                                                      child: child,
-                                                    ),
-                                                  ),
-                                              child: _buildDashboardView(),
-                                            )
-                                          : _buildDashboardLoadingView())
-                                    : const SizedBox.shrink(),
+                                TickerMode(
+                                  enabled: stackIndex == 0,
+                                  child: _activatedScreens[0]
+                                      ? (_dashboardReady
+                                            ? _buildDashboardView()
+                                            : _buildDashboardLoadingView())
+                                      : const SizedBox.shrink(),
+                                ),
 
                                 for (int i = 1; i <= 9; i++)
-                                  _activatedScreens[i]
-                                      ? _getScreen(i)
+                                  TickerMode(
+                                    enabled: stackIndex == i,
+                                    child: _activatedScreens[i]
+                                        ? _getScreen(i)
+                                        : const SizedBox.shrink(),
+                                  ),
+
+                                TickerMode(
+                                  enabled: stackIndex == 10,
+                                  child: _activatedScreens[10]
+                                      ? _buildProfileView(stackIndex == 10)
                                       : const SizedBox.shrink(),
+                                ),
 
-                                _activatedScreens[10]
-                                    ? _buildProfileView(stackIndex == 10)
-                                    : const SizedBox.shrink(),
+                                TickerMode(
+                                  enabled: stackIndex == 11,
+                                  child: _activatedScreens[11]
+                                      ? WorkersAttendanceScreen(
+                                          hideSidebar: true,
+                                          onProfileTap: _openProfile,
+                                          onBack: () => setState(
+                                            () => _showWorkersAttendance = false,
+                                          ),
+                                          onNotificationTap: _toggleNotifications,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
 
-                                _activatedScreens[11]
-                                    ? WorkersAttendanceScreen(
-                                        hideSidebar: true,
-                                        onProfileTap: _openProfile,
-                                        onBack: () => setState(
-                                          () => _showWorkersAttendance = false,
-                                        ),
-                                        onNotificationTap: _toggleNotifications,
-                                      )
-                                    : const SizedBox.shrink(),
-
-                                _activatedScreens[12]
-                                    ? _getScreen(10)
-                                    : const SizedBox.shrink(),
+                                TickerMode(
+                                  enabled: stackIndex == 12,
+                                  child: _activatedScreens[12]
+                                      ? _getScreen(10)
+                                      : const SizedBox.shrink(),
+                                ),
                               ],
                             );
                           },

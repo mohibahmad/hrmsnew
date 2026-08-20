@@ -95,12 +95,18 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     return false;
   }
 
+  DateTime? _lastThrottledRecord;
+
   void _recordActivity([Object? _]) {
     if (_locked || !widget.enabled) return;
-    _lastActivityAt = widget.clock();
-    if (_inactivityTimer?.isActive != true) {
-      _scheduleTimer();
+    final now = widget.clock();
+    if (_lastThrottledRecord != null &&
+        now.difference(_lastThrottledRecord!).inSeconds < 5) {
+      return;
     }
+    _lastThrottledRecord = now;
+    _lastActivityAt = now;
+    _scheduleTimer();
   }
 
   void _scheduleTimer() {

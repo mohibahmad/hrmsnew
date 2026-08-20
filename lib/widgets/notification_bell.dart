@@ -25,6 +25,7 @@ class NotificationBell extends ConsumerWidget {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           onTap?.call();
         },
