@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ import '../utils/utils.dart';
 import '../utils/pdf_helpers.dart';
 import '../utils/image_loader.dart';
 import 'dart:io';
+import 'dart:isolate';
 import 'firestore_service.dart';
 import 'payroll_service.dart';
 import 'preferences_service.dart';
@@ -111,9 +113,6 @@ class DialogController {
     _refreshSnackBar();
   }
 
-
-
-
   void reset({required double progress, required String label}) {
     if (_closed || _userDismissed) return;
     _progress = progress;
@@ -126,8 +125,6 @@ class DialogController {
     final ctx = _context;
     if (ctx == null || !ctx.mounted) return;
     final existing = _snackBarController;
-
-
 
     if (existing != null) {
       if (existing.isActive) {
@@ -148,6 +145,54 @@ class DialogController {
 }
 
 final Map<String, Map<String, dynamic>> _translationsCache = {};
+final Map<String, Uint8List?> _payrollImageCache = {};
+final List<String> _payrollCacheKeys = [];
+
+void _cachePayrollImage(String url, Uint8List? bytes) {
+  _payrollImageCache[url] = bytes;
+  _payrollCacheKeys.remove(url);
+  _payrollCacheKeys.add(url);
+  // Bound memory: keep only the most recent 120 unique images.
+  while (_payrollCacheKeys.length > 120) {
+    final oldest = _payrollCacheKeys.removeAt(0);
+    _payrollImageCache.remove(oldest);
+  }
+}
+
+// Scales the invoice PDF batch deadline with worker count so large runs do not
+// silently time out at the old flat 30s ceiling.
+Duration _pdfBatchTimeout(int workerCount) {
+  final extraMs = ((workerCount / 25).ceil().toInt() - 1).clamp(0, 20) * 500;
+  return const Duration(seconds: 30) + Duration(milliseconds: extraMs);
+}
+
+Future<Uint8List?> _loadCompanyImageDeviceFirst({
+  required Iterable<String?> localCandidates,
+  required String remoteSource,
+  required bool isStamp,
+}) async {
+  final visited = <String>{};
+  for (final candidate in localCandidates) {
+    final source = (candidate ?? '').trim();
+    if (source.isEmpty || !visited.add(source)) continue;
+    final uri = Uri.tryParse(source);
+    final isRemote = uri != null &&
+        (uri.scheme.toLowerCase() == 'http' ||
+            uri.scheme.toLowerCase() == 'https');
+    if (isRemote) continue;
+    final bytes = await ImageLoader.load(
+      source: source,
+      maxSizeBytes: 5 * 1024 * 1024,
+      timeout: const Duration(seconds: 2),
+      convertToPng: true,
+    );
+    if (bytes != null && bytes.isNotEmpty) return bytes;
+  }
+
+  return isStamp
+      ? InvoiceService.resolveCompanyStampBytes(remoteSource)
+      : InvoiceService.resolveCompanyLogoBytes(remoteSource);
+}
 
 Future<Map<String, dynamic>> _loadLocaleTranslations(
   String languageCode,
@@ -169,22 +214,115 @@ Future<Map<String, dynamic>> _loadLocaleTranslations(
   }
 }
 
-Future<List<Map<String, Object>>> _generatePayrollInvoiceBatch(
-  List<Map<String, Object?>> argsList,
-) async {
-  final files = <Map<String, Object>>[];
-  for (final args in argsList) {
+void _configurePayrollInvoiceIsolate(Map<String, Object?> sharedAssets) {
+  final locale = (sharedAssets['locale'] ?? 'en') as String;
+  final translations =
+      (sharedAssets['translations'] ?? const <String, dynamic>{})
+          as Map<String, dynamic>;
+  PdfHelpers.setIsolateTranslations(translations);
+  try {
+    Localization.load(
+      Locale(locale),
+      translations: Translations({locale: translations}),
+      useFallbackTranslationsForEmptyResources: true,
+    );
+  } catch (_) {}
+}
+
+@pragma('vm:entry-point')
+void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
+  final readyPort = bootstrap[0] as SendPort;
+  final sharedAssets = Map<String, Object?>.from(bootstrap[1] as Map);
+  _configurePayrollInvoiceIsolate(sharedAssets);
+
+  final commandPort = ReceivePort();
+  readyPort.send(commandPort.sendPort);
+  commandPort.listen((dynamic rawMessage) async {
+    if (rawMessage is! Map) return;
+    final message = Map<String, Object?>.from(rawMessage);
+    if (message['type'] == 'close') {
+      commandPort.close();
+      return;
+    }
+
+    final replyPort = message['replyPort'] as SendPort?;
+    if (replyPort == null) return;
     try {
-      files.add(await _generatePayrollInvoiceFile(args));
-    } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'PayrollInvoiceGeneration',
+      final workerArgs = Map<String, Object?>.from(message['args'] as Map);
+      final file = await _generatePayrollInvoiceFile(<String, Object?>{
+        ...sharedAssets,
+        ...workerArgs,
+        'invoiceIsolateReady': true,
+      });
+      replyPort.send(<String, Object?>{'file': file});
+    } catch (error) {
+      replyPort.send(<String, Object?>{'error': error.toString()});
+    }
+  });
+}
+
+class _PayrollInvoiceIsolateWorker {
+  final Isolate _isolate;
+  final SendPort _commandPort;
+  final Set<ReceivePort> _pendingResponses = <ReceivePort>{};
+  bool _closed = false;
+
+  _PayrollInvoiceIsolateWorker(this._isolate, this._commandPort);
+
+  static Future<_PayrollInvoiceIsolateWorker> spawn(
+    Map<String, Object?> sharedAssets,
+    int workerNumber,
+  ) async {
+    final readyPort = ReceivePort();
+    try {
+      final isolate = await Isolate.spawn<List<Object?>>(
+        _payrollInvoiceIsolateMain,
+        <Object?>[readyPort.sendPort, sharedAssets],
+        debugName: 'payroll-pdf-$workerNumber',
       );
+      final commandPort = await readyPort.first as SendPort;
+      return _PayrollInvoiceIsolateWorker(isolate, commandPort);
+    } finally {
+      readyPort.close();
     }
   }
-  return files;
+
+  Future<Map<String, Object>?> generate(
+    Map<String, Object?> workerArgs,
+  ) async {
+    if (_closed) return null;
+    final responsePort = ReceivePort();
+    _pendingResponses.add(responsePort);
+    try {
+      _commandPort.send(<String, Object?>{
+        'type': 'generate',
+        'replyPort': responsePort.sendPort,
+        'args': workerArgs,
+      });
+      final rawResponse = await responsePort.first;
+      if (rawResponse is! Map) return null;
+      final response = Map<String, Object?>.from(rawResponse);
+      final rawFile = response['file'];
+      if (rawFile is Map) return Map<String, Object>.from(rawFile);
+      final error = (response['error'] ?? '').toString();
+      if (error.isNotEmpty) throw StateError(error);
+      return null;
+    } finally {
+      _pendingResponses.remove(responsePort);
+      responsePort.close();
+    }
+  }
+
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    _commandPort.send(const <String, Object?>{'type': 'close'});
+    for (final port in _pendingResponses.toList()) {
+      port.close();
+    }
+    _pendingResponses.clear();
+    _isolate.kill(priority: Isolate.immediate);
+  }
 }
 
 @pragma('vm:entry-point')
@@ -233,14 +371,16 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
           as Map<String, dynamic>;
   final employeeImageBytes = args['employeeImageBytes'] as Uint8List?;
 
-  PdfHelpers.setIsolateTranslations(translations);
-  try {
-    Localization.load(
-      Locale(locale),
-      translations: Translations({locale: translations}),
-      useFallbackTranslationsForEmptyResources: true,
-    );
-  } catch (_) {}
+  if (args['invoiceIsolateReady'] != true) {
+    PdfHelpers.setIsolateTranslations(translations);
+    try {
+      Localization.load(
+        Locale(locale),
+        translations: Translations({locale: translations}),
+        useFallbackTranslationsForEmptyResources: true,
+      );
+    } catch (_) {}
+  }
 
   final enteredSalary = PayrollService.extractSalary(salary);
   final rawSalary = salaryType.trim().toLowerCase() == 'annual'
@@ -308,6 +448,7 @@ Future<Map<String, Object>> _generatePayrollInvoiceFile(
   return <String, Object>{
     'name': '${safeName}_${index + 1}_invoice_$payPeriod.pdf',
     'bytes': pdfBytes,
+    'sortIndex': index,
   };
 }
 
@@ -662,9 +803,20 @@ class PayrollRunner {
   }) async {
     try {
       final locale = Intl.defaultLocale ?? 'en';
-      final resolved =
-          await CompanyProfileHelper.getCompanyProfileWithFirestore(firestore);
-      final companyLogoUrl =
+      // The profile screen persists local copies of the company logo/stamp.
+      // Resolve those alongside Firestore and prefer them for PDF generation,
+      // so Pay All does not download the same company images again.
+      final profileSources = await Future.wait<Object?>([
+        CompanyProfileHelper.getCompanyProfileWithFirestore(firestore),
+        PreferencesService.getProfilePicLocalPath(),
+        PreferencesService.getProfilePicUrl(),
+        PreferencesService.getCompanyStampUrl(),
+      ]);
+      final resolved = profileSources[0] as Map<String, dynamic>;
+      final localCompanyLogoPath = (profileSources[1] ?? '').toString().trim();
+      final cachedCompanyLogo = (profileSources[2] ?? '').toString().trim();
+      final cachedCompanyStamp = (profileSources[3] ?? '').toString().trim();
+      final remoteCompanyLogo =
           (resolved['profilePicUrl'] ??
                   companyProfile?['profilePic'] ??
                   companyProfile?['profilePicUrl'] ??
@@ -673,7 +825,7 @@ class PayrollRunner {
                   '')
               .toString()
               .trim();
-      final companyStampUrl =
+      final remoteCompanyStamp =
           (resolved['companyStampUrl'] ??
                   companyProfile?['companyStampUrl'] ??
                   companyProfile?['stampUrl'] ??
@@ -682,8 +834,16 @@ class PayrollRunner {
               .toString()
               .trim();
       final results = await Future.wait([
-        InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
-        InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+        _loadCompanyImageDeviceFirst(
+          localCandidates: [localCompanyLogoPath, cachedCompanyLogo],
+          remoteSource: remoteCompanyLogo,
+          isStamp: false,
+        ),
+        _loadCompanyImageDeviceFirst(
+          localCandidates: [cachedCompanyStamp],
+          remoteSource: remoteCompanyStamp,
+          isStamp: true,
+        ),
         PdfHelpers.loadFontBytes(),
         _loadLocaleTranslations(locale),
       ]);
@@ -953,6 +1113,28 @@ class PayrollRunner {
       }).toList();
     }
 
+    // Time-off records and holiday dates are identical for every worker, so we
+    // fetch them ONCE here and share them across all workers. Previously each
+    // worker call re-queried both collections over the network, which made the
+    // review dialog slow to open as the number of payable workers grew.
+    List<Map<String, dynamic>>? timeOffRecords;
+    Set<DateTime>? holidayDates;
+    try {
+      final shared = await Future.wait<Object>([
+        firestoreService.getTimeOffRecords(),
+        firestoreService.getHolidayDatesForRange(
+          effectivePeriodStart,
+          effectivePeriodEnd,
+        ),
+      ]);
+      timeOffRecords = shared[0] as List<Map<String, dynamic>>;
+      holidayDates = shared[1] as Set<DateTime>;
+    } catch (_) {
+      // Fall back to per-worker fetching inside getWorkerMonthlyAttendance.
+      timeOffRecords = null;
+      holidayDates = null;
+    }
+
     final attendanceResults = <Map<String, dynamic>>[];
     for (var i = 0; i < workers.length; i += _maxConcurrentAttendance) {
       final batch = workers.skip(i).take(_maxConcurrentAttendance);
@@ -969,6 +1151,8 @@ class PayrollRunner {
             startDate: effectivePeriodStart,
             endDate: effectivePeriodEnd,
             preFetchedRecords: preFetchedAttendance,
+            preFetchedTimeOffRecords: timeOffRecords,
+            preFetchedHolidayDates: holidayDates,
           );
           return <String, dynamic>{...attendance};
         } catch (error, stackTrace) {
@@ -1299,8 +1483,6 @@ class PayrollRunner {
     }
   }
 
-
-
   Future<DialogController> _showProgressDialog(BuildContext context) async {
     final controller = DialogController(
       context,
@@ -1356,6 +1538,12 @@ class PayrollRunner {
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
 
+      // Worker photos can be remote. Start loading/compressing them while the
+      // Firestore commit is in flight so image I/O does not extend total Pay
+      // All time. The PDF step receives these already-prepared bytes below.
+      final preloadedProfileImagesFuture = paidResults.isEmpty
+          ? null
+          : _preloadProfileImagesInBackground(paidResults);
 
       unawaited(
         _sendNotificationsInBackground(
@@ -1386,12 +1574,16 @@ class PayrollRunner {
           periodStart: periodStart,
           periodEnd: periodEnd,
           preloadedAssets: preloadedAssets,
+          preloadedProfileImagesFuture: preloadedProfileImagesFuture,
         );
       }
 
-
-      controller.update(progress: 1.0, label: 'payroll_completed'.tr(), forceLabel: true);
-      await Future.delayed(const Duration(milliseconds: 600));
+      controller.update(
+        progress: 1.0,
+        label: 'payroll_completed'.tr(),
+        forceLabel: true,
+      );
+      await Future.delayed(const Duration(milliseconds: 200));
     } catch (error, stackTrace) {
       if (!isGuest)
         ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
@@ -1411,7 +1603,6 @@ class PayrollRunner {
     controller.dismiss();
     return committedSummary;
   }
-
 
   Future<void> _sendNotificationsInBackground(
     PayrollRunSummary summary,
@@ -1553,8 +1744,6 @@ class PayrollRunner {
       return await _commitGuestPayroll(summary, periodStart, periodEnd);
     }
 
-
-
     controller?.update(progress: 0.10, label: 'generating_invoices'.tr());
 
     final firestoreService = ProviderScope.containerOf(
@@ -1637,16 +1826,22 @@ class PayrollRunner {
 
     if (payrollRecords.isEmpty) return 0;
 
-    controller?.update(progress: 0.28, label: 'generating_invoices'.tr());
-    final payrollCount = await firestoreService.addBulkPayrollRecords(
-      payrollRecords,
+    controller?.update(
+      progress: 0.28,
+      label: 'saving_payroll_records'.tr(
+        namedArgs: {'saved': '0', 'total': '${payrollRecords.length}'},
+      ),
+      forceLabel: true,
     );
+    final payrollCount = await firestoreService
+        .addBulkPayrollRecordsAndExpenses(
+          payrollRecords: payrollRecords,
+          expenseRecords: expenseRecords,
+        );
     if (payrollCount != payrollRecords.length) {
       await _rollbackPayrollRecords(firestoreService, payrollRecords);
       throw StateError('Not all payroll records could be saved');
     }
-
-
 
     controller?.update(
       progress: 0.40,
@@ -1658,13 +1853,6 @@ class PayrollRunner {
       ),
       forceLabel: true,
     );
-    try {
-      await firestoreService.upsertBulkPayrollExpenses(expenseRecords);
-    } catch (error) {
-      await _rollbackPayrollRecords(firestoreService, payrollRecords);
-      rethrow;
-    }
-
     controller?.update(
       progress: 0.48,
       label: 'saving_payroll_records'.tr(
@@ -1798,6 +1986,7 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
+    Future<List<Uint8List?>>? preloadedProfileImagesFuture,
   }) async {
     try {
       await _generateAndSaveZipWithProgress(
@@ -1809,6 +1998,7 @@ class PayrollRunner {
         periodStart: periodStart,
         periodEnd: periodEnd,
         preloadedAssets: preloadedAssets,
+        preloadedProfileImagesFuture: preloadedProfileImagesFuture,
       );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceZip');
@@ -1831,6 +2021,7 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
+    Future<List<Uint8List?>>? preloadedProfileImagesFuture,
   }) async {
     if (selected.isEmpty) return;
 
@@ -1885,10 +2076,27 @@ class PayrollRunner {
         fontBytes = preloadedAssets['fontBytes'] as Uint8List?;
         translations = preloadedAssets['translations'] as Map<String, dynamic>;
       } else {
-        controller.update(progress: 0.10, label: 'generating_invoices'.tr());
+        controller.update(
+          progress: 0.10,
+          label: 'generating_invoices'.tr(),
+          forceLabel: true,
+        );
+        final cachedSources = await Future.wait<String?>([
+          PreferencesService.getProfilePicLocalPath(),
+          PreferencesService.getProfilePicUrl(),
+          PreferencesService.getCompanyStampUrl(),
+        ]);
         final allAssets = await Future.wait<Object?>([
-          InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
-          InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+          _loadCompanyImageDeviceFirst(
+            localCandidates: [cachedSources[0], cachedSources[1]],
+            remoteSource: companyLogoUrl,
+            isStamp: false,
+          ),
+          _loadCompanyImageDeviceFirst(
+            localCandidates: [cachedSources[2]],
+            remoteSource: companyStampUrl,
+            isStamp: true,
+          ),
           PdfHelpers.loadFontBytes(),
           _loadLocaleTranslations(locale),
         ]);
@@ -1936,43 +2144,50 @@ class PayrollRunner {
 
       controller.update(progress: 0.40, label: 'generating_invoices'.tr());
 
+      final profileImages = preloadedProfileImagesFuture != null
+          ? await preloadedProfileImagesFuture
+          : await _loadProfileImagesWithProgress(
+              successful,
+              controller,
+              startProgress: 0.40,
+              endProgress: 0.55,
+            );
 
-
-      final rawImages = await _loadProfileImagesWithProgress(
-        successful,
-        controller,
-        startProgress: 0.40,
-        endProgress: 0.55,
+      controller.update(
+        progress: 0.55,
+        label: 'generating_invoices'.tr(),
+        forceLabel: true,
       );
-      final imageIndexes = <int>[];
-      final rawToCompress = <Uint8List>[];
-      for (var i = 0; i < rawImages.length; i++) {
-        final bytes = rawImages[i];
-        if (bytes != null && bytes.isNotEmpty) {
-          imageIndexes.add(i);
-          rawToCompress.add(bytes);
-        }
-      }
-      final compressed = rawToCompress.isEmpty
-          ? const <Uint8List>[]
-          : await _compressImagesParallel(rawToCompress);
-      final profileImages = List<Uint8List?>.filled(successful.length, null);
-      for (var c = 0; c < imageIndexes.length; c++) {
-        profileImages[imageIndexes[c]] = compressed[c];
-      }
 
-      controller.update(progress: 0.55, label: 'generating_invoices'.tr());
-
-      final maxParallel = (Platform.numberOfProcessors * 2)
-          .clamp(4, 12)
-          .toInt();
-      final chunkCount = successful.length < maxParallel
+      // Each isolate pulls the next individual PDF from a shared queue. The
+      // large font/logo/stamp payload is initialized once per persistent
+      // isolate, while fixed worker chunks and their long-tail stalls are gone.
+      final maxParallel = Platform.numberOfProcessors.clamp(4, 12).toInt();
+      final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
-      final chunks = List.generate(chunkCount, (_) => <Map<String, Object?>>[]);
+
+      // Shared assets are the same for every worker, but dart isolate calls are
+      // self-contained, so they are carried in each worker arg map directly.
+      final sharedAssets = <String, Object?>{
+        'fontBytes': fontBytes,
+        'companyLogoBytes': companyLogoBytes,
+        'companyStampBytes': companyStampBytes,
+        'companyName': companyName,
+        'companyAddress': companyAddress,
+        'companyEmail': companyEmail,
+        'companyPhone': companyPhone,
+        'companyId': companyId,
+        'locale': locale,
+        'translations': translations,
+        'periodDisplay': periodDisplay,
+        'payPeriod': payPeriod,
+      };
+
+      final workerArgs = <Map<String, Object?>>[];
       for (var index = 0; index < successful.length; index++) {
         final r = successful[index];
-        chunks[index % chunkCount].add(<String, Object?>{
+        workerArgs.add(<String, Object?>{
           'index': index,
           'workerId': r.workerId,
           'workerName': r.workerName,
@@ -1992,68 +2207,135 @@ class PayrollRunner {
           'leaveDeduction': r.leaveDeduction,
           'customDeduction': r.customDeduction,
           'currency': r.currency,
-          'periodDisplay': periodDisplay,
-          'payPeriod': payPeriod,
-          'fontBytes': fontBytes,
-          'companyLogoBytes': companyLogoBytes,
-          'companyStampBytes': companyStampBytes,
-          'companyName': companyName,
-          'companyAddress': companyAddress,
-          'companyEmail': companyEmail,
-          'companyPhone': companyPhone,
-          'companyId': companyId,
-          'locale': locale,
-          'translations': translations,
           'employeeImageBytes': profileImages[index],
         });
       }
+      controller.update(
+        progress: 0.60,
+        label: 'generating_invoices_progress'.tr(
+          namedArgs: {'done': '0', 'total': '${successful.length}'},
+        ),
+        forceLabel: true,
+      );
 
-      controller.update(progress: 0.60, label: 'generating_invoices'.tr());
+      final deadline = DateTime.now().add(_pdfBatchTimeout(successful.length));
+      final t0 = DateTime.now();
+      final spawnStartedAt = DateTime.now();
 
-      final chunkFutures = <Future<void>>[];
+      Future<_PayrollInvoiceIsolateWorker?> spawnWorker(int index) async {
+        try {
+          return await _PayrollInvoiceIsolateWorker.spawn(
+            sharedAssets,
+            index + 1,
+          );
+        } catch (error, stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'PayrollInvoiceWorkerSpawn',
+          );
+          return null;
+        }
+      }
+
+      final pool = (await Future.wait(
+        List.generate(poolSize, spawnWorker),
+      )).whereType<_PayrollInvoiceIsolateWorker>().toList();
+      if (pool.isEmpty) {
+        throw StateError('Unable to start payroll PDF workers');
+      }
+      final spawnMs = DateTime.now()
+          .difference(spawnStartedAt)
+          .inMilliseconds;
+
+      var nextPdfIndex = 0;
       var pdfDone = 0;
-      final perChunkWorkerCount = (successful.length / chunkCount).ceil();
-      for (final entry in chunks.indexed) {
-        chunkFutures.add(
-          _generateInvoiceChunkInBackground(entry.$2).then((files) {
-            invoiceFiles.addAll(files);
-            pdfDone++;
-            final currentWorkersDone = (pdfDone * perChunkWorkerCount).clamp(0, successful.length);
-            controller.update(
-              progress: 0.60 + (0.28 * pdfDone / chunkCount),
-              label: 'generating_invoices_progress'.tr(
-                namedArgs: {'done': '$currentWorkersDone', 'total': '${successful.length}'},
-              ),
-              forceLabel: true,
-            );
-          }),
+      var stopRequested = false;
+      Object? firstPdfError;
+      StackTrace? firstPdfStack;
+      var lastProgressAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+      void reportPdfProgress() {
+        final now = DateTime.now();
+        if (pdfDone != successful.length &&
+            pdfDone % 4 != 0 &&
+            now.difference(lastProgressAt) < const Duration(milliseconds: 60)) {
+          return;
+        }
+        lastProgressAt = now;
+        controller.update(
+          progress: 0.60 + (0.28 * pdfDone / successful.length),
+          label: 'generating_invoices_progress'.tr(
+            namedArgs: {
+              'done': '$pdfDone',
+              'total': '${successful.length}',
+            },
+          ),
+          forceLabel: true,
         );
       }
 
-
-
-      const perChunkTimeout = Duration(seconds: 10);
-      for (final future in chunkFutures) {
-        try {
-          await future.timeout(perChunkTimeout);
-        } on TimeoutException {
-
-
-          continue;
+      Future<void> drainQueue(_PayrollInvoiceIsolateWorker worker) async {
+        while (!stopRequested) {
+          final index = nextPdfIndex++;
+          if (index >= workerArgs.length) return;
+          try {
+            final file = await worker.generate(workerArgs[index]);
+            if (file != null) invoiceFiles.add(file);
+          } catch (error, stackTrace) {
+            firstPdfError ??= error;
+            firstPdfStack ??= stackTrace;
+          } finally {
+            pdfDone++;
+            reportPdfProgress();
+          }
         }
       }
-      if (invoiceFiles.isEmpty) {
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'failed_to_generate_zip'.tr(
-              namedArgs: {'error': 'Invoice generation timed out'},
-            ),
-            isError: true,
+
+      var timedOut = false;
+      try {
+        await Future.wait(pool.map(drainQueue)).timeout(
+          deadline.difference(DateTime.now()),
+        );
+      } on TimeoutException {
+        timedOut = true;
+        stopRequested = true;
+      } finally {
+        for (final worker in pool) {
+          worker.close();
+        }
+      }
+
+      if (timedOut || invoiceFiles.length != successful.length) {
+        if (firstPdfError != null && firstPdfStack != null) {
+          ErrorReporter.report(
+            firstPdfError!,
+            firstPdfStack!,
+            context: 'PayrollInvoiceGeneration',
           );
         }
-        return;
+        throw TimeoutException(
+          timedOut
+              ? 'Invoice generation timed out at ${invoiceFiles.length}/${successful.length}'
+              : 'Generated only ${invoiceFiles.length}/${successful.length} invoices',
+          _pdfBatchTimeout(successful.length),
+        );
       }
+
+      invoiceFiles.sort(
+        (a, b) => ((a['sortIndex'] as int?) ?? 0).compareTo(
+          (b['sortIndex'] as int?) ?? 0,
+        ),
+      );
+
+      final pdfMs = DateTime.now().difference(t0).inMilliseconds;
+      final averagePdfMs = pdfMs / successful.length;
+      debugPrint(
+        'PayrollInvoicePerf: workers=${successful.length} pool=${pool.length} '
+        'spawnMs=$spawnMs pdfMs=$pdfMs '
+        'avgPdfMs=${averagePdfMs.toStringAsFixed(1)} '
+        'cacheHits=${_payrollImageCache.length}',
+      );
 
       controller.update(
         progress: 0.90,
@@ -2061,14 +2343,9 @@ class PayrollRunner {
         forceLabel: true,
       );
 
-
       final filesForZip = List<Map<String, Object>>.from(invoiceFiles);
       final zipData = await compute(_encodePayrollInvoiceZip, filesForZip);
       final fileName = 'payroll_invoices_$payPeriod.zip';
-
-
-
-
 
       controller.update(progress: 0.95, label: 'preparing_zip'.tr());
 
@@ -2090,9 +2367,6 @@ class PayrollRunner {
           bytes: zipData,
         );
         if (result == null) {
-
-
-
           zipFile = await _writeZipToWritableDir(fileName, zipData);
         } else {
           final saved = File(result);
@@ -2113,13 +2387,9 @@ class PayrollRunner {
       }
       unawaited(FileOpener.open(zipFile.path));
     } catch (e) {
-
       rethrow;
     }
   }
-
-
-
 
   Future<File> _writeZipToWritableDir(
     String fileName,
@@ -2131,50 +2401,29 @@ class PayrollRunner {
     return file;
   }
 
-
-
-
-  Future<List<Map<String, Object>>> _generateInvoiceChunkInBackground(
-    List<Map<String, Object?>> chunkArgs,
-  ) async {
-    try {
-      return await compute(_generatePayrollInvoiceBatch, chunkArgs);
-    } catch (error, stackTrace) {
-      ErrorReporter.report(
-        error,
-        stackTrace,
-        context: 'PayrollInvoiceGeneration',
-      );
-
-
-
-
-      try {
-        return await _generatePayrollInvoiceBatch(chunkArgs);
-      } catch (fallbackError, fallbackStack) {
-        ErrorReporter.report(
-          fallbackError,
-          fallbackStack,
-          context: 'PayrollInvoiceGenerationFallback',
-        );
-        return const [];
-      }
-    }
-  }
-
-
-
-
   Future<Uint8List?> _loadWorkerProfileImageRaw(String? url) async {
     final source = (url ?? '').trim();
     if (source.isEmpty) return null;
     try {
-      return await ImageLoader.load(
+      final cacheManager = DefaultCacheManager();
+      final fileInfo = await cacheManager.getFileFromCache(source);
+      if (fileInfo != null) {
+        final bytes = await fileInfo.file.readAsBytes();
+        if (bytes.isNotEmpty) return bytes;
+      }
+    } catch (_) {}
+
+    try {
+      final bytes = await ImageLoader.load(
         source: source,
-        maxSizeBytes: 2 * 1024 * 1024,
-        timeout: const Duration(milliseconds: 600),
+        maxSizeBytes: 1 * 1024 * 1024,
+        timeout: const Duration(milliseconds: 2000),
         convertToPng: false,
       );
+      if (bytes != null && bytes.isNotEmpty) {
+        DefaultCacheManager().putFile(source, bytes).catchError((_) => File(''));
+      }
+      return bytes;
     } catch (_) {
       return null;
     }
@@ -2182,46 +2431,51 @@ class PayrollRunner {
 
   Future<List<Uint8List>> _compressImagesParallel(List<Uint8List> raw) async {
     if (raw.isEmpty) return const [];
-    final cores = Platform.numberOfProcessors;
-    final chunks = cores <= 1 || raw.length < 8
-        ? 1
-        : (raw.length < 16 ? 2 : cores.clamp(2, 4));
-    if (chunks <= 1) return compute(_compressProfileImagesTask, raw);
-
-    final chunkSize = (raw.length / chunks).ceil();
-    final futures = <Future<List<Uint8List>>>[];
-    for (var i = 0; i < raw.length; i += chunkSize) {
-      final end = (i + chunkSize).clamp(0, raw.length);
-      futures.add(compute(_compressProfileImagesTask, raw.sublist(i, end)));
-    }
-    final results = await Future.wait(futures);
-    final flat = <Uint8List>[];
-    for (final r in results) {
-      flat.addAll(r);
-    }
-    return flat;
+    return compute(_compressProfileImagesTask, raw);
   }
 
-
-
-
+  Future<List<Uint8List?>> _preloadProfileImagesInBackground(
+    List<AutoPayrollResult> workers,
+  ) async {
+    try {
+      return await _loadProfileImagesWithProgress(
+        workers,
+        null,
+        startProgress: 0,
+        endProgress: 0,
+      );
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollProfileImagePreload',
+      );
+      return List<Uint8List?>.filled(workers.length, null);
+    }
+  }
 
   Future<List<Uint8List?>> _loadProfileImagesWithProgress(
     List<AutoPayrollResult> workers,
-    DialogController controller, {
+    DialogController? controller, {
     required double startProgress,
     required double endProgress,
   }) async {
     final results = List<Uint8List?>.filled(workers.length, null);
-    const pool = 24;
 
-    final deadline = DateTime.now().add(const Duration(milliseconds: 800));
-    var index = 0;
+    // URL -> worker indexes (dedupes repeated photos within a run).
+    final urlToIndexes = <String, List<int>>{};
+    for (var i = 0; i < workers.length; i++) {
+      final url = (workers[i].imageUrl ?? '').trim();
+      if (url.isEmpty) continue;
+      (urlToIndexes[url] ??= <int>[]).add(i);
+    }
+    if (urlToIndexes.isEmpty) return results;
+
+    const pool = 48;
     var completed = 0;
-
     void report() {
       if (workers.isEmpty) return;
-      controller.update(
+      controller?.update(
         progress:
             startProgress +
             (endProgress - startProgress) * (completed / workers.length),
@@ -2229,34 +2483,51 @@ class PayrollRunner {
       );
     }
 
-    while (index < workers.length) {
-      final remaining = deadline.difference(DateTime.now());
-      if (remaining.isNegative) {
-        completed = workers.length;
-        report();
-        break;
-      }
-      final batch = <Future<void>>[];
-      for (var i = 0; i < pool && index < workers.length; i++, index++) {
-        final j = index;
-        batch.add(() async {
-          results[j] = await _loadWorkerProfileImageRaw(workers[j].imageUrl);
-          completed++;
-          if (completed % pool == 0 || completed == workers.length) {
-            report();
-          }
-        }());
-      }
-      try {
-        await Future.wait(batch).timeout(remaining);
-      } on TimeoutException {
+    // Fetch ONLY URLs not already cached (final compressed bytes are cached).
+    final missUrls = urlToIndexes.keys
+        .where((u) => !_payrollImageCache.containsKey(u))
+        .toList();
+    debugPrint(
+      'PayrollInvoicePerf: imagesUnique=${urlToIndexes.length} '
+      'misses=${missUrls.length} cached=${_payrollImageCache.length}',
+    );
 
+    if (missUrls.isNotEmpty) {
+      // 1) Download raw bytes for cache misses in parallel.
+      final rawByUrl = <String, Uint8List?>{};
+      final futures = missUrls.map((u) async {
+        rawByUrl[u] = await _loadWorkerProfileImageRaw(u);
+      }).toList();
+      await Future.wait(futures);
 
-        completed = workers.length;
-        report();
-        break;
+      // 2) Compress the newly loaded raws in parallel (isolate) and cache the
+      //    final bytes so later runs skip both download and compression.
+      final compressUrls = <String>[];
+      final compressBytes = <Uint8List>[];
+      for (final u in missUrls) {
+        final bytes = rawByUrl[u];
+        if (bytes != null && bytes.isNotEmpty) {
+          compressUrls.add(u);
+          compressBytes.add(bytes);
+        }
+      }
+      final compressed = compressBytes.isEmpty
+          ? const <Uint8List>[]
+          : await _compressImagesParallel(compressBytes);
+      for (var c = 0; c < compressUrls.length; c++) {
+        _cachePayrollImage(compressUrls[c], compressed[c]);
       }
     }
+
+    // 3) Hand the final cached bytes to every worker that references each URL.
+    for (final url in urlToIndexes.keys) {
+      final bytes = _payrollImageCache[url];
+      for (final idx in urlToIndexes[url]!) {
+        results[idx] = bytes;
+      }
+    }
+    completed = workers.length;
+    report();
     return results;
   }
 

@@ -1141,6 +1141,8 @@ class FirestoreService {
     DateTime? startDate,
     DateTime? endDate,
     List<Map<String, dynamic>>? preFetchedRecords,
+    List<Map<String, dynamic>>? preFetchedTimeOffRecords,
+    Set<DateTime>? preFetchedHolidayDates,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
     final normalizedWorkerId = (workerId ?? '').trim();
@@ -1207,7 +1209,9 @@ class FirestoreService {
     }
 
     final List<Map<String, dynamic>> timeOffRecords;
-    if (isGuest) {
+    if (preFetchedTimeOffRecords != null) {
+      timeOffRecords = preFetchedTimeOffRecords;
+    } else if (isGuest) {
       timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
     } else {
       final coll = _timeoff;
@@ -1224,7 +1228,9 @@ class FirestoreService {
     absentDates.removeWhere((date) => TimeOffService.isWorkerOnLeave(worker, timeOffRecords, onDate: date));
 
     final Set<DateTime> holidayDates;
-    if (startDate != null && endDate != null) holidayDates = await _getHolidayDatesForRange(startDate, endDate);
+    if (preFetchedHolidayDates != null) {
+      holidayDates = preFetchedHolidayDates;
+    } else if (startDate != null && endDate != null) holidayDates = await _getHolidayDatesForRange(startDate, endDate);
     else {
       final start = DateTime(targetMonth.year, targetMonth.month, 1);
       final end = DateTime(targetMonth.year, targetMonth.month + 1, 0);
@@ -1353,6 +1359,23 @@ class FirestoreService {
         .get();
   }
 
+  /// Fetches all time-off records once, so callers can share them across many
+  /// workers instead of re-querying the collection for each worker.
+  Future<List<Map<String, dynamic>>> getTimeOffRecords() async {
+    final coll = _timeoff;
+    if (coll == null) return const [];
+    final snapshot = await coll.get();
+    return snapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+        .toList();
+  }
+
+  /// Fetches holiday dates for a range once, so callers can share them across
+  /// many workers instead of re-querying the collection for each worker.
+  Future<Set<DateTime>> getHolidayDatesForRange(DateTime from, DateTime to) {
+    return _getHolidayDatesForRange(from, to);
+  }
+
 
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
     Validators.validatePayroll(record);
@@ -1417,6 +1440,74 @@ class FirestoreService {
         final batch = _firestore.batch();
         for (final ref in chunk) batch.delete(ref);
         try { await batch.commit(); } catch (_) {}
+      }
+      rethrow;
+    }
+    return saved;
+  }
+
+  /// Saves Pay All payroll rows and their linked salary expenses in the same
+  /// Firestore batch, cutting the normal flow from two commits down to one.
+  Future<int> addBulkPayrollRecordsAndExpenses({
+    required List<Map<String, dynamic>> payrollRecords,
+    required List<Map<String, dynamic>> expenseRecords,
+  }) async {
+    final payrollColl = _payroll;
+    final expensesColl = _expenses;
+    if (payrollColl == null || expensesColl == null) throw StateError('No authenticated user');
+    if (payrollRecords.isEmpty) return 0;
+
+    final expenseByPayrollKey = <String, Map<String, dynamic>>{};
+    for (final expense in expenseRecords) {
+      Validators.validateExpense(expense);
+      final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+      if (payrollKey.isEmpty) throw ArgumentError('payrollKey is required for a payroll expense');
+      expenseByPayrollKey[payrollKey] = expense;
+    }
+    for (final record in payrollRecords) Validators.validatePayroll(record);
+
+    // A worker contributes at most two writes. 225 workers stays below
+    // Firestore's 500-write batch limit.
+    const workersPerBatch = 225;
+    final committedRefs = <DocumentReference>[];
+    var saved = 0;
+    try {
+      for (var start = 0; start < payrollRecords.length; start += workersPerBatch) {
+        final end = (start + workersPerBatch).clamp(0, payrollRecords.length).toInt();
+        final batch = _firestore.batch();
+        final chunkRefs = <DocumentReference>[];
+        for (final record in payrollRecords.sublist(start, end)) {
+          final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+          final payrollRef = payrollKey.isEmpty ? payrollColl.doc() : payrollColl.doc(_payrollDocumentId(payrollKey));
+          batch.set(payrollRef, {
+            ...record,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          chunkRefs.add(payrollRef);
+
+          final expense = expenseByPayrollKey[payrollKey];
+          if (expense != null) {
+            final expenseRef = expensesColl.doc(_payrollExpenseDocumentId(payrollKey));
+            batch.set(expenseRef, {
+              ...expense,
+              'payrollKey': payrollKey,
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            chunkRefs.add(expenseRef);
+          }
+        }
+        await batch.commit();
+        committedRefs.addAll(chunkRefs);
+        saved += end - start;
+      }
+    } catch (_) {
+      for (var start = 0; start < committedRefs.length; start += 450) {
+        final end = (start + 450).clamp(0, committedRefs.length).toInt();
+        final rollback = _firestore.batch();
+        for (final ref in committedRefs.sublist(start, end)) rollback.delete(ref);
+        try { await rollback.commit(); } catch (_) {}
       }
       rethrow;
     }

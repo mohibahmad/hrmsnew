@@ -30,6 +30,8 @@ class PreferencesService {
   static const String _biometricEmailKey = 'biometric_email';
   static const String _biometricPasswordKey = 'biometric_password';
   static const String _sessionLockedKey = 'session_locked';
+  static const String _sessionTimeoutEnabledKey = 'session_timeout_enabled';
+  static const String _sessionTimeoutDurationKey = 'session_timeout_duration';
 
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static const String _localImagesDirName = 'company_images';
@@ -39,6 +41,8 @@ class PreferencesService {
   static String? _cachedCompanyCurrency;
   static bool _cachedIsGuest = false;
   static bool _cachedIsPremium = false;
+  static bool _cachedSessionTimeoutEnabled = true;
+  static int _cachedSessionTimeoutDuration = 3;
   static Directory? _guestDataDir;
 
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
@@ -46,6 +50,8 @@ class PreferencesService {
   static String? get cachedCompanyCurrency => _cachedCompanyCurrency;
   static bool get cachedIsGuest => _cachedIsGuest;
   static bool get cachedIsPremium => _cachedIsPremium;
+  static bool get cachedSessionTimeoutEnabled => _cachedSessionTimeoutEnabled;
+  static int get cachedSessionTimeoutDuration => _cachedSessionTimeoutDuration;
 
   static Future<Directory> _getGuestDataDir() async {
     if (_guestDataDir != null) return _guestDataDir!;
@@ -82,6 +88,9 @@ class PreferencesService {
     _cachedCompanyCurrency = prefs.getString(_companyCurrencyKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
     _cachedIsPremium = prefs.getBool(_premiumKey) ?? false;
+
+    _cachedSessionTimeoutEnabled = prefs.getBool(_sessionTimeoutEnabledKey) ?? true;
+    _cachedSessionTimeoutDuration = prefs.getInt(_sessionTimeoutDurationKey) ?? 3;
 
     _migrateStampFromGuestProfile(prefs);
   }
@@ -211,6 +220,12 @@ class PreferencesService {
     } else {
       await prefs.remove(_profilePicLocalPathKey);
     }
+  }
+
+  static Future<String?> getProfilePicLocalPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString(_profilePicLocalPathKey)?.trim();
+    return path == null || path.isEmpty ? null : path;
   }
 
   static Future<String?> getProfilePicUrl() async {
@@ -349,6 +364,18 @@ class PreferencesService {
   static Future<void> setSessionLocked(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_sessionLockedKey, value);
+  }
+
+  static Future<void> setSessionTimeoutEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sessionTimeoutEnabledKey, value);
+    _cachedSessionTimeoutEnabled = value;
+  }
+
+  static Future<void> setSessionTimeoutDuration(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_sessionTimeoutDurationKey, minutes);
+    _cachedSessionTimeoutDuration = minutes;
   }
 
   static Future<bool> isBiometricEnabled() async {

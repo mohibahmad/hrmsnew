@@ -1326,7 +1326,7 @@
   "authorized_signatory": "Signataire Autorisé",
   "document": "Document",
   "session_locked_title": "Session verrouillée",
-  "session_locked_message": "Vous avez été inactif pendant 1 minute. Vérifiez votre identité pour continuer.",
+  "session_locked_message": "Vous avez été inactif pendant {minutes} minutes. Vérifiez votre identité pour continuer.",
   "session_checking_biometrics": "Vérification de la disponibilité biométrique…",
   "session_biometric_unavailable": "L’authentification biométrique n’est pas disponible sur cet appareil. Reconnectez-vous pour continuer.",
   "session_biometric_failed": "Nous n’avons pas pu vérifier votre identité. Réessayez ou reconnectez-vous.",
@@ -1513,5 +1513,13 @@
   "biometric_permanently_locked_out": "L'authentification biométrique est définitivement verrouillée. Veuillez utiliser votre mot de passe pour vous connecter.",
   "file_downloaded_successfully": "Fichier téléchargé avec succès.",
   "could_not_download_file": "Impossible de télécharger le fichier. Veuillez réessayer.",
-  "paid_workers": "Employés Payés"
+  "paid_workers": "Employés Payés",
+  "session_security": "Sécurité de la session",
+  "enable_session_timeout": "Activer le délai d'expiration de session",
+  "session_timeout_duration": "Durée d'inactivité",
+  "1_minute": "1 minute",
+  "3_minutes": "3 minutes",
+  "5_minutes": "5 minutes",
+  "10_minutes": "10 minutes",
+  "30_minutes": "30 minutes"
 }

@@ -26,6 +26,7 @@ class SessionTimeoutGate extends StatefulWidget {
     required this.onSignInAgain,
     this.timeout = const Duration(minutes: 3),
     this.clock = _systemNow,
+    this.enabled = true,
   });
 
   final Widget child;
@@ -36,6 +37,7 @@ class SessionTimeoutGate extends StatefulWidget {
   final Future<void> Function() onSignInAgain;
   final Duration timeout;
   final DateTime Function() clock;
+  final bool enabled;
 
   @override
   State<SessionTimeoutGate> createState() => _SessionTimeoutGateState();
@@ -67,7 +69,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
   @override
   void didUpdateWidget(covariant SessionTimeoutGate oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.timeout != widget.timeout) {
+    if (oldWidget.timeout != widget.timeout || oldWidget.enabled != widget.enabled) {
       _lastActivityAt = widget.clock();
       _scheduleTimer();
     }
@@ -75,7 +77,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || _locked) return;
+    if (state != AppLifecycleState.resumed || _locked || !widget.enabled) return;
 
     final inactiveFor = widget.clock().difference(_lastActivityAt);
     if (inactiveFor >= widget.timeout) {
@@ -93,7 +95,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
   }
 
   void _recordActivity([Object? _]) {
-    if (_locked) return;
+    if (_locked || !widget.enabled) return;
     _lastActivityAt = widget.clock();
     if (_inactivityTimer?.isActive != true) {
       _scheduleTimer();
@@ -102,7 +104,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
 
   void _scheduleTimer() {
     _inactivityTimer?.cancel();
-    if (_locked) return;
+    if (_locked || !widget.enabled) return;
 
     final elapsed = widget.clock().difference(_lastActivityAt);
     final remaining = widget.timeout - elapsed;
@@ -290,7 +292,9 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
         ? 'session_biometric_unavailable'.tr()
         : _authenticationFailed
         ? 'session_biometric_failed'.tr()
-        : 'session_locked_message'.tr();
+        : 'session_locked_message'.tr(
+            namedArgs: {'minutes': widget.timeout.inMinutes.toString()},
+          );
 
     return Material(
       color: const Color(0xFFF4F7FC),

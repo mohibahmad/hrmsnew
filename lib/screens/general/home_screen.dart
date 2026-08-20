@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
@@ -901,10 +902,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               ),
                                               child: _buildDashboardView(),
                                             )
-                                          : Column(children: [
-                                              TopHeader(onProfileTap: _openProfile, onNotificationTap: _toggleNotifications, unreadCount: _unreadNotifCount),
-                                              const Expanded(child: Center(child: CircularProgressIndicator())),
-                                            ]))
+                                          : _buildDashboardLoadingView())
                                     : const SizedBox.shrink(),
 
                                 for (int i = 1; i <= 9; i++)
@@ -945,6 +943,207 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildDashboardLoadingView() {
+    return Column(
+      children: [
+        TopHeader(
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+          unreadCount: _unreadNotifCount,
+        ),
+        Expanded(
+          child: ExcludeSemantics(
+            child: IgnorePointer(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _DashboardShimmerBlock(width: 145, height: 28),
+                        _DashboardShimmerBlock(
+                          width: 140,
+                          height: 44,
+                          radius: 6,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 220,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: _buildSummaryShimmerCard()),
+                          const SizedBox(width: 6),
+                          Expanded(child: _buildSummaryShimmerCard()),
+                          const SizedBox(width: 6),
+                          Expanded(child: _buildSummaryShimmerCard()),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: _DashboardShimmerBlock(
+                            width: 205,
+                            height: 24,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: _DashboardShimmerBlock(
+                            width: 135,
+                            height: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 330,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: _buildChartShimmerCard()),
+                          const SizedBox(width: 6),
+                          Expanded(child: _buildChartShimmerCard()),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const _DashboardShimmerBlock(width: 190, height: 24),
+                    const SizedBox(height: 24),
+                    _buildHolidayShimmerCard(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryShimmerCard() {
+    return _dashboardSkeletonCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              _DashboardShimmerBlock(width: 40, height: 40, radius: 8),
+              SizedBox(width: 14),
+              Expanded(
+                child: _DashboardShimmerBlock(width: 130, height: 20),
+              ),
+              SizedBox(width: 20),
+              _DashboardShimmerBlock(width: 72, height: 22),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const _DashboardShimmerBlock(
+                width: 105,
+                height: 105,
+                radius: 53,
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  children: const [
+                    _DashboardShimmerBlock(height: 12),
+                    SizedBox(height: 14),
+                    _DashboardShimmerBlock(height: 12),
+                    SizedBox(height: 14),
+                    _DashboardShimmerBlock(height: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartShimmerCard() {
+    return _dashboardSkeletonCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _DashboardShimmerBlock(width: 92, height: 18),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: const [
+              _DashboardShimmerBlock(width: 36, height: 90, radius: 4),
+              SizedBox(width: 18),
+              _DashboardShimmerBlock(width: 36, height: 145, radius: 4),
+              SizedBox(width: 18),
+              _DashboardShimmerBlock(width: 36, height: 110, radius: 4),
+              SizedBox(width: 18),
+              Expanded(child: _DashboardShimmerBlock(height: 2, radius: 1)),
+            ],
+          ),
+          const SizedBox(height: 22),
+          const _DashboardShimmerBlock(height: 2, radius: 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHolidayShimmerCard() {
+    return _dashboardSkeletonCard(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _DashboardShimmerBlock(width: 105, height: 20),
+          const SizedBox(height: 30),
+          Row(
+            children: List.generate(5, (index) {
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: index == 4 ? 0 : 16),
+                  child: const _DashboardShimmerBlock(
+                    height: 78,
+                    radius: 6,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dashboardSkeletonCard({
+    required Widget child,
+    required EdgeInsets padding,
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFF0F1F4)),
+      ),
+      child: child,
     );
   }
 
@@ -1181,6 +1380,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DashboardShimmerBlock extends StatelessWidget {
+  final double? width;
+  final double height;
+  final double radius;
+
+  const _DashboardShimmerBlock({
+    this.width,
+    required this.height,
+    this.radius = 5,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Shimmer.fromColors(
+        baseColor: const Color(0xFFE5E8ED),
+        highlightColor: const Color(0xFFF7F8FA),
+        period: const Duration(milliseconds: 1150),
+        child: Container(
+          width: width ?? double.infinity,
+          height: height,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -209,6 +209,9 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Uint8List? _newCompanyStampBytes;
   bool _clearCompanyStamp = false;
 
+  bool _sessionTimeoutEnabled = true;
+  int _sessionTimeoutDuration = 3;
+
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
   @override
@@ -231,6 +234,11 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 
     if (_initialized && !_isGuest) return;
     _initialized = true;
+
+    final sessionSettings = ref.read(sessionTimeoutSettingsProvider);
+    _sessionTimeoutEnabled = sessionSettings.enabled;
+    _sessionTimeoutDuration = sessionSettings.durationMinutes;
+
     _loadProfile();
 
     if (!_isGuest) {
@@ -330,6 +338,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Future<void> _loadProfile() async {
     final loadToken = ++_profileLoadToken;
 
+    final sessionSettings = ref.read(sessionTimeoutSettingsProvider);
+    _sessionTimeoutEnabled = sessionSettings.enabled;
+    _sessionTimeoutDuration = sessionSettings.durationMinutes;
+
     if (_isGuest) {
       await _loadGuestProfile();
       return;
@@ -356,7 +368,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Future<void> _loadGuestProfile() async {
     final guestData = await PreferencesService.getGuestProfileData();
     if (!mounted) return;
+    final sessionSettings = ref.read(sessionTimeoutSettingsProvider);
     setState(() {
+      _sessionTimeoutEnabled = sessionSettings.enabled;
+      _sessionTimeoutDuration = sessionSettings.durationMinutes;
       _businessNameController.text =
           guestData?['businessName'] ?? 'ABC Corporation';
       _companyIdController.text = (guestData?['companyId'] ?? '').toUpperCase();
@@ -651,6 +666,9 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         );
         profileSaved = true;
       }
+
+      await ref.read(sessionTimeoutSettingsProvider.notifier).setEnabled(_sessionTimeoutEnabled);
+      await ref.read(sessionTimeoutSettingsProvider.notifier).setDurationMinutes(_sessionTimeoutDuration);
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1210,8 +1228,147 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        _buildSessionSecuritySection(),
       ],
     );
+  }
+
+  Widget _buildSessionSecuritySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _kFormBg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'session_security'.tr(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFamily: _kFontFamily,
+              color: _kBlack,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'enable_session_timeout'.tr(),
+                      style: _kLabelStyle,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _sessionTimeoutEnabled
+                          ? 'session_locked_message'.tr(namedArgs: {'minutes': _sessionTimeoutDuration.toString()})
+                          : 'enable_session_timeout'.tr(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: _kGreyText,
+                        fontFamily: _kFontFamily,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: _sessionTimeoutEnabled,
+                onChanged: !_isEditing
+                    ? null
+                    : (val) {
+                        setState(() {
+                          _sessionTimeoutEnabled = val;
+                        });
+                      },
+                activeColor: _kPrimaryBlue,
+              ),
+            ],
+          ),
+          if (_sessionTimeoutEnabled) ...[
+            const SizedBox(height: 20),
+            _buildSessionDurationField(_isEditing),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionDurationField(bool isEditing) {
+    final durations = [1, 3, 5, 10, 30];
+    final String label = 'session_timeout_duration'.tr();
+
+    if (!isEditing) {
+      final text = _getDurationLabel(_sessionTimeoutDuration);
+      return _buildInputField(
+        label,
+        TextEditingController(text: text),
+        readOnly: true,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _kLabelStyle),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: durations.contains(_sessionTimeoutDuration)
+                  ? _sessionTimeoutDuration
+                  : 3,
+              isExpanded: true,
+              itemHeight: 48,
+              dropdownColor: Colors.white,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+                fontFamily: _kFontFamily,
+              ),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _sessionTimeoutDuration = val);
+                }
+              },
+              items: durations
+                  .map(
+                    (value) => DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(
+                        _getDurationLabel(value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getDurationLabel(int minutes) {
+    if (minutes == 1) {
+      return '1_minute'.tr();
+    }
+    return '${minutes}_minutes'.tr();
   }
 
   Widget _buildProfileIcon() {

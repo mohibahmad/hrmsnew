@@ -1356,7 +1356,7 @@
   "add_leave_policy_first": "Please add a leave policy first.",
   "leave_policy_share_text": "Our Company Leave Policy:\n\n{policy}\n\nShared via HRMS App",
   "session_locked_title": "Session locked",
-  "session_locked_message": "You were inactive for 3 minute. Verify your identity to continue.",
+  "session_locked_message": "You were inactive for {minutes} minutes. Verify your identity to continue.",
   "session_checking_biometrics": "Checking biometric availability…",
   "session_biometric_unavailable": "Biometric authentication is not available on this device. Sign in again to continue.",
   "session_biometric_failed": "We couldn't verify your identity. Try again or sign in again.",
@@ -1516,5 +1516,13 @@
   "biometric_permanently_locked_out": "Biometric authentication is permanently locked. Please use your password to log in.",
   "file_downloaded_successfully": "File downloaded successfully.",
   "could_not_download_file": "Could not download file. Please try again.",
-  "paid_workers": "Paid Workers"
+  "paid_workers": "Paid Workers",
+  "session_security": "Session Security",
+  "enable_session_timeout": "Enable Session Timeout",
+  "session_timeout_duration": "Inactivity Duration",
+  "1_minute": "1 Minute",
+  "3_minutes": "3 Minutes",
+  "5_minutes": "5 Minutes",
+  "10_minutes": "10 Minutes",
+  "30_minutes": "30 Minutes"
 }

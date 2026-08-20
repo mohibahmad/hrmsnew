@@ -1326,7 +1326,7 @@
   "biometric_iris": "iris",
   "biometric_generic": "biometría",
   "session_locked_title": "Sesión bloqueada",
-  "session_locked_message": "Estuvo inactivo durante 1 minuto. Verifique su identidad para continuar.",
+  "session_locked_message": "Estuvo inactivo durante {minutes} minutos. Verifique su identidad para continuar.",
   "session_checking_biometrics": "Comprobando la disponibilidad biométrica…",
   "session_biometric_unavailable": "La autenticación biométrica no está disponible en este dispositivo. Inicie sesión de nuevo para continuar.",
   "session_biometric_failed": "No pudimos verificar su identidad. Inténtelo de nuevo o vuelva a iniciar sesión.",
@@ -1513,5 +1513,13 @@
   "biometric_permanently_locked_out": "La autenticación biométrica está bloqueada permanentemente. Por favor, use su contraseña para iniciar sesión.",
   "file_downloaded_successfully": "Archivo descargado exitosamente.",
   "could_not_download_file": "No se pudo descargar el archivo. Por favor, inténtelo de nuevo.",
-  "paid_workers": "Trabajadores Pagados"
+  "paid_workers": "Trabajadores Pagados",
+  "session_security": "Seguridad de la sesión",
+  "enable_session_timeout": "Habilitar tiempo de espera de sesión",
+  "session_timeout_duration": "Duración de inactividad",
+  "1_minute": "1 minuto",
+  "3_minutes": "3 minutos",
+  "5_minutes": "5 minutos",
+  "10_minutes": "10 minutos",
+  "30_minutes": "30 minutos"
 }

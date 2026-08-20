@@ -1326,7 +1326,7 @@
   "authorized_signatory": "Signatário Autorizado",
   "document": "Documento",
   "session_locked_title": "Sessão bloqueada",
-  "session_locked_message": "Você ficou inativo por 1 minuto. Verifique sua identidade para continuar.",
+  "session_locked_message": "Você ficou inativo por {minutes} minutos. Verifique sua identidade para continuar.",
   "session_checking_biometrics": "Verificando a disponibilidade biométrica…",
   "session_biometric_unavailable": "A autenticação biométrica não está disponível neste dispositivo. Entre novamente para continuar.",
   "session_biometric_failed": "Não foi possível verificar sua identidade. Tente novamente ou entre de novo.",
@@ -1513,5 +1513,13 @@
   "biometric_permanently_locked_out": "A autenticação biométrica está bloqueada permanentemente. Por favor, use sua senha para fazer login.",
   "file_downloaded_successfully": "Arquivo baixado com sucesso.",
   "could_not_download_file": "Não foi possível baixar o arquivo. Por favor, tente novamente.",
-  "paid_workers": "Trabalhadores Pagos"
+  "paid_workers": "Trabalhadores Pagos",
+  "session_security": "Segurança da sessão",
+  "enable_session_timeout": "Ativar tempo limite de sessão",
+  "session_timeout_duration": "Duração da inatividade",
+  "1_minute": "1 minuto",
+  "3_minutes": "3 minutos",
+  "5_minutes": "5 minutos",
+  "10_minutes": "10 minutos",
+  "30_minutes": "30 minutos"
 }

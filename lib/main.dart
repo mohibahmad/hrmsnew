@@ -150,6 +150,8 @@ class HRMSApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sessionSettings = ref.watch(sessionTimeoutSettingsProvider);
+
     return MaterialApp(
       navigatorKey: _rootNavigatorKey,
       title: 'HRMS',
@@ -164,6 +166,8 @@ class HRMSApp extends ConsumerWidget {
       home: const SplashScreen(),
       builder: (context, child) {
         return SessionTimeoutGate(
+          enabled: sessionSettings.enabled,
+          timeout: Duration(minutes: sessionSettings.durationMinutes),
           isSessionActive: () {
             final user = ref.read(authServiceProvider).currentUser;
             return user != null && !user.isAnonymous;
