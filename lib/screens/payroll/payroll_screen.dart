@@ -859,7 +859,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final offset = today.difference(_payPeriodEnd).inDays;
+    final normalizedEnd = DateTime(_payPeriodEnd.year, _payPeriodEnd.month, _payPeriodEnd.day);
+    final offset = today.difference(normalizedEnd).inDays;
 
             if (offset < -3 || offset > 7) return;
 
