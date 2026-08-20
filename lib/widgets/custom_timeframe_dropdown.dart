@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import 'clickable_gesture_detector.dart';
+import '../utils/app_colors.dart';
 
 class CustomTimeframeDropdown extends StatefulWidget {
   final String selectedPeriod;
@@ -154,7 +155,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: isSelected
-                                        ? const Color(0xFF0247C4)
+                                        ? AppColors.primaryBlue
                                         : Colors.grey.shade400,
                                     width: 1.5,
                                   ),
@@ -165,7 +166,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                           width: 8,
                                           height: 8,
                                           decoration: const BoxDecoration(
-                                            color: Color(0xFF0247C4),
+                                            color: AppColors.primaryBlue,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
@@ -181,7 +182,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                   style: TextStyle(
                                     fontSize: 14.5,
                                     color: isSelected
-                                        ? const Color(0xFF0247C4)
+                                        ? AppColors.primaryBlue
                                         : Colors.grey.shade400,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -235,7 +236,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
           constraints: const BoxConstraints(minWidth: 125),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFF0247C4),
+            color: AppColors.primaryBlue,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(6),
               topRight: const Radius.circular(6),
@@ -251,7 +252,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                 child: Text(
                   CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
                   style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
+                    color: AppColors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 17.0,
                   ),
@@ -262,7 +263,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
               const SizedBox(width: 4),
               const Icon(
                 Icons.arrow_drop_down,
-                color: Color(0xFFFFFFFF),
+                color: AppColors.white,
                 size: 30,
               ),
             ],

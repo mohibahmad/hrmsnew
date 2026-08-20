@@ -128,9 +128,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   int _absentCount = 0;
   int _leaveCount = 0;
 
-  StreamSubscription? _workersSub;
-  StreamSubscription? _timeOffSub;
-  StreamSubscription? _attendanceSub;
+  ProviderSubscription<AsyncValue<FirestoreRecords>>? _attendanceSub;
   Timer? _searchDebounce;
 
   List<Map<String, dynamic>>? _cachedFiltered;
@@ -196,9 +194,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   @override
   void dispose() {
     _removeShareDropdownOverlay();
-    _workersSub?.cancel();
-    _timeOffSub?.cancel();
-    _attendanceSub?.cancel();
+    _attendanceSub?.close();
     _searchDebounce?.cancel();
     _searchController.dispose();
     _attendancePreviewNotifier?.dispose();
@@ -216,39 +212,37 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   void _loadFirestoreData() {
-    _workersSub = _firestore.workersStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      workersProvider,
+      (records) {
         if (!mounted) return;
         setState(() {
-          _workersList = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
+          _workersList = records;
           _workersLoaded = true;
           _combineAttendance();
         });
         _loadAttendanceForTimeframe();
       },
-      onError: (_) {
-        if (mounted)
+      onError: (error, stackTrace) {
+        if (mounted) {
           setState(() {
             _workersLoaded = true;
             _isLoading = false;
           });
+        }
       },
     );
 
     _loadAttendanceForTimeframe();
 
-    _timeOffSub = _firestore.timeoffStream.listen((snapshot) {
+    ref.listenAsync(timeOffProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _timeOffRecords = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
+        _timeOffRecords = records;
         _combineAttendance();
       });
       _refreshAttendancePreview();
-    }, onError: (_) {});
+    });
   }
 
   void _combineAttendance() {
@@ -348,51 +342,52 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   void _subscribeAttendanceStream(DateTime start, DateTime end, int requestId) {
-    _attendanceSub?.cancel();
-    _attendanceSub = _firestore
-        .attendanceStreamForPeriod(start: start, end: end)
-        .listen(
-          (snapshot) {
-            if (!mounted || requestId != _attendanceRequestId) return;
-            setState(() {
-              _rawAttendanceDocs = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              _attendanceLoaded = true;
-              _streamSnapshotDelivered = true;
-              _combineAttendance();
-            });
-            _refreshAttendancePreview();
-          },
-          onError: (e) {
-            ErrorReporter.report(
-              e,
-              StackTrace.current,
-              context: 'attendanceScreenStream',
-            );
-            if (!mounted || requestId != _attendanceRequestId) return;
-            _streamSnapshotDelivered = false;
-            _firestore
-                .getAttendanceForPeriod(start, end)
-                .then((snapshot) {
-                  if (!mounted || requestId != _attendanceRequestId) return;
-                  setState(() {
-                    _rawAttendanceDocs = snapshot.docs
-                        .map(
-                          (d) => {
-                            ...d.data() as Map<String, dynamic>,
-                            'id': d.id,
-                          },
-                        )
-                        .toList();
-                    _attendanceLoaded = true;
-                    _combineAttendance();
-                  });
-                  _refreshAttendancePreview();
-                })
-                .catchError((_) {});
-          },
-        );
+    _attendanceSub?.close();
+    _attendanceSub = ref.listenManual(
+      attendanceForPeriodProvider((start: start, end: end)),
+      (previous, next) => next.when(
+        data: (records) {
+          if (!mounted || requestId != _attendanceRequestId) return;
+          setState(() {
+            _rawAttendanceDocs = records;
+            _attendanceLoaded = true;
+            _streamSnapshotDelivered = true;
+            _combineAttendance();
+          });
+          _refreshAttendancePreview();
+        },
+        error: (e, stackTrace) {
+          ErrorReporter.report(
+            e,
+            stackTrace,
+            context: 'attendanceScreenStream',
+          );
+          if (!mounted || requestId != _attendanceRequestId) return;
+          _streamSnapshotDelivered = false;
+          _firestore
+              .getAttendanceForPeriod(start, end)
+              .then((snapshot) {
+                if (!mounted || requestId != _attendanceRequestId) return;
+                setState(() {
+                  _rawAttendanceDocs = snapshot.docs
+                      .map(
+                        (d) => {
+                          ...d.data() as Map<String, dynamic>,
+                          'id': d.id,
+                        },
+                      )
+                      .toList();
+                  _attendanceLoaded = true;
+                  _combineAttendance();
+                });
+                _refreshAttendancePreview();
+              })
+              .catchError((_) {});
+        },
+        loading: () {},
+      ),
+      fireImmediately: true,
+    );
   }
 
   void _fetchAttendanceFallback(
@@ -406,8 +401,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         .then((snapshot) {
           if (!mounted ||
               requestId != _attendanceRequestId ||
-              requestedPeriod != _selectedTimeframe)
+              requestedPeriod != _selectedTimeframe) {
             return;
+          }
           if (_streamSnapshotDelivered) return;
           setState(() {
             _rawAttendanceDocs = snapshot.docs
@@ -421,13 +417,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         .catchError((_) {
           if (!mounted ||
               requestId != _attendanceRequestId ||
-              requestedPeriod != _selectedTimeframe)
+              requestedPeriod != _selectedTimeframe) {
             return;
-          if (mounted)
+          }
+          if (mounted) {
             setState(() {
               _attendanceLoaded = true;
               _isLoading = false;
             });
+          }
         });
   }
 
@@ -445,8 +443,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   List<Map<String, dynamic>> get _filteredRecords {
     final key =
         '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
-    if (_cachedFiltered != null && _filterCacheKey == key)
+    if (_cachedFiltered != null && _filterCacheKey == key) {
       return _cachedFiltered!;
+    }
 
     _filterCacheKey = key;
     final query = _searchQuery.toLowerCase();
@@ -512,8 +511,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   void _dismissShareDropdown() {
     _removeShareDropdownOverlay();
-    if (mounted && _isShareDropdownOpen)
+    if (mounted && _isShareDropdownOpen) {
       setState(() => _isShareDropdownOpen = false);
+    }
   }
 
   void _showShareDropdown() {
@@ -525,8 +525,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     if (buttonRender is! RenderBox ||
         !buttonRender.attached ||
-        overlayState == null)
+        overlayState == null) {
       return;
+    }
 
     final size = buttonRender.size;
 
@@ -690,7 +691,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
-      barrierColor: _kPrimaryBlue.withOpacity(0.5),
+      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -1120,7 +1121,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     showDialog(
       context: context,
-      barrierColor: _kPrimaryBlue.withOpacity(0.5),
+      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         backgroundColor: Colors.transparent,
@@ -1362,10 +1363,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     VoidCallback? onTap,
     DateTime? date,
   ) {
-    if (day.isEmpty)
+    if (day.isEmpty) {
       return const Expanded(
         child: AspectRatio(aspectRatio: 1, child: SizedBox()),
       );
+    }
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -1761,7 +1763,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withOpacity(0.02),
+            color: const Color(0xFF000000).withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1832,7 +1834,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   width: 1,
                   height: 16,
                   margin: const EdgeInsets.symmetric(horizontal: 8),
-                  color: const Color(0xFFE5E7EB).withOpacity(0.5),
+                  color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
                 ),
             ],
           ],
@@ -2188,7 +2190,7 @@ class _WorkerAttendancePreviewCardState
           color: const Color(0xFFFFFFFF),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF000000).withOpacity(0.2),
+              color: const Color(0xFF000000).withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -2388,7 +2390,9 @@ class _WorkerAttendancePreviewCardState
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFF000000).withOpacity(0.05)),
+        border: Border.all(
+          color: const Color(0xFF000000).withValues(alpha: 0.05),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

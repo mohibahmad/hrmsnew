@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../custom_timeframe_dropdown.dart';
 import '../../utils/ui_helpers.dart';
+import '../../utils/app_colors.dart';
 import '../../utils/helpers.dart';
 
 const _knownTypeColors = <String, Color>{
@@ -90,7 +91,7 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: const Color(0xFFFFFFFF),
+      color: AppColors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -176,7 +177,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                         width: 50,
                         colorMapper: const SvgFillColorMapper(
                           source: Color(0xFFFF7B00),
-                          replacement: Color(0xFF9CA3AF),
+                          replacement: AppColors.textMuted,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -184,7 +185,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                         'no_leave_data_yet'.tr(),
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF9CA3AF),
+                          color: AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -251,7 +252,7 @@ class LeaveTypesPieChart extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF000000),
+              color: AppColors.black,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -323,7 +324,7 @@ class _DynamicCalloutPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = const Color(0xFF000000)
+      ..color = AppColors.black
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

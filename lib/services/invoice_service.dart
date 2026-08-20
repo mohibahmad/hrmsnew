@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import '../utils/helpers.dart';
 
 import 'package:file_picker/file_picker.dart';
@@ -141,8 +140,10 @@ class InvoiceService {
   static pw.Font? _cachedThemeFont;
   static pw.ThemeData? _cachedTheme;
   static Uint8List? _cachedLogoBytes;
+  static String? _cachedLogoUrl;
   static pw.MemoryImage? _cachedLogoImage;
   static Uint8List? _cachedStampBytes;
+  static String? _cachedStampUrl;
   static pw.MemoryImage? _cachedStampImage;
 
   static Future<pw.Font?> _loadFont(Uint8List? fontBytes) async {
@@ -170,16 +171,20 @@ class InvoiceService {
 
   static Future<pw.MemoryImage?> _loadLogo(Uint8List? companyLogoBytes, String? companyLogoUrl) async {
     try {
+      if (_cachedLogoImage != null) {
+        if (companyLogoBytes != null && identical(companyLogoBytes, _cachedLogoBytes)) {
+          return _cachedLogoImage;
+        }
+        if (companyLogoBytes == null && companyLogoUrl == _cachedLogoUrl) {
+          return _cachedLogoImage;
+        }
+      }
       final bytes = companyLogoBytes ?? await resolveCompanyLogoBytes(companyLogoUrl);
       if (bytes == null || bytes.isEmpty) return null;
-      if (identical(bytes, _cachedLogoBytes) && _cachedLogoImage != null) {
-        return _cachedLogoImage;
-      }
       final image = pw.MemoryImage(bytes);
-      if (companyLogoBytes != null) {
-        _cachedLogoBytes = bytes;
-        _cachedLogoImage = image;
-      }
+      _cachedLogoBytes = companyLogoBytes;
+      _cachedLogoUrl = companyLogoUrl;
+      _cachedLogoImage = image;
       return image;
     } catch (_) {
       return null;
@@ -187,17 +192,25 @@ class InvoiceService {
   }
 
   static Future<pw.MemoryImage?> _loadStamp(Uint8List? companyStampBytes, String? companyStampImageUrl) async {
-    final bytes = companyStampBytes ?? await resolveCompanyStampBytes(companyStampImageUrl);
-    if (bytes == null || bytes.isEmpty) return null;
-    if (identical(bytes, _cachedStampBytes) && _cachedStampImage != null) {
-      return _cachedStampImage;
-    }
-    final image = pw.MemoryImage(bytes);
-    if (companyStampBytes != null) {
-      _cachedStampBytes = bytes;
+    try {
+      if (_cachedStampImage != null) {
+        if (companyStampBytes != null && identical(companyStampBytes, _cachedStampBytes)) {
+          return _cachedStampImage;
+        }
+        if (companyStampBytes == null && companyStampImageUrl == _cachedStampUrl) {
+          return _cachedStampImage;
+        }
+      }
+      final bytes = companyStampBytes ?? await resolveCompanyStampBytes(companyStampImageUrl);
+      if (bytes == null || bytes.isEmpty) return null;
+      final image = pw.MemoryImage(bytes);
+      _cachedStampBytes = companyStampBytes;
+      _cachedStampUrl = companyStampImageUrl;
       _cachedStampImage = image;
+      return image;
+    } catch (_) {
+      return null;
     }
-    return image;
   }
 
   static List<pw.Widget> _buildContent({
@@ -429,7 +442,7 @@ class InvoiceService {
                 width: double.infinity,
                 color: PdfColorPalette.navy,
                 padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                child: pw.Text(PdfHelpers.translate('payroll_information', 'Payroll Information'), style: pw.TextStyle(fontSize: 8, color: PdfColors.white)),
+                child: pw.Text(PdfHelpers.translate('payroll_information', 'Payroll Information'), style: const pw.TextStyle(fontSize: 8, color: PdfColors.white)),
               ),
               pw.SizedBox(height: 8),
               _smallInfoLine(PdfHelpers.translate('payment_method', 'Payment Method'), paymentMethod, PdfColorPalette.textColor),
@@ -459,7 +472,7 @@ class InvoiceService {
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(PdfHelpers.translate('net_salary', 'Net Salary'), style: pw.TextStyle(fontSize: 10, color: PdfColors.white)),
+                    pw.Text(PdfHelpers.translate('net_salary', 'Net Salary'), style: const pw.TextStyle(fontSize: 10, color: PdfColors.white)),
                     pw.Text(
                       isNegativeNet ? _money('0', defaultCurrency: detectedCurrency) : _money(netSalary, defaultCurrency: detectedCurrency),
                       style: pw.TextStyle(fontSize: 10, color: PdfColors.white, fontWeight: pw.FontWeight.bold),

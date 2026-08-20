@@ -25,7 +25,7 @@ BarTouchTooltipData buildAttendanceBarTooltipData(NumberFormat numberFmt) {
     getTooltipItem: (group, groupIndex, rod, rodIndex) {
       final isPresent = rod.color == _presentColor;
       return BarTooltipItem(
-        '${isPresent ? 'Present' : 'Absent'}: ${numberFmt.format(rod.toY)}',
+        '${isPresent ? 'present'.tr() : 'absent'.tr()}: ${numberFmt.format(rod.toY)}',
         const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -98,9 +98,9 @@ class AttendanceLineChart extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildLegendItem(_presentColor, 'Present'),
+                        _buildLegendItem(_presentColor, 'present'.tr()),
                         const SizedBox(width: 24),
-                        _buildLegendItem(_absentColor, 'Absent'),
+                        _buildLegendItem(_absentColor, 'absent'.tr()),
                       ],
                     ),
                   ),
@@ -275,13 +275,13 @@ class AttendanceLineChart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.bar_chart, size: 50, color: Color(0xFF9CA3AF)),
+            const Icon(Icons.bar_chart, size: 50, color: AppColors.textMuted),
             const SizedBox(height: 12),
             Text(
               'no_attendance_data_yet'.tr(),
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF9CA3AF),
+                color: AppColors.textMuted,
               ),
             ),
           ],

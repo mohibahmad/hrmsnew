@@ -114,17 +114,9 @@ class AttendanceReportService {
     return '\t${date.day.toString().padLeft(2, '0')}-${months[date.month - 1]}-${date.year}';
   }
 
-  static DateTime? _getRevisionDate(Map<String, dynamic> record) {
-    for (final key in ['updatedAt', 'createdAt']) {
-      final date = recordDate(record[key]);
-      if (date != null) return date;
-    }
-    return null;
-  }
-
   static bool _isNewer(Map<String, dynamic> existing, Map<String, dynamic> candidate) {
-    final existingDate = _getRevisionDate(existing);
-    final candidateDate = _getRevisionDate(candidate);
+    final existingDate = AppDateUtils.recordRevisionDate(existing);
+    final candidateDate = AppDateUtils.recordRevisionDate(candidate);
 
     if (candidateDate != null && existingDate == null) return true;
     if (candidateDate == null && existingDate != null) return false;

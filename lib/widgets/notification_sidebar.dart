@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../riverpod_providers.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../utils/app_colors.dart';
 import '../services/dummy_data.dart';
 import '../utils/ui_helpers.dart';
 
@@ -30,11 +31,12 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  StreamSubscription? _notifSub;
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
   late AuthService _authService;
   late FirestoreService _firestore;
+
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
   @override
   void initState() {
@@ -55,8 +57,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuest) {
       _notifications = List<Map<String, dynamic>>.from(
         DummyData.notifications.where((n) => n['isRead'] != true),
       );
@@ -74,19 +75,16 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       }
       _isLoading = false;
     } else {
-      _notifSub = _firestore.notificationsStream.listen(
-        (snap) {
-          if (mounted) {
-            setState(() {
-              _notifications = snap.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .where((n) => n['isRead'] != true)
-                  .toList();
-              _isLoading = false;
-            });
-          }
+      ref.listenAsync(
+        notificationsProvider,
+        (records) {
+          if (!mounted) return;
+          setState(() {
+            _notifications = records.where((n) => n['isRead'] != true).toList();
+            _isLoading = false;
+          });
         },
-        onError: (_) {
+        onError: (error, stackTrace) {
           if (mounted) setState(() => _isLoading = false);
         },
       );
@@ -95,15 +93,13 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
 
   @override
   void dispose() {
-    _notifSub?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _removeNotification(String notificationId) async {
     if (notificationId.trim().isEmpty) return;
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuest) {
       DummyData.notifications.removeWhere(
         (notification) => notification['id']?.toString() == notificationId,
       );
@@ -120,14 +116,14 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
 
   Future<void> _markAsReadNotification(String notificationId) async {
     if (notificationId.trim().isEmpty) return;
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuest) {
       final idx = DummyData.notifications.indexWhere(
         (n) => n['id']?.toString() == notificationId,
       );
       if (idx != -1) {
         DummyData.notifications[idx]['isRead'] = true;
-        DummyData.notifications[idx]['readAt'] = DateTime.now().toIso8601String();
+        DummyData.notifications[idx]['readAt'] = DateTime.now()
+            .toIso8601String();
         await DummyData.saveToPrefs();
       }
     } else {
@@ -327,7 +323,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       case 'payroll_due':
         return _NotifStyle(
           icon: Icons.info_rounded,
-          color: const Color(0xFFEF4444),
+          color: AppColors.dangerRed,
           bgColor: const Color(0xFFFFECEC),
           label: 'notif_info'.tr(),
         );
@@ -350,7 +346,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       case 'expense_added':
         return _NotifStyle(
           icon: Icons.receipt_rounded,
-          color: const Color(0xFFEF4444),
+          color: AppColors.dangerRed,
           bgColor: const Color(0xFFFFECEC),
           label: 'notif_expense'.tr(),
           iconAsset: 'assets/expenses_icon_slidebar.svg',
@@ -358,7 +354,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       default:
         return _NotifStyle(
           icon: Icons.info_rounded,
-          color: const Color(0xFF9CA3AF),
+          color: AppColors.textMuted,
           bgColor: const Color(0xFFF3F4F6),
           label: 'notif_info'.tr(),
         );
@@ -384,12 +380,12 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? const Color(0xFF1A1A1A)
-                      : const Color(0xFFFFFFFF),
+                      : AppColors.white,
                   border: Border(
                     left: BorderSide(
                       color: Theme.of(context).brightness == Brightness.dark
                           ? Colors.grey[800]!
-                          : const Color(0xFFE5E7EB),
+                          : AppColors.borderSubtle,
                       width: 1,
                     ),
                   ),
@@ -422,10 +418,10 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFFFFFFF),
+        color: isDark ? const Color(0xFF1A1A1A) : AppColors.white,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.grey[800]! : const Color(0xFFEEEEEE),
+            color: isDark ? Colors.grey[800]! : AppColors.borderLight,
           ),
         ),
       ),
@@ -439,7 +435,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xFF000000),
+                  color: isDark ? Colors.white : AppColors.black,
                 ),
               ),
               if (_notifications.isNotEmpty) ...[
@@ -450,7 +446,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
+                    color: AppColors.primaryBlue,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -458,7 +454,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFFFFF),
+                      color: AppColors.white,
                     ),
                   ),
                 ),
@@ -479,9 +475,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                         confirmButtonText: 'clear_all',
                       );
                       if (confirmed) {
-                        final isGuest =
-                            _authService.currentUser?.isAnonymous ?? false;
-                        if (!isGuest) {
+                        if (!_isGuest) {
                           await _firestore.clearAllNotifications();
                         } else {
                           DummyData.notifications.clear();
@@ -500,10 +494,10 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0247C4).withOpacity(0.1),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFF0247C4).withOpacity(0.3),
+                          color: AppColors.primaryBlue.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -513,7 +507,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                           const Icon(
                             Icons.clear_all,
                             size: 16,
-                            color: Color(0xFF0247C4),
+                            color: AppColors.primaryBlue,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -521,7 +515,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF0247C4),
+                              color: AppColors.primaryBlue,
                             ),
                           ),
                         ],
@@ -547,7 +541,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
             width: 50,
             height: 50,
             colorFilter: ColorFilter.mode(
-              isDark ? Colors.grey[600]! : const Color(0xFF9CA3AF),
+              isDark ? Colors.grey[600]! : AppColors.textMuted,
               BlendMode.srcIn,
             ),
           ),
@@ -557,7 +551,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.grey[600] : const Color(0xFF9CA3AF),
+              color: isDark ? Colors.grey[600] : AppColors.textMuted,
             ),
           ),
         ],
@@ -622,14 +616,14 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
+            colors: [Color(0xFF4C84E0), AppColors.primaryBlue],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4C84E0).withOpacity(0.3),
+              color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -644,7 +638,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -656,7 +650,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
+                  color: Colors.white.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -688,7 +682,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -696,7 +690,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFFFFF),
+                                  color: AppColors.white,
                                 ),
                               ),
                             ),
@@ -720,7 +714,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFFFFF),
+                      color: AppColors.white,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -731,7 +725,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -743,7 +737,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                         timeAgo,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -759,7 +753,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -874,7 +868,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                                 fontSize: 11,
                                 color: isDark
                                     ? Colors.grey[600]
-                                    : const Color(0xFF9CA3AF),
+                                    : AppColors.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -896,9 +890,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF111827),
+                            color: isDark ? Colors.white : AppColors.textDark,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -911,7 +903,7 @@ class _NotificationSidebarState extends ConsumerState<NotificationSidebar>
                             fontWeight: FontWeight.w400,
                             color: isDark
                                 ? Colors.grey[400]
-                                : const Color(0xFF6B7280),
+                                : AppColors.textDarkGrey,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

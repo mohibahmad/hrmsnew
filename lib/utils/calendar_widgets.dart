@@ -215,7 +215,7 @@ class ModalCalendar extends StatelessWidget {
 
     final weekdays = Row(
       children: [
-        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: Color(0xFFFF1014), borderRadius: weekdayBorderRadius),
+        WeekdayHeaderChip(label: 'weekday_sun'.tr(), color: const Color(0xFFFF1014), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),
         WeekdayHeaderChip(label: 'weekday_mon'.tr(), color: const Color(0xFF0247C4), borderRadius: weekdayBorderRadius),
         SizedBox(width: spacing),

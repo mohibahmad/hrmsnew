@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
@@ -100,8 +101,12 @@ class DialogController {
   }) {
     if (_closed || _userDismissed) return;
     final isCompletion = progress >= 1.0;
-    if (progress < _progress && !forceLabel && !isCompletion) return;
-    _progress = progress.clamp(0.0, 1.0);
+    final requestedProgress = progress.clamp(0.0, 1.0);
+    // Parallel payroll stages may finish out of order. Keep the visible bar
+    // strictly monotonic while still allowing their forced labels to update.
+    if (requestedProgress > _progress || isCompletion) {
+      _progress = requestedProgress;
+    }
     if (label != _label) {
       final elapsed = DateTime.now().difference(_lastLabelChangeAt);
       if (isCompletion || forceLabel || elapsed >= minLabelDwell) {
@@ -239,9 +244,12 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
     if (bytes != null && bytes.isNotEmpty && rSource.isNotEmpty) {
       final uri = Uri.tryParse(rSource);
       if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-        DefaultCacheManager()
-            .putFile(rSource, bytes)
-            .catchError((_) => File(''));
+        unawaited(
+          DefaultCacheManager()
+              .putFile(rSource, bytes)
+              .then<void>((_) {})
+              .catchError((_) {}),
+        );
       }
     }
     return bytes;
@@ -321,6 +329,7 @@ void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
           ...file,
           'bytes': TransferableTypedData.fromList(<Uint8List>[pdfBytes]),
         });
+        replyPort.send(const <String, Object?>{'progress': 1});
       }
       replyPort.send(<String, Object?>{'files': files});
     } catch (error) {
@@ -357,6 +366,7 @@ class _PayrollInvoiceIsolateWorker {
 
   Future<List<Map<String, Object>>> generateBatch(
     List<Map<String, Object?>> workerArgs,
+    void Function(int completed) onProgress,
   ) async {
     if (_closed || workerArgs.isEmpty) return const <Map<String, Object>>[];
     final responsePort = ReceivePort();
@@ -367,24 +377,30 @@ class _PayrollInvoiceIsolateWorker {
         'replyPort': responsePort.sendPort,
         'args': workerArgs,
       });
-      final rawResponse = await responsePort.first;
-      if (rawResponse is! Map) return const <Map<String, Object>>[];
-      final response = Map<String, Object?>.from(rawResponse);
-      final rawFiles = response['files'];
-      if (rawFiles is List) {
-        final files = <Map<String, Object>>[];
-        for (final rawFile in rawFiles) {
-          final file = Map<String, Object>.from(rawFile as Map);
-          final transferredBytes = file['bytes'];
-          if (transferredBytes is TransferableTypedData) {
-            file['bytes'] = transferredBytes.materialize().asUint8List();
-          }
-          files.add(file);
+      await for (final rawResponse in responsePort) {
+        if (rawResponse is! Map) continue;
+        final response = Map<String, Object?>.from(rawResponse);
+        final progress = response['progress'];
+        if (progress is int && progress > 0) {
+          onProgress(progress);
+          continue;
         }
-        return files;
+        final rawFiles = response['files'];
+        if (rawFiles is List) {
+          final files = <Map<String, Object>>[];
+          for (final rawFile in rawFiles) {
+            final file = Map<String, Object>.from(rawFile as Map);
+            final transferredBytes = file['bytes'];
+            if (transferredBytes is TransferableTypedData) {
+              file['bytes'] = transferredBytes.materialize().asUint8List();
+            }
+            files.add(file);
+          }
+          return files;
+        }
+        final error = (response['error'] ?? '').toString();
+        if (error.isNotEmpty) throw StateError(error);
       }
-      final error = (response['error'] ?? '').toString();
-      if (error.isNotEmpty) throw StateError(error);
       return const <Map<String, Object>>[];
     } finally {
       _pendingResponses.remove(responsePort);
@@ -926,7 +942,12 @@ class PayrollRunner {
           ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75, force: true)
           : null;
       final stampBytes = rawStamp != null && rawStamp.isNotEmpty
-          ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75, force: true)
+          ? compressImageBytes(
+              rawStamp,
+              maxWidth: 256,
+              quality: 75,
+              force: true,
+            )
           : null;
 
       return {
@@ -1149,8 +1170,9 @@ class PayrollRunner {
     final byWorkerId = <String, Map<String, dynamic>>{};
     final byEmail = <String, Map<String, dynamic>>{};
     for (final record in existingPayroll) {
-      if (!PayrollService.isRecordInMonth(record, effectivePayrollMonth))
+      if (!PayrollService.isRecordInMonth(record, effectivePayrollMonth)) {
         continue;
+      }
       final rWorkerId = (record['workerId'] ?? '').toString().trim();
       final rEmail = (record['email'] ?? record['workerEmail'] ?? '')
           .toString()
@@ -1317,8 +1339,9 @@ class PayrollRunner {
 
       Map<String, dynamic>? prevRecord;
       if (workerId.isNotEmpty) prevRecord = prevPayrollByWorkerId[workerId];
-      if (prevRecord == null && email.isNotEmpty)
+      if (prevRecord == null && email.isNotEmpty) {
         prevRecord = prevPayrollByEmail[email.toLowerCase()];
+      }
 
       final workerOvertime = (worker['overtimeAmount'] ?? '').toString().trim();
       final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
@@ -1586,8 +1609,9 @@ class PayrollRunner {
       );
       if (selectedResults == null) return null;
 
-      // Allow dialog close transition to finish smoothly before triggering CPU-heavy processing
-      await Future.delayed(const Duration(milliseconds: 300));
+      // One frame is enough for the dialog route to begin closing. The heavy
+      // PDF work remains isolated from the UI thread below.
+      await WidgetsBinding.instance.endOfFrame;
 
       committedSummary = PayrollRunSummary(
         runDate: summary.runDate,
@@ -1602,17 +1626,58 @@ class PayrollRunner {
     if (!context.mounted) return null;
     final controller = await _showProgressDialog(context);
 
-    await Future.delayed(const Duration(milliseconds: 80));
+    await WidgetsBinding.instance.endOfFrame;
 
     try {
       controller.update(progress: 0.05, label: 'generating_invoices'.tr());
-      final preloadedAssets = preloadedAssetsFuture == null
-          ? null
-          : await preloadedAssetsFuture;
-
       final paidResults = committedSummary.successCount >= 1
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
+
+      // Render PDFs while Firestore validates and commits the payroll batch.
+      // Saving/opening the ZIP remains gated by a successful commit, so this
+      // only removes idle waiting and does not change transaction semantics.
+      final zipSavePermission = Completer<bool>();
+
+      Future<void> prepareInvoices() async {
+        final preloadedAssets = preloadedAssetsFuture == null
+            ? null
+            : await preloadedAssetsFuture;
+        await _generateAndSaveZipSafe(
+          context,
+          paidResults,
+          committedSummary.periodLabel,
+          companyProfile,
+          controller,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          preloadedAssets: preloadedAssets,
+          savePermission: zipSavePermission.future,
+        );
+      }
+
+      final invoiceFuture = paidResults.isEmpty
+          ? Future<void>.value()
+          : prepareInvoices();
+
+      try {
+        await _commitPayrollRun(
+          committedSummary,
+          isGuest,
+          context,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          controller: controller,
+        );
+        zipSavePermission.complete(true);
+        await invoiceFuture;
+      } catch (_) {
+        if (!zipSavePermission.isCompleted) {
+          zipSavePermission.complete(false);
+        }
+        await invoiceFuture;
+        rethrow;
+      }
 
       unawaited(
         _sendNotificationsInBackground(
@@ -1624,28 +1689,6 @@ class PayrollRunner {
         ),
       );
 
-      await _commitPayrollRun(
-        committedSummary,
-        isGuest,
-        context,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-        controller: controller,
-      );
-
-      if (paidResults.isNotEmpty) {
-        await _generateAndSaveZipSafe(
-          context,
-          paidResults,
-          committedSummary.periodLabel,
-          companyProfile,
-          controller,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-          preloadedAssets: preloadedAssets,
-        );
-      }
-
       controller.update(
         progress: 1.0,
         label: 'payroll_completed'.tr(),
@@ -1653,8 +1696,9 @@ class PayrollRunner {
       );
       await Future.delayed(const Duration(milliseconds: 200));
     } catch (error, stackTrace) {
-      if (!isGuest)
+      if (!isGuest) {
         ErrorReporter.report(error, stackTrace, context: 'PayrollRunnerCommit');
+      }
       if (context.mounted) {
         controller.reset(
           progress: 0,
@@ -1762,44 +1806,6 @@ class PayrollRunner {
     return result;
   }
 
-  bool _isPaidPayrollForWorker({
-    required Map<String, dynamic> record,
-    required Map<String, dynamic> worker,
-    required DateTime month,
-    DateTime? periodStart,
-    DateTime? periodEnd,
-  }) {
-    final status = (record['status'] ?? '').toString().trim().toLowerCase();
-    if (status != 'paid') return false;
-    if (periodStart != null && periodEnd != null) {
-      if (!PayrollService.isRecordInPayPeriod(record, periodStart, periodEnd)) {
-        return false;
-      }
-    } else if (!PayrollService.isRecordInMonth(record, month)) {
-      return false;
-    }
-
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-    final recordEmail = (record['email'] ?? record['workerEmail'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
-
-    final idMatches =
-        workerId.isNotEmpty &&
-        recordWorkerId.isNotEmpty &&
-        recordWorkerId == workerId;
-    final emailMatches =
-        workerEmail.isNotEmpty &&
-        recordEmail.isNotEmpty &&
-        workerEmail == recordEmail;
-    return idMatches || emailMatches;
-  }
-
   Future<int> _commitPayrollRun(
     PayrollRunSummary summary,
     bool isGuest,
@@ -1812,32 +1818,44 @@ class PayrollRunner {
       return await _commitGuestPayroll(summary, periodStart, periodEnd);
     }
 
-    controller?.update(progress: 0.10, label: 'generating_invoices'.tr());
+    controller?.update(progress: 0.06, label: 'generating_invoices'.tr());
 
     final firestoreService = ProviderScope.containerOf(
       context,
       listen: false,
     ).read(firestoreServiceProvider);
     final successfulResults = summary.results.where((r) => r.success).toList();
-    final payPeriodDate = periodEnd;
-    final latestPayrollSnapshot = await firestoreService.getPayrollOnce();
-    final latestPayrollRecords = latestPayrollSnapshot.docs
-        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
-        .toList();
+    final payrollKeyByResult = Map<AutoPayrollResult, String>.identity();
+    for (final result in successfulResults) {
+      final payrollIdentity = result.workerId.isNotEmpty
+          ? result.workerId
+          : result.email.trim().toLowerCase();
+      if (payrollIdentity.isEmpty) continue;
+      payrollKeyByResult[result] = PayrollService.payrollKeyForPeriod(
+        payrollIdentity,
+        periodStart,
+        periodEnd,
+      );
+    }
+    final latestPayrollRecords = await firestoreService.getPayrollRecordsByKeys(
+      payrollKeyByResult.values,
+    );
+    final paidPayrollKeys = latestPayrollRecords
+        .where(
+          (record) =>
+              (record['status'] ?? '').toString().trim().toLowerCase() ==
+              'paid',
+        )
+        .map((record) => (record['payrollKey'] ?? '').toString().trim())
+        .where((key) => key.isNotEmpty)
+        .toSet();
 
-    controller?.update(progress: 0.18, label: 'generating_invoices'.tr());
+    controller?.update(progress: 0.07, label: 'generating_invoices'.tr());
 
     final unpaidResults = successfulResults.where((result) {
-      final isAlreadyPaid = latestPayrollRecords.any(
-        (record) => _isPaidPayrollForWorker(
-          record: record,
-          worker: {'id': result.workerId, 'email': result.email},
-          month: payPeriodDate,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-        ),
-      );
-      return !isAlreadyPaid;
+      final expectedPayrollKey = payrollKeyByResult[result];
+      return expectedPayrollKey == null ||
+          !paidPayrollKeys.contains(expectedPayrollKey);
     }).toList();
 
     if (unpaidResults.isEmpty) {
@@ -1856,11 +1874,13 @@ class PayrollRunner {
           ? r.workerId
           : r.email.trim().toLowerCase();
       if (payrollIdentity.isEmpty) continue;
-      final payrollKey = PayrollService.payrollKeyForPeriod(
-        payrollIdentity,
-        periodStart,
-        periodEnd,
-      );
+      final payrollKey =
+          payrollKeyByResult[r] ??
+          PayrollService.payrollKeyForPeriod(
+            payrollIdentity,
+            periodStart,
+            periodEnd,
+          );
       final record = r.toCanonicalPayrollRecord(
         payrollKey: payrollKey,
         periodStart: periodStart,
@@ -1895,7 +1915,7 @@ class PayrollRunner {
     if (payrollRecords.isEmpty) return 0;
 
     controller?.update(
-      progress: 0.28,
+      progress: 0.08,
       label: 'saving_payroll_records'.tr(
         namedArgs: {'saved': '0', 'total': '${payrollRecords.length}'},
       ),
@@ -1912,7 +1932,7 @@ class PayrollRunner {
     }
 
     controller?.update(
-      progress: 0.40,
+      progress: 0.09,
       label: 'saving_payroll_records'.tr(
         namedArgs: {
           'saved': '$payrollCount',
@@ -1922,7 +1942,7 @@ class PayrollRunner {
       forceLabel: true,
     );
     controller?.update(
-      progress: 0.48,
+      progress: 0.10,
       label: 'saving_payroll_records'.tr(
         namedArgs: {
           'saved': '$payrollCount',
@@ -2054,6 +2074,7 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
+    Future<bool>? savePermission,
   }) async {
     try {
       await _generateAndSaveZipWithProgress(
@@ -2065,6 +2086,7 @@ class PayrollRunner {
         periodStart: periodStart,
         periodEnd: periodEnd,
         preloadedAssets: preloadedAssets,
+        savePermission: savePermission,
       );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceZip');
@@ -2087,6 +2109,7 @@ class PayrollRunner {
     required DateTime periodStart,
     required DateTime periodEnd,
     Map<String, dynamic>? preloadedAssets,
+    Future<bool>? savePermission,
   }) async {
     if (selected.isEmpty) return;
 
@@ -2168,16 +2191,26 @@ class PayrollRunner {
         final rawLogo = allAssets[0] as Uint8List?;
         final rawStamp = allAssets[1] as Uint8List?;
         companyLogoBytes = rawLogo != null && rawLogo.isNotEmpty
-            ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75, force: true)
+            ? compressImageBytes(
+                rawLogo,
+                maxWidth: 256,
+                quality: 75,
+                force: true,
+              )
             : null;
         companyStampBytes = rawStamp != null && rawStamp.isNotEmpty
-            ? compressImageBytes(rawStamp, maxWidth: 256, quality: 75, force: true)
+            ? compressImageBytes(
+                rawStamp,
+                maxWidth: 256,
+                quality: 75,
+                force: true,
+              )
             : null;
         fontBytes = allAssets[2] as Uint8List?;
         translations = allAssets[3] as Map<String, dynamic>;
       }
 
-      controller.update(progress: 0.35, label: 'generating_invoices'.tr());
+      controller.update(progress: 0.07, label: 'generating_invoices'.tr());
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         resolvedProfile['companyName'] ??
@@ -2207,17 +2240,16 @@ class PayrollRunner {
       if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
 
-      controller.update(progress: 0.40, label: 'generating_invoices'.tr());
+      controller.update(progress: 0.08, label: 'generating_invoices'.tr());
 
       controller.update(
-        progress: 0.55,
+        progress: 0.09,
         label: 'generating_invoices'.tr(),
         forceLabel: true,
       );
 
-      // Each isolate pulls the next individual PDF from a shared queue. The
-      // large font/logo/stamp payload is initialized once per persistent
-      // isolate, while fixed worker chunks and their long-tail stalls are gone.
+      // Initialize shared font/logo/stamp assets once per persistent isolate.
+      // One request per isolate avoids per-invoice isolate messaging overhead.
       final maxParallel = Platform.numberOfProcessors.clamp(4, 16).toInt();
       final poolSize = successful.length < maxParallel
           ? successful.length
@@ -2266,7 +2298,7 @@ class PayrollRunner {
         });
       }
       controller.update(
-        progress: 0.60,
+        progress: 0.10,
         label: 'generating_invoices_progress'.tr(
           namedArgs: {'done': '0', 'total': '${successful.length}'},
         ),
@@ -2304,10 +2336,11 @@ class PayrollRunner {
       var pdfDone = 0;
       Object? firstPdfError;
       StackTrace? firstPdfStack;
+      const progressBatchSize = 4;
 
       void reportPdfProgress() {
         controller.update(
-          progress: 0.60 + (0.28 * pdfDone / successful.length),
+          progress: 0.10 + (0.80 * pdfDone / successful.length),
           label: 'generating_invoices_progress'.tr(
             namedArgs: {'done': '$pdfDone', 'total': '${successful.length}'},
           ),
@@ -2324,16 +2357,21 @@ class PayrollRunner {
       }
 
       Future<void> generateBatch(int workerIndex) async {
-        final batch = workerBatches[workerIndex];
         try {
-          final files = await pool[workerIndex].generateBatch(batch);
+          final files = await pool[workerIndex].generateBatch(
+            workerBatches[workerIndex],
+            (completed) {
+              pdfDone += completed;
+              if (pdfDone == successful.length ||
+                  pdfDone % progressBatchSize == 0) {
+                reportPdfProgress();
+              }
+            },
+          );
           invoiceFiles.addAll(files);
         } catch (error, stackTrace) {
           firstPdfError ??= error;
           firstPdfStack ??= stackTrace;
-        } finally {
-          pdfDone += batch.length;
-          reportPdfProgress();
         }
       }
 
@@ -2385,6 +2423,10 @@ class PayrollRunner {
         label: 'preparing_zip'.tr(),
         forceLabel: true,
       );
+
+      // PDF rendering can overlap the network commit, but no invoice archive
+      // is persisted unless the payroll transaction completed successfully.
+      if (savePermission != null && !await savePermission) return;
 
       final filesForZip = List<Map<String, Object>>.from(invoiceFiles);
       final zipData = await compute(_encodePayrollInvoiceZip, filesForZip);
@@ -2500,7 +2542,9 @@ class PayrollRunner {
     var liveAlive = true;
     Timer? liveRefreshTimer;
     Timer? liveAttachTimer;
+    Timer? avatarRevealTimer;
     var liveRefreshAttached = false;
+    var revealReviewAvatars = false;
     final liveSubscriptions = <StreamSubscription<dynamic>>[];
     void Function(void Function())? dialogSetState;
 
@@ -2568,28 +2612,22 @@ class PayrollRunner {
       var receivedInitialTimeOff = false;
       var receivedInitialAttendance = false;
       liveSubscriptions.add(
-        firestoreService.workersStream.listen(
-          (_) {
-            if (!receivedInitialWorkers) {
-              receivedInitialWorkers = true;
-              return;
-            }
-            scheduleLiveRefresh();
-          },
-          onError: (_) {},
-        ),
+        firestoreService.workersStream.listen((_) {
+          if (!receivedInitialWorkers) {
+            receivedInitialWorkers = true;
+            return;
+          }
+          scheduleLiveRefresh();
+        }, onError: (_) {}),
       );
       liveSubscriptions.add(
-        firestoreService.timeoffStream.listen(
-          (_) {
-            if (!receivedInitialTimeOff) {
-              receivedInitialTimeOff = true;
-              return;
-            }
-            scheduleLiveRefresh();
-          },
-          onError: (_) {},
-        ),
+        firestoreService.timeoffStream.listen((_) {
+          if (!receivedInitialTimeOff) {
+            receivedInitialTimeOff = true;
+            return;
+          }
+          scheduleLiveRefresh();
+        }, onError: (_) {}),
       );
       liveSubscriptions.add(
         firestoreService
@@ -2607,6 +2645,7 @@ class PayrollRunner {
     void detachLiveRefresh() {
       liveAlive = false;
       liveAttachTimer?.cancel();
+      avatarRevealTimer?.cancel();
       liveRefreshTimer?.cancel();
       for (final sub in liveSubscriptions) {
         sub.cancel();
@@ -2619,10 +2658,14 @@ class PayrollRunner {
       barrierDismissible: true,
       barrierLabel: 'PayrollReviewDialog',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (context, animation, secondaryAnimation) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           onReviewDialogOpen?.call();
+          avatarRevealTimer ??= Timer(const Duration(milliseconds: 260), () {
+            if (!liveAlive) return;
+            dialogSetState?.call(() => revealReviewAvatars = true);
+          });
           liveAttachTimer ??= Timer(
             const Duration(milliseconds: 450),
             attachLiveRefresh,
@@ -2679,15 +2722,12 @@ class PayrollRunner {
                       .toList();
 
             final filteredSelectedCount = filteredResults
-                .where(
-                  (r) => selectedIndices.contains(resultIndexOf(r)),
-                )
+                .where((r) => selectedIndices.contains(resultIndexOf(r)))
                 .length;
             final filteredPayCount = filteredResults
                 .where(
                   (r) =>
-                      r.success &&
-                      selectedIndices.contains(resultIndexOf(r)),
+                      r.success && selectedIndices.contains(resultIndexOf(r)),
                 )
                 .length;
             final allFilteredSelected = filteredResults.every(
@@ -2710,12 +2750,16 @@ class PayrollRunner {
                       borderRadius: BorderRadius.circular(6),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0F172A).withOpacity(0.12),
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.12),
                           blurRadius: 32,
                           offset: const Offset(0, 16),
                         ),
                         BoxShadow(
-                          color: const Color(0xFF0F172A).withOpacity(0.06),
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.06),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -2967,8 +3011,9 @@ class PayrollRunner {
                                       onTap: () {
                                         setDialogState(() {
                                           showOnlyAbsences = !showOnlyAbsences;
-                                          if (showOnlyAbsences)
+                                          if (showOnlyAbsences) {
                                             positionFilter = 'All';
+                                          }
                                         });
                                       },
                                       child: Container(
@@ -3177,7 +3222,7 @@ class PayrollRunner {
                                               color: isSelected
                                                   ? const Color(
                                                       0xFF0F70FF,
-                                                    ).withOpacity(0.3)
+                                                    ).withValues(alpha: 0.3)
                                                   : const Color(0xFFE5E7EB),
                                               width: 1.2,
                                             ),
@@ -3253,7 +3298,10 @@ class PayrollRunner {
                                                   const SizedBox(width: 14),
 
                                                   _workerAvatar(
-                                                    imageUrl: r.imageUrl,
+                                                    imageUrl:
+                                                        revealReviewAvatars
+                                                        ? r.imageUrl
+                                                        : null,
                                                     name: r.workerName,
                                                     size: 44,
                                                     backgroundColor:
@@ -3468,7 +3516,7 @@ class PayrollRunner {
                                   children: [
                                     Text(
                                       'total_disbursement'.tr(),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF6B7280),
@@ -3567,7 +3615,7 @@ class PayrollRunner {
                                           color: filteredPayCount == 0
                                               ? const Color(
                                                   0xFF0247C4,
-                                                ).withOpacity(0.4)
+                                                ).withValues(alpha: 0.4)
                                               : const Color(0xFF0247C4),
                                           borderRadius: BorderRadius.circular(
                                             8,
@@ -3577,7 +3625,7 @@ class PayrollRunner {
                                                   BoxShadow(
                                                     color: const Color(
                                                       0xFF0247C4,
-                                                    ).withOpacity(0.2),
+                                                    ).withValues(alpha: 0.2),
                                                     blurRadius: 8,
                                                     offset: const Offset(0, 4),
                                                   ),
@@ -3629,6 +3677,7 @@ class PayrollRunner {
           parent: animation,
           curve: Curves.easeOutCubic,
         );
+        final scale = Tween<double>(begin: 0.985, end: 1).animate(curve);
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -3641,7 +3690,7 @@ class PayrollRunner {
             ),
             FadeTransition(
               opacity: animation,
-              child: ScaleTransition(scale: curve, child: child),
+              child: ScaleTransition(scale: scale, child: child),
             ),
           ],
         );
@@ -3849,7 +3898,7 @@ class PayrollRunner {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.01),
+                        color: Colors.black.withValues(alpha: 0.01),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -3939,7 +3988,7 @@ class PayrollRunner {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0247C4).withOpacity(0.2),
+                        color: const Color(0xFF0247C4).withValues(alpha: 0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -4137,7 +4186,7 @@ class PayrollRunner {
                 ),
                 hintText: '0',
                 hintStyle: TextStyle(
-                  color: accentColor.withOpacity(0.4),
+                  color: accentColor.withValues(alpha: 0.4),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -4235,7 +4284,7 @@ class PayrollRunner {
               ),
               hintText: 'amount_hint'.tr(),
               hintStyle: TextStyle(
-                color: const Color(0xFF6B7280).withOpacity(0.6),
+                color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -4285,7 +4334,7 @@ class PayrollRunner {
             ),
             child: Text(
               'apply'.tr(),
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -4393,22 +4442,26 @@ class PayrollRunner {
 
     Widget image;
     if (isHttpUrl(value)) {
-      image = Image.network(
-        value,
+      image = CachedNetworkImage(
+        imageUrl: value,
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallback(),
-        loadingBuilder: (_, child, progress) =>
-            progress == null ? child : fallback(),
+        memCacheWidth: 128,
+        memCacheHeight: 128,
+        maxWidthDiskCache: 256,
+        fadeInDuration: const Duration(milliseconds: 120),
+        placeholder: (_, _) => fallback(),
+        errorWidget: (_, _, _) => fallback(),
       );
     } else if (!allowExtendedSources) {
       return ClipOval(child: fallback());
     } else if (value.startsWith('data:image')) {
       try {
         final commaIndex = value.indexOf(',');
-        if (commaIndex < 0 || commaIndex == value.length - 1)
+        if (commaIndex < 0 || commaIndex == value.length - 1) {
           return ClipOval(child: fallback());
+        }
         image = Image.memory(
           base64Decode(value.substring(commaIndex + 1)),
           width: size,

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import '../../utils/ui_helpers.dart';
@@ -200,8 +199,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   bool _initialized = false;
   int _profileLoadToken = 0;
 
-  StreamSubscription<Map<String, dynamic>?>? _profileSub;
-
   String? _profilePicUrl;
   String? _companyStampUrl;
   Uint8List? _newProfileImageBytes;
@@ -232,24 +229,33 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
 
-    if (_initialized && !_isGuest) return;
+    if (_initialized) return;
     _initialized = true;
 
-    final sessionSettings = ref.read(sessionTimeoutSettingsProvider);
-    _sessionTimeoutEnabled = sessionSettings.enabled;
-    _sessionTimeoutDuration = sessionSettings.durationMinutes;
+    ref.listenManual(sessionTimeoutSettingsProvider, (previous, next) {
+      if (!mounted) return;
+      if (previous == null) {
+        _sessionTimeoutEnabled = next.enabled;
+        _sessionTimeoutDuration = next.durationMinutes;
+        return;
+      }
+      setState(() {
+        _sessionTimeoutEnabled = next.enabled;
+        _sessionTimeoutDuration = next.durationMinutes;
+      });
+    }, fireImmediately: true);
 
     _loadProfile();
 
     if (!_isGuest) {
-      _profileSub = _firestore.userProfileStream.listen(
+      ref.listenAsync(
+        userProfileProvider,
         (profile) {
           if (!mounted || _isEditing) return;
           _applyAuthenticatedProfile(profile);
         },
-        onError: (Object error, StackTrace stackTrace) {
-          ErrorReporter.report(error, stackTrace, context: 'ProfileStream');
-        },
+        onError: (error, stackTrace) =>
+            ErrorReporter.report(error, stackTrace, context: 'ProfileStream'),
       );
     }
   }
@@ -271,7 +277,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 
   @override
   void dispose() {
-    _profileSub?.cancel();
     _businessNameController.dispose();
     _companyIdController.dispose();
     _emailController.dispose();
@@ -667,8 +672,12 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         profileSaved = true;
       }
 
-      await ref.read(sessionTimeoutSettingsProvider.notifier).setEnabled(_sessionTimeoutEnabled);
-      await ref.read(sessionTimeoutSettingsProvider.notifier).setDurationMinutes(_sessionTimeoutDuration);
+      await ref
+          .read(sessionTimeoutSettingsProvider.notifier)
+          .setEnabled(_sessionTimeoutEnabled);
+      await ref
+          .read(sessionTimeoutSettingsProvider.notifier)
+          .setDurationMinutes(_sessionTimeoutDuration);
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1074,7 +1083,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   void _showPreviewDialog() {
     showDialog(
       context: context,
-      barrierColor: _kPrimaryBlue.withOpacity(0.5),
+      barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
       builder: (_) => ProfilePreviewDialog(
         businessName: _businessNameController.text,
         companyId: _companyIdController.text,
@@ -1238,13 +1247,16 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'session_security'.tr(),
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            fontFamily: _kFontFamily,
-            color: _kBlack,
+        Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Text(
+            'session_security'.tr(),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              fontFamily: _kFontFamily,
+              color: _kBlack,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -1272,7 +1284,12 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                         const SizedBox(height: 4),
                         Text(
                           _sessionTimeoutEnabled
-                              ? 'session_locked_message'.tr(namedArgs: {'minutes': _sessionTimeoutDuration.toString()})
+                              ? 'session_locked_message'.tr(
+                                  namedArgs: {
+                                    'minutes': _sessionTimeoutDuration
+                                        .toString(),
+                                  },
+                                )
                               : 'session_timeout_description'.tr(),
                           style: const TextStyle(
                             fontSize: 13,
@@ -1292,7 +1309,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                               _sessionTimeoutEnabled = val;
                             });
                           },
-                    activeColor: _kPrimaryBlue,
+                    activeThumbColor: _kPrimaryBlue,
                   ),
                 ],
               ),
@@ -1400,7 +1417,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     } else if (hasNewPath) {
       child = Image.file(
@@ -1408,7 +1425,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     } else if (hasCustomPic) {
       final url = _profilePicUrl!;
@@ -1418,8 +1435,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          placeholder: (_, __) => loading(),
-          errorWidget: (_, __, ___) => fallback(),
+          placeholder: (_, _) => loading(),
+          errorWidget: (_, _, _) => fallback(),
         );
       } else if (url.startsWith('data:image')) {
         final decoded = _decodeProfileDataImage(url);
@@ -1430,7 +1447,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
                 width: 90,
                 height: 90,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => fallback(),
+                errorBuilder: (_, _, _) => fallback(),
               );
       } else {
         child = Image.file(
@@ -1438,7 +1455,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback(),
+          errorBuilder: (_, _, _) => fallback(),
         );
       }
     } else {
@@ -1447,7 +1464,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         width: 100,
         height: 100,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     }
 
@@ -1639,7 +1656,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         height: 96,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => const Icon(
+        errorBuilder: (_, _, _) => const Icon(
           Icons.approval_outlined,
           size: 48,
           color: Color(0xFF0B2A6F),
@@ -1651,7 +1668,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return Image.memory(
         _newCompanyStampBytes!,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => fallback(),
+        errorBuilder: (_, _, _) => fallback(),
       );
     }
 
@@ -1667,14 +1684,14 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       return CachedNetworkImage(
         imageUrl: value,
         fit: BoxFit.contain,
-        placeholder: (_, __) => const Center(
+        placeholder: (_, _) => const Center(
           child: SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        errorWidget: (_, __, ___) => fallback(),
+        errorWidget: (_, _, _) => fallback(),
       );
     }
 
@@ -1685,14 +1702,14 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           : Image.memory(
               bytes,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => fallback(),
+              errorBuilder: (_, _, _) => fallback(),
             );
     }
 
     return Image.file(
       File(value),
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => fallback(),
+      errorBuilder: (_, _, _) => fallback(),
     );
   }
 
@@ -1887,6 +1904,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     );
   }
 }
+
 class ProfilePreviewDialog extends StatelessWidget {
   final String businessName;
   final String companyId;
@@ -1928,7 +1946,7 @@ class ProfilePreviewDialog extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: _kBlack.withOpacity(0.15),
+                color: _kBlack.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1937,7 +1955,6 @@ class ProfilePreviewDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
               Container(
                 color: _kDarkBlue,
                 padding: const EdgeInsets.symmetric(
@@ -1953,7 +1970,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         color: _kWhite,
                         fontSize: 19,
                         fontFamily: _kFontFamily,
-                        fontWeight: FontWeight.w500
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     Align(

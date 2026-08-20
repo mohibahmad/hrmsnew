@@ -93,17 +93,14 @@ void showLanguageModal(BuildContext context) {
             color: Colors.transparent,
             child: Container(
               width: 280,
-              padding: const EdgeInsets.symmetric(
-                vertical: 20,
-                horizontal: 16,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Colors.grey.shade300, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -145,7 +142,8 @@ void showLanguageModal(BuildContext context) {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              lang,                              style: const TextStyle(
+                              lang,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -189,7 +187,7 @@ Widget buildSocialButton({
         backgroundColor: backgroundColor ?? Colors.white,
         foregroundColor: textColor ?? const Color(0xFF000000),
         disabledForegroundColor: (textColor ?? const Color(0xFF000000))
-            .withOpacity(0.6),
+            .withValues(alpha: 0.6),
         disabledBackgroundColor: backgroundColor ?? Colors.white,
         side: border ?? BorderSide(color: Colors.grey.shade200),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -221,8 +219,8 @@ Widget buildSocialButton({
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: isLoading
-                  ? (textColor ?? const Color(0xFF000000)).withOpacity(
-                      0.6,
+                  ? (textColor ?? const Color(0xFF000000)).withValues(
+                      alpha: 0.6,
                     )
                   : null,
             ),

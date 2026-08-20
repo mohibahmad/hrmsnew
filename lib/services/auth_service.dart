@@ -19,13 +19,20 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final User _guestUser = GuestUser();
+  final FirestoreService Function()? _firestoreService;
 
-  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
-  static final ValueNotifier<String?> companyStampNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> profilePicNotifier =
+      ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> companyStampNotifier =
+      ValueNotifier<String?>(null);
 
-  AuthService() {
+  AuthService({FirestoreService Function()? firestoreService})
+    : _firestoreService = firestoreService {
     _instance = this;
   }
+
+  FirestoreService get _firestore =>
+      _firestoreService?.call() ?? FirestoreService.instance;
 
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting) return Stream.value(MockUser());
@@ -45,18 +52,18 @@ class AuthService {
         .doc('google')
         .snapshots()
         .map((doc) {
-      final raw = doc.data()?['googleEnable'];
-      if (raw is bool) return raw;
-      if (raw is num) return raw != 0;
-      final normalized = raw?.toString().trim().toLowerCase();
-      if (normalized == 'false' || normalized == '0') return false;
-      return true;
-    });
+          final raw = doc.data()?['googleEnable'];
+          if (raw is bool) return raw;
+          if (raw is num) return raw != 0;
+          final normalized = raw?.toString().trim().toLowerCase();
+          if (normalized == 'false' || normalized == '0') return false;
+          return true;
+        });
   }
 
   Future<void> _clearSeededDummyDataIfNeeded() async {
     try {
-      await FirestoreService.instance.clearDummyDataForCurrentUser();
+      await _firestore.clearDummyDataForCurrentUser();
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'clearSeededDummyData');
     }
@@ -64,7 +71,11 @@ class AuthService {
 
   String _normalizeEmail(String email) => email.trim().toLowerCase();
 
-  String _getDisplayName(User user, {String? preferredName, required String fallback}) {
+  String _getDisplayName(
+    User user, {
+    String? preferredName,
+    required String fallback,
+  }) {
     final preferred = preferredName?.trim() ?? '';
     if (preferred.isNotEmpty) return preferred;
 
@@ -101,11 +112,7 @@ class AuthService {
     }
 
     final email = _normalizeEmail(user.email ?? '');
-    await FirestoreService.instance.createUserProfile(
-      username: name,
-      email: email,
-      phone: '',
-    );
+    await _firestore.createUserProfile(username: name, email: email, phone: '');
 
     return {
       'username': name,
@@ -258,6 +265,7 @@ class AuthService {
       rethrow;
     }
   }
+
   Future<UserCredential?> signInWithApple() async {
     profilePicNotifier.value = null;
     companyStampNotifier.value = null;
@@ -366,14 +374,18 @@ class AuthService {
       throw FirebaseAuthException(code: 'user-not-found');
     }
 
-    final providerIds = user.providerData.map((info) => info.providerId).toSet();
+    final providerIds = user.providerData
+        .map((info) => info.providerId)
+        .toSet();
 
     if (providerIds.contains('password')) {
       final email = user.email?.trim() ?? '';
       final enteredPassword = password ?? '';
 
       if (email.isEmpty) throw FirebaseAuthException(code: 'email-missing');
-      if (enteredPassword.isEmpty) throw FirebaseAuthException(code: 'password-required');
+      if (enteredPassword.isEmpty) {
+        throw FirebaseAuthException(code: 'password-required');
+      }
 
       final credential = EmailAuthProvider.credential(
         email: email,
@@ -455,7 +467,8 @@ class UserAvatar extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildFallback(size),
               );
             } catch (e) {
               imageWidget = _buildFallback(size);
@@ -466,7 +479,8 @@ class UserAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildFallback(size),
             );
           }
         } else {
@@ -476,7 +490,10 @@ class UserAvatar extends StatelessWidget {
         return Container(
           width: size,
           height: size,
-          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.transparent),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.transparent,
+          ),
           child: ClipOval(child: imageWidget),
         );
       },

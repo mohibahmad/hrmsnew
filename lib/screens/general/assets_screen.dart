@@ -1,8 +1,8 @@
 import 'dart:async';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
+import '../../utils/firestore_record_utils.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
@@ -20,16 +20,7 @@ import '../../widgets/notification_bell.dart';
 import '../../widgets/screen_table_shimmer.dart';
 
 String _adts(dynamic value) {
-  DateTime? dt;
-
-  if (value is Timestamp) {
-    dt = value.toDate();
-  } else if (value is DateTime) {
-    dt = value;
-  } else if (value is String) {
-    dt = DateTime.tryParse(value);
-  }
-
+  final dt = AppDateUtils.dateFromValue(value);
   if (dt != null) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
@@ -89,10 +80,6 @@ bool _assetReturned(Map<String, dynamic> data) {
   return text.isNotEmpty && text != 'in_use' && text != '__in_use__';
 }
 
-String _formatDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
-
 class AssetsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -113,6 +100,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   late final AuthService _authService;
   late final FirestoreService _firestore;
 
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
   final _searchController = TextEditingController();
 
   String _searchQuery = '';
@@ -122,9 +111,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   Map<String, Map<String, dynamic>> _workersMap = {};
   bool _initialized = false;
   Timer? _debounce;
-
-  StreamSubscription? _assetsSub;
-  StreamSubscription? _workersSub;
 
   static const _inUseKey = 'in_use';
 
@@ -137,9 +123,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-    if (isGuest) {
+    if (_isGuest) {
       _loadGuestData();
     } else {
       _loadAssets();
@@ -149,8 +133,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
   @override
   void dispose() {
-    _assetsSub?.cancel();
-    _workersSub?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -177,33 +159,19 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     _setWorkerOptions(DummyData.workers.map(Map<String, dynamic>.from));
   }
 
-  Future<void> _loadAssets() async {
+  void _loadAssets() {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    _assetsSub?.cancel();
-    _assetsSub = _firestore.assetsStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      assetsProvider,
+      (records) {
         if (!mounted) return;
 
-        final sortedDocs = snapshot.docs.toList()
-          ..sort((a, b) {
-            final aData = a.data() as Map<String, dynamic>;
-            final bData = b.data() as Map<String, dynamic>;
-            final aTime = aData['createdAt'];
-            final bTime = bData['createdAt'];
-
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return -1;
-            if (bTime == null) return 1;
-            if (aTime is Timestamp && bTime is Timestamp)
-              return bTime.compareTo(aTime);
-            return 0;
-          });
+        final sortedRecords = sortedFirestoreRecords(records, nullsLast: false);
 
         setState(() {
-          _assets = sortedDocs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+          _assets = sortedRecords.map((data) {
             return AssetData(
               (data['name'] ?? '').toString(),
               (data['position'] ?? '').toString(),
@@ -211,30 +179,25 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               _adts(data['dateLoaned']),
               _adts(data['dateReturned']),
               _assetReturned(data),
-              id: doc.id,
+              id: data['id']?.toString(),
               workerId: data['workerId']?.toString(),
             );
           }).toList();
           _isLoading = false;
         });
       },
-      onError: (_) {
+      onError: (error, stackTrace) {
         if (mounted) setState(() => _isLoading = false);
       },
     );
   }
 
   void _loadWorkers() {
-    _workersSub?.cancel();
-    _workersSub = _firestore.workersStream.listen((snapshot) {
+    ref.listenAsync(workersProvider, (records) {
       if (!mounted) return;
-      _setWorkerOptions(
-        snapshot.docs.map(
-          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-        ),
-      );
+      _setWorkerOptions(records);
       setState(() {});
-    }, onError: (_) {});
+    });
   }
 
   String _workerOption(Map<String, dynamic> worker) {
@@ -448,7 +411,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -607,16 +570,16 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     isReturned: isReturned,
                                   );
 
-                                  final isGuest =
-                                      _authService.currentUser?.isAnonymous ??
-                                      false;
-
-                                  if (isGuest) {
+                                  if (_isGuest) {
                                     final guestAsset = {
                                       ...assetMap,
-                                      'dateLoaned': _formatDate(loanedDate),
+                                      'dateLoaned': AppDateUtils.formatDate(
+                                        loanedDate,
+                                      ),
                                       'dateReturned': isReturned
-                                          ? _formatDate(returnedDate)
+                                          ? AppDateUtils.formatDate(
+                                              returnedDate,
+                                            )
                                           : null,
                                     };
 
@@ -627,9 +590,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                           workerName,
                                           position,
                                           assetType,
-                                          _formatDate(loanedDate),
+                                          AppDateUtils.formatDate(loanedDate),
                                           isReturned
-                                              ? _formatDate(returnedDate)
+                                              ? AppDateUtils.formatDate(
+                                                  returnedDate,
+                                                )
                                               : '',
                                           isReturned,
                                           workerId: workerId,
@@ -790,7 +755,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                 elevation: 6,
                                 color: Colors.white,
                                 borderRadius: BorderRadius.zero,
-                                shadowColor: Colors.black.withOpacity(0.12),
+                                shadowColor: Colors.black.withValues(
+                                  alpha: 0.12,
+                                ),
                                 child: Container(
                                   constraints: const BoxConstraints(
                                     maxHeight: 220,
@@ -824,10 +791,10 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                           onTap: () => onSelected(option),
                                           splashColor: const Color(
                                             0xFF0247C4,
-                                          ).withOpacity(0.06),
+                                          ).withValues(alpha: 0.06),
                                           highlightColor: const Color(
                                             0xFF0247C4,
-                                          ).withOpacity(0.04),
+                                          ).withValues(alpha: 0.04),
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 14,
@@ -881,7 +848,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     _buildModalDatePicker(
                       ctx,
                       'date_loaned'.tr(),
-                      _formatDate(loanedDate),
+                      AppDateUtils.formatDate(loanedDate),
                       const Color(0xFF0247C4),
                       () => _showCupertinoDatePicker(
                         context: ctx,
@@ -894,8 +861,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         onDateSelected: (picked) {
                           setModalState(() {
                             loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate))
+                            if (returnedDate.isBefore(loanedDate)) {
                               returnedDate = loanedDate;
+                            }
                           });
                         },
                       ),
@@ -933,7 +901,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       _buildModalDatePicker(
                         ctx,
                         'returned_date'.tr(),
-                        _formatDate(returnedDate),
+                        AppDateUtils.formatDate(returnedDate),
                         const Color(0xFFFF0004),
                         () => _showCupertinoDatePicker(
                           context: ctx,
@@ -978,7 +946,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -1099,11 +1067,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                     isReturned: isReturned,
                                   );
 
-                                  final isGuest =
-                                      _authService.currentUser?.isAnonymous ??
-                                      false;
-
-                                  if (isGuest) {
+                                  if (_isGuest) {
                                     setState(() {
                                       final idx = _assets.indexWhere(
                                         (a) => a.id == data.id,
@@ -1113,9 +1077,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                           workerName,
                                           position,
                                           assetType,
-                                          _formatDate(loanedDate),
+                                          AppDateUtils.formatDate(loanedDate),
                                           isReturned
-                                              ? _formatDate(returnedDate)
+                                              ? AppDateUtils.formatDate(
+                                                  returnedDate,
+                                                )
                                               : '',
                                           isReturned,
                                           id: data.id,
@@ -1172,9 +1138,11 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                                             workerName,
                                             position,
                                             assetType,
-                                            _formatDate(loanedDate),
+                                            AppDateUtils.formatDate(loanedDate),
                                             isReturned
-                                                ? _formatDate(returnedDate)
+                                                ? AppDateUtils.formatDate(
+                                                    returnedDate,
+                                                  )
                                                 : '',
                                             isReturned,
                                             id: data.id,
@@ -1254,7 +1222,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                     _buildModalDatePicker(
                       ctx,
                       'date_loaned'.tr(),
-                      _formatDate(loanedDate),
+                      AppDateUtils.formatDate(loanedDate),
                       const Color(0xFF0247C4),
                       () => _showCupertinoDatePicker(
                         context: ctx,
@@ -1267,8 +1235,9 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         onDateSelected: (picked) {
                           setModalState(() {
                             loanedDate = picked;
-                            if (returnedDate.isBefore(loanedDate))
+                            if (returnedDate.isBefore(loanedDate)) {
                               returnedDate = loanedDate;
+                            }
                           });
                         },
                       ),
@@ -1306,7 +1275,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       _buildModalDatePicker(
                         ctx,
                         'returned_date'.tr(),
-                        _formatDate(returnedDate),
+                        AppDateUtils.formatDate(returnedDate),
                         const Color(0xFFFF0004),
                         () => _showCupertinoDatePicker(
                           context: ctx,
@@ -1535,7 +1504,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, _, _) {
@@ -1561,12 +1530,14 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0247C4).withOpacity(0.18),
+                            color: const Color(
+                              0xFF0247C4,
+                            ).withValues(alpha: 0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -1835,8 +1806,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
           cursor: SystemMouseCursors.click,
           child: ElevatedButton.icon(
             onPressed: () async {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
+              if (_isGuest) {
                 if (mounted) showGuestRestrictionDialog(context);
                 return;
               }
@@ -2095,16 +2065,14 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         color: const Color(0xFFFBFBFC),
         elevation: 4,
         onSelected: (value) async {
-          final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
           if (value == 'edit') {
-            if (isGuest) {
+            if (_isGuest) {
               showGuestRestrictionDialog(context);
               return;
             }
             _showEditAssetModal(data);
           } else if (value == 'delete') {
-            if (isGuest) {
+            if (_isGuest) {
               showGuestRestrictionDialog(context);
               return;
             }
@@ -2171,7 +2139,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   width: 16,
                   height: 16,
                   colorFilter: const ColorFilter.mode(
-                    const Color(0xFFFF0004),
+                    Color(0xFFFF0004),
                     BlendMode.srcIn,
                   ),
                 ),
@@ -2179,7 +2147,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 Text(
                   'delete'.tr(),
                   style: const TextStyle(
-                    color: const Color(0xFFFF0004),
+                    color: Color(0xFFFF0004),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),

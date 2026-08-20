@@ -80,6 +80,7 @@ Future<void> main() async {
     },
   );
 }
+
 void _setupErrorHandling() {
   final originalOnError = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -115,6 +116,7 @@ void _setupErrorHandling() {
     return false;
   };
 }
+
 Future<void> _initializeMacOSWindow() async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
     return;
@@ -169,7 +171,9 @@ class HRMSApp extends ConsumerWidget {
           enabled: sessionSettings.enabled,
           timeout: Duration(minutes: sessionSettings.durationMinutes),
           isSessionActive: () {
-            final user = ref.read(authServiceProvider).currentUser;
+            final user =
+                ref.read(authStateProvider).asData?.value ??
+                ref.read(authServiceProvider).currentUser;
             return user != null && !user.isAnonymous;
           },
           isBiometricAvailable: BiometricService.isAvailable,
@@ -223,7 +227,11 @@ class StartupErrorApp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Color(0xFFFF1014)),
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Color(0xFFFF1014),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'App could not start',

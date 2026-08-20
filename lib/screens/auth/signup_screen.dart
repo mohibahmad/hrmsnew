@@ -1,4 +1,3 @@
-import 'dart:async';
 import '../../utils/ui_helpers.dart';
 import '../../utils/auth_widgets.dart';
 import '../../utils/helpers.dart';
@@ -43,8 +42,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   late final AuthService _authService;
   late final FirestoreService _firestoreService;
 
-  StreamSubscription? _googleSub;
-
   bool get _anyLoading => _isLoading || _isGoogleLoading || _isGuestLoading;
 
   @override
@@ -62,20 +59,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _authService = ref.read(authServiceProvider);
     _firestoreService = ref.read(firestoreServiceProvider);
 
-    _googleSub = AuthService.googleEnabledStream().listen(
+    ref.listenAsync(
+      googleSignInEnabledProvider,
       (enabled) {
-        if (!mounted) return;
-        if (_googleEnabled != enabled) setState(() => _googleEnabled = enabled);
+        if (!mounted || _googleEnabled == enabled) return;
+        setState(() => _googleEnabled = enabled);
       },
-      onError: (Object error, StackTrace stackTrace) {
-        ErrorReporter.report(error, stackTrace, context: 'signupGoogleConfig');
-      },
+      onError: (error, stackTrace) => ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'signupGoogleConfig',
+      ),
     );
   }
 
   @override
   void dispose() {
-    _googleSub?.cancel();
     _signInRecognizer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -107,24 +106,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
       if (await _firestoreService.isCurrentUserDeleted()) {
         await _authService.signOut();
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'account_deleted_contact'.tr(),
             isError: true,
           );
+        }
         return;
       }
 
       final profile = await _firestoreService.getUserProfile();
       if (profile == null) {
         await _authService.signOut();
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'user_not_found'.tr(),
             isError: true,
           );
+        }
         return;
       }
 
@@ -137,30 +138,34 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _openHome();
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled ||
-          e.code == GoogleSignInExceptionCode.interrupted)
+          e.code == GoogleSignInExceptionCode.interrupted) {
         return;
-      if (mounted)
+      }
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'google_login_failed'.tr(),
           isError: true,
         );
+      }
     } on FirebaseAuthException catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupGoogle');
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'google_login_failed'.tr(),
           isError: true,
         );
+      }
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupGoogle');
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'unexpected_error'.tr(),
           isError: true,
         );
+      }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -180,12 +185,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         _openHome();
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'guest_login_failed'.tr(),
           isError: true,
         );
+      }
     } finally {
       if (mounted) setState(() => _isGuestLoading = false);
     }
@@ -227,22 +233,24 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         isDeleted = await _firestoreService.isEmailDeleted(email);
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'signupDeletedEmailCheck');
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'network_error'.tr(),
             isError: true,
           );
+        }
         return;
       }
 
       if (isDeleted) {
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'account_deleted_contact'.tr(),
             isError: true,
           );
+        }
         return;
       }
 
@@ -312,20 +320,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         _openHome();
       }
     } on FirebaseAuthException catch (e) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: _firebaseSignupError(e),
           isError: true,
         );
+      }
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'signupEmail');
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'unexpected_error'.tr(),
           isError: true,
         );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -451,7 +461,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           spreadRadius: 3,
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 30,
                           offset: const Offset(10, 9),
                         ),
@@ -553,7 +563,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   backgroundColor: Colors.white,
                   textColor: const Color(0xFF0044C9),
                   border: BorderSide(
-                    color: const Color(0xFF0044C9).withOpacity(0.4),
+                    color: const Color(0xFF0044C9).withValues(alpha: 0.4),
                     width: 1.2,
                   ),
                 ),
@@ -606,10 +616,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             validator: (value) {
-              if (value == null || value.trim().isEmpty)
+              if (value == null || value.trim().isEmpty) {
                 return 'email_required'.tr();
-              if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim()))
+              }
+              if (!RegExp(
+                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+              ).hasMatch(value.trim())) {
                 return 'email_invalid'.tr();
+              }
               return null;
             },
           ),
@@ -639,10 +653,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               if (!_anyLoading) _handleSignUp();
             },
             validator: (value) {
-              if (value == null || value.isEmpty)
+              if (value == null || value.isEmpty) {
                 return 'confirm_password_required'.tr();
-              if (value != _passwordController.text)
+              }
+              if (value != _passwordController.text) {
                 return 'passwords_do_not_match'.tr();
+              }
               return null;
             },
           ),
@@ -660,7 +676,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0044C9),
           foregroundColor: const Color(0xFFFFFFFF),
-          disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+          disabledBackgroundColor: const Color(
+            0xFF0044C9,
+          ).withValues(alpha: 0.6),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
@@ -714,7 +732,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

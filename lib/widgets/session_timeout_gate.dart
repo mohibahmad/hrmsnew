@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../services/biometric_service.dart';
 import '../services/preferences_service.dart';
+import '../utils/app_colors.dart';
 
 typedef SessionActiveCheck = bool Function();
 typedef BiometricAvailabilityCheck = Future<bool> Function();
@@ -331,7 +332,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
                         child: const Icon(
                           Icons.lock_clock_rounded,
                           size: 36,
-                          color: Color(0xFF0247C4),
+                          color: AppColors.primaryBlue,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -362,7 +363,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
                                 ? null
                                 : _unlockWithBiometrics,
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0247C4),
+                              backgroundColor: AppColors.primaryBlue,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),

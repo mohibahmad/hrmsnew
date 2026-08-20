@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
@@ -65,6 +64,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   late final AuthService _authService;
   late final FirestoreService _firestore;
 
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
   bool _isSaving = false;
   bool _hasParsedFile = false;
   bool _hasUnsavedChanges = false;
@@ -87,25 +88,18 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
   final Map<String, List<String>> _uploadedMediaByRowId = {};
 
   ScrollController? _hScrollController;
-  StreamSubscription? _workersSubscription;
-  StreamSubscription? _authSubscription;
-
   @override
   void initState() {
     super.initState();
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
-    _authSubscription = _authService.authStateChanges.listen((_) {
-      _clearIdentityCache();
-    });
-            _loadExistingIdentitySets().ignore();
+    ref.listenAsync(authStateProvider, (_) => _clearIdentityCache());
+    _loadExistingIdentitySets().ignore();
   }
 
   @override
   void dispose() {
     _hScrollController?.dispose();
-    _workersSubscription?.cancel();
-    _authSubscription?.cancel();
     super.dispose();
   }
 
@@ -212,15 +206,14 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
   Future<({Set<String> emails, Set<String> nationalIds})>
   _loadExistingIdentitySets() async {
-            if (_identityCacheLoaded) {
+    if (_identityCacheLoaded) {
       return (emails: _cachedEmails, nationalIds: _cachedNationalIds);
     }
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final emails = <String>{};
     final nationalIds = <String>{};
 
-    if (isGuest) {
+    if (_isGuest) {
       for (final w in DummyData.workers) {
         final e = WorkerIdentity.normalizeEmail(w['email']);
         if (e.isNotEmpty) emails.add(e);
@@ -294,8 +287,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty))
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) {
         continue;
+      }
 
       final workerData = <String, dynamic>{
         'name': '',
@@ -339,8 +333,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
           }
         }
 
-        if (workerData[matchedKey]?.toString().trim().isNotEmpty ?? false)
+        if (workerData[matchedKey]?.toString().trim().isNotEmpty ?? false) {
           continue;
+        }
         workerData[matchedKey] = value;
       }
 
@@ -569,8 +564,6 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
     }
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
     try {
       final revalidated = await _revalidateAllWorkers();
       if (!revalidated || !mounted) return;
@@ -598,7 +591,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       _uploadedMediaUrls = [];
 
       final saveResult = await _performSave(
-        isGuest: isGuest,
+        isGuest: _isGuest,
         workersReadyToSave: workersReadyToSave,
       );
 
@@ -611,14 +604,14 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         saveResult: saveResult,
         workersWithErrors: workersWithErrors,
         errorCounts: errorCounts,
-        isGuest: isGuest,
+        isGuest: _isGuest,
       );
 
       if (saveResult.importedCount > 0) {
         await tryShowFirstMilestoneRateUs('bulk_worker');
       }
 
-      final keepInvalidWorkers = !isGuest && workersWithErrors.isNotEmpty;
+      final keepInvalidWorkers = !_isGuest && workersWithErrors.isNotEmpty;
 
       setState(() {
         if (keepInvalidWorkers) {
@@ -633,7 +626,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         }
       });
 
-      if (isGuest) {
+      if (_isGuest) {
         DummyData.loadFromPrefs();
       }
 
@@ -648,7 +641,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         context: 'AddBulkWorkerScreen.save',
       );
 
-      if (!isGuest && _uploadedMediaUrls.isNotEmpty) {
+      if (!_isGuest && _uploadedMediaUrls.isNotEmpty) {
         try {
           await Future.wait(_uploadedMediaUrls.map(UploadService.deleteByUrl));
         } catch (_) {}
@@ -768,7 +761,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     required bool isGuest,
     required List<Map<String, dynamic>> workersReadyToSave,
   }) async {
-    if (isGuest) {
+    if (_isGuest) {
       return _saveAsGuest(workersReadyToSave);
     }
     return _saveToFirestore(workersReadyToSave);
@@ -781,7 +774,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
     final acceptedWorkers = <Map<String, dynamic>>[];
     int guestSkippedDuplicates = 0;
 
-            final knownEmails = <String>{};
+    final knownEmails = <String>{};
     final knownNationalIds = <String>{};
     for (final w in existingWorkers) {
       final e = WorkerIdentity.normalizeEmail(w['email']);
@@ -792,9 +785,12 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     for (final worker in workersReadyToSave) {
       final email = WorkerIdentity.normalizeEmail(worker['email']);
-      final nationalId = WorkerIdentity.normalizeNationalId(worker['nationalId']);
+      final nationalId = WorkerIdentity.normalizeNationalId(
+        worker['nationalId'],
+      );
 
-      final isDuplicate = (email.isNotEmpty && knownEmails.contains(email)) ||
+      final isDuplicate =
+          (email.isNotEmpty && knownEmails.contains(email)) ||
           (nationalId.isNotEmpty && knownNationalIds.contains(nationalId));
 
       if (isDuplicate) {
@@ -806,7 +802,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       acceptedWorkers.add(worker);
     }
 
-        final nowMicros = DateTime.now().microsecondsSinceEpoch;
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
     final newWorkers = <Map<String, dynamic>>[
       for (var i = 0; i < acceptedWorkers.length; i++)
         {...acceptedWorkers[i], 'id': 'dummy_${nowMicros}_$i'},
@@ -815,7 +811,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       ..clear()
       ..addAll([...newWorkers.reversed, ...existingWorkers]);
 
-            await DummyData.saveWorkersToPrefs();
+    await DummyData.saveWorkersToPrefs();
 
     return _SaveResult(
       importedCount: acceptedWorkers.length,
@@ -1005,7 +1001,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) => _EditCellDialog(
         currentValue: currentValue,
         fieldKey: fieldKey,
@@ -1018,8 +1014,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
       ),
     );
 
-    if (result == null || !mounted || workerIndex >= _validWorkers.length)
+    if (result == null || !mounted || workerIndex >= _validWorkers.length) {
       return;
+    }
 
     setState(() {
       _validWorkers[workerIndex][fieldKey] = result;
@@ -1313,7 +1310,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFD0E5FF), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withOpacity(0.02),
+            color: const Color(0xFF000000).withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1328,7 +1325,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                   (anyErrors
                           ? const Color(0xFFEF4444)
                           : const Color(0xFF34D399))
-                      .withOpacity(0.15),
+                      .withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -1387,7 +1384,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         color: const Color(0xFFFFF8E1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withOpacity(0.5),
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
         ),
       ),
       child: Row(
@@ -1424,7 +1421,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withOpacity(0.03),
+            color: const Color(0xFF000000).withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -1505,7 +1502,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withOpacity(0.03),
+            color: const Color(0xFF000000).withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -1802,7 +1799,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.08),
+                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
@@ -1913,7 +1910,7 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
                       (hasError
                               ? const Color(0xFFDC2626)
                               : const Color(0xFF6B7280))
-                          .withOpacity(0.1),
+                          .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
@@ -2634,12 +2631,12 @@ class _EditCellDialogState extends State<_EditCellDialog> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0247C4).withOpacity(0.18),
+                color: const Color(0xFF0247C4).withValues(alpha: 0.18),
                 blurRadius: 40,
                 offset: const Offset(0, 12),
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -2800,10 +2797,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
           Expanded(
             child: Text(
               fieldHint(widget.fieldKey),
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF9CA3AF),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
             ),
           ),
         ],
@@ -2858,10 +2852,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
             ),
             child: Text(
               'cancel'.tr(),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
           const SizedBox(width: 8),

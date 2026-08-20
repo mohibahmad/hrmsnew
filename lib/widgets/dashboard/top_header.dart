@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../riverpod_providers.dart';
 import '../../services/auth_service.dart';
 import '../../utils/helpers.dart';
+import '../../utils/app_colors.dart';
 
 class TopHeader extends ConsumerWidget {
   final VoidCallback onProfileTap;
@@ -19,7 +20,9 @@ class TopHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.read(authServiceProvider).currentUser;
+    final user =
+        ref.watch(authStateProvider).asData?.value ??
+        ref.read(authServiceProvider).currentUser;
     String name = user?.displayName ?? '';
     if (name.trim().isEmpty || name == 'User') {
       final emailName = Validators.nameFromEmail(user?.email);
@@ -35,7 +38,7 @@ class TopHeader extends ConsumerWidget {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: AppColors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
         boxShadow: [
           BoxShadow(
@@ -58,7 +61,7 @@ class TopHeader extends ConsumerWidget {
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF000000),
+                  color: AppColors.black,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -66,10 +69,7 @@ class TopHeader extends ConsumerWidget {
               const SizedBox(height: 1),
               Text(
                 'welcome_subtitle'.tr(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF000000),
-                ),
+                style: const TextStyle(fontSize: 12, color: AppColors.black),
               ),
             ],
           ),
@@ -87,7 +87,7 @@ class TopHeader extends ConsumerWidget {
                         width: 22,
                         height: 26,
                         colorFilter: const ColorFilter.mode(
-                          Color(0xFF000000),
+                          AppColors.black,
                           BlendMode.srcIn,
                         ),
                       ),
@@ -98,7 +98,7 @@ class TopHeader extends ConsumerWidget {
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: Color(0xFFEF4444),
+                              color: AppColors.dangerRed,
                               shape: BoxShape.circle,
                             ),
                             child: Text(

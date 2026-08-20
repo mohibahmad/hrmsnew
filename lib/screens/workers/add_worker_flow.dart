@@ -169,12 +169,16 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           .toString();
 
       _type1Controller.text =
-          (widget.workerToEdit!['type1'] ?? widget.workerToEdit!['workType'] ?? 'Full-Time')
+          (widget.workerToEdit!['type1'] ??
+                  widget.workerToEdit!['workType'] ??
+                  'Full-Time')
               .toString();
       if (_type1Controller.text.isEmpty) _type1Controller.text = 'Full-Time';
 
       _type2Controller.text =
-          (widget.workerToEdit!['type2'] ?? widget.workerToEdit!['attendanceType'] ?? 'On-Site')
+          (widget.workerToEdit!['type2'] ??
+                  widget.workerToEdit!['attendanceType'] ??
+                  'On-Site')
               .toString();
       if (_type2Controller.text.isEmpty) _type2Controller.text = 'On-Site';
 
@@ -460,11 +464,18 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       final fileName = spec.fileName?.trim().isNotEmpty == true
           ? spec.fileName!.trim()
           : spec.fallbackFileName;
-      final mimeType = mimeTypeForExtension(fileName, fallback: 'application/octet-stream');
+      final mimeType = mimeTypeForExtension(
+        fileName,
+        fallback: 'application/octet-stream',
+      );
 
       Uint8List bytesToUpload = spec.bytes;
       if (spec.compressImages && bytesToUpload.length > 350 * 1024) {
-        bytesToUpload = compressImageBytes(bytesToUpload, maxWidth: 1200, quality: 80);
+        bytesToUpload = compressImageBytes(
+          bytesToUpload,
+          maxWidth: 1200,
+          quality: 80,
+        );
       }
 
       files.add(
@@ -506,7 +517,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       final localizedMonthIndex = List<int>.generate(12, (index) => index + 1)
           .indexWhere(
             (month) =>
-                LocalizationHelper.localizedMonth(month).toLowerCase() == parts[0].toLowerCase(),
+                LocalizationHelper.localizedMonth(month).toLowerCase() ==
+                parts[0].toLowerCase(),
           );
       final monthIndex = englishMonthIndex >= 0
           ? englishMonthIndex
@@ -1349,7 +1361,9 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         final worker = widget.workerToEdit!;
         final timeOffRecords = isGuest
             ? List<Map<String, dynamic>>.from(DummyData.timeoff)
-            : await _firestore.getTimeoffOnce(workerId: worker['id']?.toString());
+            : await _firestore.getTimeoffOnce(
+                workerId: worker['id']?.toString(),
+              );
         final assignedByType = TimeOffService.paidDaysUsedForWorkerByType(
           worker,
           timeOffRecords,
@@ -1496,7 +1510,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                 DuplicateWorkerField.email => 'duplicate_email',
                 DuplicateWorkerField.nationalId => 'duplicate_national_id',
               };
-              FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+              FlashySnackBar.show(
+                context,
+                message: messageKey.tr(),
+                isError: true,
+              );
               return;
             }
           }
@@ -1520,7 +1538,10 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         for (final oldUrl in oldUrls) {
           if (oldUrl.isNotEmpty && !currentUrls.contains(oldUrl)) {
             deleteFutures.add(
-              UploadService.deleteByUrl(oldUrl).catchError((cleanupError, cleanupStack) {
+              UploadService.deleteByUrl(oldUrl).catchError((
+                cleanupError,
+                cleanupStack,
+              ) {
                 ErrorReporter.report(
                   cleanupError,
                   cleanupStack,
@@ -1992,7 +2013,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                           BoxShadow(
                             color: const Color(
                               0xFF000000,
-                            ).withOpacity(0.02),
+                            ).withValues(alpha: 0.02),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -2007,14 +2028,14 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                             width: 1,
                             color: const Color(
                               0xFFE0E0E0,
-                            ).withOpacity(0.5),
+                            ).withValues(alpha: 0.5),
                           ),
                           Expanded(child: _buildTopTab('experience'.tr(), 1)),
                           VerticalDivider(
                             width: 1,
                             color: const Color(
                               0xFFE0E0E0,
-                            ).withOpacity(0.5),
+                            ).withValues(alpha: 0.5),
                           ),
                           Expanded(
                             child: _buildTopTab('documentation'.tr(), 2),
@@ -2107,7 +2128,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                             barrierLabel: 'DeleteCvDialog',
                             barrierColor: const Color(
                               0xFF0F172A,
-                            ).withOpacity(0.3),
+                            ).withValues(alpha: 0.3),
                             transitionDuration: const Duration(
                               milliseconds: 400,
                             ),
@@ -2142,7 +2163,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                             BoxShadow(
                                               color: const Color(
                                                 0xFF000000,
-                                              ).withOpacity(0.15),
+                                              ).withValues(alpha: 0.15),
                                               blurRadius: 24,
                                               offset: const Offset(0, 8),
                                             ),
@@ -2219,8 +2240,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                           fontSize: 15,
                                                           fontWeight:
                                                               FontWeight.bold,
-                                                          fontFamily:
-                                                              'SF Pro',
+                                                          fontFamily: 'SF Pro',
                                                         ),
                                                       ),
                                                     ),
@@ -2259,8 +2279,8 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                             color:
                                                                 const Color(
                                                                   0xFFEF4444,
-                                                                ).withOpacity(
-                                                                  0.2,
+                                                                ).withValues(
+                                                                  alpha: 0.2,
                                                                 ),
                                                             blurRadius: 8,
                                                             offset:
@@ -2280,8 +2300,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
                                                           fontSize: 15,
                                                           fontWeight:
                                                               FontWeight.bold,
-                                                          fontFamily:
-                                                              'SF Pro',
+                                                          fontFamily: 'SF Pro',
                                                         ),
                                                       ),
                                                     ),
@@ -2401,7 +2420,7 @@ class WorkerDetailFormSection extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'date_picker'.tr(),
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (ctx, anim, secondaryAnim, child) {
@@ -2429,12 +2448,12 @@ class WorkerDetailFormSection extends StatelessWidget {
                           BoxShadow(
                             color: const Color(
                               0xFF0247C4,
-                            ).withOpacity(0.18),
+                            ).withValues(alpha: 0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -2809,7 +2828,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           BoxShadow(
                             color: const Color(
                               0xFF000000,
-                            ).withOpacity(0.01),
+                            ).withValues(alpha: 0.01),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           ),
@@ -2887,14 +2906,11 @@ class WorkerDetailFormSection extends StatelessWidget {
           right: 0,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: Colors.black.withOpacity(0.54),
+            color: Colors.black.withValues(alpha: 0.54),
             child: Text(
               profileImageName ?? 'worker_profile'.tr(),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ),
         ),
@@ -2908,7 +2924,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   context: context,
                   barrierDismissible: true,
                   barrierLabel: 'RemoveProfileImage',
-                  barrierColor: const Color(0xFF0F172A).withOpacity(0.3),
+                  barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
                   transitionDuration: const Duration(milliseconds: 400),
                   pageBuilder: (context, animation, secondaryAnimation) =>
                       const SizedBox(),
@@ -2939,7 +2955,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                       BoxShadow(
                                         color: const Color(
                                           0xFF000000,
-                                        ).withOpacity(0.15),
+                                        ).withValues(alpha: 0.15),
                                         blurRadius: 24,
                                         offset: const Offset(0, 8),
                                       ),
@@ -3008,8 +3024,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     color: Color(0xFF000000),
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.bold,
-                                                    fontFamily:
-                                                        'SF Pro',
+                                                    fontFamily: 'SF Pro',
                                                   ),
                                                 ),
                                               ),
@@ -3036,7 +3051,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     BoxShadow(
                                                       color: const Color(
                                                         0xFFEF4444,
-                                                      ).withOpacity(0.2),
+                                                      ).withValues(alpha: 0.2),
                                                       blurRadius: 8,
                                                       offset: const Offset(
                                                         0,
@@ -3051,8 +3066,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                                                     color: Color(0xFFFFFFFF),
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.bold,
-                                                    fontFamily:
-                                                        'SF Pro',
+                                                    fontFamily: 'SF Pro',
                                                   ),
                                                 ),
                                               ),
@@ -3073,7 +3087,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.54),
+                  color: Colors.black.withValues(alpha: 0.54),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -3103,7 +3117,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           'tap_to_upload_profile_image'.tr(),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black.withOpacity(0.54),
+            color: Colors.black.withValues(alpha: 0.54),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -3391,7 +3405,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Mid-Level',
                               'Senior',
                             ],
-                            itemLabelBuilder: (val) => LocalizationHelper.localizeExperience(val),
+                            itemLabelBuilder: (val) =>
+                                LocalizationHelper.localizeExperience(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.experienceLevelController.text = val;
@@ -3415,7 +3430,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Contract',
                               'Freelance',
                             ],
-                            itemLabelBuilder: (val) => LocalizationHelper.localizeType1(val),
+                            itemLabelBuilder: (val) =>
+                                LocalizationHelper.localizeType1(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type1Controller.text = val;
@@ -3436,7 +3452,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Master',
                               'Other',
                             ],
-                            itemLabelBuilder: (val) => LocalizationHelper.localizeEducation(val),
+                            itemLabelBuilder: (val) =>
+                                LocalizationHelper.localizeEducation(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.educationController.text = val;
@@ -3455,7 +3472,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             selectedValue: widget.type2Controller.text,
                             hint: 'enter_your_attendance_type'.tr(),
                             items: const ['On-Site', 'Remote', 'Hybrid'],
-                            itemLabelBuilder: (val) => LocalizationHelper.localizeType2(val),
+                            itemLabelBuilder: (val) =>
+                                LocalizationHelper.localizeType2(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type2Controller.text = val;
@@ -3496,7 +3514,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         BoxShadow(
                           color: const Color(
                             0xFF000000,
-                          ).withOpacity(0.04),
+                          ).withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3644,9 +3662,10 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                         );
                                         return;
                                       }
-                                      final monthName = LocalizationHelper.localizedMonth(
-                                        selected.month,
-                                      );
+                                      final monthName =
+                                          LocalizationHelper.localizedMonth(
+                                            selected.month,
+                                          );
                                       final formatted =
                                           '$monthName ${selected.day}, ${selected.year}';
                                       widget.onJoiningDateChanged?.call(
@@ -3699,14 +3718,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                                     color: isSunday
                                                         ? const Color(
                                                             0xFFFF0004,
-                                                          ).withOpacity(
-                                                            0.4,
+                                                          ).withValues(
+                                                            alpha: 0.4,
                                                           )
                                                         : (isFriday
                                                               ? const Color(
                                                                   0xFF4AC000,
-                                                                ).withOpacity(
-                                                                  0.4,
+                                                                ).withValues(
+                                                                  alpha: 0.4,
                                                                 )
                                                               : Colors
                                                                     .grey
@@ -3845,7 +3864,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
 
   Widget _buildDayPill(String text, bool isRed, {bool isGreen = false}) {
     Color bg = isRed
-        ? Color(0xFFFF1014)
+        ? const Color(0xFFFF1014)
         : (isGreen ? Colors.green : const Color(0xFF0B50C3));
     final display = text.length > 3 ? text.substring(0, 3) : text;
     return Container(
@@ -4235,7 +4254,7 @@ class DocumentationSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: hasFile
-                ? const Color(0xFF0B50C3).withOpacity(0.5)
+                ? const Color(0xFF0B50C3).withValues(alpha: 0.5)
                 : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
@@ -4286,7 +4305,7 @@ class DocumentationSection extends StatelessWidget {
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black.withOpacity(0.54),
+                      color: Colors.black.withValues(alpha: 0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -4338,10 +4357,7 @@ class DocumentationSection extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           'tap_to_select_file'.tr(),
-          style: TextStyle(
-            color: Colors.grey.shade300,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.grey.shade300, fontSize: 12),
         ),
       ],
     );
@@ -4629,16 +4645,10 @@ Widget _buildInputField(
                   }
                   return list.isEmpty ? null : list;
                 }(),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF000000),
-          ),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF000000)),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             border: InputBorder.none,
             isDense: true,
             contentPadding: isTextArea
@@ -4908,10 +4918,7 @@ class _DocPreviewState extends State<DocPreview> {
             const SizedBox(height: 8),
             Text(
               'documentation'.tr(),
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -4932,10 +4939,7 @@ class _DocPreviewState extends State<DocPreview> {
             const SizedBox(height: 8),
             Text(
               widget.docName ?? 'documentation'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
           ],
@@ -5126,10 +5130,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
             const SizedBox(height: 8),
             Text(
               'documentation'.tr(),
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -5175,4 +5176,3 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     return const SizedBox.shrink();
   }
 }
-

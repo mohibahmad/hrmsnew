@@ -62,7 +62,9 @@ Widget buildDateField({
       ? currentValue
       : 'Tap to select date';
   final hasError =
-      (fieldKey == 'dob' && parsed != null && !Validators.isAtLeast18(parsed)) ||
+      (fieldKey == 'dob' &&
+          parsed != null &&
+          !Validators.isAtLeast18(parsed)) ||
       (fieldKey == 'joiningDate' &&
           parsed != null &&
           parsed.isAfter(DateTime.now()));
@@ -79,10 +81,10 @@ Widget buildDateField({
     child: Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: AppColors.breakdownBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: hasError ? const Color(0xFFDC2626) : const Color(0xFFD1D5DB),
+          color: hasError ? AppColors.dangerRed : const Color(0xFFD1D5DB),
           width: 1.2,
         ),
       ),
@@ -92,7 +94,7 @@ Widget buildDateField({
           const Icon(
             CupertinoIcons.calendar,
             size: 18,
-            color: Color(0xFF9CA3AF),
+            color: AppColors.textMuted,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -104,7 +106,7 @@ Widget buildDateField({
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color: currentValue.isEmpty
-                      ? const Color(0xFF9CA3AF)
+                      ? AppColors.textMuted
                       : const Color(0xFF374151),
                 ),
               ),
@@ -146,7 +148,7 @@ void showCupertinoDatePickerDialog({
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Date Picker',
-    barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+    barrierColor: AppColors.primaryBlue.withValues(alpha: 0.5),
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (_, _, _) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, secondaryAnim, child) {
@@ -174,12 +176,12 @@ void showCupertinoDatePickerDialog({
                         BoxShadow(
                           color: const Color(
                             0xFF0247C4,
-                          ).withOpacity(0.18),
+                          ).withValues(alpha: 0.18),
                           blurRadius: 40,
                           offset: const Offset(0, 12),
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -195,7 +197,7 @@ void showCupertinoDatePickerDialog({
                               const Icon(
                                 CupertinoIcons.calendar,
                                 size: 20,
-                                color: Color(0xFF0247C4),
+                                color: AppColors.primaryBlue,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -203,7 +205,7 @@ void showCupertinoDatePickerDialog({
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111827),
+                                  color: AppColors.textDark,
                                 ),
                               ),
                             ],
@@ -217,14 +219,14 @@ void showCupertinoDatePickerDialog({
                                 const Icon(
                                   CupertinoIcons.exclamationmark_circle,
                                   size: 14,
-                                  color: Color(0xFF6B7280),
+                                  color: AppColors.textDarkGrey,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'worker_must_be_18'.tr(),
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF6B7280),
+                                    color: AppColors.textDarkGrey,
                                   ),
                                 ),
                               ],
@@ -257,7 +259,7 @@ void showCupertinoDatePickerDialog({
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F4F6),
+                                      color: AppColors.disabledFill,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Center(
@@ -308,7 +310,7 @@ void showCupertinoDatePickerDialog({
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0247C4),
+                                      color: AppColors.primaryBlue,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Center(
@@ -363,9 +365,9 @@ Widget buildCurrencyDropdown({
       offset: const Offset(0, 48),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
+        side: const BorderSide(color: AppColors.borderSubtle, width: 1),
       ),
-      color: const Color(0xFFFFFFFF),
+      color: AppColors.white,
       elevation: 4,
       itemBuilder: (context) {
         return CurrencyUtils.supportedCodes.map((code) {
@@ -382,8 +384,8 @@ Widget buildCurrencyDropdown({
                       : Icons.radio_button_off,
                   size: 18,
                   color: isSelected
-                      ? const Color(0xFF0247C4)
-                      : const Color(0xFF9CA3AF),
+                      ? AppColors.primaryBlue
+                      : AppColors.textMuted,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -395,8 +397,8 @@ Widget buildCurrencyDropdown({
                           ? FontWeight.w600
                           : FontWeight.normal,
                       color: isSelected
-                          ? const Color(0xFF0247C4)
-                          : const Color(0xFF111827),
+                          ? AppColors.primaryBlue
+                          : AppColors.textDark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -420,7 +422,7 @@ Widget buildCurrencyDropdown({
                     : currentCode,
                 style: const TextStyle(
                   fontSize: 15,
-                  color: Color(0xFF9CA3AF),
+                  color: AppColors.textMuted,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -428,7 +430,7 @@ Widget buildCurrencyDropdown({
             ),
             const Icon(
               Icons.arrow_drop_down,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.textMuted,
               size: 22,
             ),
           ],

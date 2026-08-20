@@ -1,8 +1,7 @@
-import 'dart:async';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
+import '../../utils/firestore_record_utils.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +13,6 @@ import '../../services/attendance_report_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/dummy_data.dart';
 import '../../services/error_reporter.dart';
-import '../../services/firestore_service.dart';
 import '../../services/time_off_export_service.dart';
 import '../../services/time_off_service.dart';
 import '../../widgets/clickable_gesture_detector.dart';
@@ -99,18 +97,13 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   Map<String, dynamic>? _workerForTimeOff;
 
-  StreamSubscription? _timeoffSub;
-  StreamSubscription? _workersSub;
-
   late final AuthService _authService;
-  late final FirestoreService _firestore;
   late final bool _isGuestMode;
 
   @override
   void initState() {
     super.initState();
     _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
     _isGuestMode = _authService.currentUser?.isAnonymous ?? false;
 
     if (_isGuestMode) {
@@ -126,20 +119,17 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   @override
   void dispose() {
-    _timeoffSub?.cancel();
-    _workersSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _initStreams() {
-    _workersSub = _firestore.workersStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      workersProvider,
+      (records) {
         if (!mounted) return;
         setState(() {
-          _workersList = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
+          _workersList = records;
           _workersLoaded = true;
           _workersLoadFailed = false;
           _combineTimeOff();
@@ -157,25 +147,12 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
       },
     );
 
-    _timeoffSub = _firestore.timeoffStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      timeOffProvider,
+      (records) {
         if (!mounted) return;
         setState(() {
-          final docs = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
-
-          docs.sort((a, b) {
-            final aTime = a['createdAt'];
-            final bTime = b['createdAt'];
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return 1;
-            if (bTime == null) return -1;
-            if (aTime is Timestamp && bTime is Timestamp) {
-              return bTime.compareTo(aTime);
-            }
-            return 0;
-          });
+          final docs = sortedFirestoreRecords(records);
 
           _rawTimeoffDocs = docs;
           _timeoffLoaded = true;
@@ -763,7 +740,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   void _refreshGuestData() {
-    if (_authService.currentUser?.isAnonymous ?? false) {
+    if (_isGuestMode) {
       setState(() {
         _isLoading = true;
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
@@ -776,8 +753,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
   }
 
   void _navigateToAssign(Map<String, dynamic> doc) {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
+    if (_isGuestMode) {
       showGuestRestrictionDialog(context);
       return;
     }
@@ -804,7 +780,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             ),
           )
           .then((_) {
-            if (isGuest) _refreshGuestData();
+            if (_isGuestMode) _refreshGuestData();
           });
     }
   }
@@ -1021,7 +997,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   child: Container(
                     width: 1,
                     height: 16,
-                    color: const Color(0xFFE5E7EB).withOpacity(0.5),
+                    color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
                   ),
                 ),
             ],
@@ -1086,7 +1062,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: workers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (_, index) => _buildWorkerRow(workers[index]),
             ),
           ),
@@ -1222,8 +1198,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                   onTap: () => _navigateToAssign(doc),
                   mouseCursor: SystemMouseCursors.click,
                   borderRadius: BorderRadius.circular(6),
-                  splashColor: _kActionBlue.withOpacity(0.15),
-                  highlightColor: _kActionBlue.withOpacity(0.05),
+                  splashColor: _kActionBlue.withValues(alpha: 0.15),
+                  highlightColor: _kActionBlue.withValues(alpha: 0.05),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -1484,8 +1460,8 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) icon,
-            if (iconWidget != null) iconWidget,
+            ?icon,
+            ?iconWidget,
             if (hasLeading) const SizedBox(width: 6),
             Text(label, style: _kWhiteText16w500),
             const SizedBox(width: 4),
@@ -1545,7 +1521,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      barrierColor: _kBlue.withOpacity(0.5),
+      barrierColor: _kBlue.withValues(alpha: 0.5),
       builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1560,7 +1536,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: _kBlack.withOpacity(0.15),
+                  color: _kBlack.withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1791,7 +1767,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             imageUrl: imageUrl,
             name: name,
             size: 60,
-            border: Border.all(color: Color(0xFF0A51D0), width: 2),
+            border: Border.all(color: const Color(0xFF0A51D0), width: 2),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1974,7 +1950,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -2040,7 +2016,9 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                       decoration: BoxDecoration(
                         color: LeaveColors.getBgColor(type),
                         borderRadius: BorderRadius.circular(5),
-                        border: Border.all(color: color.withOpacity(0.25)),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Text(
                         '${_localizedLeaveType(type)}: '
@@ -2068,7 +2046,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
                             vertical: 4,
                           ),
                           itemCount: datesWithTypes.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const Divider(height: 1, color: _kBorder),
                           itemBuilder: (context, index) {
                             final item = datesWithTypes[index];
@@ -2358,7 +2336,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
-      barrierColor: _kBlue.withOpacity(0.5),
+      barrierColor: _kBlue.withValues(alpha: 0.5),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {

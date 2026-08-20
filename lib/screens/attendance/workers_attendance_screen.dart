@@ -2,6 +2,8 @@ import 'dart:async';
 
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
+import '../../utils/firestore_record_utils.dart';
+import '../../utils/company_calendar_utils.dart';
 
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
@@ -138,7 +140,6 @@ class _WorkersAttendanceScreenState
   Set<int> _companyWorkingDays = <int>{..._defaultCompanyWorkingDays};
   List<Map<String, dynamic>> _timeOffRecords = <Map<String, dynamic>>[];
 
-  bool _isLoading = true;
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
   bool _holidaysLoaded = false;
@@ -150,11 +151,6 @@ class _WorkersAttendanceScreenState
   late final AuthService _authService;
   late final FirestoreService _firestore;
 
-  StreamSubscription? _workersSub;
-  StreamSubscription? _attendanceSub;
-  StreamSubscription? _holidaysSub;
-  StreamSubscription? _timeOffSub;
-
   bool _leaveNoticeShown = false;
   bool _autoMarkInProgress = false;
   bool _autoMarkDoneForToday = false;
@@ -163,8 +159,11 @@ class _WorkersAttendanceScreenState
       <String, Map<String, dynamic>>{};
   final Map<String, Map<String, dynamic>> _workersByEmail =
       <String, Map<String, dynamic>>{};
+  Set<String> _cachedWorkerIds = {};
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
+  bool get _isLoading => _errorMessage == null && !_authenticatedDataLoaded;
 
   bool get _authenticatedDataLoaded =>
       _workersLoaded && _attendanceLoaded && _holidaysLoaded && _timeOffLoaded;
@@ -195,30 +194,17 @@ class _WorkersAttendanceScreenState
 
   @override
   void dispose() {
-    _workersSub?.cancel();
-    _attendanceSub?.cancel();
-    _holidaysSub?.cancel();
-    _timeOffSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _syncLoadingFlag() {
-    _isLoading = _errorMessage == null && !_authenticatedDataLoaded;
-  }
-
   void _handleLoadError(Object error) {
     if (!mounted) return;
-    setState(() {
-      _errorMessage = error.toString();
-      _isLoading = false;
-    });
+    setState(() => _errorMessage = error.toString());
   }
 
   Future<void> _loadData() async {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-    if (isGuest) {
+    if (_isGuest) {
       final companyWorkingDays =
           await PreferencesService.getCompanyWorkingDays();
       if (!mounted) return;
@@ -242,7 +228,10 @@ class _WorkersAttendanceScreenState
             .toList();
         _companyWorkingDays = companyWorkingDays;
         _timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
-        _isLoading = false;
+        _workersLoaded = true;
+        _attendanceLoaded = true;
+        _holidaysLoaded = true;
+        _timeOffLoaded = true;
       });
 
       _showActiveLeaveNotice();
@@ -273,22 +262,21 @@ class _WorkersAttendanceScreenState
       }
     }
 
-    _workersSub = _firestore.workersStream.listen((snapshot) {
+    if (!mounted) return;
+
+    ref.listenAsync(workersProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _workers = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
+        _workers = records;
         _rebuildWorkerIndexes();
         _workersLoaded = true;
         _periodAttendanceRecords = _periodAttendanceRecords
             .where(_attendanceBelongsToCurrentWorker)
             .toList();
         _todayAttendance = _latestAttendancePerWorker(_periodAttendanceRecords);
-        _syncLoadingFlag();
       });
       _showActiveLeaveNotice();
-    }, onError: _handleLoadError);
+    }, onError: (error, stackTrace) => _handleLoadError(error));
 
     final attendanceNow = DateTime.now();
     final attendancePeriodStart = app_date_utils.AppDateUtils.periodStart(
@@ -309,81 +297,48 @@ class _WorkersAttendanceScreenState
       999,
     );
 
-    _attendanceSub = _firestore
-        .attendanceStreamForPeriod(
-          start: attendancePeriodStart,
-          end: attendancePeriodEnd,
-        )
-        .listen((snapshot) {
-          if (!mounted) return;
-          setState(() {
-            final sortedList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
+    ref.listenAsync(
+      attendanceForPeriodProvider((
+        start: attendancePeriodStart,
+        end: attendancePeriodEnd,
+      )),
+      (records) {
+        if (!mounted) return;
+        setState(() {
+          final sortedList = sortedFirestoreRecords(records);
 
-            sortedList.sort((a, b) {
-              final aTime = a['createdAt'];
-              final bTime = b['createdAt'];
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-              if (aTime is Timestamp && bTime is Timestamp) {
-                return bTime.compareTo(aTime);
-              }
-              return 0;
-            });
+          _attendanceLoaded = true;
+          _periodAttendanceRecords = sortedList.where((att) {
+            if (!_attendanceBelongsToCurrentWorker(att)) return false;
+            return app_date_utils.AppDateUtils.isAttendanceRecordWithinPeriod(
+              att,
+              _selectedTimeframe,
+            );
+          }).toList();
+          _todayAttendance = _latestAttendancePerWorker(
+            _periodAttendanceRecords,
+          );
+        });
+        _autoMarkPlannedLeaves();
+      },
+      onError: (error, stackTrace) => _handleLoadError(error),
+    );
 
-            _attendanceLoaded = true;
-            final filtered = sortedList.where((att) {
-              if (!_attendanceBelongsToCurrentWorker(att)) return false;
-              return app_date_utils.AppDateUtils.isAttendanceRecordWithinPeriod(
-                att,
-                _selectedTimeframe,
-              );
-            }).toList();
-
-            _periodAttendanceRecords = filtered;
-            _todayAttendance = _latestAttendancePerWorker(filtered);
-            _syncLoadingFlag();
-          });
-          _autoMarkPlannedLeaves();
-        }, onError: _handleLoadError);
-
-    _holidaysSub = _firestore.holidaysStream.listen((snapshot) {
+    ref.listenAsync(holidaysProvider, (records) {
       if (!mounted) return;
-      var companyWorkingDays = _companyWorkingDays;
-      final holidays = <Map<String, dynamic>>[];
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        if (data['type'] == 'company_work_days') {
-          final rawWorkingDays = data['workingDays'];
-          final savedDays = rawWorkingDays is List
-              ? rawWorkingDays
-                    .whereType<num>()
-                    .map((day) => day.toInt())
-                    .where(
-                      (day) => day >= DateTime.monday && day <= DateTime.sunday,
-                    )
-                    .toSet()
-              : <int>{};
-          if (savedDays.isNotEmpty) companyWorkingDays = savedDays;
-          continue;
-        }
-
-        holidays.add({...data, 'id': doc.id});
-      }
+      final calendar = splitCompanyCalendarRecords(
+        records,
+        fallbackWorkingDays: _companyWorkingDays,
+      );
 
       setState(() {
-        _holidays = holidays;
-        _companyWorkingDays = companyWorkingDays;
+        _holidays = calendar.holidays;
+        _companyWorkingDays = calendar.workingDays;
         _holidaysLoaded = true;
-        _syncLoadingFlag();
       });
-    }, onError: _handleLoadError);
+    }, onError: (error, stackTrace) => _handleLoadError(error));
 
-    _timeOffSub = _firestore.timeoffStream.listen((snapshot) {
+    ref.listenAsync(timeOffProvider, (records) {
       if (!mounted) return;
 
       final now = DateTime.now();
@@ -393,14 +348,11 @@ class _WorkersAttendanceScreenState
             now,
           );
 
-      final newRecords = snapshot.docs
-          .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-          .toList();
+      final newRecords = records;
 
       setState(() {
         _timeOffRecords = newRecords;
         _timeOffLoaded = true;
-        _syncLoadingFlag();
       });
 
       final currentTodayLeaveKeys =
@@ -419,7 +371,7 @@ class _WorkersAttendanceScreenState
         _autoMarkPlannedLeaves();
       }
       _showActiveLeaveNotice();
-    }, onError: _handleLoadError);
+    }, onError: (error, stackTrace) => _handleLoadError(error));
   }
 
   void _showActiveLeaveNotice() {
@@ -456,14 +408,11 @@ class _WorkersAttendanceScreenState
     });
   }
 
-  bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
-    return (record['source'] ?? '').toString().trim().toLowerCase() ==
-        'attendance';
-  }
+  bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) =>
+      (record['source'] ?? '').toString().trim().toLowerCase() == 'attendance';
 
-  List<Map<String, dynamic>> get _plannedTimeOffRecords => _timeOffRecords
-      .where((record) => !_isAttendanceManagedTimeOff(record))
-      .toList();
+  List<Map<String, dynamic>> get _plannedTimeOffRecords =>
+      _timeOffRecords.where((r) => !_isAttendanceManagedTimeOff(r)).toList();
 
   Map<String, dynamic>? _activePlannedTimeOffForWorker(
     Map<String, dynamic> worker,
@@ -1051,11 +1000,13 @@ class _WorkersAttendanceScreenState
     _workersById.clear();
     _workersByEmail.clear();
 
+    final ids = <String>{};
     for (final worker in _workers) {
       for (final key in [worker['workerId'], worker['id']]) {
         final id = (key ?? '').toString().trim();
         if (id.isNotEmpty) {
           _workersById.putIfAbsent(id, () => worker);
+          ids.add(id);
         }
       }
 
@@ -1064,6 +1015,7 @@ class _WorkersAttendanceScreenState
         _workersByEmail.putIfAbsent(email, () => worker);
       }
     }
+    _cachedWorkerIds = ids.toSet();
   }
 
   Map<String, dynamic>? _findWorkerForAttendanceRecord(
@@ -1217,12 +1169,7 @@ class _WorkersAttendanceScreenState
     return list;
   }
 
-  Set<String> get _currentWorkerIds {
-    return _workers
-        .map((worker) => (worker['id'] ?? '').toString().trim())
-        .where((id) => id.isNotEmpty)
-        .toSet();
-  }
+  Set<String> get _currentWorkerIds => _cachedWorkerIds;
 
   bool _attendanceBelongsToCurrentWorker(Map<String, dynamic> record) {
     if (_isGuest) {
@@ -1343,7 +1290,7 @@ class _WorkersAttendanceScreenState
               key: ValueKey('sidebar_${context.locale.languageCode}'),
               selectedIndex: 2,
               selectedSubIndex: 0,
-              isGuest: _authService.currentUser?.isAnonymous ?? false,
+              isGuest: _isGuest,
               isPremium: _isPremium,
               onItemSelected: (index, {subIndex}) {
                 _isDialogOpen = false;
@@ -1697,12 +1644,10 @@ class _WorkersAttendanceScreenState
     final todayRecord =
         _findTodayRecordForWorker(workerData) ?? <String, dynamic>{};
     final attendanceId = (todayRecord['id'] ?? '').toString().trim();
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final type = status == 'Leave' ? 'Annual Leave' : null;
-    const String? desc = null;
 
     try {
-      if (!isGuest) {
+      if (!_isGuest) {
         if (workerId.isEmpty) return;
 
         final attendanceData = <String, dynamic>{
@@ -1714,6 +1659,7 @@ class _WorkersAttendanceScreenState
           'attendanceType': workerData['type2'] ?? 'Remote',
           'workType': workerData['type1'] ?? 'Full Time',
           'profileImage': workerData['profileImage'],
+          'desc': FieldValue.delete(),
         };
 
         if (type != null) {
@@ -1722,18 +1668,12 @@ class _WorkersAttendanceScreenState
           attendanceData['type'] = FieldValue.delete();
         }
 
-        if (desc != null && desc.isNotEmpty) {
-          attendanceData['desc'] = desc;
-        } else {
-          attendanceData['desc'] = FieldValue.delete();
-        }
-
         final leaveBalanceSynced = await _syncAttendanceAnnualLeave(
           worker: workerData,
           originalAttendance: todayRecord,
           selectedStatus: status,
           leaveType: type ?? 'Annual Leave',
-          reason: desc ?? '',
+          reason: '',
           attendanceData: attendanceData,
           attendanceId: attendanceId,
         );
@@ -1774,19 +1714,14 @@ class _WorkersAttendanceScreenState
           } else {
             DummyData.attendance[index].remove('type');
           }
-          if (desc != null && desc.isNotEmpty) {
-            DummyData.attendance[index]['desc'] = desc;
-          } else {
-            DummyData.attendance[index].remove('desc');
-          }
+          DummyData.attendance[index].remove('desc');
         } else {
           DummyData.attendance.add(<String, dynamic>{
             'workerId': workerId,
             'name': name,
             'email': email,
             'status': status,
-            if (type != null) 'type': type,
-            if (desc != null && desc.isNotEmpty) 'desc': desc,
+            'type': ?type,
             'date': DateTime.now().toIso8601String(),
           });
         }
@@ -1828,9 +1763,8 @@ class _WorkersAttendanceScreenState
     if (_isDialogOpen) return;
 
     final workerData = _resolveWorkerData(data);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
 
-    if (isGuest) {
+    if (_isGuest) {
       showGuestRestrictionDialog(context);
       return;
     }
@@ -1985,7 +1919,7 @@ class _WorkersAttendanceScreenState
               width: 22,
               height: 22,
               color: const Color(0xFFFFFFFF),
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.filter_alt_outlined,
                 color: Color(0xFFFFFFFF),
                 size: 22,
@@ -2324,7 +2258,9 @@ class _WorkersAttendanceScreenState
                         color: const Color(0xFFFFFFFF),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF000000).withOpacity(0.2),
+                            color: const Color(
+                              0xFF000000,
+                            ).withValues(alpha: 0.2),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -2565,7 +2501,9 @@ class _WorkersAttendanceScreenState
                                       decoration: InputDecoration.collapsed(
                                         hintText: 'enter_reason_hint'.tr(),
                                         hintStyle: TextStyle(
-                                          color: Colors.black.withOpacity(0.38),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.38,
+                                          ),
                                           fontSize: 13,
                                         ),
                                       ),
@@ -2655,11 +2593,6 @@ class _WorkersAttendanceScreenState
                                                 return;
                                               }
 
-                                              final isGuest =
-                                                  _authService
-                                                      .currentUser
-                                                      ?.isAnonymous ??
-                                                  false;
                                               final type =
                                                   selectedStatus == 'Leave'
                                                   ? selectedLeaveType
@@ -2670,7 +2603,7 @@ class _WorkersAttendanceScreenState
                                                   : null;
 
                                               try {
-                                                if (!isGuest) {
+                                                if (!_isGuest) {
                                                   if (workerId.isEmpty) {
                                                     if (context.mounted) {
                                                       FlashySnackBar.show(
@@ -2767,7 +2700,7 @@ class _WorkersAttendanceScreenState
                                                   }
                                                 }
 
-                                                if (isGuest) {
+                                                if (_isGuest) {
                                                   final wIdx = DummyData.workers
                                                       .indexWhere((worker) {
                                                         final id =
@@ -3101,8 +3034,7 @@ class _WorkersAttendanceScreenState
             isHoliday: isHoliday,
             canMarkLeave: TimeOffService.totalAvailableLeaves(entry.value) > 0,
             onMarkAttendance: (status) {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
+              if (_isGuest) {
                 showGuestRestrictionDialog(context);
                 return;
               }
@@ -3121,8 +3053,7 @@ class _WorkersAttendanceScreenState
               }
             },
             onTap: () {
-              final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
+              if (_isGuest) {
                 showGuestRestrictionDialog(context);
                 return;
               }

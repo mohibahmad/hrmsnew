@@ -1,4 +1,4 @@
-import 'dart:async' show StreamSubscription, TimeoutException, Timer;
+import 'dart:async' show TimeoutException, Timer;
 import 'dart:ui';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
@@ -83,7 +83,6 @@ class AddPayrollScreen extends ConsumerStatefulWidget {
 }
 
 class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
-
   static const Color _primaryBlue = Color(0xFF0A44C2);
   static const Color _darkBlue = Color(0xFF082C7C);
   static const Color _textDark = Color(0xFF111827);
@@ -104,7 +103,12 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     vertical: 16,
   );
   static const EdgeInsets _appBarPadding = EdgeInsets.symmetric(horizontal: 40);
-  static const EdgeInsets _scrollPadding = EdgeInsets.only(left: 32, right: 32, top: 4, bottom: 32);
+  static const EdgeInsets _scrollPadding = EdgeInsets.only(
+    left: 32,
+    right: 32,
+    top: 4,
+    bottom: 32,
+  );
   static const EdgeInsets _cardPadding = EdgeInsets.all(32);
   static const EdgeInsets _bannerPadding = EdgeInsets.all(24);
   static const EdgeInsets _breakdownPadding = EdgeInsets.all(16);
@@ -126,6 +130,8 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   late FirestoreService _firestore;
   bool _initialized = false;
 
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _paidLeavesCtrl = TextEditingController();
@@ -146,7 +152,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   Object? _attendanceLoadError;
   bool _showNotifications = false;
 
-  StreamSubscription? _attendanceSub;
   Timer? _attendanceRefreshDebounce;
   List<Map<String, dynamic>>? _liveAttendanceRecords;
 
@@ -212,15 +217,11 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     _authService = ref.read(authServiceProvider);
     _firestore = ref.read(firestoreServiceProvider);
 
-    if (!(_authService.currentUser?.isAnonymous ?? false)) {
-      _attendanceSub = _firestore.attendanceStream.listen((snapshot) {
-        _liveAttendanceRecords = snapshot.docs
-            .map(
-              (doc) => {...?doc.data() as Map<String, dynamic>?, 'id': doc.id},
-            )
-            .toList();
+    if (!_isGuest) {
+      ref.listenAsync(attendanceProvider, (records) {
+        _liveAttendanceRecords = records;
         _scheduleAttendanceRefresh();
-      }, onError: (_, __) {});
+      });
     }
 
     final salaryVal = PayrollService.extractSalary(_salaryStr);
@@ -268,7 +269,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   @override
   void dispose() {
     _attendanceRefreshDebounce?.cancel();
-    _attendanceSub?.cancel();
     _workDaysCtrl.dispose();
     _absentsCtrl.dispose();
     _paidLeavesCtrl.dispose();
@@ -369,14 +369,16 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   void _handleEditableValueChanged() {
     _recalc();
     if (widget.workerData['hasPayrollRecord'] != true ||
-        _savedValuesFingerprint.isEmpty)
+        _savedValuesFingerprint.isEmpty) {
       return;
+    }
 
     final changed = _editableValuesFingerprint() != _savedValuesFingerprint;
     if (changed != _hasUnsavedChanges && mounted) {
       setState(() => _hasUnsavedChanges = changed);
     }
   }
+
   void _normalizeAbsentDeduction({required int absentDays}) {
     if (absentDays <= 0) {
       if (_absentDeductionCtrl.text.isNotEmpty) {
@@ -625,7 +627,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       return;
     }
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final now = DateTime.now();
     final payrollIdentity = _workerId.trim().isNotEmpty
         ? _workerId.trim()
@@ -684,7 +685,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     setState(() => _isSaving = true);
 
     try {
-      if (isGuest) {
+      if (_isGuest) {
         await _saveGuestPayroll(record, payrollKey, netAmount, paidAt);
       } else {
         await _saveFirestorePayroll(record, payrollKey, netAmount, paidAt);
@@ -804,8 +805,9 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
   Future<void> _handleCancelPayroll() async {
     if (_isSaving ||
         _isCancellingPayroll ||
-        widget.workerData['hasPayrollRecord'] != true)
+        widget.workerData['hasPayrollRecord'] != true) {
       return;
+    }
 
     final payrollId = (widget.workerData['id'] ?? '').toString().trim();
     final payrollKey = (widget.workerData['payrollKey'] ?? '')
@@ -815,9 +817,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     setState(() => _isCancellingPayroll = true);
 
     try {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-      if (isGuest) {
+      if (_isGuest) {
         await _cancelGuestPayroll(payrollId, payrollKey);
       } else {
         await _firestore.cancelPayrollRecord(
@@ -867,6 +867,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     await DummyData.saveToPrefs();
     if (mounted) setState(() {});
   }
+
   String _editableAmountValue(dynamic value) {
     final text = (value ?? '').toString().trim();
     final salaryVal = PayrollService.extractSalary(text);
@@ -958,7 +959,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     try {
       await showDialog<void>(
         context: context,
-        barrierColor: const Color(0xFF0F172A).withOpacity(0.55),
+        barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.55),
         builder: (ctx) {
           final screenSize = MediaQuery.of(ctx).size;
           final dialogWidth = screenSize.width > 620
@@ -1098,7 +1099,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: const Color(
                     0xFF0247C4,
-                  ).withOpacity(0.55),
+                  ).withValues(alpha: 0.55),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1315,9 +1316,7 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
         if (!showEditButtons)
           _cancelPayrollButton(
             onPressed: () async {
-              final isGuest =
-                  _authService.currentUser?.isAnonymous ?? false;
-              if (isGuest) {
+              if (_isGuest) {
                 showGuestRestrictionDialog(context);
                 return;
               }
@@ -1566,41 +1565,44 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
 
   Widget _buildProcessPayButton() {
     final showEditButtons = !widget.readOnly;
-    final showSaveButton = showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
+    final showSaveButton =
+        showEditButtons && (!_isPaidRecord || _hasUnsavedChanges);
 
     if (!showSaveButton) return const SizedBox.shrink();
 
     return ElevatedButton(
-        onPressed: _isSaving || _isCancellingPayroll
-            ? null
-            : () {
-                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  showGuestRestrictionDialog(context);
-                  return;
-                }
-                _handleSave();
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _saveBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: _isSaving
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-              )
-            : Text(
-                _isPaidRecord
-                    ? (_hasUnsavedChanges ? 'save_correction'.tr() : 'save'.tr())
-                    : 'process_payroll'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+      onPressed: _isSaving || _isCancellingPayroll
+          ? null
+          : () {
+              if (_isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
+              _handleSave();
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _saveBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: _isSaving
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
               ),
-      );
+            )
+          : Text(
+              _isPaidRecord
+                  ? (_hasUnsavedChanges ? 'save_correction'.tr() : 'save'.tr())
+                  : 'process_payroll'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+    );
   }
 
   Widget _buildInput(

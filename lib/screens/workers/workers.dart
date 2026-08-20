@@ -1,7 +1,6 @@
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
 
-import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -224,9 +223,10 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   bool _isOpeningAddFlow = false;
   final Set<String> _deletingWorkerIds = <String>{};
 
-  StreamSubscription? _workersSub;
   late AuthService _authService;
   late FirestoreService _firestore;
+
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
 
   @override
   void initState() {
@@ -238,15 +238,12 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
   @override
   void dispose() {
-    _workersSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _loadWorkers() {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-    if (isGuest) {
+    if (_isGuest) {
       final guestWorkers = DummyData.workers.asMap().entries.map((entry) {
         final w = Map<String, dynamic>.from(entry.value);
         w['profileImage'] = entry.key.isEven
@@ -264,11 +261,11 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       return;
     }
 
-    _workersSub = _firestore.workersStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      workersProvider,
+      (records) {
         if (!mounted) return;
-        final sortedList = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+        final sortedList = records
             .where((w) => w['isDeleted'] != true && w['status'] != 'Terminated')
             .toList();
 
@@ -298,7 +295,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           _isLoading = false;
         });
       },
-      onError: (Object e) {
+      onError: (Object e, StackTrace stackTrace) {
         if (!mounted) return;
         setState(() {
           _loadErrorMessage = 'failed_to_load_worker_data'.tr(
@@ -357,10 +354,8 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     if (!confirmed || !mounted) return;
 
     _deletingWorkerIds.add(normalizedId);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
     try {
-      if (isGuest) {
+      if (_isGuest) {
         DummyData.workers.removeWhere(
           (w) => w['id']?.toString() == normalizedId,
         );
@@ -470,11 +465,22 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (int i = 0; i <= positionsToShow.length; i++) ...[
-              _buildFilterTab(i == 0 ? 'All' : positionsToShow[i - 1], i == 0 ? 'all_filter'.tr() : LocalizationHelper.localizePosition(positionsToShow[i - 1])),
+              _buildFilterTab(
+                i == 0 ? 'All' : positionsToShow[i - 1],
+                i == 0
+                    ? 'all_filter'.tr()
+                    : LocalizationHelper.localizePosition(
+                        positionsToShow[i - 1],
+                      ),
+              ),
               if (i < positionsToShow.length)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Container(width: 1, height: 16, color: const Color(0xFFE5E7EB).withOpacity(0.5)),
+                  child: Container(
+                    width: 1,
+                    height: 16,
+                    color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
+                  ),
                 ),
             ],
           ],
@@ -493,7 +499,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
 
     return Column(
       children: [
-
         Container(
           height: 94,
           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -550,7 +555,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 Row(
                   children: [
                     Expanded(
@@ -617,9 +621,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       svgPath: 'assets/add_worker.svg',
                       label: 'add_worker'.tr(),
                       onTap: () async {
-                        final isGuest =
-                            _authService.currentUser?.isAnonymous ?? false;
-                        if (isGuest) {
+                        if (_isGuest) {
                           if (!mounted) return;
                           showGuestRestrictionDialog(context);
                           return;
@@ -632,9 +634,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'add_bulk_workers'.tr(),
                       onTap: () async {
-                        final isGuest =
-                            _authService.currentUser?.isAnonymous ?? false;
-                        if (isGuest) {
+                        if (_isGuest) {
                           if (!mounted) return;
                           showGuestRestrictionDialog(context);
                           return;
@@ -723,7 +723,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -743,7 +742,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: workers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (_, index) => _buildListItem(workers[index]),
             ),
           ),
@@ -782,96 +781,99 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                 period: screenShimmerPeriod,
                 direction: ShimmerDirection.ltr,
                 child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 5,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (_, __) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-                  decoration: BoxDecoration(
-                    color: _kRowBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 5,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, _) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 22,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _kRowBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 100,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 100,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  width: 60,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    width: 60,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            width: 80,
+                            height: 12,
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          width: 80,
-                          height: 12,
-                          margin: const EdgeInsets.only(right: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          width: 80,
-                          height: 12,
-                          margin: const EdgeInsets.only(right: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            width: 80,
+                            height: 12,
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          width: 80,
-                          height: 12,
-                          margin: const EdgeInsets.only(right: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            width: 80,
+                            height: 12,
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
+                        const SizedBox(width: 48),
+                      ],
+                    ),
                   ),
-                ),
                 ),
               ),
             ),
@@ -896,16 +898,15 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
     final email = (worker['email'] ?? '').toString();
     final type1 = (worker['type1'] ?? worker['workType'] ?? '').toString();
     final position = (worker['position'] ?? worker['role'] ?? '').toString();
-    final type2 = (worker['type2'] ?? worker['attendanceType'] ?? '').toString();
+    final type2 = (worker['type2'] ?? worker['attendanceType'] ?? '')
+        .toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
 
     final localizedType1 = LocalizationHelper.localizeType1(type1);
     final localizedType2 = LocalizationHelper.localizeType2(type2);
 
     void handleMenuAction(String value) {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-      if (isGuest) {
+      if (_isGuest) {
         showGuestRestrictionDialog(context);
         return;
       }
@@ -914,7 +915,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         case 'preview':
           showDialog(
             context: context,
-            barrierColor: _kPrimaryBlue.withOpacity(0.5),
+            barrierColor: _kPrimaryBlue.withValues(alpha: 0.5),
             builder: (_) => WorkerProfilePreviewDialog(worker: worker),
           );
         case 'edit':
@@ -932,7 +933,6 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
       ),
       child: Row(
         children: [
-
           Expanded(
             flex: 3,
             child: Padding(
@@ -1042,7 +1042,11 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                   value: 'edit',
                   height: 48,
                   child: _MenuItemRow(
-                    icon: Icon(Icons.edit, size: 16, color: _kActionBtnBlue),
+                    icon: const Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: _kActionBtnBlue,
+                    ),
                     label: 'edit_worker'.tr(),
                     textColor: _kActionBtnBlue,
                   ),
@@ -1061,7 +1065,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
                       ),
                     ),
                     label: 'delete_worker'.tr(),
-                    textColor: Color(0xFFFF1014),
+                    textColor: const Color(0xFFFF1014),
                   ),
                 ),
               ],
@@ -1259,8 +1263,7 @@ class _WorkerProfilePreviewDialogState
 
       if (!mounted) return;
 
-      final companyCurr =
-          companyProfile['currency']?.toString().trim();
+      final companyCurr = companyProfile['currency']?.toString().trim();
       final salary = _formatSalary(salaryAmount, currencyOverride: companyCurr);
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
@@ -1281,16 +1284,24 @@ class _WorkerProfilePreviewDialogState
         attendanceType: LocalizationHelper.localizeType2(_workerField('type2')),
         workType: LocalizationHelper.localizeType1(_workerField('type1')),
         experienceLevel: _orNA(
-          LocalizationHelper.localizeExperience(_workerField('experienceLevel')),
+          LocalizationHelper.localizeExperience(
+            _workerField('experienceLevel'),
+          ),
         ),
-        gender: _orNA(LocalizationHelper.localizeGender(_workerField('gender'))),
+        gender: _orNA(
+          LocalizationHelper.localizeGender(_workerField('gender')),
+        ),
         joiningDate: _orNA(_workerDateText(worker['joiningDate']) ?? ''),
         salary: salary,
-        education: _orNA(LocalizationHelper.localizeEducation(_workerField('education'))),
+        education: _orNA(
+          LocalizationHelper.localizeEducation(_workerField('education')),
+        ),
         religion: _orNA(_workerField('religion')),
         dateOfBirth: _orNA(_workerDateText(worker['dob']) ?? ''),
         relationshipStatus: _orNA(
-          LocalizationHelper.localizeRelationshipStatus(_workerField('relationshipStatus')),
+          LocalizationHelper.localizeRelationshipStatus(
+            _workerField('relationshipStatus'),
+          ),
         ),
         address: _orNA(_workerField('address')),
         profileImageUrl: profileImage,
@@ -1372,7 +1383,7 @@ class _WorkerProfilePreviewDialogState
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: _kBlack.withOpacity(0.15),
+                color: _kBlack.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -1380,12 +1391,10 @@ class _WorkerProfilePreviewDialogState
           ),
           child: Column(
             children: [
-
               Container(
                 decoration: const BoxDecoration(color: _kPrimaryBlue),
                 child: Column(
                   children: [
-
                     Container(
                       height: 44,
                       decoration: const BoxDecoration(color: _kDarkBlue),
@@ -1569,7 +1578,9 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.business_center,
                           'position'.tr(),
-                          LocalizationHelper.localizePosition(_workerField('position')),
+                          LocalizationHelper.localizePosition(
+                            _workerField('position'),
+                          ),
                         ),
                       ),
                       _buildRow(
@@ -1581,14 +1592,18 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.location_on,
                           'attendance_type'.tr(),
-                          LocalizationHelper.localizeType2(_workerField('type2')),
+                          LocalizationHelper.localizeType2(
+                            _workerField('type2'),
+                          ),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.schedule,
                           'work_type'.tr(),
-                          LocalizationHelper.localizeType1(_workerField('type1')),
+                          LocalizationHelper.localizeType1(
+                            _workerField('type1'),
+                          ),
                           assetImage: 'assets/worktype.png',
                         ),
                         _buildInfoCard(
@@ -1606,7 +1621,11 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _orNA(LocalizationHelper.localizeGender(_workerField('gender'))),
+                          _orNA(
+                            LocalizationHelper.localizeGender(
+                              _workerField('gender'),
+                            ),
+                          ),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
@@ -1649,7 +1668,7 @@ class _WorkerProfilePreviewDialogState
                           Icons.favorite,
                           'relationship_status'.tr(),
                           _orNA(
-LocalizationHelper.localizeRelationshipStatus(
+                            LocalizationHelper.localizeRelationshipStatus(
                               _workerField('relationshipStatus'),
                             ),
                           ),

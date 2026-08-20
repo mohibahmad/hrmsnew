@@ -1,65 +1,32 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../riverpod_providers.dart';
-import '../services/firestore_service.dart';
-import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 
-class NotificationBell extends ConsumerStatefulWidget {
+class NotificationBell extends ConsumerWidget {
   final VoidCallback? onTap;
   const NotificationBell({super.key, required this.onTap});
 
   @override
-  ConsumerState<NotificationBell> createState() => _NotificationBellState();
-}
-
-class _NotificationBellState extends ConsumerState<NotificationBell> {
-  StreamSubscription? _notifSub;
-  int _unreadCount = 0;
-  late AuthService _authService;
-  late FirestoreService _firestore;
-
-  @override
-  void initState() {
-    super.initState();
-    _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      return;
-    }
-    _notifSub = _firestore.notificationsStream.listen((snap) {
-      if (mounted) {
-        setState(() {
-          _unreadCount = snap.docs.where((d) {
-            final data = d.data() as Map<String, dynamic>?;
-            return data?['isRead'] != true;
-          }).length;
-        });
-      }
-    }, onError: (_) {});
-  }
-
-  @override
-  void dispose() {
-    _notifSub?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(authStateProvider).asData?.value;
+    final isGuest =
+        authUser?.isAnonymous ??
+        ref.read(authServiceProvider).currentUser?.isAnonymous ??
+        false;
+    final unreadNotifications = ref
+        .watch(unreadNotificationCountProvider)
+        .asData
+        ?.value;
     final int unreadCount = isGuest
         ? DummyData.notifications.where((n) => n['isRead'] != true).length
-        : _unreadCount;
+        : unreadNotifications ?? 0;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
-          widget.onTap?.call();
+          onTap?.call();
         },
         child: Stack(
           clipBehavior: Clip.none,

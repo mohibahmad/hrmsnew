@@ -245,7 +245,7 @@ Future<List<UploadFile>> _prepareUploadFiles(
     String fileName,
   })> sources,
 ) async {
-  const maxConcurrent = 4;
+  final maxConcurrent = io.Platform.numberOfProcessors.clamp(2, 8).toInt();
   final results = List<UploadFile?>.filled(sources.length, null);
   var nextIndex = 0;
 

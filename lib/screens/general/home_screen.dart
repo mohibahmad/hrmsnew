@@ -58,11 +58,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-
-
-
-
-  static final Tween<double> _dashboardFadeTween = Tween<double>(begin: 0, end: 1);
+  static final Tween<double> _dashboardFadeTween = Tween<double>(
+    begin: 0,
+    end: 1,
+  );
 
   late int _selectedIndex;
   late int _selectedSubIndex;
@@ -77,9 +76,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   final List<bool> _activatedScreens = List.filled(13, false);
 
-  final GlobalKey<WorkersScreenState> _workersKey = GlobalKey<WorkersScreenState>();
-  final GlobalKey<AssignTimeOffScreenState> _assignTimeOffKey = GlobalKey<AssignTimeOffScreenState>();
-  final GlobalKey<PayrollScreenState> _payrollKey = GlobalKey<PayrollScreenState>();
+  final GlobalKey<WorkersScreenState> _workersKey =
+      GlobalKey<WorkersScreenState>();
+  final GlobalKey<AssignTimeOffScreenState> _assignTimeOffKey =
+      GlobalKey<AssignTimeOffScreenState>();
+  final GlobalKey<PayrollScreenState> _payrollKey =
+      GlobalKey<PayrollScreenState>();
 
   late final AuthService _authService;
   late final FirestoreService _firestore;
@@ -101,7 +103,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _otherWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
-  int _unreadNotifCount = 0;
 
   List<Map<String, dynamic>> _rawExpensesDocs = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
@@ -111,17 +112,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Map<String, dynamic>> _holidays = [];
   List<Map<String, dynamic>> _allAttendanceDocs = [];
   List<Map<String, dynamic>> _allTimeoffDocs = [];
+  List<Map<String, dynamic>> _leaveDocs = [];
+  List<Map<String, dynamic>> _filteredAttendanceDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
-
-  StreamSubscription? _holidaysSub;
-  StreamSubscription? _workersSub;
-  StreamSubscription? _expensesSub;
-  StreamSubscription? _payrollSub;
-  StreamSubscription? _attendanceSub;
-  StreamSubscription? _timeoffSub;
-  StreamSubscription? _notifSub;
-  StreamSubscription<Map<String, dynamic>?>? _profileSub;
 
   @override
   void initState() {
@@ -131,7 +125,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
-
   }
 
   @override
@@ -155,19 +148,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitialProfile());
-  }
-
-  @override
-  void dispose() {
-    _holidaysSub?.cancel();
-    _workersSub?.cancel();
-    _expensesSub?.cancel();
-    _payrollSub?.cancel();
-    _attendanceSub?.cancel();
-    _timeoffSub?.cancel();
-    _notifSub?.cancel();
-    _profileSub?.cancel();
-    super.dispose();
   }
 
   int _getStackIndex() {
@@ -194,27 +174,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _getScreen(int index) {
     return switch (index) {
-      1 => WorkersScreen(key: _workersKey, onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
+      1 => WorkersScreen(
+        key: _workersKey,
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+      ),
       2 => AttendanceScreen(
-          onLogout: _handleLogout,
-          onProfileTap: _openProfile,
-          onNotificationTap: _toggleNotifications,
-          onWorkersAttendanceTap: () => setState(() { _showWorkersAttendance = true; _activatedScreens[11] = true; }),
-        ),
-      3 => PayrollScreen(key: _payrollKey, isActive: _getStackIndex() == 3, onLogout: _handleLogout, onProfileTap: _openProfile, activationToken: _payrollActivationToken, onNotificationTap: _toggleNotifications),
-      4 => TimeOffScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications, onAssignTimeOff: (worker) => _openAssignTimeOff(worker: worker)),
-      5 => AssetsScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
-      6 => HolidaysScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
-      7 => ExpensesScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
-      8 => SettingsScreen(onLogout: _handleLogout, onProfileTap: _openProfile, isGuest: _isGuest, onNotificationTap: _toggleNotifications),
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+        onWorkersAttendanceTap: () => setState(() {
+          _showWorkersAttendance = true;
+          _activatedScreens[11] = true;
+        }),
+      ),
+      3 => PayrollScreen(
+        key: _payrollKey,
+        isActive: _getStackIndex() == 3,
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        activationToken: _payrollActivationToken,
+        onNotificationTap: _toggleNotifications,
+      ),
+      4 => TimeOffScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+        onAssignTimeOff: (worker) => _openAssignTimeOff(worker: worker),
+      ),
+      5 => AssetsScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+      ),
+      6 => HolidaysScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+      ),
+      7 => ExpensesScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+      ),
+      8 => SettingsScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        isGuest: _isGuest,
+        onNotificationTap: _toggleNotifications,
+      ),
       9 => AssignTimeOffScreen(
-          key: _assignTimeOffKey,
-          onBack: () => setState(() { _showAssignTimeOff = false; _selectedTimeOffWorker = null; }),
-          onProfileTap: _openProfile,
-          onNotificationTap: _toggleNotifications,
-          initialWorker: _selectedTimeOffWorker,
-        ),
-      10 => DocumentsScreen(onLogout: _handleLogout, onProfileTap: _openProfile, onNotificationTap: _toggleNotifications),
+        key: _assignTimeOffKey,
+        onBack: () => setState(() {
+          _showAssignTimeOff = false;
+          _selectedTimeOffWorker = null;
+        }),
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+        initialWorker: _selectedTimeOffWorker,
+      ),
+      10 => DocumentsScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _toggleNotifications,
+      ),
       _ => const SizedBox.shrink(),
     };
   }
@@ -222,11 +246,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   static num _parseAmount(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value;
-    if (value is String) return double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+    if (value is String) {
+      return double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+    }
     return 0;
   }
 
-  static double _parseNumToDouble(dynamic value) => _parseAmount(value).toDouble();
+  static double _parseNumToDouble(dynamic value) =>
+      _parseAmount(value).toDouble();
 
   Future<void> _loadInitialProfile() async {
     final user = _authService.currentUser;
@@ -245,20 +272,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (profile == null) {
       await _authService.signOut();
       if (mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
       }
       return;
     }
 
     final profilePic = profile['profilePic']?.toString().trim() ?? '';
-    AuthService.profilePicNotifier.value = profilePic.isEmpty ? null : profilePic;
+    AuthService.profilePicNotifier.value = profilePic.isEmpty
+        ? null
+        : profilePic;
 
     final isPremium = profile['isPremium'] == true;
     final currencyCode = CurrencyUtils.normalize(profile['currency']);
     await PreferencesService.setPremium(isPremium);
 
     if (mounted && (_isPremium != isPremium || _currencyCode != currencyCode)) {
-      setState(() { _isPremium = isPremium; _currencyCode = currencyCode; });
+      setState(() {
+        _isPremium = isPremium;
+        _currencyCode = currencyCode;
+      });
     }
   }
 
@@ -266,17 +300,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (currentUser != null && !currentUser.isAnonymous) return;
 
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
-    AuthService.profilePicNotifier.value = (cachedUrl != null && cachedUrl.isNotEmpty) ? cachedUrl : null;
+    AuthService.profilePicNotifier.value =
+        (cachedUrl != null && cachedUrl.isNotEmpty) ? cachedUrl : null;
   }
 
   void _startPremiumListener() {
     final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
 
-    _profileSub = _firestore.userProfileStream.listen(
+    ref.listenAsync(
+      userProfileProvider,
       (profile) async {
         if (profile == null) {
-          try { await _authService.signOut(); } catch (_) {}
+          try {
+            await _authService.signOut();
+          } catch (_) {}
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -289,19 +327,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final isPremium = profile['isPremium'] == true;
         final currencyCode = CurrencyUtils.normalize(profile['currency']);
         final profilePic = profile['profilePic']?.toString().trim() ?? '';
-        final companyStamp = profile['companyStampUrl']?.toString().trim() ?? '';
+        final companyStamp =
+            profile['companyStampUrl']?.toString().trim() ?? '';
 
-        AuthService.profilePicNotifier.value = profilePic.isEmpty ? null : profilePic;
-        AuthService.companyStampNotifier.value = companyStamp.isEmpty ? null : companyStamp;
+        AuthService.profilePicNotifier.value = profilePic.isEmpty
+            ? null
+            : profilePic;
+        AuthService.companyStampNotifier.value = companyStamp.isEmpty
+            ? null
+            : companyStamp;
 
         await PreferencesService.setPremium(isPremium);
 
-        if (mounted && (_isPremium != isPremium || _currencyCode != currencyCode)) {
-          setState(() { _isPremium = isPremium; _currencyCode = currencyCode; });
+        if (mounted &&
+            (_isPremium != isPremium || _currencyCode != currencyCode)) {
+          setState(() {
+            _isPremium = isPremium;
+            _currencyCode = currencyCode;
+          });
         }
       },
       onError: (Object error, StackTrace stackTrace) {
-        ErrorReporter.report(error, stackTrace, context: 'premiumProfileStream');
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'premiumProfileStream',
+        );
       },
     );
   }
@@ -326,8 +377,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           fCount++;
         } else if (gender == 'male') {
           mCount++;
-        }
-        else if (gender == 'other' || gender == 'others') {
+        } else if (gender == 'other' || gender == 'others') {
           oCount++;
         }
       }
@@ -338,7 +388,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       _holidays = _buildGuestHolidays();
       _allAttendanceDocs = _buildEnrichedGuestAttendance();
-      _unreadNotifCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
       _workersDocs = List<Map<String, dynamic>>.from(DummyData.workers);
       _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
       _workersLoaded = true;
@@ -358,6 +407,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     if (!mounted) return;
     setState(() {
+      _recalculateLeaveAndAttendanceCharts();
       if (_isGuest) {
         _recalculateDummyTotals(_selectedPeriod);
       } else {
@@ -371,23 +421,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     const monthNames = LocalizationHelper.englishMonthNames;
     const weekDays = LocalizationHelper.englishWeekdayNames;
 
-    return DummyData.holidays.values.expand((list) => list).cast<Map<String, dynamic>>().map((h) {
-      final parts = (h['date'] ?? '').toString().split('/');
-      String day = '', month = '', dayOfWeek = '';
+    return DummyData.holidays.values
+        .expand((list) => list)
+        .cast<Map<String, dynamic>>()
+        .map((h) {
+          final parts = (h['date'] ?? '').toString().split('/');
+          String day = '', month = '', dayOfWeek = '';
 
-      if (parts.length == 3) {
-        final dayNum = int.tryParse(parts[0]) ?? 0;
-        final monthNum = int.tryParse(parts[1]) ?? 0;
-        final year = int.tryParse(parts[2]) ?? DateTime.now().year;
-        day = dayNum.toString();
-        month = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum] : '';
-        if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
-          dayOfWeek = weekDays[DateTime(year, monthNum, dayNum).weekday % 7];
-        }
-      }
+          if (parts.length == 3) {
+            final dayNum = int.tryParse(parts[0]) ?? 0;
+            final monthNum = int.tryParse(parts[1]) ?? 0;
+            final year = int.tryParse(parts[2]) ?? DateTime.now().year;
+            day = dayNum.toString();
+            month = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum] : '';
+            if (monthNum >= 1 &&
+                monthNum <= 12 &&
+                dayNum >= 1 &&
+                dayNum <= 31) {
+              dayOfWeek =
+                  weekDays[DateTime(year, monthNum, dayNum).weekday % 7];
+            }
+          }
 
-      return {'name': h['name'] ?? '', 'day': day, 'month': month, 'dayOfWeek': dayOfWeek, 'isEnabled': true, 'remainingDays': '0'};
-    }).toList();
+          return {
+            'name': h['name'] ?? '',
+            'day': day,
+            'month': month,
+            'dayOfWeek': dayOfWeek,
+            'isEnabled': true,
+            'remainingDays': '0',
+          };
+        })
+        .toList();
   }
 
   List<Map<String, dynamic>> _buildEnrichedGuestAttendance() {
@@ -410,32 +475,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _loadFirestoreDashboardData() {
     setState(() => _holidays = []);
 
-    _holidaysSub = _firestore.holidaysStream.listen((snap) {
+    ref.listenAsync(holidaysProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _holidays = snap.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+        _holidays = records
             .where((h) => h['type'] != 'company_work_days')
             .toList();
       });
     });
 
-    _workersSub = _firestore.workersStream.listen((snap) {
+    ref.listenAsync(workersProvider, (records) {
       if (!mounted) return;
 
       int mCount = 0, fCount = 0, oCount = 0, activeHeadcount = 0;
       final today = DateTime.now();
       final list = <Map<String, dynamic>>[];
 
-      for (final doc in snap.docs) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        list.add({...data, 'id': doc.id});
+      for (final data in records) {
+        list.add(data);
 
         if (!PayrollService.isWorkerEligibleForPayroll(data)) continue;
 
-        final joiningDate = AppDateUtils.dateFromValue(data['joiningDate'] ?? data['dateOfJoining']);
+        final joiningDate = AppDateUtils.dateFromValue(
+          data['joiningDate'] ?? data['dateOfJoining'],
+        );
         if (joiningDate != null) {
-          final normJoining = DateTime(joiningDate.year, joiningDate.month, joiningDate.day);
+          final normJoining = DateTime(
+            joiningDate.year,
+            joiningDate.month,
+            joiningDate.day,
+          );
           final normToday = DateTime(today.year, today.month, today.day);
           if (normJoining.isAfter(normToday)) continue;
         }
@@ -446,8 +515,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           fCount++;
         } else if (gender == 'male') {
           mCount++;
-        }
-        else if (gender == 'other' || gender == 'others') {
+        } else if (gender == 'other' || gender == 'others') {
           oCount++;
         }
       }
@@ -459,7 +527,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersDocs = list;
         _workersLoaded = true;
-        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+        _recalculateLeaveAndAttendanceCharts();
+        if (_initialWorkersLoaded &&
+            _initialExpensesLoaded &&
+            _initialPayrollLoaded) {
           _recalculateSumsForPeriod(_selectedPeriod);
         }
       });
@@ -467,32 +538,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _maybeMarkDashboardReady();
     });
 
-    _attendanceSub = _firestore.attendanceStream.listen((snap) {
+    ref.listenAsync(attendanceProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _allAttendanceDocs = snap.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
+        _allAttendanceDocs = records;
+        _recalculateLeaveAndAttendanceCharts();
       });
     });
 
-    _timeoffSub = _firestore.timeoffStream.listen((snap) {
+    ref.listenAsync(timeOffProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _allTimeoffDocs = snap.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
+        _allTimeoffDocs = records;
+        _recalculateLeaveAndAttendanceCharts();
       });
     });
 
-    _expensesSub = _firestore.expensesStream.listen((snap) {
+    ref.listenAsync(expensesProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _rawExpensesDocs = snap.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>?;
-          return {...?data, 'id': doc.id, 'amount': _parseAmount(data?['amount'])};
+        _rawExpensesDocs = records.map((data) {
+          return {...data, 'amount': _parseAmount(data['amount'])};
         }).toList();
-        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+        if (_initialWorkersLoaded &&
+            _initialExpensesLoaded &&
+            _initialPayrollLoaded) {
           _recalculateSumsForPeriod(_selectedPeriod);
         }
       });
@@ -500,27 +570,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _maybeMarkDashboardReady();
     });
 
-    _payrollSub = _firestore.payrollStream.listen((snap) {
+    ref.listenAsync(payrollProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _rawPayrollDocs = snap.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>?;
+        _rawPayrollDocs = records.map((data) {
           final netSalary = _resolvePayrollNetSalary(data);
-          return {...?data, 'id': doc.id, 'netSalary': netSalary};
+          return {...data, 'netSalary': netSalary};
         }).toList();
-        if (_initialWorkersLoaded && _initialExpensesLoaded && _initialPayrollLoaded) {
+        if (_initialWorkersLoaded &&
+            _initialExpensesLoaded &&
+            _initialPayrollLoaded) {
           _recalculateSumsForPeriod(_selectedPeriod);
         }
       });
       _initialPayrollLoaded = true;
       _maybeMarkDashboardReady();
-    });
-
-    _notifSub = _firestore.notificationsStream.listen((snap) {
-      if (!mounted) return;
-      setState(() {
-        _unreadNotifCount = snap.docs.where((d) => (d.data() as Map<String, dynamic>?)?['isRead'] != true).length;
-      });
     });
   }
 
@@ -529,24 +593,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (savedNet is num) return savedNet.toDouble();
 
     final legacyFormatted = (data?['netSalary'] ?? '').toString().trim();
-    if (legacyFormatted.isNotEmpty) return PayrollService.extractSalary(legacyFormatted);
+    if (legacyFormatted.isNotEmpty) {
+      return PayrollService.extractSalary(legacyFormatted);
+    }
 
     return (PayrollService.calculatePayroll(
-      salary: (data?['salary'] ?? '').toString(),
-      totalWorkDays: (data?['totalWorkDays'] ?? '').toString(),
-      absents: (data?['absents'] ?? '').toString(),
-      leaves: (data?['leaves'] ?? '').toString(),
-      overtimeAmount: (data?['overtimeAmount'] ?? '').toString(),
-      absentDeductionPerDay: data?['deductionsAreTotals'] == true ? '' : (data?['absentDeduction'] ?? '').toString(),
-      leaveDeductionPerDay: data?['deductionsAreTotals'] == true ? '' : (data?['leaveDeduction'] ?? '').toString(),
-      salaryType: (data?['salaryType'] ?? 'Monthly').toString(),
-    )['netSalary'] as num).toDouble();
+              salary: (data?['salary'] ?? '').toString(),
+              totalWorkDays: (data?['totalWorkDays'] ?? '').toString(),
+              absents: (data?['absents'] ?? '').toString(),
+              leaves: (data?['leaves'] ?? '').toString(),
+              overtimeAmount: (data?['overtimeAmount'] ?? '').toString(),
+              absentDeductionPerDay: data?['deductionsAreTotals'] == true
+                  ? ''
+                  : (data?['absentDeduction'] ?? '').toString(),
+              leaveDeductionPerDay: data?['deductionsAreTotals'] == true
+                  ? ''
+                  : (data?['leaveDeduction'] ?? '').toString(),
+              salaryType: (data?['salaryType'] ?? 'Monthly').toString(),
+            )['netSalary']
+            as num)
+        .toDouble();
   }
-
 
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
+      _recalculateLeaveAndAttendanceCharts();
       if (_isGuest) {
         _recalculateDummyTotals(period);
       } else {
@@ -555,9 +627,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  void _recalculateLeaveAndAttendanceCharts() {
+    final isEffectivelyGuest = _isGuest || PreferencesService.cachedIsGuest;
+    _leaveDocs = DashboardChartService.mergedLeaveDaysForPeriod(
+      timeOffRecords: _allTimeoffDocs,
+      attendanceRecords: isEffectivelyGuest
+          ? const <Map<String, dynamic>>[]
+          : _allAttendanceDocs
+                .where(_attendanceBelongsToExistingWorker)
+                .toList(),
+      period: _selectedPeriod,
+      workers: _workersDocs,
+    );
+    _filteredAttendanceDocs = _getFilteredAttendanceDocs();
+  }
+
   void _recalculateSumsForPeriod(String period) {
-    final paidPayroll = PayrollService.paidPayrollRecordsForActiveWorkers(_workersDocs, _rawPayrollDocs);
-    final paidKeys = paidPayroll.map((r) => (r['payrollKey'] ?? '').toString().trim()).where((k) => k.isNotEmpty).toSet();
+    final paidPayroll = PayrollService.paidPayrollRecordsForActiveWorkers(
+      _workersDocs,
+      _rawPayrollDocs,
+    );
+    final paidKeys = paidPayroll
+        .map((r) => (r['payrollKey'] ?? '').toString().trim())
+        .where((k) => k.isNotEmpty)
+        .toSet();
 
     final payrollAmountByKey = <String, double>{};
     for (final record in paidPayroll) {
@@ -577,20 +670,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     double expenseValueOf(Map<String, dynamic> r) {
       final category = (r['category'] ?? '').toString().trim().toLowerCase();
       final payrollKey = (r['payrollKey'] ?? '').toString().trim();
-      if (category == 'salary' && payrollKey.isNotEmpty) return payrollAmountByKey[payrollKey] ?? 0.0;
+      if (category == 'salary' && payrollKey.isNotEmpty) {
+        return payrollAmountByKey[payrollKey] ?? 0.0;
+      }
       return _parseNumToDouble(r['amount']);
     }
 
     final expenseSeries = DashboardChartService.buildSeries(
-      records: activeExpenses, valueOf: expenseValueOf, period: period, dateOf: DashboardChartService.expenseRecordDate,
+      records: activeExpenses,
+      valueOf: expenseValueOf,
+      period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
     );
 
-    final salaryExpenses = activeExpenses.where((r) => (r['category'] ?? '').toString().trim().toLowerCase() == 'salary').toList();
+    final salaryExpenses = activeExpenses
+        .where(
+          (r) =>
+              (r['category'] ?? '').toString().trim().toLowerCase() == 'salary',
+        )
+        .toList();
     final salarySeries = DashboardChartService.buildSeries(
       records: salaryExpenses,
       valueOf: (r) {
         final key = (r['payrollKey'] ?? '').toString().trim();
-        return key.isNotEmpty ? payrollAmountByKey[key] ?? 0.0 : _parseNumToDouble(r['amount']);
+        return key.isNotEmpty
+            ? payrollAmountByKey[key] ?? 0.0
+            : _parseNumToDouble(r['amount']);
       },
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
@@ -603,17 +708,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _recalculateDummyTotals(String period) {
-    final activePayroll = PayrollService.paidPayrollRecordsForActiveWorkers(DummyData.workers, DummyData.payroll).map((item) {
-      final savedNet = item['netSalaryAmount'];
-      final formattedNet = (item['netSalary'] ?? '').toString();
-      final amount = item['amount'];
-      final netSalary = savedNet is num
-          ? savedNet.toDouble()
-          : formattedNet.trim().isNotEmpty
+    final activePayroll =
+        PayrollService.paidPayrollRecordsForActiveWorkers(
+          DummyData.workers,
+          DummyData.payroll,
+        ).map((item) {
+          final savedNet = item['netSalaryAmount'];
+          final formattedNet = (item['netSalary'] ?? '').toString();
+          final amount = item['amount'];
+          final netSalary = savedNet is num
+              ? savedNet.toDouble()
+              : formattedNet.trim().isNotEmpty
               ? PayrollService.extractSalary(formattedNet)
-              : amount is num ? amount.toDouble() : 0.0;
-      return {...item, 'netSalary': netSalary};
-    }).toList();
+              : amount is num
+              ? amount.toDouble()
+              : 0.0;
+          return {...item, 'netSalary': netSalary};
+        }).toList();
 
     final payrollAmountByKey = <String, double>{};
     for (final record in activePayroll) {
@@ -634,37 +745,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final adjustedExpenses = DummyData.expenses.asMap().entries.map((entry) {
       final record = Map<String, dynamic>.from(entry.value);
-      final daysAgo = (entry.key * (maxDays + 1) / DummyData.expenses.length).floor();
+      final daysAgo = (entry.key * (maxDays + 1) / DummyData.expenses.length)
+          .floor();
       final newDate = now.subtract(Duration(days: daysAgo));
-      record['date'] = '${newDate.day.toString().padLeft(2, '0')}/${newDate.month.toString().padLeft(2, '0')}/${newDate.year}';
+      record['date'] =
+          '${newDate.day.toString().padLeft(2, '0')}/${newDate.month.toString().padLeft(2, '0')}/${newDate.year}';
       return record;
     }).toList();
 
     final filteredExpenses = adjustedExpenses.where((r) {
       final category = (r['category'] ?? '').toString().trim().toLowerCase();
       final payrollKey = (r['payrollKey'] ?? '').toString().trim();
-      if (category == 'salary' && payrollKey.isNotEmpty) return payrollAmountByKey.containsKey(payrollKey);
+      if (category == 'salary' && payrollKey.isNotEmpty) {
+        return payrollAmountByKey.containsKey(payrollKey);
+      }
       return true;
     }).toList();
 
     double expenseValueOf(Map<String, dynamic> r) {
       final category = (r['category'] ?? '').toString().trim().toLowerCase();
       final payrollKey = (r['payrollKey'] ?? '').toString().trim();
-      if (category == 'salary' && payrollKey.isNotEmpty) return payrollAmountByKey[payrollKey] ?? 0.0;
+      if (category == 'salary' && payrollKey.isNotEmpty) {
+        return payrollAmountByKey[payrollKey] ?? 0.0;
+      }
       return _parseNumToDouble(r['amount']);
     }
 
     final expenseSeries = DashboardChartService.buildSeries(
-      records: filteredExpenses, valueOf: expenseValueOf, period: period,
-      dateOf: DashboardChartService.expenseRecordDate, placeUndatedInCurrentPeriod: true,
+      records: filteredExpenses,
+      valueOf: expenseValueOf,
+      period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
+      placeUndatedInCurrentPeriod: true,
     );
 
-    final salaryExpenses = filteredExpenses.where((r) => (r['category'] ?? '').toString().trim().toLowerCase() == 'salary').toList();
+    final salaryExpenses = filteredExpenses
+        .where(
+          (r) =>
+              (r['category'] ?? '').toString().trim().toLowerCase() == 'salary',
+        )
+        .toList();
     final salarySeries = DashboardChartService.buildSeries(
       records: salaryExpenses,
       valueOf: (r) {
         final key = (r['payrollKey'] ?? '').toString().trim();
-        return key.isNotEmpty ? payrollAmountByKey[key] ?? 0.0 : _parseNumToDouble(r['amount']);
+        return key.isNotEmpty
+            ? payrollAmountByKey[key] ?? 0.0
+            : _parseNumToDouble(r['amount']);
       },
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
@@ -693,11 +820,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (workerId.isNotEmpty) return _existingWorkerIds.contains(workerId);
 
     final email = (attendance['email'] ?? '').toString().trim().toLowerCase();
-    if (email.isNotEmpty) return _workersDocs.any((w) => (w['email'] ?? '').toString().trim().toLowerCase() == email);
+    if (email.isNotEmpty) {
+      return _workersDocs.any(
+        (w) => (w['email'] ?? '').toString().trim().toLowerCase() == email,
+      );
+    }
 
-    final name = (attendance['name'] ?? attendance['workerName'] ?? '').toString().trim().toLowerCase();
+    final name = (attendance['name'] ?? attendance['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     if (name.isEmpty) return false;
-    return _workersDocs.any((w) => (w['name'] ?? '').toString().trim().toLowerCase() == name);
+    return _workersDocs.any(
+      (w) => (w['name'] ?? '').toString().trim().toLowerCase() == name,
+    );
   }
 
   List<Map<String, dynamic>> _getFilteredAttendanceDocs() {
@@ -714,24 +850,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   String? _dashboardAttendanceWorkerId(Map<String, dynamic> attendance) {
     final rawWorkerId = (attendance['workerId'] ?? '').toString().trim();
-    if (rawWorkerId.isNotEmpty && _existingWorkerIds.contains(rawWorkerId)) return rawWorkerId;
+    if (rawWorkerId.isNotEmpty && _existingWorkerIds.contains(rawWorkerId)) {
+      return rawWorkerId;
+    }
 
     final email = (attendance['email'] ?? '').toString().trim().toLowerCase();
-    final name = (attendance['name'] ?? attendance['workerName'] ?? '').toString().trim().toLowerCase();
+    final name = (attendance['name'] ?? attendance['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
 
     for (final worker in _workersDocs) {
-      final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
-      if (email.isNotEmpty && (worker['email'] ?? '').toString().trim().toLowerCase() == email) return workerId;
-      if (name.isNotEmpty && (worker['name'] ?? '').toString().trim().toLowerCase() == name) return workerId;
+      final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+          .toString()
+          .trim();
+      if (email.isNotEmpty &&
+          (worker['email'] ?? '').toString().trim().toLowerCase() == email) {
+        return workerId;
+      }
+      if (name.isNotEmpty &&
+          (worker['name'] ?? '').toString().trim().toLowerCase() == name) {
+        return workerId;
+      }
     }
     return null;
   }
 
   String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
-    final value = clampToZero ? amount.clamp(0, double.infinity).toDouble() : amount;
+    final value = clampToZero
+        ? amount.clamp(0, double.infinity).toDouble()
+        : amount;
     final symbol = CurrencyUtils.symbolFor(_currencyCode);
 
-    if (value.abs() >= 1e3) return CurrencyUtils.formatCompactLocale(value, context.locale.toString(), symbol: symbol);
+    if (value.abs() >= 1e3) {
+      return CurrencyUtils.formatCompactLocale(
+        value,
+        context.locale.toString(),
+        symbol: symbol,
+      );
+    }
 
     final separator = symbol.length > 1 ? ' ' : '';
     try {
@@ -774,7 +931,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _openProfile() async {
-    if (_showAssignTimeOff && (_assignTimeOffKey.currentState?.hasUnsavedChanges ?? false)) {
+    if (_showAssignTimeOff &&
+        (_assignTimeOffKey.currentState?.hasUnsavedChanges ?? false)) {
       final shouldDiscard = await UnsavedChangesDialog.show(context);
       if (!shouldDiscard) return;
     }
@@ -788,7 +946,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  void _toggleNotifications() => setState(() => _showNotifications = !_showNotifications);
+  void _toggleNotifications() =>
+      setState(() => _showNotifications = !_showNotifications);
 
   void _openAssignTimeOff({Map<String, dynamic>? worker}) {
     setState(() {
@@ -808,15 +967,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         case 'worker_added':
           _selectedIndex = 1;
         case 'attendance_marked':
-          _selectedIndex = 2; _selectedSubIndex = 0;
+          _selectedIndex = 2;
+          _selectedSubIndex = 0;
         case 'payroll_added' || 'payroll_due':
-          _selectedIndex = 2; _selectedSubIndex = 1;
+          _selectedIndex = 2;
+          _selectedSubIndex = 1;
         case 'time_off_added':
-          _selectedIndex = 2; _selectedSubIndex = 2;
+          _selectedIndex = 2;
+          _selectedSubIndex = 2;
         case 'asset_added':
-          _selectedIndex = 2; _selectedSubIndex = 3;
+          _selectedIndex = 2;
+          _selectedSubIndex = 3;
         case 'holiday_added':
-          _selectedIndex = 2; _selectedSubIndex = 4;
+          _selectedIndex = 2;
+          _selectedSubIndex = 4;
         case 'expense_added':
           _selectedIndex = 3;
       }
@@ -835,7 +999,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           const double minWidth = 1200;
-          final bodyWidth = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+          final bodyWidth = constraints.maxWidth < minWidth
+              ? minWidth
+              : constraints.maxWidth;
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -848,19 +1014,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
-                    isGuest: _isGuest || (_authService.currentUser?.isAnonymous ?? false),
+                    isGuest: _isGuest,
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
-                      if (_selectedIndex == 1 && _workersKey.currentState?.hasUnsavedChanges == true) {
-                        final shouldDiscard = await _workersKey.currentState!.confirmDiscardChanges();
+                      if (_selectedIndex == 1 &&
+                          _workersKey.currentState?.hasUnsavedChanges == true) {
+                        final shouldDiscard = await _workersKey.currentState!
+                            .confirmDiscardChanges();
                         if (!shouldDiscard) return;
                       }
 
-                      if (_selectedIndex == 1) _workersKey.currentState?.closeIdleBulkAddFlow();
+                      if (_selectedIndex == 1) {
+                        _workersKey.currentState?.closeIdleBulkAddFlow();
+                      }
 
                       if (_showAssignTimeOff) {
                         if (!context.mounted) return;
-                        final shouldDiscard = await UnsavedChangesDialog.show(context);
+                        final shouldDiscard = await UnsavedChangesDialog.show(
+                          context,
+                        );
                         if (!shouldDiscard) return;
                       }
 
@@ -868,7 +1040,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       setState(() {
                         final targetSubIndex = subIndex ?? _selectedSubIndex;
-                        if (index == 2 && targetSubIndex == 1) _payrollActivationToken++;
+                        if (index == 2 && targetSubIndex == 1) {
+                          _payrollActivationToken++;
+                        }
                         _selectedIndex = index;
                         if (subIndex != null) _selectedSubIndex = subIndex;
                         _showProfile = false;
@@ -895,42 +1069,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           ? TweenAnimationBuilder<double>(
                                               key: ValueKey(stackIndex == 0),
                                               tween: _dashboardFadeTween,
-                                              duration: const Duration(milliseconds: 650),
-                                              curve: Curves.easeOutQuart,
-                                              builder: (context, value, child) => Opacity(
-                                                opacity: value,
-                                                child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
+                                              duration: const Duration(
+                                                milliseconds: 650,
                                               ),
+                                              curve: Curves.easeOutQuart,
+                                              builder:
+                                                  (
+                                                    context,
+                                                    value,
+                                                    child,
+                                                  ) => Opacity(
+                                                    opacity: value,
+                                                    child: Transform.translate(
+                                                      offset: Offset(
+                                                        0,
+                                                        15 * (1 - value),
+                                                      ),
+                                                      child: child,
+                                                    ),
+                                                  ),
                                               child: _buildDashboardView(),
                                             )
                                           : _buildDashboardLoadingView())
                                     : const SizedBox.shrink(),
 
                                 for (int i = 1; i <= 9; i++)
-                                  _activatedScreens[i] ? _getScreen(i) : const SizedBox.shrink(),
+                                  _activatedScreens[i]
+                                      ? _getScreen(i)
+                                      : const SizedBox.shrink(),
 
-                                _activatedScreens[10] ? _buildProfileView(stackIndex == 10) : const SizedBox.shrink(),
+                                _activatedScreens[10]
+                                    ? _buildProfileView(stackIndex == 10)
+                                    : const SizedBox.shrink(),
 
                                 _activatedScreens[11]
                                     ? WorkersAttendanceScreen(
                                         hideSidebar: true,
                                         onProfileTap: _openProfile,
-                                        onBack: () => setState(() => _showWorkersAttendance = false),
+                                        onBack: () => setState(
+                                          () => _showWorkersAttendance = false,
+                                        ),
                                         onNotificationTap: _toggleNotifications,
                                       )
                                     : const SizedBox.shrink(),
 
-                                _activatedScreens[12] ? _getScreen(10) : const SizedBox.shrink(),
+                                _activatedScreens[12]
+                                    ? _getScreen(10)
+                                    : const SizedBox.shrink(),
                               ],
                             );
                           },
                         ),
                         if (_showNotifications) ...[
                           Positioned.fill(
-                            child: GestureDetector(onTap: _toggleNotifications, behavior: HitTestBehavior.opaque),
+                            child: GestureDetector(
+                              onTap: _toggleNotifications,
+                              behavior: HitTestBehavior.opaque,
+                            ),
                           ),
                           NotificationSidebar(
-                            key: ValueKey('notif_sidebar_${context.locale.languageCode}'),
+                            key: ValueKey(
+                              'notif_sidebar_${context.locale.languageCode}',
+                            ),
                             onClose: _toggleNotifications,
                             onNotificationTap: _handleNotificationNavigation,
                           ),
@@ -948,12 +1148,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildDashboardLoadingView() {
+    final unreadCount = _isGuest
+        ? DummyData.notifications.where((n) => n['isRead'] != true).length
+        : ref.watch(unreadNotificationCountProvider).asData?.value ?? 0;
     return Column(
       children: [
         TopHeader(
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
-          unreadCount: _unreadNotifCount,
+          unreadCount: unreadCount,
         ),
         Expanded(
           child: ExcludeSemantics(
@@ -965,74 +1168,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   period: screenShimmerPeriod,
                   direction: ShimmerDirection.ltr,
                   child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 24,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _DashboardShimmerBlock(width: 145, height: 28),
-                        _DashboardShimmerBlock(
-                          width: 140,
-                          height: 44,
-                          radius: 6,
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _DashboardShimmerBlock(width: 145, height: 28),
+                            _DashboardShimmerBlock(
+                              width: 140,
+                              height: 44,
+                              radius: 6,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 220,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _buildSummaryShimmerCard()),
-                          const SizedBox(width: 6),
-                          Expanded(child: _buildSummaryShimmerCard()),
-                          const SizedBox(width: 6),
-                          Expanded(child: _buildSummaryShimmerCard()),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Row(
-                      children: [
-                        Expanded(
-                          child: _DashboardShimmerBlock(
-                            width: 205,
-                            height: 24,
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 220,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(child: _buildSummaryShimmerCard()),
+                              const SizedBox(width: 6),
+                              Expanded(child: _buildSummaryShimmerCard()),
+                              const SizedBox(width: 6),
+                              Expanded(child: _buildSummaryShimmerCard()),
+                            ],
                           ),
                         ),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: _DashboardShimmerBlock(
-                            width: 135,
-                            height: 24,
+                        const SizedBox(height: 20),
+                        const Row(
+                          children: [
+                            Expanded(
+                              child: _DashboardShimmerBlock(
+                                width: 205,
+                                height: 24,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: _DashboardShimmerBlock(
+                                width: 135,
+                                height: 24,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 330,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(child: _buildChartShimmerCard()),
+                              const SizedBox(width: 6),
+                              Expanded(child: _buildChartShimmerCard()),
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 20),
+                        const _DashboardShimmerBlock(width: 190, height: 24),
+                        const SizedBox(height: 24),
+                        _buildHolidayShimmerCard(),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 330,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _buildChartShimmerCard()),
-                          const SizedBox(width: 6),
-                          Expanded(child: _buildChartShimmerCard()),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const _DashboardShimmerBlock(width: 190, height: 24),
-                    const SizedBox(height: 24),
-                      _buildHolidayShimmerCard(),
-                    ],
-                  ),
                   ),
                 ),
               ),
@@ -1046,33 +1249,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildSummaryShimmerCard() {
     return _dashboardSkeletonCard(
       padding: const EdgeInsets.all(20),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               _DashboardShimmerBlock(width: 40, height: 40, radius: 8),
               SizedBox(width: 14),
-              Expanded(
-                child: _DashboardShimmerBlock(width: 130, height: 20),
-              ),
+              Expanded(child: _DashboardShimmerBlock(width: 130, height: 20)),
               SizedBox(width: 20),
               _DashboardShimmerBlock(width: 72, height: 22),
             ],
           ),
-          const Spacer(),
+          Spacer(),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const _DashboardShimmerBlock(
-                width: 105,
-                height: 105,
-                radius: 53,
-              ),
-              const SizedBox(width: 24),
+              _DashboardShimmerBlock(width: 105, height: 105, radius: 53),
+              SizedBox(width: 24),
               Expanded(
                 child: Column(
-                  children: const [
+                  children: [
                     _DashboardShimmerBlock(height: 12),
                     SizedBox(height: 14),
                     _DashboardShimmerBlock(height: 12),
@@ -1091,14 +1288,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildChartShimmerCard() {
     return _dashboardSkeletonCard(
       padding: const EdgeInsets.all(24),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _DashboardShimmerBlock(width: 92, height: 18),
-          const Spacer(),
+          _DashboardShimmerBlock(width: 92, height: 18),
+          Spacer(),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
+            children: [
               _DashboardShimmerBlock(width: 36, height: 90, radius: 4),
               SizedBox(width: 18),
               _DashboardShimmerBlock(width: 36, height: 145, radius: 4),
@@ -1108,8 +1305,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(child: _DashboardShimmerBlock(height: 2, radius: 1)),
             ],
           ),
-          const SizedBox(height: 22),
-          const _DashboardShimmerBlock(height: 2, radius: 1),
+          SizedBox(height: 22),
+          _DashboardShimmerBlock(height: 2, radius: 1),
         ],
       ),
     );
@@ -1128,10 +1325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(right: index == 4 ? 0 : 16),
-                  child: const _DashboardShimmerBlock(
-                    height: 78,
-                    radius: 6,
-                  ),
+                  child: const _DashboardShimmerBlock(height: 78, radius: 6),
                 ),
               );
             }),
@@ -1159,25 +1353,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildDashboardView() {
     final unreadCount = _isGuest
         ? DummyData.notifications.where((n) => n['isRead'] != true).length
-        : _unreadNotifCount;
+        : ref.watch(unreadNotificationCountProvider).asData?.value ?? 0;
 
     return Column(
       children: [
-        TopHeader(onProfileTap: _openProfile, onNotificationTap: _toggleNotifications, unreadCount: unreadCount),
+        TopHeader(
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+          unreadCount: unreadCount,
+        ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 40.0,
+              vertical: 24.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('dashboard'.tr(),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF000000), )),
+                    Text(
+                      'dashboard'.tr(),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
                     CustomTimeframeDropdown(
                       selectedPeriod: _selectedPeriod,
-                      options: const ['Today', 'This Week', 'This Month', 'Last 6 Months', 'This Year'],
+                      options: const [
+                        'Today',
+                        'This Week',
+                        'This Month',
+                        'Last 6 Months',
+                        'This Year',
+                      ],
                       onChanged: _handlePeriodChanged,
                     ),
                   ],
@@ -1188,68 +1401,117 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: TotalWorkersCard(count: _totalWorkersCount, maleCount: _maleWorkersCount, femaleCount: _femaleWorkersCount, otherCount: _otherWorkersCount)),
+                      Expanded(
+                        child: TotalWorkersCard(
+                          count: _totalWorkersCount,
+                          maleCount: _maleWorkersCount,
+                          femaleCount: _femaleWorkersCount,
+                          otherCount: _otherWorkersCount,
+                        ),
+                      ),
                       const SizedBox(width: 6),
-                      Expanded(child: SparklineCard(
-                        title: 'salary_paid'.tr(),
-                        amount: _formatCompactCurrency(_totalSalarySum, clampToZero: true),
-                        rawValue: _totalSalarySum,
-                        points: _salaryChartPoints,
-                        period: _selectedPeriod,
-                        lineColor: const Color(0xFF4C84E0),
-                        currencySymbol: CurrencyUtils.symbolFor(_currencyCode),
-                      )),
+                      Expanded(
+                        child: SparklineCard(
+                          title: 'salary_paid'.tr(),
+                          amount: _formatCompactCurrency(
+                            _totalSalarySum,
+                            clampToZero: true,
+                          ),
+                          rawValue: _totalSalarySum,
+                          points: _salaryChartPoints,
+                          period: _selectedPeriod,
+                          lineColor: const Color(0xFF4C84E0),
+                          currencySymbol: CurrencyUtils.symbolFor(
+                            _currencyCode,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 6),
-                      Expanded(child: SparklineCard(
-                        title: 'total_expenses'.tr(),
-                        amount: _formatCompactCurrency(_totalExpensesSum),
-                        rawValue: _totalExpensesSum,
-                        points: _expenseChartPoints,
-                        period: _selectedPeriod,
-                        lineColor: const Color(0xFF0EA5E9),
-                        currencySymbol: CurrencyUtils.symbolFor(_currencyCode),
-                        tooltipDecimalDigits: 3,
-                      )),
+                      Expanded(
+                        child: SparklineCard(
+                          title: 'total_expenses'.tr(),
+                          amount: _formatCompactCurrency(_totalExpensesSum),
+                          rawValue: _totalExpensesSum,
+                          points: _expenseChartPoints,
+                          period: _selectedPeriod,
+                          lineColor: const Color(0xFF0EA5E9),
+                          currencySymbol: CurrencyUtils.symbolFor(
+                            _currencyCode,
+                          ),
+                          tooltipDecimalDigits: 3,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(flex: 1, child: Text('attendance_overview'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, ))),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        'attendance_overview'.tr(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Expanded(flex: 1, child: Text('leave_types'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, ))),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        'leave_types'.tr(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 Builder(
                   builder: (context) {
-                    final isEffectivelyGuest = _isGuest || PreferencesService.cachedIsGuest;
-                    final leaveDocs = DashboardChartService.mergedLeaveDaysForPeriod(
-                      timeOffRecords: _allTimeoffDocs,
-                      attendanceRecords: isEffectivelyGuest
-                          ? const <Map<String, dynamic>>[]
-                          : _allAttendanceDocs.where(_attendanceBelongsToExistingWorker).toList(),
-                      period: _selectedPeriod,
-                      workers: _workersDocs,
-                    );
-                    final filteredAttendance = _getFilteredAttendanceDocs();
+                    final leaveDocs = _leaveDocs;
+                    final filteredAttendance = _filteredAttendanceDocs;
 
                     return IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(flex: 1, child: AttendanceLineChart(period: _selectedPeriod, isEmpty: filteredAttendance.isEmpty, attendanceDocs: filteredAttendance)),
+                          Expanded(
+                            flex: 1,
+                            child: AttendanceLineChart(
+                              period: _selectedPeriod,
+                              isEmpty: filteredAttendance.isEmpty,
+                              attendanceDocs: filteredAttendance,
+                            ),
+                          ),
                           const SizedBox(width: 6),
-                          Expanded(flex: 1, child: LeaveTypesPieChart(period: _selectedPeriod, isEmpty: leaveDocs.isEmpty || _totalWorkersCount == 0, leaveDocs: leaveDocs)),
+                          Expanded(
+                            flex: 1,
+                            child: LeaveTypesPieChart(
+                              period: _selectedPeriod,
+                              isEmpty:
+                                  leaveDocs.isEmpty || _totalWorkersCount == 0,
+                              leaveDocs: leaveDocs,
+                            ),
+                          ),
                         ],
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 20),
-                Text('upcoming_holidays'.tr(),
-                    style: const TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.w800, )),
+                Text(
+                  'upcoming_holidays'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFF000000),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 _buildHolidaysCard(),
               ],
@@ -1267,7 +1529,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [BoxShadow(color: const Color(0xFFFFFFFF).withOpacity(0.45), blurRadius: 12, spreadRadius: 1.5)],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFFFFF).withValues(alpha: 0.45),
+            blurRadius: 12,
+            spreadRadius: 1.5,
+          ),
+        ],
       ),
       child: Builder(
         builder: (context) {
@@ -1282,9 +1550,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SvgPicture.asset('assets/holidays_icon.svg', height: 50, width: 50, colorFilter: const ColorFilter.mode(Color(0xFF9CA3AF), BlendMode.srcIn)),
+                    SvgPicture.asset(
+                      'assets/holidays_icon.svg',
+                      height: 50,
+                      width: 50,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF9CA3AF),
+                        BlendMode.srcIn,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Text('no_holidays_yet'.tr(), style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF), )),
+                    Text(
+                      'no_holidays_yet'.tr(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1294,7 +1576,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('overview'.tr(), style: const TextStyle(color: Color(0xFF000000), fontSize: 18, fontWeight: FontWeight.w800, )),
+              Text(
+                'overview'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFF000000),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 40),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -1305,15 +1594,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     spacing: spacing,
                     runSpacing: spacing,
                     children: groupedHolidays.map((h) {
-                      final remainingDays = int.tryParse((h['remainingDays'] ?? '').toString()) ?? -1;
+                      final remainingDays =
+                          int.tryParse((h['remainingDays'] ?? '').toString()) ??
+                          -1;
                       return SizedBox(
                         width: itemWidth,
                         child: HolidayCard(
-                          day: h['day'] != null ? '${h['day']}'.padLeft(2, '0') : '',
+                          day: h['day'] != null
+                              ? '${h['day']}'.padLeft(2, '0')
+                              : '',
                           month: h['month'] ?? 'May',
                           remainingDays: h['remainingDays'] ?? '',
                           dayOfWeek: h['dayOfWeek'] ?? '',
-                          holidayNames: (h['holidayNamesList'] as List<String>?) ?? [(h['name'] ?? '').toString()],
+                          holidayNames:
+                              (h['holidayNamesList'] as List<String>?) ??
+                              [(h['name'] ?? '').toString()],
                           isActive: remainingDays >= 0 && remainingDays <= 5,
                         ),
                       );
@@ -1328,7 +1623,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  List<Map<String, dynamic>> _buildGroupedHolidays(DateTime now, DateTime today) {
+  List<Map<String, dynamic>> _buildGroupedHolidays(
+    DateTime now,
+    DateTime today,
+  ) {
     final activeHolidays = <Map<String, dynamic>>[];
 
     for (final source in _holidays) {
@@ -1340,13 +1638,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (holidayDate == null) continue;
 
       final daysUntil = holidayDate.difference(_isGuest ? now : today).inDays;
-      if (daysUntil < 0 || !_holidayFallsWithinSelectedPeriod(daysUntil)) continue;
+      if (daysUntil < 0 || !_holidayFallsWithinSelectedPeriod(daysUntil)) {
+        continue;
+      }
 
       final holiday = Map<String, dynamic>.from(source);
       holiday['day'] = holidayDate.day;
       holiday['month'] = DateFormat('MMMM', 'en_US').format(holidayDate);
       holiday['remainingDays'] = daysUntil.toString();
-      holiday['dayOfWeek'] = DateFormat('EEEE', context.locale.toString()).format(holidayDate);
+      holiday['dayOfWeek'] = DateFormat(
+        'EEEE',
+        context.locale.toString(),
+      ).format(holidayDate);
       activeHolidays.add(holiday);
     }
 
@@ -1381,7 +1684,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildProfileView(bool isActive) {
     return Column(
       children: [
-        ProfileInlineHeader(onLogout: _handleLogout, onNotificationTap: _toggleNotifications),
+        ProfileInlineHeader(
+          onLogout: _handleLogout,
+          onNotificationTap: _toggleNotifications,
+        ),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(40.0, 16.0, 40.0, 30.0),
@@ -1431,9 +1737,17 @@ DateTime? _validHolidayDate(int year, int month, int day) {
   return date;
 }
 
-DateTime? _guestHolidayDateForDisplay(Map<String, dynamic> holiday, DateTime referenceDate) {
-  final storedDate = AppDateUtils.holidayRecordDate(holiday, fallbackYear: referenceDate.year);
-  final month = storedDate?.month ?? AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+DateTime? _guestHolidayDateForDisplay(
+  Map<String, dynamic> holiday,
+  DateTime referenceDate,
+) {
+  final storedDate = AppDateUtils.holidayRecordDate(
+    holiday,
+    fallbackYear: referenceDate.year,
+  );
+  final month =
+      storedDate?.month ??
+      AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
   final day = storedDate?.day ?? _intValue(holiday['day']);
   if (month == null || day == null) return null;
 
@@ -1445,13 +1759,25 @@ DateTime? _guestHolidayDateForDisplay(Map<String, dynamic> holiday, DateTime ref
   return occurrence;
 }
 
-DateTime? _holidayDateForDisplay(Map<String, dynamic> holiday, DateTime referenceDate) {
-  final storedDate = AppDateUtils.holidayRecordDate(holiday, fallbackYear: referenceDate.year);
-  final month = storedDate?.month ?? AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+DateTime? _holidayDateForDisplay(
+  Map<String, dynamic> holiday,
+  DateTime referenceDate,
+) {
+  final storedDate = AppDateUtils.holidayRecordDate(
+    holiday,
+    fallbackYear: referenceDate.year,
+  );
+  final month =
+      storedDate?.month ??
+      AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
   final day = storedDate?.day ?? _intValue(holiday['day']);
   if (month == null || day == null) return null;
 
-  final today = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+  final today = DateTime(
+    referenceDate.year,
+    referenceDate.month,
+    referenceDate.day,
+  );
   final recurring = holiday['isRecurring'] == true;
   final storedYear = storedDate?.year ?? _intValue(holiday['year']);
 
@@ -1463,6 +1789,8 @@ DateTime? _holidayDateForDisplay(Map<String, dynamic> holiday, DateTime referenc
 
   var occurrence = _validHolidayDate(today.year, month, day);
   if (occurrence == null) return null;
-  if (occurrence.isBefore(today)) occurrence = _validHolidayDate(today.year + 1, month, day);
+  if (occurrence.isBefore(today)) {
+    occurrence = _validHolidayDate(today.year + 1, month, day);
+  }
   return occurrence;
 }

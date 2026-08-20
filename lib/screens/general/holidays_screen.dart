@@ -1,9 +1,9 @@
-import 'dart:async';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
 import '../../utils/calendar_widgets.dart';
+import '../../utils/firestore_record_utils.dart';
+import '../../utils/company_calendar_utils.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
@@ -47,7 +47,6 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
   };
 
   bool _isLoading = false;
-  StreamSubscription? _holidaysSub;
 
   late final AuthService _authService;
   late final FirestoreService _firestore;
@@ -77,12 +76,6 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _holidaysSub?.cancel();
-    super.dispose();
-  }
-
   void _loadGuestData() {
     _holidaysByMonth = _guestHolidayGroups();
     PreferencesService.getCompanyWorkingDays().then((days) {
@@ -92,44 +85,20 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
   void _loadFirestoreData() {
     _isLoading = true;
-    _holidaysSub = _firestore.holidaysStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      holidaysProvider,
+      (records) {
         if (!mounted) return;
         final tempMap = <String, List<HolidayItem>>{};
-        var workingDays = _companyWorkingDays;
 
-        final sortedDocs = snapshot.docs.toList()
-          ..sort((a, b) {
-            final aTime = (a.data() as Map<String, dynamic>)['createdAt'];
-            final bTime = (b.data() as Map<String, dynamic>)['createdAt'];
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return -1;
-            if (bTime == null) return 1;
-            if (aTime is Timestamp && bTime is Timestamp)
-              return bTime.compareTo(aTime);
-            return 0;
-          });
+        final sortedRecords = sortedFirestoreRecords(records, nullsLast: false);
+        final calendar = splitCompanyCalendarRecords(
+          sortedRecords,
+          fallbackWorkingDays: _companyWorkingDays,
+          acceptNumericStrings: true,
+        );
 
-        for (final doc in sortedDocs) {
-          final data = doc.data() as Map<String, dynamic>;
-
-          if (data['type'] == 'company_work_days') {
-            final rawDays = data['workingDays'];
-            if (rawDays is Iterable) {
-              final savedDays = <int>{};
-              for (final value in rawDays) {
-                final day = _intValue(value);
-                if (day != null &&
-                    day >= DateTime.monday &&
-                    day <= DateTime.sunday) {
-                  savedDays.add(day);
-                }
-              }
-              if (savedDays.isNotEmpty) workingDays = savedDays;
-            }
-            continue;
-          }
-
+        for (final data in calendar.holidays) {
           final storedDate = AppDateUtils.holidayRecordDate(data);
           final month = storedDate != null
               ? _calendarMonths[storedDate.month - 1]
@@ -151,7 +120,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                   day,
                   name,
                   data['isEnabled'] != false,
-                  id: doc.id,
+                  id: data['id']?.toString(),
                   month: month,
                   year: year,
                   isRecurring: data['isRecurring'] == true,
@@ -161,11 +130,11 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
         setState(() {
           _holidaysByMonth = tempMap;
-          _companyWorkingDays = workingDays;
+          _companyWorkingDays = calendar.workingDays;
           _isLoading = false;
         });
       },
-      onError: (_) {
+      onError: (error, stackTrace) {
         if (mounted) setState(() => _isLoading = false);
       },
     );
@@ -189,8 +158,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
     final normalized = raw.toLowerCase();
     for (final month in _calendarMonths) {
       final lower = month.toLowerCase();
-      if (lower == normalized || lower.substring(0, 3) == normalized)
+      if (lower == normalized || lower.substring(0, 3) == normalized) {
         return month;
+      }
     }
     return null;
   }
@@ -290,7 +260,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     await showDialog<void>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (dialogCtx) => StatefulBuilder(
         builder: (_, setModalState) {
           final offDays = LocalizationHelper.weekdayKeys.keys
@@ -584,7 +554,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     showDialog(
       context: parentContext,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -750,7 +720,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
     showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -825,8 +795,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                           oldList[idx],
                         );
                         oldList.removeAt(idx);
-                        if (oldList.isEmpty)
+                        if (oldList.isEmpty) {
                           DummyData.holidays.remove(storageKey);
+                        }
                       }
                     }
 
@@ -864,8 +835,9 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
 
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop();
-              if (mounted)
+              if (mounted) {
                 FlashySnackBar.show(context, message: 'holiday_updated'.tr());
+              }
             }
 
             return _buildHolidayDialog(
@@ -923,33 +895,37 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
       }
 
       await DummyData.saveToPrefs();
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      }
       return;
     }
 
     final holidayId = item.id?.trim() ?? '';
     if (holidayId.isEmpty) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'unexpected_error'.tr(),
           isError: true,
         );
+      }
       return;
     }
 
     try {
       await _firestore.deleteHoliday(holidayId);
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'unexpected_error'.tr(),
           isError: true,
         );
+      }
     }
   }
 
@@ -1229,7 +1205,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(9),
           ),
           child: Icon(icon, color: color, size: 21),
@@ -1276,7 +1252,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 19),
@@ -1407,12 +1383,13 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
               final holidayId = item.id?.trim() ?? '';
               if (holidayId.isEmpty ||
                   _updatingHolidayIds.contains(holidayId)) {
-                if (holidayId.isEmpty && mounted)
+                if (holidayId.isEmpty && mounted) {
                   FlashySnackBar.show(
                     context,
                     message: 'unexpected_error'.tr(),
                     isError: true,
                   );
+                }
                 return;
               }
 
@@ -1467,7 +1444,7 @@ class _HolidaysScreenState extends ConsumerState<HolidaysScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),

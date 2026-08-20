@@ -38,7 +38,9 @@ class HolidayCard extends StatelessWidget {
     const Color activeLeftBg = Color(0xFFFF5F65);
     const Color activeRightBg = Color(0xFFFF000A);
     const Color activeTextColor = Color(0xFFFFFFFF);
-    final Color activeSubTextColor = const Color(0xFFFFFFFF).withOpacity(0.9);
+    final Color activeSubTextColor = const Color(
+      0xFFFFFFFF,
+    ).withValues(alpha: 0.9);
     const Color activeBadgeBg = Color(0xFFFF5F65);
 
     const Color inactiveLeftBg = Color(0xFFE2E4E4);
@@ -53,10 +55,8 @@ class HolidayCard extends StatelessWidget {
     Color subTextColor = isActive ? activeSubTextColor : inactiveSubTextColor;
     Color badgeBg = isActive ? activeBadgeBg : inactiveBadgeBg;
 
-    String cleanHolidayName(String name) => name.replaceAll(
-      RegExp(r'[\s-]*\(\d{4}\)'),
-      '',
-    );
+    String cleanHolidayName(String name) =>
+        name.replaceAll(RegExp(r'[\s-]*\(\d{4}\)'), '');
     final cleanedHolidayNames = holidayNames
         .map((n) => LocalizationHelper.localizeHolidayName(cleanHolidayName(n)))
         .join(', ');

@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../services/dashboard_chart_service.dart';
+import '../../utils/app_colors.dart';
 
 class SparklineCard extends StatelessWidget {
   final String title;
@@ -59,7 +60,7 @@ class SparklineCard extends StatelessWidget {
     final bool isEmpty = rawValue <= 0 || points.isEmpty;
     return Card(
       elevation: 0,
-      color: const Color(0xFFFFFFFF),
+      color: AppColors.white,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: !isEmpty
@@ -240,7 +241,7 @@ class SparklineCard extends StatelessWidget {
                                     .map((s) => FlSpot(s.x, s.y * animValue))
                                     .toList(),
                                 isCurved: true,
-                                color: lineColor.withOpacity(0.06),
+                                color: lineColor.withValues(alpha: 0.06),
                                 barWidth: 1.2,
                                 isStrokeCapRound: false,
                                 dotData: const FlDotData(show: false),
@@ -271,24 +272,24 @@ class SparklineCard extends StatelessWidget {
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withOpacity(0.50)
+                                            ).withValues(alpha: 0.50)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withOpacity(0.50),
+                                            ).withValues(alpha: 0.50),
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withOpacity(0.20)
+                                            ).withValues(alpha: 0.20)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withOpacity(0.20),
+                                            ).withValues(alpha: 0.20),
                                       lineColor == const Color(0xFF0EA5E9)
                                           ? const Color(
                                               0xFF93D7FD,
-                                            ).withOpacity(0.0)
+                                            ).withValues(alpha: 0.0)
                                           : const Color(
                                               0xFF8DA9F1,
-                                            ).withOpacity(0.0),
+                                            ).withValues(alpha: 0.0),
                                     ],
                                     stops: const [0.0, 0.3, 0.8],
                                     begin: Alignment.topCenter,
@@ -315,7 +316,7 @@ class SparklineCard extends StatelessWidget {
                           height: 40,
                           width: 40,
                           colorFilter: const ColorFilter.mode(
-                            Color(0xFF9CA3AF),
+                            AppColors.textMuted,
                             BlendMode.srcIn,
                           ),
                         )
@@ -323,7 +324,7 @@ class SparklineCard extends StatelessWidget {
                           'assets/expense.png',
                           height: 40,
                           width: 40,
-                          color: const Color(0xFF9CA3AF),
+                          color: AppColors.textMuted,
                         ),
                   const SizedBox(height: 8),
                   Text(
@@ -332,7 +333,7 @@ class SparklineCard extends StatelessWidget {
                         : 'no_expenses_recorded_yet'.tr(),
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF9CA3AF),
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],

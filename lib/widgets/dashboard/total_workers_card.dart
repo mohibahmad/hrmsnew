@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'rounded_donut_chart.dart';
+import '../../utils/app_colors.dart';
 
 class TotalWorkersCard extends StatelessWidget {
   final int count;
@@ -29,7 +30,7 @@ class TotalWorkersCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: const Color(0xFFFFFFFF),
+      color: AppColors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -183,7 +184,7 @@ class TotalWorkersCard extends StatelessWidget {
                       height: 40,
                       width: 40,
                       colorFilter: const ColorFilter.mode(
-                        Color(0xFF9CA3AF),
+                        AppColors.textMuted,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -192,7 +193,7 @@ class TotalWorkersCard extends StatelessWidget {
                       'no_workers_added_yet'.tr(),
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF9CA3AF),
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],

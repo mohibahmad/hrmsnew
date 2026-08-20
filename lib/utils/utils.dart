@@ -1760,6 +1760,11 @@ class AppDateUtils {
     return dateFromValue(record['attendanceDate']);
   }
 
+  static DateTime? recordRevisionDate(Map<String, dynamic> record) {
+    return dateFromValue(record['updatedAt']) ??
+        dateFromValue(record['createdAt']);
+  }
+
   static DateTime? holidayRecordDate(
     Map<String, dynamic> record, {
     int? fallbackYear,

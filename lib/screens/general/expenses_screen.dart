@@ -1,4 +1,3 @@
-import 'dart:async';
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
 import '../../utils/calendar_widgets.dart';
@@ -45,10 +44,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   bool _isLoading = true;
   String _selectedPeriod = 'Month';
 
-  StreamSubscription? _expensesSub;
-  StreamSubscription? _profileSub;
-  StreamSubscription? _payrollSub;
-
   final Map<String, double> _payrollAmountsByKey = {};
 
   late final AuthService _authService;
@@ -84,26 +79,22 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   @override
   void dispose() {
-    _expensesSub?.cancel();
-    _profileSub?.cancel();
-    _payrollSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _setupRealTimeSubscriptions() {
-    _profileSub = _firestore.userProfileStream.listen((profile) {
+    ref.listenAsync(userProfileProvider, (profile) {
       if (!mounted) return;
       final currency = CurrencyUtils.normalize(profile?['currency']);
       if (currency == _currencyCode) return;
       setState(() => _currencyCode = currency);
     });
 
-    _payrollSub = _firestore.payrollStream.listen((snapshot) {
+    ref.listenAsync(payrollProvider, (records) {
       if (!mounted) return;
       final amounts = <String, double>{};
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+      for (final data in records) {
         if (!PayrollService.isPayrollRecordPaid(data)) continue;
 
         final payrollKey = (data['payrollKey'] ?? '').toString().trim();
@@ -127,15 +118,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       });
     });
 
-    _expensesSub = _firestore.expensesStream.listen(
-      (snapshot) {
+    ref.listenAsync(
+      expensesProvider,
+      (records) {
         if (!mounted) return;
         setState(() {
-          _expensesDocs = _sortExpenses(snapshot.docs);
+          _expensesDocs = _sortExpenses(records);
           _isLoading = false;
         });
       },
-      onError: (_) {
+      onError: (error, stackTrace) {
         if (mounted) setState(() => _isLoading = false);
       },
     );
@@ -164,23 +156,20 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     _adjustDummyDatesForPeriod(_selectedPeriod);
   }
 
-  List<Map<String, dynamic>> _sortExpenses(List docs) {
-    final list =
-        docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList()
-          ..sort((a, b) {
-            final aTime =
-                AppDateUtils.dateFromValue(a['createdAt']) ??
-                AppDateUtils.dateFromValue(a['date']);
-            final bTime =
-                AppDateUtils.dateFromValue(b['createdAt']) ??
-                AppDateUtils.dateFromValue(b['date']);
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return 1;
-            if (bTime == null) return -1;
-            return bTime.compareTo(aTime);
-          });
+  List<Map<String, dynamic>> _sortExpenses(FirestoreRecords records) {
+    final list = List<Map<String, dynamic>>.from(records)
+      ..sort((a, b) {
+        final aTime =
+            AppDateUtils.dateFromValue(a['createdAt']) ??
+            AppDateUtils.dateFromValue(a['date']);
+        final bTime =
+            AppDateUtils.dateFromValue(b['createdAt']) ??
+            AppDateUtils.dateFromValue(b['date']);
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
     return list;
   }
 
@@ -337,14 +326,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }) {
     setState(() {
       final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
-      if (idx != -1)
+      if (idx != -1) {
         _expensesDocs[idx] = {
           ..._expensesDocs[idx],
           ...updatedMap,
           'id': docId,
         };
-      if (payrollKey != null && amt != null)
+      }
+      if (payrollKey != null && amt != null) {
         _payrollAmountsByKey[payrollKey] = amt;
+      }
     });
 
     final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
@@ -471,8 +462,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         }
       }
 
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(context, message: 'expense_deleted'.tr());
+      }
     } catch (e) {
       if (!mounted) return;
       FlashySnackBar.show(
@@ -517,7 +509,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     await showDialog(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -575,8 +567,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             newDate.month + 1,
                             0,
                           ).day;
-                          if (selectedDay > daysInNewMonth)
+                          if (selectedDay > daysInNewMonth) {
                             selectedDay = daysInNewMonth;
+                          }
                         });
                       },
                     ),
@@ -837,7 +830,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           );
           tryShowFirstMilestoneRateUs('expense');
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             FlashySnackBar.show(
               context,
               message: 'failed_to_add_expense'.tr(
@@ -845,6 +838,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               isError: true,
             );
+          }
           rethrow;
         }
       },
@@ -888,17 +882,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           } else {
             await _firestore.updateExpense(docId, updatedMap);
           }
-          if (mounted)
+          if (mounted) {
             FlashySnackBar.show(context, message: 'expense_updated'.tr());
+          }
         } on ArgumentError catch (e) {
-          if (mounted)
+          if (mounted) {
             FlashySnackBar.show(
               context,
               message: e.message?.toString() ?? 'failed_to_update_expense'.tr(),
               isError: true,
             );
+          }
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             FlashySnackBar.show(
               context,
               message: 'failed_to_update_expense'.tr(
@@ -906,6 +902,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               isError: true,
             );
+          }
         }
       },
     );
@@ -1194,7 +1191,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         Expanded(
           child: _buildCard(
             title: 'total_expense'.tr(),
-            titleColor: Color(0xFFFF1014),
+            titleColor: const Color(0xFFFF1014),
             amount: _formatCurrency(_totalExpenseSum),
             iconWidget: SvgPicture.asset(
               'assets/total_expense.svg',

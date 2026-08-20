@@ -12,10 +12,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/general/pricing_screen.dart';
 import '../services/preferences_service.dart';
 
-Widget _blurDialogTransition(
-  Animation<double> animation,
-  Widget child,
-) {
+Widget _blurDialogTransition(Animation<double> animation, Widget child) {
   final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
   return Stack(
     fit: StackFit.expand,
@@ -26,7 +23,9 @@ Widget _blurDialogTransition(
           sigmaY: 10 * animation.value,
         ),
         child: Container(
-          color: const Color(0xFF0F172A).withOpacity(0.35 * animation.value),
+          color: const Color(
+            0xFF0F172A,
+          ).withValues(alpha: 0.35 * animation.value),
         ),
       ),
       FadeTransition(
@@ -53,7 +52,9 @@ Future<void> showLogoutDialog(BuildContext context) async {
     try {
       if (!context.mounted) return;
       final container = ProviderScope.containerOf(context, listen: false);
-      await container.read(authServiceProvider).signOut(preserveBiometricLogin: true);
+      await container
+          .read(authServiceProvider)
+          .signOut(preserveBiometricLogin: true);
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -64,7 +65,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('unable_to_sign_out'.tr()),
-          backgroundColor: Color(0xFFFF1014),
+          backgroundColor: const Color(0xFFFF1014),
         ),
       );
     }
@@ -88,12 +89,12 @@ class _LogoutDialogContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withOpacity(0.12),
+                color: const Color(0xFF0F172A).withValues(alpha: 0.12),
                 blurRadius: 32,
                 offset: const Offset(0, 16),
               ),
               BoxShadow(
-                color: const Color(0xFF0F172A).withOpacity(0.06),
+                color: const Color(0xFF0F172A).withValues(alpha: 0.06),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -115,7 +116,7 @@ class _LogoutDialogContent extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE11D48).withOpacity(0.15),
+                      color: const Color(0xFFE11D48).withValues(alpha: 0.15),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -202,7 +203,7 @@ class _LogoutDialogContent extends StatelessWidget {
                             BoxShadow(
                               color: const Color(
                                 0xFFEF4444,
-                              ).withOpacity(0.2),
+                              ).withValues(alpha: 0.2),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -303,7 +304,9 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
             sigmaY: 10 * widget.animation.value,
           ),
           child: Container(
-            color: const Color(0xFF0F172A).withOpacity(0.35 * widget.animation.value),
+            color: const Color(
+              0xFF0F172A,
+            ).withValues(alpha: 0.35 * widget.animation.value),
           ),
         ),
         FadeTransition(
@@ -311,129 +314,130 @@ class _DeleteDialogInnerState extends State<_DeleteDialogInner> {
           child: ScaleTransition(
             scale: widget.curve,
             child: Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              width: 380,
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF000000).withOpacity(0.15),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFEE2E2),
-                      shape: BoxShape.circle,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: 380,
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF000000).withValues(alpha: 0.15),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
                     ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.warning_rounded,
-                        color: Color(0xFFEF4444),
-                        size: 36,
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFEE2E2),
+                        shape: BoxShape.circle,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.content,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w400,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _popWith(false),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            height: 48,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'cancel'.tr(),
-                              style: const TextStyle(
-                                color: Color(0xFF000000),
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.warning_rounded,
+                          color: Color(0xFFEF4444),
+                          size: 36,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _popWith(true),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            height: 48,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFEF4444,
-                                  ).withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.content,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w400,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _popWith(false),
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              height: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'cancel'.tr(),
+                                style: const TextStyle(
+                                  color: Color(0xFF000000),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              widget.resolvedConfirmText,
-                              style: const TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _popWith(true),
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              height: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                widget.resolvedConfirmText,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
   }
 }
+
 void showGuestRestrictionDialog(BuildContext context) {
   final authService = ProviderScope.containerOf(
     context,
@@ -442,7 +446,7 @@ void showGuestRestrictionDialog(BuildContext context) {
 
   showDialog(
     context: context,
-    barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+    barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
     builder: (ctx) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -453,7 +457,7 @@ void showGuestRestrictionDialog(BuildContext context) {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -559,6 +563,7 @@ void showGuestRestrictionDialog(BuildContext context) {
     ),
   );
 }
+
 class PremiumGate {
   static const int freeEntryLimit = 2;
 
@@ -587,13 +592,14 @@ class PremiumGate {
       await showDialog(
         context: context,
         barrierDismissible: false,
-        barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
         builder: (context) => const SubscriptionDialog(),
       );
     }
     return false;
   }
 }
+
 Future<bool> tryShowFirstMilestoneRateUs(String milestone) async {
   if (await PreferencesService.getRateUsNeverShow()) return false;
   bool alreadyTriggered;
@@ -646,6 +652,7 @@ Future<void> _requestReview() async {
     }
   } catch (_) {}
 }
+
 class FlashySnackBarProgressController {
   VoidCallback? _dismiss;
   VoidCallback? _setState;
@@ -658,10 +665,7 @@ class FlashySnackBarProgressController {
   double get progress => _progress;
   String get label => _label;
 
-
   bool get isActive => _entry?.mounted ?? false;
-
-
 
   void update({required double progress, required String label}) {
     _progress = progress;
@@ -752,8 +756,6 @@ class FlashySnackBar {
     _currentIsLoading = isLoading;
     overlay.insert(entry);
 
-
-
     if (!isLoading) {
       Future.delayed(displayDuration, () {
         if (entry.mounted) {
@@ -763,9 +765,6 @@ class FlashySnackBar {
       });
     }
   }
-
-
-
 
   static FlashySnackBarProgressController showProgress(
     BuildContext context, {
@@ -809,7 +808,6 @@ class FlashySnackBar {
     overlay.insert(entry);
     controller._entry = entry;
 
-
     controller._dismiss = () {
       if (entry.mounted) {
         if (_currentEntry == entry) _currentEntry = null;
@@ -821,9 +819,6 @@ class FlashySnackBar {
 
     return controller;
   }
-
-
-
 
   static void dismiss() {
     if (!_currentIsLoading) return;
@@ -920,13 +915,13 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                           (widget.isError
                                   ? const Color(0xFFFF4B2B)
                                   : const Color(0xFF0247C4))
-                              .withOpacity(0.35),
+                              .withValues(alpha: 0.35),
                       blurRadius: 15,
                       offset: const Offset(0, 6),
                     ),
                   ],
                   border: Border.all(
-                    color: const Color(0xFFFFFFFF).withOpacity(0.25),
+                    color: const Color(0xFFFFFFFF).withValues(alpha: 0.25),
                     width: 1.5,
                   ),
                 ),
@@ -940,7 +935,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF).withOpacity(0.2),
+                        color: const Color(0xFFFFFFFF).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: widget.isLoading
@@ -953,16 +948,16 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                               ),
                             )
                           : widget.isError
-                              ? const Icon(
-                                  Icons.error_outline,
-                                  color: Color(0xFFFFFFFF),
-                                  size: 22,
-                                )
-                              : const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Color(0xFFFFFFFF),
-                                  size: 22,
-                                ),
+                          ? const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
+                            )
+                          : const Icon(
+                              Icons.check_circle_outline,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1035,10 +1030,12 @@ class _FlashySnackBarProgressBody extends StatefulWidget {
   });
 
   @override
-  State<_FlashySnackBarProgressBody> createState() => _FlashySnackBarProgressBodyState();
+  State<_FlashySnackBarProgressBody> createState() =>
+      _FlashySnackBarProgressBodyState();
 }
 
-class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody>
+class _FlashySnackBarProgressBodyState
+    extends State<_FlashySnackBarProgressBody>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _slideAnimation;
@@ -1057,10 +1054,10 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.fastOutSlowIn));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, -1.5), end: Offset.zero).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.fastOutSlowIn),
+        );
     _fadeAnimation = Tween<double>(
       begin: 0,
       end: 1,
@@ -1097,13 +1094,13 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0247C4).withOpacity(0.12),
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.12),
                     blurRadius: 18,
                     offset: const Offset(0, 4),
                   ),
                 ],
                 border: Border.all(
-                  color: const Color(0xFFFFFFFF).withOpacity(0.20),
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.20),
                   width: 1,
                 ),
               ),
@@ -1119,7 +1116,9 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF).withOpacity(0.18),
+                          color: const Color(
+                            0xFFFFFFFF,
+                          ).withValues(alpha: 0.18),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -1158,7 +1157,9 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Color(0xFFFFFFFF).withOpacity(0.70),
+                                  color: const Color(
+                                    0xFFFFFFFF,
+                                  ).withValues(alpha: 0.70),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                   height: 1.2,
@@ -1174,13 +1175,14 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                         child: Text(
                           '${(_pc.progress * 100).toInt()}%',
                           style: TextStyle(
-                            color: Color(0xFFFFFFFF).withOpacity(0.85),
+                            color: const Color(
+                              0xFFFFFFFF,
+                            ).withValues(alpha: 0.85),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1193,7 +1195,9 @@ class _FlashySnackBarProgressBodyState extends State<_FlashySnackBarProgressBody
                       builder: (context, value, _) => LinearProgressIndicator(
                         value: value > 0 ? value : null,
                         minHeight: 8,
-                        backgroundColor: const Color(0xFFFFFFFF).withOpacity(0.22),
+                        backgroundColor: const Color(
+                          0xFFFFFFFF,
+                        ).withValues(alpha: 0.22),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFFFFFFFF),
                         ),
@@ -1283,7 +1287,10 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   const ThousandsSeparatorInputFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     if (newValue.text.isEmpty) return newValue;
 
     final cleanText = newValue.text.replaceAll(',', '');
@@ -1301,10 +1308,18 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
       formattedInteger = NumberFormat('#,##0', 'en_US').format(parsed);
     }
 
-    final formatted = parts.length > 1 ? '$formattedInteger.${parts[1]}' : formattedInteger;
+    final formatted = parts.length > 1
+        ? '$formattedInteger.${parts[1]}'
+        : formattedInteger;
     final charsFromEnd = newValue.text.length - newValue.selection.end;
-    final selectionIndex = (formatted.length - charsFromEnd).clamp(0, formatted.length);
+    final selectionIndex = (formatted.length - charsFromEnd).clamp(
+      0,
+      formatted.length,
+    );
 
-    return TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: selectionIndex));
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: selectionIndex),
+    );
   }
 }

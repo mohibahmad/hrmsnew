@@ -72,10 +72,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 begin: const Offset(0, 0.08),
                 end: Offset.zero,
               ).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                ),
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
               );
 
           final fadeAnimation = CurvedAnimation(
@@ -85,10 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
           return FadeTransition(
             opacity: fadeAnimation,
-            child: SlideTransition(
-              position: slideAnimation,
-              child: child,
-            ),
+            child: SlideTransition(position: slideAnimation, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 600),
@@ -120,10 +114,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<User?> _getUser() async {
     try {
-      return await _authService.authStateChanges.first.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => _authService.currentUser,
-      );
+      return await ref
+          .read(authStateProvider.future)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => _authService.currentUser,
+          );
     } on TimeoutException catch (e, st) {
       ErrorReporter.report(e, st, context: 'splashAuthTimeout');
       return _authService.currentUser;
@@ -159,16 +155,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/splashscreenbg.png',
-            fit: BoxFit.cover,
-          ),
+          Image.asset('assets/splashscreenbg.png', fit: BoxFit.cover),
           Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 40,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

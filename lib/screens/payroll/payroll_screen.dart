@@ -97,12 +97,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   Map<String, dynamic>? _workerForPayroll;
 
-  StreamSubscription? _payrollSub;
-  StreamSubscription? _workersSub;
-  StreamSubscription? _attendanceSub;
-  StreamSubscription? _holidaysSub;
-  StreamSubscription<Map<String, dynamic>?>? _profileSub;
-
   Timer? _attendanceDebounce;
 
   bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
@@ -193,8 +187,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         .map((w) => w['id']?.toString() ?? '')
         .toSet();
     if (currentIds.length == latestIds.length &&
-        currentIds.containsAll(latestIds))
+        currentIds.containsAll(latestIds)) {
       return;
+    }
 
     _workersList = latestWorkers;
     _combinePayroll();
@@ -204,11 +199,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   @override
   void dispose() {
     _attendanceDebounce?.cancel();
-    _payrollSub?.cancel();
-    _workersSub?.cancel();
-    _attendanceSub?.cancel();
-    _holidaysSub?.cancel();
-    _profileSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -272,8 +262,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   Future<void> _reconcilePayrollPeriod() async {
-    if (!mounted || !_workersLoaded || !_payrollLoaded || _isUserSelectedCycle)
+    if (!mounted ||
+        !_workersLoaded ||
+        !_payrollLoaded ||
+        _isUserSelectedCycle) {
       return;
+    }
 
     final newPeriod = _trueCurrentPayrollCycle();
 
@@ -337,8 +331,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     if (companyCurrency == CurrencyUtils.defaultCode &&
         (rawProfileCurrency == null || rawProfileCurrency.isEmpty)) {
       final cached = PreferencesService.cachedCompanyCurrency;
-      if (cached != null && cached.isNotEmpty)
+      if (cached != null && cached.isNotEmpty) {
         companyCurrency = CurrencyUtils.normalize(cached);
+      }
     } else {
       PreferencesService.setCompanyCurrency(companyCurrency).catchError((_) {});
     }
@@ -373,7 +368,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   void _startFirestoreListeners() {
-    _profileSub = _firestore.userProfileStream.listen((profile) async {
+    ref.listenAsync(userProfileProvider, (profile) async {
       if (!mounted || profile == null) return;
       try {
         final currency = CurrencyUtils.normalize(profile['currency']);
@@ -404,41 +399,35 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     }, onError: _handlePayrollStreamError);
 
-    _workersSub = _firestore.workersStream.listen((snapshot) {
+    ref.listenAsync(workersProvider, (records) {
       if (!mounted) return;
       setState(() {
         _workersLoaded = true;
-        _workersList = snapshot.docs
-            .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
-            .toList();
+        _workersList = records;
         _combinePayroll();
       });
       _scheduleAttendanceFetch();
       _reconcilePayrollPeriod();
     }, onError: _handlePayrollStreamError);
 
-    _payrollSub = _firestore.payrollStream.listen((snapshot) {
+    ref.listenAsync(payrollProvider, (records) {
       if (!mounted) return;
       setState(() {
         _payrollLoaded = true;
-        _rawPayrollDocs = snapshot.docs
-            .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
-            .toList();
+        _rawPayrollDocs = records;
         _combinePayroll();
       });
       _scheduleAttendanceFetch();
       _reconcilePayrollPeriod();
     }, onError: _handlePayrollStreamError);
 
-    _attendanceSub = _firestore.attendanceStream.listen((snapshot) {
+    ref.listenAsync(attendanceProvider, (records) {
       if (!mounted) return;
-      _liveAttendanceRecords = snapshot.docs
-          .map((doc) => {...?doc.data() as Map<String, dynamic>?, 'id': doc.id})
-          .toList();
+      _liveAttendanceRecords = records;
       _scheduleAttendanceFetch();
     }, onError: _handlePayrollStreamError);
 
-    _holidaysSub = _firestore.holidaysStream.listen((_) {
+    ref.listenAsync(holidaysProvider, (_) {
       if (mounted) _scheduleAttendanceFetch();
     }, onError: _handlePayrollStreamError);
   }
@@ -480,8 +469,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
 
     _isLoading = !(_workersLoaded && _payrollLoaded);
-    if (_selectedFilter == 'Pay' && _currentPayablePayrollWorkers.isEmpty)
+    if (_selectedFilter == 'Pay' && _currentPayablePayrollWorkers.isEmpty) {
       _selectedFilter = 'All';
+    }
     _schedulePayrollReminderCheck();
   }
 
@@ -561,6 +551,19 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return;
     }
 
+    List<Map<String, dynamic>>? timeOffRecords;
+    Set<DateTime>? holidayDates;
+    if (!_isGuest) {
+      try {
+        final shared = await Future.wait([
+          _firestore.getTimeOffRecords(),
+          _firestore.getHolidayDatesForRange(_payPeriodStart, _payPeriodEnd),
+        ]);
+        timeOffRecords = shared[0] as List<Map<String, dynamic>>;
+        holidayDates = shared[1] as Set<DateTime>;
+      } catch (_) {}
+    }
+
     final futures = <Future<void>>[];
     for (final doc in _payrollDocs) {
       if (PayrollService.isPayrollRecordPaid(doc)) continue;
@@ -570,7 +573,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       if (email.isEmpty && workerId.isEmpty) continue;
 
       futures.add(
-        _fetchAndApplyAttendance(doc, email, workerId, month, workingDays),
+        _fetchAndApplyAttendance(
+          doc,
+          email,
+          workerId,
+          month,
+          workingDays,
+          timeOffRecords,
+          holidayDates,
+        ),
       );
     }
 
@@ -590,6 +601,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     String workerId,
     DateTime month,
     int workingDays,
+    List<Map<String, dynamic>>? timeOffRecords,
+    Set<DateTime>? holidayDates,
   ) async {
     if (PayrollService.isPayrollRecordPaid(doc)) return;
 
@@ -601,12 +614,14 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           final attDate = AppDateUtils.attendanceRecordDate(att);
           if (attDate == null ||
               attDate.year != month.year ||
-              attDate.month != month.month)
+              attDate.month != month.month) {
             return false;
+          }
           final attWorkerId = (att['workerId'] ?? '').toString().trim();
           final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-          if (workerId.isNotEmpty && attWorkerId.isNotEmpty)
+          if (workerId.isNotEmpty && attWorkerId.isNotEmpty) {
             return workerId == attWorkerId;
+          }
           return email.isNotEmpty && attEmail == email.toLowerCase();
         }).toList();
 
@@ -624,6 +639,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           startDate: _payPeriodStart,
           endDate: _payPeriodEnd,
           preFetchedRecords: _liveAttendanceRecords,
+          preFetchedTimeOffRecords: timeOffRecords,
+          preFetchedHolidayDates: holidayDates,
         );
       }
 
@@ -659,8 +676,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     if (PayrollService.hasPayableSalary(
       worker,
       companyCurrency: _companyCurrency,
-    ))
+    )) {
       return true;
+    }
     FlashySnackBar.show(
       context,
       message: 'please_enter_salary'.tr(),
@@ -700,8 +718,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   Future<void> _handlePayAll() => _handlePayAllForMonth(_payrollMonth);
 
   Future<void> _handlePayAllForMonth(DateTime payrollMonth) async {
-    if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty)
+    if (_isRunningPayroll || _payableWorkersForPeriod(payrollMonth).isEmpty) {
       return;
+    }
     setState(() => _isRunningPayroll = true);
 
     FlashySnackBar.dismiss();
@@ -897,7 +916,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF000000).withOpacity(0.15),
+                color: const Color(0xFF000000).withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -991,7 +1010,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             sigmaY: 10 * animation.value,
           ),
           child: Container(
-            color: const Color(0xFF0F172A).withOpacity(0.35 * animation.value),
+            color: const Color(
+              0xFF0F172A,
+            ).withValues(alpha: 0.35 * animation.value),
           ),
         ),
         FadeTransition(
@@ -1079,8 +1100,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     if (!force &&
         _lastShownReminderKey == window.suppressionKey &&
-        _lastShownReminderDay == today)
+        _lastShownReminderDay == today) {
       return;
+    }
     _lastShownReminderKey = window.suppressionKey;
     _lastShownReminderDay = today;
 
@@ -1614,12 +1636,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'SaveSalaryPayDay');
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'failed_to_save_record'.tr(),
           isError: true,
         );
+      }
     }
   }
 
@@ -1776,7 +1799,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               decoration: BoxDecoration(
                 color: const Color(
                   0xFF27AE60,
-                ).withOpacity(payAllEnabled ? 1.0 : 0.4),
+                ).withValues(alpha: payAllEnabled ? 1.0 : 0.4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1796,9 +1819,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                           width: 18,
                           height: 18,
                           colorFilter: ColorFilter.mode(
-                            Color(
+                            const Color(
                               0xFFFFFFFF,
-                            ).withOpacity(payAllEnabled ? 1.0 : 0.6),
+                            ).withValues(alpha: payAllEnabled ? 1.0 : 0.6),
                             BlendMode.srcIn,
                           ),
                         ),
@@ -1806,9 +1829,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                   Text(
                     'pay_all'.tr(),
                     style: TextStyle(
-                      color: Color(
+                      color: const Color(
                         0xFFFFFFFF,
-                      ).withOpacity(payAllEnabled ? 1.0 : 0.6),
+                      ).withValues(alpha: payAllEnabled ? 1.0 : 0.6),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1832,7 +1855,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               decoration: BoxDecoration(
                 color: const Color(
                   0xFF0247C4,
-                ).withOpacity(isCurrent ? 1.0 : 0.4),
+                ).withValues(alpha: isCurrent ? 1.0 : 0.4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1843,7 +1866,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     size: 18,
                     color: const Color(
                       0xFFFFFFFF,
-                    ).withOpacity(isCurrent ? 1.0 : 0.6),
+                    ).withValues(alpha: isCurrent ? 1.0 : 0.6),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1851,7 +1874,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     style: TextStyle(
                       color: const Color(
                         0xFFFFFFFF,
-                      ).withOpacity(isCurrent ? 1.0 : 0.6),
+                      ).withValues(alpha: isCurrent ? 1.0 : 0.6),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -2429,8 +2452,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     final positionNormalizer = <String, String>{};
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty)
+      if (pos.isNotEmpty) {
         positionNormalizer.putIfAbsent(pos.toLowerCase(), () => pos);
+      }
     }
 
     final sortedPositions = positionNormalizer.values.toList()..sort();
@@ -2472,7 +2496,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                   child: Container(
                     width: 1,
                     height: 16,
-                    color: const Color(0xFFE5E7EB).withOpacity(0.5),
+                    color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
                   ),
                 ),
             ],
@@ -3075,12 +3099,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       }
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollPreviewInvoice');
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'unexpected_error'.tr(),
           isError: true,
         );
+      }
     }
   }
 
@@ -3310,7 +3335,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                 borderRadius: BorderRadius.circular(6),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF000000).withOpacity(0.15),
+                    color: const Color(0xFF000000).withValues(alpha: 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -3372,8 +3397,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                                 content: 'edit_paid_payroll_confirm'.tr(),
                                 confirmButtonText: 'yes',
                               );
-                              if (confirmed && ctx.mounted)
+                              if (confirmed && ctx.mounted) {
                                 Navigator.of(ctx).pop('edit');
+                              }
                             },
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,

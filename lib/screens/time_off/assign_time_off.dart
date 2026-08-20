@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import '../../utils/ui_helpers.dart';
 import '../../utils/helpers.dart';
+import '../../utils/company_calendar_utils.dart';
 import '../../widgets/unsaved_changes_dialog.dart';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -37,7 +38,8 @@ class AssignTimeOffScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AssignTimeOffScreen> createState() => AssignTimeOffScreenState();
+  ConsumerState<AssignTimeOffScreen> createState() =>
+      AssignTimeOffScreenState();
 }
 
 class LeaveColors {
@@ -82,7 +84,7 @@ class LeaveColors {
     if (lower.contains('sick')) return sickBg;
     if (lower.contains('casual')) return casualBg;
     if (lower.contains('medical')) return medicalBg;
-    return getColor(leaveType).withOpacity(0.15);
+    return getColor(leaveType).withValues(alpha: 0.15);
   }
 }
 
@@ -165,10 +167,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   List<Map<String, dynamic>> _workers = const [];
   Map<String, dynamic>? _selectedWorker;
 
-  StreamSubscription? _workersSub;
-  StreamSubscription? _timeoffSub;
-  StreamSubscription? _attendanceSub;
-  StreamSubscription? _holidaysSub;
+  ProviderSubscription<AsyncValue<FirestoreRecords>>? _timeoffSub;
+  ProviderSubscription<AsyncValue<FirestoreRecords>>? _attendanceSub;
 
   String _watchedTimeoffWorkerId = '';
   List<Map<String, dynamic>> _timeoffRecords = const [];
@@ -209,19 +209,20 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _pendingDrafts.values.any((draft) => draft.hasChanges);
 
   bool get _currentHasUnsavedChanges => hasUnsavedTimeOffChanges(
-        hasSelectedDates: _hasDateSelectionChanged,
-        hasNotes: _hasNotesChanged,
-        isEditing: _editingId != null,
-        typeChanged: _hasTypeChanged,
-        datesChanged: _hasDateSelectionChanged,
-      );
+    hasSelectedDates: _hasDateSelectionChanged,
+    hasNotes: _hasNotesChanged,
+    isEditing: _editingId != null,
+    typeChanged: _hasTypeChanged,
+    datesChanged: _hasDateSelectionChanged,
+  );
 
   Map<String, dynamic> get _selectedWorkerForService {
     final worker = _selectedWorker;
     if (worker == null || _isGuest) return worker ?? const <String, dynamic>{};
 
-    final workerId =
-        (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
     if (workerId.isEmpty) return worker;
 
     return {...worker, 'id': workerId, 'workerId': workerId};
@@ -255,10 +256,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   @override
   void dispose() {
     _notesController.dispose();
-    _workersSub?.cancel();
-    _timeoffSub?.cancel();
-    _attendanceSub?.cancel();
-    _holidaysSub?.cancel();
+    _timeoffSub?.close();
+    _attendanceSub?.close();
     super.dispose();
   }
 
@@ -274,11 +273,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
 
-  String _formatDate(DateTime date) =>
-      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-
-  String _getMonthName(int month) =>
-      DateFormat('MMMM', context.locale.toString()).format(DateTime(2024, month));
+  String _getMonthName(int month) => DateFormat(
+    'MMMM',
+    context.locale.toString(),
+  ).format(DateTime(2024, month));
 
   bool _sameWorker(Map<String, dynamic> first, Map<String, dynamic> second) =>
       WorkerIdentity.samePerson(first, second);
@@ -295,7 +293,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final hasValidType =
         _isValidLeaveType(data['type']) || _isValidLeaveType(data['action']);
 
-    final hasDateData = data.containsKey('selectedDates') ||
+    final hasDateData =
+        data.containsKey('selectedDates') ||
         data.containsKey('startDate') ||
         data.containsKey('endDate');
 
@@ -322,18 +321,22 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   bool _sameInitialSelection(
-      Map<String, dynamic>? first, Map<String, dynamic>? second) {
+    Map<String, dynamic>? first,
+    Map<String, dynamic>? second,
+  ) {
     if (identical(first, second)) return true;
     if (first == null || second == null) return false;
 
-    final firstId =
-        (first['id'] ?? first['workerId'] ?? '').toString().trim();
-    final secondId =
-        (second['id'] ?? second['workerId'] ?? '').toString().trim();
-    final firstAction =
-        (first['action'] ?? first['type'] ?? '').toString().trim();
-    final secondAction =
-        (second['action'] ?? second['type'] ?? '').toString().trim();
+    final firstId = (first['id'] ?? first['workerId'] ?? '').toString().trim();
+    final secondId = (second['id'] ?? second['workerId'] ?? '')
+        .toString()
+        .trim();
+    final firstAction = (first['action'] ?? first['type'] ?? '')
+        .toString()
+        .trim();
+    final secondAction = (second['action'] ?? second['type'] ?? '')
+        .toString()
+        .trim();
 
     return firstId == secondId &&
         firstAction == secondAction &&
@@ -341,13 +344,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   bool _isEligibleWorker(Map<String, dynamic> worker) {
-    final status = (worker['employmentStatus'] ??
-            worker['workerStatus'] ??
-            worker['status'] ??
-            'Active')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final status =
+        (worker['employmentStatus'] ??
+                worker['workerStatus'] ??
+                worker['status'] ??
+                'Active')
+            .toString()
+            .trim()
+            .toLowerCase();
     return !_inactiveStatuses.contains(status);
   }
 
@@ -401,28 +405,31 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _timeOffType = 'Annual Leave';
 
       final aggregateDates = source['_aggregateDatesByType'];
-      final datesForType =
-          aggregateDates is Map ? aggregateDates[_timeOffType] : null;
+      final datesForType = aggregateDates is Map
+          ? aggregateDates[_timeOffType]
+          : null;
       _selectedDates = datesForType is Iterable
           ? datesForType
-              .map(TimeOffService.parseDate)
-              .whereType<DateTime>()
-              .toSet()
+                .map(TimeOffService.parseDate)
+                .whereType<DateTime>()
+                .toSet()
           : <DateTime>{};
 
       _startDate = DateTime.now();
       _endDate = DateTime.now();
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-      _calendarMonth2 =
-          DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
       _notesController.clear();
     } else if (source != null && _isTimeOffRecord(source)) {
-      _editingId =
-          _timeOffRecordId(_editingRecord) ?? _timeOffRecordId(source);
+      _editingId = _timeOffRecordId(_editingRecord) ?? _timeOffRecordId(source);
       _timeOffType = _leaveTypeFromRecord(source);
-      _selectedDates = TimeOffService.selectedDatesForRecord(source)
-          .map(_dateOnly)
-          .toSet();
+      _selectedDates = TimeOffService.selectedDatesForRecord(
+        source,
+      ).map(_dateOnly).toSet();
 
       if (_selectedDates.isNotEmpty) {
         _syncSelectionBounds();
@@ -443,8 +450,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (_selectedDates.isNotEmpty && !_isAggregateOverview) {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-      _calendarMonth2 =
-          DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
     }
 
     _timeOffType = TimeOffService.normalizeLeaveType(_timeOffType);
@@ -455,18 +465,22 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (!_isAggregateOverview) {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-      _calendarMonth2 =
-          DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
-
-
-
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
 
       if (_selectedDates.isEmpty) {
         final now = DateTime.now();
         final currentMonth = DateTime(now.year, now.month, 1);
         if (_calendarMonth.isBefore(currentMonth)) {
           _calendarMonth = currentMonth;
-          _calendarMonth2 = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+          _calendarMonth2 = DateTime(
+            currentMonth.year,
+            currentMonth.month + 1,
+            1,
+          );
         }
       }
     }
@@ -488,17 +502,17 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   PendingTimeOffDraft _currentDraft() => PendingTimeOffDraft(
-        leaveType: _timeOffType,
-        editingId: _editingId,
-        editingRecord: _editingRecord == null
-            ? null
-            : Map<String, dynamic>.from(_editingRecord!),
-        selectedDates: Set<DateTime>.from(_selectedDates),
-        notes: _notesController.text.trim(),
-        typeChanged: _hasTypeChanged,
-        datesChanged: _hasDateSelectionChanged,
-        notesChanged: _hasNotesChanged,
-      );
+    leaveType: _timeOffType,
+    editingId: _editingId,
+    editingRecord: _editingRecord == null
+        ? null
+        : Map<String, dynamic>.from(_editingRecord!),
+    selectedDates: Set<DateTime>.from(_selectedDates),
+    notes: _notesController.text.trim(),
+    typeChanged: _hasTypeChanged,
+    datesChanged: _hasDateSelectionChanged,
+    notesChanged: _hasNotesChanged,
+  );
 
   String _draftKeyFor(String? editingId, String leaveType) {
     final id = (editingId ?? '').trim();
@@ -540,11 +554,15 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Map<String, dynamic>? _holidayForDate(DateTime date) {
     for (final holiday in _holidays) {
       if (holiday['isEnabled'] == false) continue;
-      final storedDate =
-          AppDateUtils.holidayRecordDate(holiday, fallbackYear: date.year);
+      final storedDate = AppDateUtils.holidayRecordDate(
+        holiday,
+        fallbackYear: date.year,
+      );
       if (storedDate == null ||
           storedDate.day != date.day ||
-          storedDate.month != date.month) continue;
+          storedDate.month != date.month) {
+        continue;
+      }
       if (_isGuest) return holiday;
 
       final isRecurring = holiday['isRecurring'] == true;
@@ -574,21 +592,26 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (!_isAggregateOverview) return base;
 
-    final assignedDates = TimeOffService.assignedLeaveDatesForWorkerByType(
+    final assignedDates =
+        TimeOffService.assignedLeaveDatesForWorkerByType(
           _selectedWorkerForService,
           _timeoffRecords,
-        )[TimeOffService.normalizeLeaveType(type)]
-            ?.length ??
+        )[TimeOffService.normalizeLeaveType(type)]?.length ??
         0;
     final limit = TimeOffService.configuredLimitForType(
-        _selectedWorkerForService, type);
+      _selectedWorkerForService,
+      type,
+    );
     return (base + assignedDates).clamp(0, limit);
   }
 
   int _availableDaysForType(String type) {
     if (widget.viewOnly) {
       return TimeOffService.remainingForType(
-          _selectedWorkerForService, _timeoffRecords, type);
+        _selectedWorkerForService,
+        _timeoffRecords,
+        type,
+      );
     }
 
     final base = _baseAvailableDaysForType(type);
@@ -610,15 +633,17 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
       if (leave != null &&
           TimeOffService.normalizeLeaveType(
-                  (leave['action'] ?? leave['type']).toString()) ==
+                (leave['action'] ?? leave['type']).toString(),
+              ) ==
               normType) {
         deselectedSavedForType++;
       }
     }
 
     return projectedTimeOffBalance(
-        availableDays: base + deselectedSavedForType,
-        requestedDays: currentlySelected);
+      availableDays: base + deselectedSavedForType,
+      requestedDays: currentlySelected,
+    );
   }
 
   int get _baseAvailableDays => _baseAvailableDaysForType(_timeOffType);
@@ -647,7 +672,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
       if (leave != null &&
           TimeOffService.normalizeLeaveType(
-                  (leave['action'] ?? leave['type']).toString()) ==
+                (leave['action'] ?? leave['type']).toString(),
+              ) ==
               normType) {
         deselectedSavedForType++;
       }
@@ -661,11 +687,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   String get _localizedSelectedLeaveType {
     final normalized = TimeOffService.normalizeLeaveType(_timeOffType);
-    final option =
-        _leaveTypeOptions.cast<Map<String, String>?>().firstWhere(
-              (item) => item?['value'] == normalized,
-              orElse: () => null,
-            );
+    final option = _leaveTypeOptions.cast<Map<String, String>?>().firstWhere(
+      (item) => item?['value'] == normalized,
+      orElse: () => null,
+    );
     return option?['labelKey']?.tr() ?? normalized;
   }
 
@@ -682,7 +707,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   int get _displayedLeaveBalance {
     if (_selectedWorker == null) return 0;
     return TimeOffService.configuredLimitForType(
-        _selectedWorkerForService, _timeOffType);
+      _selectedWorkerForService,
+      _timeOffType,
+    );
   }
 
   String get _insufficientBalanceMessage {
@@ -690,12 +717,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final key = availableDays == 0
         ? 'no_leave_days_available'
         : availableDays == 1
-            ? 'only_one_leave_day_available'
-            : 'only_leave_days_available';
-    return key.tr(namedArgs: {
-      'count': '$availableDays',
-      'type': _localizedSelectedLeaveType,
-    });
+        ? 'only_one_leave_day_available'
+        : 'only_leave_days_available';
+    return key.tr(
+      namedArgs: {
+        'count': '$availableDays',
+        'type': _localizedSelectedLeaveType,
+      },
+    );
   }
 
   int get _requestedDays => widget.viewOnly
@@ -715,7 +744,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       );
       if (leave != null &&
           TimeOffService.normalizeLeaveType(
-                  (leave['action'] ?? leave['type']).toString()) ==
+                (leave['action'] ?? leave['type']).toString(),
+              ) ==
               normType) {
         deselectedSavedCount++;
       }
@@ -746,7 +776,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     for (int i = 0; i < visible; i++) {
       if (i > 0) buffer.write(', ');
-      buffer.write('$typeLabel ${_formatDate(dates[i])}');
+      buffer.write('$typeLabel ${AppDateUtils.formatDate(dates[i])}');
     }
 
     final remaining = count - 3;
@@ -781,12 +811,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   void _loadFirestoreWorkers() {
-    _workersSub = _firestore.workersStream.listen((snapshot) {
+    ref.listenAsync(workersProvider, (records) {
       if (!mounted) return;
       setState(() {
-        _workers = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
+        _workers = records;
         _selectedWorker = _resolveSelectedWorker();
 
         if (_editingRecord != null) {
@@ -794,35 +822,21 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         }
       });
       _loadTimeoffForSelectedWorker();
-    }, onError: (_) {});
+    });
 
-    _holidaysSub = _firestore.holidaysStream.listen((snapshot) {
+    ref.listenAsync(holidaysProvider, (records) {
       if (!mounted) return;
 
-      final holidays = <Map<String, dynamic>>[];
-      var workingDays = _companyWorkingDays;
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        if (data['type'] == 'company_work_days') {
-          final savedDays = (data['workingDays'] as List<dynamic>? ?? [])
-              .whereType<num>()
-              .map((day) => day.toInt())
-              .where(
-                  (day) => day >= DateTime.monday && day <= DateTime.sunday)
-              .toSet();
-          if (savedDays.isNotEmpty) workingDays = savedDays;
-          continue;
-        }
-        holidays.add({...data, 'id': doc.id});
-      }
+      final calendar = splitCompanyCalendarRecords(
+        records,
+        fallbackWorkingDays: _companyWorkingDays,
+      );
 
       setState(() {
-        _holidays = holidays;
-        _companyWorkingDays = workingDays;
+        _holidays = calendar.holidays;
+        _companyWorkingDays = calendar.workingDays;
       });
-    }, onError: (_) {});
+    });
   }
 
   Map<String, dynamic>? _resolveSelectedWorker() {
@@ -853,8 +867,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       return;
     }
 
-    final workerId =
-        (worker['workerId'] ?? worker['id'] ?? '').toString().trim();
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
     if (workerId.isEmpty) {
       await _cancelTimeoffSubscriptions();
       if (mounted) {
@@ -896,51 +911,62 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       });
     }
 
-    _timeoffSub = _firestore.timeoffForWorkerStream(workerId).listen(
-      (snapshot) {
-        latestTimeoffDocs = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
-        updateCombined();
-      },
-      onError: (Object error, StackTrace stack) {
-        ErrorReporter.report(error, stack,
-            context: 'TimeoffStream:$workerId');
-      },
+    _timeoffSub = ref.listenManual(
+      timeOffForWorkerProvider(workerId),
+      (previous, next) => next.when(
+        data: (records) {
+          latestTimeoffDocs = records;
+          updateCombined();
+        },
+        error: (Object error, StackTrace stack) {
+          ErrorReporter.report(
+            error,
+            stack,
+            context: 'TimeoffStream:$workerId',
+          );
+        },
+        loading: () {},
+      ),
+      fireImmediately: true,
     );
 
-    _attendanceSub = _firestore.attendanceStreamForWorker(workerId).listen(
-      (snapshot) {
-        latestAttendanceDocs = snapshot.docs
-            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-            .toList();
-        updateCombined();
-      },
-      onError: (Object error, StackTrace stack) {
-        ErrorReporter.report(error, stack,
-            context: 'AttendanceStream:$workerId');
-      },
+    _attendanceSub = ref.listenManual(
+      attendanceForWorkerProvider(workerId),
+      (previous, next) => next.when(
+        data: (records) {
+          latestAttendanceDocs = records;
+          updateCombined();
+        },
+        error: (Object error, StackTrace stack) {
+          ErrorReporter.report(
+            error,
+            stack,
+            context: 'AttendanceStream:$workerId',
+          );
+        },
+        loading: () {},
+      ),
+      fireImmediately: true,
     );
   }
 
   void _loadGuestTimeoff(String workerId) {
     final rawTimeoff = DummyData.timeoff
-        .where(
-            (r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
+        .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
         .map((r) {
-      final id = (r['id'] ?? '').toString().trim();
-      if (id.isEmpty) {
-        final syntheticId =
-            'timeoff_${r['workerId']}_${r['type']}_${r['startDate']}';
-        r['id'] = syntheticId;
-        return {...r, 'id': syntheticId};
-      }
-      return r;
-    }).toList();
+          final id = (r['id'] ?? '').toString().trim();
+          if (id.isEmpty) {
+            final syntheticId =
+                'timeoff_${r['workerId']}_${r['type']}_${r['startDate']}';
+            r['id'] = syntheticId;
+            return {...r, 'id': syntheticId};
+          }
+          return r;
+        })
+        .toList();
 
     final rawAttendance = DummyData.attendance
-        .where(
-            (r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
+        .where((r) => (r['workerId'] ?? r['id'] ?? '').toString() == workerId)
         .toList();
 
     final records = TimeOffService.combineTimeOffAndAttendanceRecords(
@@ -958,8 +984,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   Future<void> _cancelTimeoffSubscriptions() async {
-    await _timeoffSub?.cancel();
-    await _attendanceSub?.cancel();
+    _timeoffSub?.close();
+    _attendanceSub?.close();
     _timeoffSub = null;
     _attendanceSub = null;
     _watchedTimeoffWorkerId = '';
@@ -981,8 +1007,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _selectedWorkerForService,
       _timeoffRecords,
     );
-    _selectedDates =
-        (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
+    _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
     _invalidateDateTypeMap();
     _syncSelectionBounds();
   }
@@ -993,8 +1018,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _selectedWorkerForService,
       _timeoffRecords,
     );
-    _selectedDates =
-        (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
+    _selectedDates = (datesByType[_timeOffType] ?? const <DateTime>[]).toSet();
     _editingRecord = null;
     _editingId = null;
     _notesController.clear();
@@ -1004,11 +1028,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   void _syncOpenRecordFromLiveData() {
     if (_editingId == null || _hasUnsavedChanges) return;
-    final liveRecord =
-        _timeoffRecords.cast<Map<String, dynamic>?>().firstWhere(
-              (record) => _timeOffRecordId(record) == _editingId,
-              orElse: () => null,
-            );
+    final liveRecord = _timeoffRecords.cast<Map<String, dynamic>?>().firstWhere(
+      (record) => _timeOffRecordId(record) == _editingId,
+      orElse: () => null,
+    );
     if (liveRecord != null) {
       _applyEditingRecord(liveRecord, preserveCalendarMonth: true);
     }
@@ -1021,9 +1044,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     _editingRecord = Map<String, dynamic>.from(record);
     _editingId = _timeOffRecordId(record);
     _timeOffType = _leaveTypeFromRecord(record);
-    _selectedDates = TimeOffService.selectedDatesForRecord(record)
-        .map(_dateOnly)
-        .toSet();
+    _selectedDates = TimeOffService.selectedDatesForRecord(
+      record,
+    ).map(_dateOnly).toSet();
     _deselectedDates.clear();
     _notesController.text = (record['notes'] ?? '').toString();
 
@@ -1036,17 +1059,22 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (!preserveCalendarMonth) {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-      _calendarMonth2 =
-          DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
-
-
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
 
       if (_selectedDates.isEmpty) {
         final now = DateTime.now();
         final currentMonth = DateTime(now.year, now.month, 1);
         if (_calendarMonth.isBefore(currentMonth)) {
           _calendarMonth = currentMonth;
-          _calendarMonth2 = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+          _calendarMonth2 = DateTime(
+            currentMonth.year,
+            currentMonth.month + 1,
+            1,
+          );
         }
       }
     }
@@ -1114,8 +1142,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (selectedDate.isBefore(todayStart)) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
       return;
     }
@@ -1127,8 +1158,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         for (final draft in _pendingDrafts.values) {
           draft.selectedDates.remove(selectedDate);
         }
-        _pendingDrafts
-            .removeWhere((_, draft) => draft.selectedDates.isEmpty);
+        _pendingDrafts.removeWhere((_, draft) => draft.selectedDates.isEmpty);
         _hasDateSelectionChanged = true;
         _invalidateDateTypeMap();
         _syncSelectionBounds();
@@ -1143,8 +1173,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (_isNonWorkingDate(selectedDate)) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'time_off_non_working_day_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_non_working_day_blocked'.tr(),
+          isError: true,
+        );
       }
       return;
     }
@@ -1159,12 +1192,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
       if (existingLeave != null) {
         final existingType = TimeOffService.normalizeLeaveType(
-            (existingLeave['action'] ?? existingLeave['type']).toString());
+          (existingLeave['action'] ?? existingLeave['type']).toString(),
+        );
         final currentType = TimeOffService.normalizeLeaveType(_timeOffType);
         if (existingType != currentType) {
           return;
         }
-        if (_editingId == null || _editingId == _timeOffRecordId(existingLeave)) {
+        if (_editingId == null ||
+            _editingId == _timeOffRecordId(existingLeave)) {
           setState(() {
             _deselectedDates.add(selectedDate);
             _hasDateSelectionChanged = true;
@@ -1189,8 +1224,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     if (_usesPaidAllowance && _availableDays <= 0) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: _insufficientBalanceMessage, isError: true);
+        FlashySnackBar.show(
+          context,
+          message: _insufficientBalanceMessage,
+          isError: true,
+        );
       }
       return;
     }
@@ -1230,8 +1268,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   void _finishDateDrag() {
     if (_dragExceededAvailableDays && mounted) {
-      FlashySnackBar.show(context,
-          message: _insufficientBalanceMessage, isError: true);
+      FlashySnackBar.show(
+        context,
+        message: _insufficientBalanceMessage,
+        isError: true,
+      );
     }
 
     _dragAnchorDate = null;
@@ -1251,12 +1292,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final row = (adjustedDy / _cellExtent).floor();
     if (column < 0 || column > 6 || row < 0 || row > 5) return null;
 
-    final firstWeekday =
-        DateTime(monthDate.year, monthDate.month, 1).weekday;
+    final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
     final startIndex = firstWeekday == 7 ? 0 : firstWeekday;
     final day = (row * 7) + column - startIndex + 1;
-    final daysInMonth =
-        DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     if (day < 1 || day > daysInMonth) return null;
 
     return DateTime(monthDate.year, monthDate.month, day);
@@ -1293,10 +1332,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       if (workerId.isEmpty) throw StateError('Missing worker id');
 
       if (_editingRecord != null &&
-          !TimeOffService.recordHasLeaveType(
-              _editingRecord!, _timeOffType)) {
+          !TimeOffService.recordHasLeaveType(_editingRecord!, _timeOffType)) {
         throw StateError(
-            'The selected leave type does not match the record being edited');
+          'The selected leave type does not match the record being edited',
+        );
       }
 
       final recordMap = _buildTimeOffRecord(workerId);
@@ -1333,25 +1372,30 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
       FlashySnackBar.show(
         context,
-        message: (wasEditing
-                ? 'update_time_off_success'
-                : 'assign_time_off_success')
-            .tr(
-          namedArgs: {
-            'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
-          },
-        ),
+        message:
+            (wasEditing ? 'update_time_off_success' : 'assign_time_off_success')
+                .tr(
+                  namedArgs: {
+                    'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
+                  },
+                ),
       );
       widget.onBack();
     } on DuplicateTimeOffDateException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'time_off_dates_overlap'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
       }
     } on PastTimeOffEditException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
     } on ValidationException catch (e) {
       if (mounted) {
@@ -1363,8 +1407,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
     } catch (_) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'assign_time_off_failed'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1373,12 +1420,16 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   bool _validateSavePreConditions() {
     if (_editingRecord != null) {
-      final oldDates =
-          TimeOffService.selectedDatesForRecord(_editingRecord!);
+      final oldDates = TimeOffService.selectedDatesForRecord(_editingRecord!);
       if (TimeOffService.hasPastDateModification(
-          oldDates: oldDates, newDates: _selectedDates)) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        oldDates: oldDates,
+        newDates: _selectedDates,
+      )) {
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
         return false;
       }
     }
@@ -1387,27 +1438,39 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       if (_selectedDates.any((d) => d.isBefore(today))) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
         return false;
       }
     }
 
     if (_selectedWorker == null && _selectedDates.isEmpty) {
-      FlashySnackBar.show(context,
-          message: 'please_fill_all_fields'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (_selectedWorker == null) {
-      FlashySnackBar.show(context,
-          message: 'please_select_worker_first'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_worker_first'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (!_isEligibleWorker(_selectedWorker!)) {
-      FlashySnackBar.show(context,
-          message: 'guest_action_not_allowed'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
+        isError: true,
+      );
       return false;
     }
 
@@ -1416,26 +1479,35 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   bool _validateSaveDates() {
     if (_selectedDates.isEmpty) {
-      FlashySnackBar.show(context,
-          message: 'please_select_dates'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_dates'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (_selectedDates.any(_isNonWorkingDate)) {
-      FlashySnackBar.show(context,
-          message: 'time_off_non_working_day_blocked'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'time_off_non_working_day_blocked'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     final joiningDate = AppDateUtils.dateFromValue(
-      _selectedWorker?['joiningDate'] ??
-          _selectedWorker?['dateOfJoining'],
+      _selectedWorker?['joiningDate'] ?? _selectedWorker?['dateOfJoining'],
     );
     if (joiningDate != null) {
-      final normJoining =
-          DateTime(joiningDate.year, joiningDate.month, joiningDate.day);
-      if (_selectedDates.any((d) =>
-          DateTime(d.year, d.month, d.day).isBefore(normJoining))) {
+      final normJoining = DateTime(
+        joiningDate.year,
+        joiningDate.month,
+        joiningDate.day,
+      );
+      if (_selectedDates.any(
+        (d) => DateTime(d.year, d.month, d.day).isBefore(normJoining),
+      )) {
         FlashySnackBar.show(
           context,
           message: 'Cannot assign leave before worker joining date.',
@@ -1451,14 +1523,20 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       _selectedDates,
       excludingRecordId: _editingId,
     )) {
-      FlashySnackBar.show(context,
-          message: 'time_off_dates_overlap'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'time_off_dates_overlap'.tr(),
+        isError: true,
+      );
       return false;
     }
 
     if (_requestedDaysExceedAvailable) {
-      FlashySnackBar.show(context,
-          message: _insufficientBalanceMessage, isError: true);
+      FlashySnackBar.show(
+        context,
+        message: _insufficientBalanceMessage,
+        isError: true,
+      );
       return false;
     }
 
@@ -1496,20 +1574,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     };
   }
 
-  void _saveGuestTimeOff(
-      Map<String, dynamic> recordMap, String workerId) {
+  void _saveGuestTimeOff(Map<String, dynamic> recordMap, String workerId) {
     Map<String, dynamic>? previousGuestRecord;
 
     if (_editingId != null) {
-      final idx =
-          DummyData.timeoff.indexWhere((t) => t['id'] == _editingId);
+      final idx = DummyData.timeoff.indexWhere((t) => t['id'] == _editingId);
       if (idx != -1) {
-        previousGuestRecord =
-            Map<String, dynamic>.from(DummyData.timeoff[idx]);
-        DummyData.timeoff[idx] = {
-          ...DummyData.timeoff[idx],
-          ...recordMap,
-        };
+        previousGuestRecord = Map<String, dynamic>.from(DummyData.timeoff[idx]);
+        DummyData.timeoff[idx] = {...DummyData.timeoff[idx], ...recordMap};
       }
     } else {
       DummyData.timeoff.insert(0, {
@@ -1523,27 +1595,33 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   void _updateGuestWorkerBalance(
-      String workerId, Map<String, dynamic>? previousRecord) {
+    String workerId,
+    Map<String, dynamic>? previousRecord,
+  ) {
     final leaveField = _leaveFieldForType(_timeOffType);
 
-    final workerEmail =
-        (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
-    final workerIdx = DummyData.workers.indexWhere((w) =>
-        (w['email'] ?? '').toString().trim().toLowerCase() == workerEmail);
+    final workerEmail = (_selectedWorker!['email'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final workerIdx = DummyData.workers.indexWhere(
+      (w) => (w['email'] ?? '').toString().trim().toLowerCase() == workerEmail,
+    );
 
     if (workerIdx == -1) return;
 
     final worker = DummyData.workers[workerIdx];
     final currentMap = Map<String, dynamic>.from(
-      worker['leaveBalances'] as Map? ??
-          _buildDefaultLeaveBalances(worker),
+      worker['leaveBalances'] as Map? ?? _buildDefaultLeaveBalances(worker),
     );
 
     if (previousRecord != null) {
       final oldField = _leaveFieldForType(
-          TimeOffService.leaveType(previousRecord));
-      final oldDays =
-          TimeOffService.selectedDatesForRecord(previousRecord).length;
+        TimeOffService.leaveType(previousRecord),
+      );
+      final oldDays = TimeOffService.selectedDatesForRecord(
+        previousRecord,
+      ).length;
       if (oldField.isNotEmpty && oldDays > 0) {
         final oldBalance =
             int.tryParse(currentMap[oldField]?.toString() ?? '0') ?? 0;
@@ -1556,32 +1634,29 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     currentMap[leaveField] = (currentVal - _requestedDays).clamp(0, 999);
 
     DummyData.workers[workerIdx].addAll(
-      TimeOffService.canonicalWorkerLeaveFields(worker,
-          remainingBalances: currentMap),
+      TimeOffService.canonicalWorkerLeaveFields(
+        worker,
+        remainingBalances: currentMap,
+      ),
     );
   }
 
-  Map<String, dynamic> _buildDefaultLeaveBalances(
-      Map<String, dynamic> worker) {
-    int parse(String key) =>
-        int.tryParse((worker[key] ?? '0').toString()) ?? 0;
+  Map<String, dynamic> _buildDefaultLeaveBalances(Map<String, dynamic> worker) {
+    int parse(String key) => int.tryParse((worker[key] ?? '0').toString()) ?? 0;
 
     return {
-      'annualLeave':
-          parse('availableAnnualLeaves').clamp(0, 999) > 0
-              ? parse('availableAnnualLeaves')
-              : parse('annualLeaves'),
+      'annualLeave': parse('availableAnnualLeaves').clamp(0, 999) > 0
+          ? parse('availableAnnualLeaves')
+          : parse('annualLeaves'),
       'sickLeave': parse('availableSickLeaves').clamp(0, 999) > 0
           ? parse('availableSickLeaves')
           : parse('sickLeaves'),
-      'casualLeave':
-          parse('availableCasualLeaves').clamp(0, 999) > 0
-              ? parse('availableCasualLeaves')
-              : parse('casualLeaves'),
-      'medicalLeave':
-          parse('availableMedicalLeaves').clamp(0, 999) > 0
-              ? parse('availableMedicalLeaves')
-              : parse('medicalLeaves'),
+      'casualLeave': parse('availableCasualLeaves').clamp(0, 999) > 0
+          ? parse('availableCasualLeaves')
+          : parse('casualLeaves'),
+      'medicalLeave': parse('availableMedicalLeaves').clamp(0, 999) > 0
+          ? parse('availableMedicalLeaves')
+          : parse('medicalLeaves'),
     };
   }
 
@@ -1611,7 +1686,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         );
         if (leave == null) continue;
         final leaveType = TimeOffService.normalizeLeaveType(
-            (leave['action'] ?? leave['type']).toString());
+          (leave['action'] ?? leave['type']).toString(),
+        );
         if (leaveType != normType) continue;
         final rid = (leave['id'] ?? '').toString();
         if (rid.isEmpty) continue;
@@ -1621,16 +1697,17 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       for (final entry in affectedRecords.entries) {
         final recordId = entry.key;
         final record = entry.value;
-        final oldDates = TimeOffService.selectedDatesForRecord(record)
-            .map(_dateOnly)
-            .toSet();
+        final oldDates = TimeOffService.selectedDatesForRecord(
+          record,
+        ).map(_dateOnly).toSet();
         final removeDates = _deselectedDates.map(_dateOnly).toSet();
         final remainingDates = oldDates.difference(removeDates);
 
         if (remainingDates.isEmpty) {
           if (_isGuest) {
             final idx = DummyData.timeoff.indexWhere(
-                (r) => (r['id'] ?? '').toString() == recordId);
+              (r) => (r['id'] ?? '').toString() == recordId,
+            );
             if (idx != -1) DummyData.timeoff.removeAt(idx);
           } else {
             await _firestore.cancelTimeOffWithWorkerBalance(
@@ -1642,15 +1719,17 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         } else {
           final sortedDates = remainingDates.toList()..sort();
           final updatedRecord = Map<String, dynamic>.from(record);
-          updatedRecord['selectedDates'] =
-              sortedDates.map(_dateOnlyString).toList();
+          updatedRecord['selectedDates'] = sortedDates
+              .map(_dateOnlyString)
+              .toList();
           updatedRecord['startDate'] = _dateOnlyString(sortedDates.first);
           updatedRecord['endDate'] = _dateOnlyString(sortedDates.last);
           updatedRecord['requestedDays'] = sortedDates.length;
 
           if (_isGuest) {
             final idx = DummyData.timeoff.indexWhere(
-                (r) => (r['id'] ?? '').toString() == recordId);
+              (r) => (r['id'] ?? '').toString() == recordId,
+            );
             if (idx != -1) DummyData.timeoff[idx] = updatedRecord;
           } else {
             await _firestore.saveTimeOffWithWorkerBalance(
@@ -1683,20 +1762,28 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
       FlashySnackBar.show(
         context,
-        message: 'update_time_off_success'.tr(namedArgs: {
-          'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
-        }),
+        message: 'update_time_off_success'.tr(
+          namedArgs: {
+            'name': (_selectedWorker?['name'] ?? 'Worker').toString(),
+          },
+        ),
       );
       widget.onBack();
     } on PastTimeOffEditException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
     } catch (_) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'assign_time_off_failed'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1735,13 +1822,19 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       widget.onBack();
     } on PastTimeOffEditException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
     } catch (_) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'assign_time_off_failed'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1749,31 +1842,31 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   void _cancelGuestTimeOff(String workerId) {
-    final recordIndex = DummyData.timeoff
-        .indexWhere((r) => r['id']?.toString() == _editingId);
+    final recordIndex = DummyData.timeoff.indexWhere(
+      (r) => r['id']?.toString() == _editingId,
+    );
     if (recordIndex == -1) {
       throw StateError('Time off record does not exist');
     }
 
     final oldRecord = DummyData.timeoff[recordIndex];
     final workerIndex = DummyData.workers.indexWhere(
-      (w) =>
-          (w['workerId'] ?? w['id'] ?? '').toString().trim() == workerId,
+      (w) => (w['workerId'] ?? w['id'] ?? '').toString().trim() == workerId,
     );
 
     if (workerIndex != -1) {
       final balances = Map<String, dynamic>.from(
         TimeOffService.canonicalWorkerLeaveFields(
-                DummyData.workers[workerIndex])['leaveBalances']
+              DummyData.workers[workerIndex],
+            )['leaveBalances']
             as Map,
       );
-      final oldField =
-          _leaveFieldForType(TimeOffService.leaveType(oldRecord));
+      final oldField = _leaveFieldForType(TimeOffService.leaveType(oldRecord));
       if (oldField.isNotEmpty) {
         final current =
             int.tryParse(balances[oldField]?.toString() ?? '0') ?? 0;
-        balances[oldField] = current +
-            TimeOffService.selectedDatesForRecord(oldRecord).length;
+        balances[oldField] =
+            current + TimeOffService.selectedDatesForRecord(oldRecord).length;
         DummyData.workers[workerIndex].addAll(
           TimeOffService.canonicalWorkerLeaveFields(
             DummyData.workers[workerIndex],
@@ -1790,25 +1883,33 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Future<void> _savePendingDrafts() async {
     final worker = _selectedWorker;
     if (worker == null) {
-      FlashySnackBar.show(context,
-          message: 'please_select_worker_first'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_worker_first'.tr(),
+        isError: true,
+      );
       return;
     }
     if (!_isEligibleWorker(worker)) {
-      FlashySnackBar.show(context,
-          message: 'guest_action_not_allowed'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
+        isError: true,
+      );
       return;
     }
 
     final workerId = _resolveWorkerId();
     if (workerId.isEmpty) {
-      FlashySnackBar.show(context,
-          message: 'assign_time_off_failed'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'assign_time_off_failed'.tr(),
+        isError: true,
+      );
       return;
     }
 
-    final drafts =
-        _pendingDrafts.values.where((d) => d.hasChanges).toList();
+    final drafts = _pendingDrafts.values.where((d) => d.hasChanges).toList();
 
     if (!_validatePendingDrafts(drafts)) return;
 
@@ -1841,21 +1942,25 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       FlashySnackBar.show(
         context,
         message: 'assign_time_off_success'.tr(
-          namedArgs: {
-            'name': (worker['name'] ?? 'Worker').toString(),
-          },
+          namedArgs: {'name': (worker['name'] ?? 'Worker').toString()},
         ),
       );
       widget.onBack();
     } on DuplicateTimeOffDateException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'time_off_dates_overlap'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
       }
     } on PastTimeOffEditException {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'past_time_off_edit_blocked'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'past_time_off_edit_blocked'.tr(),
+          isError: true,
+        );
       }
     } on ValidationException catch (e) {
       if (mounted) {
@@ -1867,8 +1972,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       }
     } catch (_) {
       if (mounted) {
-        FlashySnackBar.show(context,
-            message: 'assign_time_off_failed'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1880,15 +1988,20 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     for (final draft in drafts) {
       if (draft.selectedDates.any(_isNonWorkingDate)) {
-        FlashySnackBar.show(context,
-            message: 'time_off_non_working_day_blocked'.tr(),
-            isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_non_working_day_blocked'.tr(),
+          isError: true,
+        );
         return false;
       }
       for (final date in draft.selectedDates) {
         if (!pendingDates.add(_dateOnly(date))) {
-          FlashySnackBar.show(context,
-              message: 'time_off_dates_overlap'.tr(), isError: true);
+          FlashySnackBar.show(
+            context,
+            message: 'time_off_dates_overlap'.tr(),
+            isError: true,
+          );
           return false;
         }
       }
@@ -1898,8 +2011,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         draft.selectedDates,
         excludingRecordId: draft.editingId,
       )) {
-        FlashySnackBar.show(context,
-            message: 'time_off_dates_overlap'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'time_off_dates_overlap'.tr(),
+          isError: true,
+        );
         return false;
       }
 
@@ -1913,11 +2029,12 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           draft.selectedDates.length > available) {
         FlashySnackBar.show(
           context,
-          message: 'only_leave_days_available'.tr(namedArgs: {
-            'count': '$available',
-            'type':
-                LocalizationHelper.localizeLeaveType(draft.leaveType),
-          }),
+          message: 'only_leave_days_available'.tr(
+            namedArgs: {
+              'count': '$available',
+              'type': LocalizationHelper.localizeLeaveType(draft.leaveType),
+            },
+          ),
           isError: true,
         );
         return false;
@@ -1959,13 +2076,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           'type': draft.leaveType,
           'startDate': _dateOnlyString(sortedDates.first),
           'endDate': _dateOnlyString(sortedDates.last),
-          'selectedDates':
-              sortedDates.map(_dateOnlyString).toList(),
+          'selectedDates': sortedDates.map(_dateOnlyString).toList(),
           'notes': draft.notes,
           'requestedDays': sortedDates.length,
           'status': 'Approved',
-          'isPaidLeave':
-              _paidLeaveTypes.contains(draft.leaveType),
+          'isPaidLeave': _paidLeaveTypes.contains(draft.leaveType),
           'workerName': workerName,
           'workerAvatar': worker['profileImage'] ?? '',
         },
@@ -1994,7 +2109,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 40, vertical: 24),
+                  horizontal: 40,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2013,7 +2130,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   Widget _buildTitleRow() {
     final workerName = (_selectedWorker?['name'] ?? '').toString().trim();
-    final workerPosition = (_selectedWorker?['position'] ?? '').toString().trim();
+    final workerPosition = (_selectedWorker?['position'] ?? '')
+        .toString()
+        .trim();
     final profileImage = _selectedWorker?['profileImage']?.toString();
 
     return Row(
@@ -2024,11 +2143,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (workerName.isNotEmpty) ...[
-              WorkerAvatar(
-                imageUrl: profileImage,
-                name: workerName,
-                size: 36,
-              ),
+              WorkerAvatar(imageUrl: profileImage, name: workerName, size: 36),
               const SizedBox(width: 12),
             ],
             Column(
@@ -2099,7 +2214,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           width: 18,
           height: 18,
           decoration: BoxDecoration(
-              color: color, borderRadius: BorderRadius.circular(4)),
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
       ],
     );
@@ -2108,12 +2225,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
-      padding: const EdgeInsets.only(
-          left: 32, right: 32, top: 24, bottom: 24),
+      padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
-        border: Border(
-            bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
@@ -2124,8 +2239,11 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             },
             child: const Padding(
               padding: EdgeInsets.only(top: 2.0),
-              child: Icon(Icons.arrow_back_ios_new,
-                  color: Color(0xFF000000), size: 24),
+              child: Icon(
+                Icons.arrow_back_ios_new,
+                color: Color(0xFF000000),
+                size: 24,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -2141,8 +2259,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 24),
           GestureDetector(
-              onTap: widget.onProfileTap,
-              child: const UserAvatar()),
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
         ],
       ),
     );
@@ -2164,8 +2283,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           _buildTopForm(),
           const SizedBox(height: 32),
           IgnorePointer(
-              ignoring: widget.viewOnly,
-              child: _buildUnifiedDaysGrid()),
+            ignoring: widget.viewOnly,
+            child: _buildUnifiedDaysGrid(),
+          ),
           const SizedBox(height: 8),
           _buildCalendarHintRow(),
           const SizedBox(height: 4),
@@ -2178,17 +2298,16 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Widget _buildCalendarHintRow() {
     return Row(
       children: [
-        const Icon(Icons.touch_app_outlined,
-            size: 18, color: Color(0xFF64748B)),
+        const Icon(
+          Icons.touch_app_outlined,
+          size: 18,
+          color: Color(0xFF64748B),
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            (widget.viewOnly ? 'selected_dates' : 'tap_dates_to_select')
-                .tr(),
-            style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF64748B),
-                ),
+            (widget.viewOnly ? 'selected_dates' : 'tap_dates_to_select').tr(),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
         ),
         if (_selectedDates.isNotEmpty &&
@@ -2212,8 +2331,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   Widget _buildNoWorkerSelected() {
     return Container(
       width: double.infinity,
-      padding:
-          const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
@@ -2225,9 +2343,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-            child: const Icon(Icons.person_off_rounded,
-                size: 64, color: Color(0xFF94A3B8)),
+              color: Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.person_off_rounded,
+              size: 64,
+              color: Color(0xFF94A3B8),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -2243,10 +2366,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           Text(
             'select_worker_to_assign'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-                ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -2258,9 +2378,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
-            flex: 3,
-            child: _buildLabeledDropdown(
-                'time_off_type'.tr(), _timeOffType)),
+          flex: 3,
+          child: _buildLabeledDropdown('time_off_type'.tr(), _timeOffType),
+        ),
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
@@ -2274,9 +2394,12 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         ),
         const SizedBox(width: 16),
         Expanded(
-            flex: 3,
-            child: _buildLabeledInput(
-                'selected_days'.tr(), '$_selectedDaysCount')),
+          flex: 3,
+          child: _buildLabeledInput(
+            'selected_days'.tr(),
+            '$_selectedDaysCount',
+          ),
+        ),
         const SizedBox(width: 16),
         Expanded(
           flex: 2,
@@ -2286,10 +2409,12 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0247C4),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
                 elevation: 0,
               ),
-              onPressed: (widget.viewOnly ||
+              onPressed:
+                  (widget.viewOnly ||
                       _selectedWorker == null ||
                       _isLoading ||
                       _isAggregateOverview ||
@@ -2357,20 +2482,15 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 isExpanded: true,
                 value: value,
                 dropdownColor: Colors.white,
-                icon: const Icon(Icons.arrow_drop_down,
-                    color: Colors.black),
-                style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black),
-                selectedItemBuilder: (_) =>
-                    _leaveTypeOptions.map((opt) {
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
+                style: const TextStyle(fontSize: 14, color: Colors.black),
+                selectedItemBuilder: (_) => _leaveTypeOptions.map((opt) {
                   final lbl = opt['labelKey']!.tr();
                   final typeVal = opt['value']!;
                   final avail = _availableDaysForType(typeVal);
-                  final displayLabel =
-                      (_selectedWorker != null && avail < 999)
-                          ? '$lbl ($avail)'
-                          : lbl;
+                  final displayLabel = (_selectedWorker != null && avail < 999)
+                      ? '$lbl ($avail)'
+                      : lbl;
                   return Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -2388,10 +2508,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   final lbl = opt['labelKey']!.tr();
                   final typeVal = opt['value']!;
                   final avail = _availableDaysForType(typeVal);
-                  final displayLabel =
-                      (_selectedWorker != null && avail < 999)
-                          ? '$lbl ($avail)'
-                          : lbl;
+                  final displayLabel = (_selectedWorker != null && avail < 999)
+                      ? '$lbl ($avail)'
+                      : lbl;
                   return DropdownMenuItem<String>(
                     value: typeVal,
                     child: Text(
@@ -2425,8 +2544,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildLabeledInput(String label, String value,
-      {VoidCallback? onTap}) {
+  Widget _buildLabeledInput(String label, String value, {VoidCallback? onTap}) {
     Widget content = Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2440,10 +2558,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         value,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-            ),
+        style: const TextStyle(fontSize: 14, color: Colors.grey),
       ),
     );
 
@@ -2468,11 +2583,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildCalendar(DateTime monthDate,
-      {required bool isStartCalendar}) {
-    final monthYear =
-        '${_getMonthName(monthDate.month)} ${monthDate.year}'
-            .toUpperCase();
+  Widget _buildCalendar(DateTime monthDate, {required bool isStartCalendar}) {
+    final monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'
+        .toUpperCase();
 
     return Container(
       decoration: BoxDecoration(
@@ -2481,8 +2594,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       ),
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
-        constraints:
-            const BoxConstraints(maxWidth: _calendarContentWidth),
+        constraints: const BoxConstraints(maxWidth: _calendarContentWidth),
         child: Column(
           children: [
             _buildCalendarNav(monthYear, isStartCalendar),
@@ -2498,10 +2610,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   Widget _buildCalendarNav(String monthYear, bool isStartCalendar) {
     void navigateMonth(int delta) {
-      final ref =
-          isStartCalendar ? _calendarMonth : _calendarMonth2;
-      final newMonth =
-          DateTime(ref.year, ref.month + delta, 1);
+      final ref = isStartCalendar ? _calendarMonth : _calendarMonth2;
+      final newMonth = DateTime(ref.year, ref.month + delta, 1);
       if (newMonth.year != DateTime.now().year) return;
       setState(() {
         if (isStartCalendar) {
@@ -2520,17 +2630,13 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           borderRadius: BorderRadius.circular(4),
           child: const Padding(
             padding: EdgeInsets.all(4),
-            child: Icon(Icons.chevron_left,
-                size: 20, color: Colors.black),
+            child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
           ),
         ),
         const SizedBox(width: 16),
         Text(
           monthYear,
-          style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              ),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
         const SizedBox(width: 16),
         InkWell(
@@ -2538,8 +2644,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           borderRadius: BorderRadius.circular(4),
           child: const Padding(
             padding: EdgeInsets.all(4),
-            child: Icon(Icons.chevron_right,
-                size: 20, color: Colors.black),
+            child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
           ),
         ),
       ],
@@ -2598,16 +2703,13 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           onPanDown: (details) {
             final pos = toGridSpace(details.localPosition);
             final isSecond = pos.dx > _containerWidth + 24;
-            final monthDate =
-                isSecond ? _calendarMonth2 : _calendarMonth;
+            final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
             final adjustedPos = isSecond
                 ? Offset(pos.dx - _containerWidth - 24, pos.dy)
                 : pos;
-            _dragAnchorDate =
-                _dateAtGridPosition(monthDate, adjustedPos);
+            _dragAnchorDate = _dateAtGridPosition(monthDate, adjustedPos);
             _lastDragDate = null;
-            _selectionBeforeDrag =
-                Set<DateTime>.from(_selectedDates);
+            _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
             _dragExceededAvailableDays = false;
             _dragStartPosition = pos;
             _dragMoved = false;
@@ -2615,39 +2717,36 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           onPanUpdate: (details) {
             final pos = toGridSpace(details.localPosition);
             if (_dragStartPosition != null && !_dragMoved) {
-              final dx =
-                  (pos.dx - _dragStartPosition!.dx).abs();
-              final dy =
-                  (pos.dy - _dragStartPosition!.dy).abs();
+              final dx = (pos.dx - _dragStartPosition!.dx).abs();
+              final dy = (pos.dy - _dragStartPosition!.dy).abs();
               if (dx > 18 || dy > 18) _dragMoved = true;
             }
             if (!_dragMoved) return;
 
             final anchor = _dragAnchorDate;
             final isSecond = pos.dx > _containerWidth + 24;
-            final monthDate =
-                isSecond ? _calendarMonth2 : _calendarMonth;
+            final monthDate = isSecond ? _calendarMonth2 : _calendarMonth;
             final adjustedPos = isSecond
                 ? Offset(pos.dx - _containerWidth - 24, pos.dy)
                 : pos;
-            final current =
-                _dateAtGridPosition(monthDate, adjustedPos);
-            if (anchor == null ||
-                current == null ||
-                current == _lastDragDate) return;
+            final current = _dateAtGridPosition(monthDate, adjustedPos);
+            if (anchor == null || current == null || current == _lastDragDate) {
+              return;
+            }
             _lastDragDate = current;
 
-            final candidate =
-                Set<DateTime>.from(_selectionBeforeDrag);
-            final isDragRemoving =
-                _selectionBeforeDrag.contains(_dragAnchorDate);
+            final candidate = Set<DateTime>.from(_selectionBeforeDrag);
+            final isDragRemoving = _selectionBeforeDrag.contains(
+              _dragAnchorDate,
+            );
             var exceededAvailable = false;
             final today = DateTime.now();
-            final todayDate =
-                DateTime(today.year, today.month, today.day);
+            final todayDate = DateTime(today.year, today.month, today.day);
 
             for (final date in TimeOffService.inclusiveDateRange(
-                anchor, current)) {
+              anchor,
+              current,
+            )) {
               if (_isNonWorkingDate(date)) continue;
               if (isDragRemoving) {
                 if (date.isBefore(todayDate)) continue;
@@ -2655,8 +2754,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
               } else {
                 if (candidate.contains(date)) continue;
                 if (_selectedWorker != null) {
-                  final savedLeave =
-                      TimeOffService.activeLeaveForWorker(
+                  final savedLeave = TimeOffService.activeLeaveForWorker(
                     _selectedWorker!,
                     _timeoffRecords,
                     onDate: date,
@@ -2694,11 +2792,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildCalendar(_calendarMonth,
-                    isStartCalendar: true),
+                _buildCalendar(_calendarMonth, isStartCalendar: true),
                 const SizedBox(width: 24),
-                _buildCalendar(_calendarMonth2,
-                    isStartCalendar: false),
+                _buildCalendar(_calendarMonth2, isStartCalendar: false),
               ],
             ),
           ),
@@ -2708,10 +2804,8 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   Widget _buildDaysGrid(DateTime monthDate) {
-    final daysInMonth =
-        DateTime(monthDate.year, monthDate.month + 1, 0).day;
-    final firstWeekday =
-        DateTime(monthDate.year, monthDate.month, 1).weekday;
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
     final startIndex = firstWeekday == 7 ? 0 : firstWeekday;
 
     final rows = <Widget>[];
@@ -2724,22 +2818,25 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
           rowChildren.add(const SizedBox(width: 50, height: 50));
         } else if (currentDay <= daysInMonth) {
           final cellDate = DateTime(
-              monthDate.year, monthDate.month, currentDay);
-          rowChildren.add(_buildDayCell(
-            '$currentDay',
-            isSelected: _selectedDates.contains(cellDate),
-            date: cellDate,
-            isDisabled: _isNonWorkingDate(cellDate),
-          ));
+            monthDate.year,
+            monthDate.month,
+            currentDay,
+          );
+          rowChildren.add(
+            _buildDayCell(
+              '$currentDay',
+              isSelected: _selectedDates.contains(cellDate),
+              date: cellDate,
+              isDisabled: _isNonWorkingDate(cellDate),
+            ),
+          );
           currentDay++;
         } else {
           rowChildren.add(const SizedBox(width: 50, height: 50));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
-      rows.add(Row(
-          mainAxisSize: MainAxisSize.min,
-          children: rowChildren));
+      rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
       if (currentDay > daysInMonth && i >= 5) break;
       if (i < 5) rows.add(const SizedBox(height: 4));
     }
@@ -2759,8 +2856,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     final cellDate = date != null ? _dateOnly(date) : null;
     final dateTypeMap = _selectedDateToTypeMap;
-    final activeSessionType =
-        cellDate != null ? dateTypeMap[cellDate] : null;
+    final activeSessionType = cellDate != null ? dateTypeMap[cellDate] : null;
     final isSelectedInSession = activeSessionType != null;
 
     Map<String, dynamic>? savedLeave;
@@ -2779,38 +2875,28 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     final savedType = savedLeave != null
         ? (savedLeave['action'] ?? savedLeave['type']).toString()
         : null;
-    final isCellHighlighted =
-        isSelectedInSession || savedLeave != null;
-    final effectiveType =
-        isSelectedInSession ? activeSessionType : savedType;
+    final isCellHighlighted = isSelectedInSession || savedLeave != null;
+    final effectiveType = isSelectedInSession ? activeSessionType : savedType;
     final effectiveColor = effectiveType != null
         ? LeaveColors.getColor(effectiveType)
         : null;
 
     final bgColor = isCellHighlighted
         ? effectiveColor!
-        : (isDisabled
-            ? const Color(0xFFF1F5F9)
-            : Colors.transparent);
+        : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent);
     final borderColor = isCellHighlighted
         ? effectiveColor!
         : Colors.grey.shade300;
     final textColor = isDisabled && !isCellHighlighted
         ? const Color(0xFFB0B7C3)
-        : (isCellHighlighted
-            ? const Color(0xFFFFFFFF)
-            : Colors.black);
+        : (isCellHighlighted ? const Color(0xFFFFFFFF) : Colors.black);
 
     final tooltipType = effectiveType ?? _timeOffType;
     final tooltipOption = _leaveTypeOptions
         .cast<Map<String, String>?>()
-        .firstWhere(
-          (opt) => opt?['value'] == tooltipType,
-          orElse: () => null,
-        );
-    final tooltipTypeLabel =
-        tooltipOption?['labelKey']?.tr() ?? tooltipType;
-    final tooltipDate = date == null ? '' : _formatDate(date);
+        .firstWhere((opt) => opt?['value'] == tooltipType, orElse: () => null);
+    final tooltipTypeLabel = tooltipOption?['labelKey']?.tr() ?? tooltipType;
+    final tooltipDate = date == null ? '' : AppDateUtils.formatDate(date);
     final tooltipColor = LeaveColors.getColor(tooltipType);
 
     return Center(
@@ -2818,16 +2904,16 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         message: '$tooltipTypeLabel\n$tooltipDate',
         preferBelow: false,
         waitDuration: const Duration(milliseconds: 400),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: tooltipColor,
           borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
-                color: tooltipColor.withOpacity(0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 3)),
+              color: tooltipColor.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         textStyle: const TextStyle(
@@ -2905,24 +2991,16 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(6),
           ),
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: TextField(
             controller: _notesController,
             readOnly: widget.viewOnly || _isAggregateOverview,
-            onChanged: (_) =>
-                setState(() => _hasNotesChanged = true),
+            onChanged: (_) => setState(() => _hasNotesChanged = true),
             maxLines: null,
-            style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black,
-                ),
+            style: const TextStyle(fontSize: 14, color: Colors.black),
             decoration: InputDecoration.collapsed(
               hintText: 'please_enter_notes'.tr(),
-              hintStyle: TextStyle(
-                  color: Colors.grey.shade500,
-                  fontSize: 14,
-                  ),
+              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
             ),
           ),
         ),
@@ -2936,25 +3014,25 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         _buildSummaryRow(
           _availableLeaveLabel,
           '$_displayedLeaveBalance',
-          _displayedLeaveBalance > 0 ? Colors.black : Color(0xFFFF1014),
+          _displayedLeaveBalance > 0 ? Colors.black : const Color(0xFFFF1014),
         ),
         _buildSummaryRow(
-            'requested_days'.tr(),
-            '$_summaryRequestedDays',
-            Colors.black),
+          'requested_days'.tr(),
+          '$_summaryRequestedDays',
+          Colors.black,
+        ),
         _buildSummaryRow(
           'remaining_days'.tr(),
           '$_remainingDaysAfterRequest',
           _remainingDaysAfterRequest >= 0
               ? Colors.black
-              : Color(0xFFFF1014),
+              : const Color(0xFFFF1014),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryRow(
-      String label, String value, Color valueColor) {
+  Widget _buildSummaryRow(String label, String value, Color valueColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
@@ -2962,10 +3040,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                ),
+            style: const TextStyle(fontSize: 15, color: Color(0xFF000000)),
           ),
           Text(
             value,
@@ -2982,8 +3057,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
   void _showSelectedDatesListDialog(BuildContext context) {
     final entries = _sortedSelectedDates
-        .map(
-            (d) => (d, TimeOffService.normalizeLeaveType(_timeOffType)))
+        .map((d) => (d, TimeOffService.normalizeLeaveType(_timeOffType)))
         .toList();
     final localeName = context.locale.toString();
 
@@ -2999,8 +3073,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.of(ctx).pop(),
-              child: Container(
-                  color: Colors.black.withOpacity(0.45)),
+              child: Container(color: Colors.black.withValues(alpha: 0.45)),
             ),
           ),
           Center(
@@ -3013,8 +3086,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.sizeOf(ctx).width * 0.90,
                   minHeight: 340,
-                  maxHeight:
-                      MediaQuery.sizeOf(ctx).height * 0.72,
+                  maxHeight: MediaQuery.sizeOf(ctx).height * 0.72,
                 ),
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
@@ -3022,10 +3094,10 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                        color:
-                            Colors.black.withOpacity(0.15),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10)),
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
                   ],
                 ),
                 child: Column(
@@ -3033,9 +3105,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                   children: [
                     _buildDateDialogHeader(entries.length, ctx),
                     _buildDateDialogLegend(entries),
-                    Flexible(
-                        child: _buildDateDialogList(
-                            entries, localeName)),
+                    Flexible(child: _buildDateDialogList(entries, localeName)),
                   ],
                 ),
               ),
@@ -3053,13 +3123,15 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
       decoration: const BoxDecoration(color: Color(0xFF004FDE)),
       child: Row(
         children: [
-          const Icon(Icons.calendar_month_rounded,
-              color: Colors.white, size: 20),
+          const Icon(
+            Icons.calendar_month_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'selected_dates_count_title'
-                  .tr(namedArgs: {'count': '$count'}),
+              'selected_dates_count_title'.tr(namedArgs: {'count': '$count'}),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -3068,8 +3140,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close,
-                color: Colors.white, size: 20),
+            icon: const Icon(Icons.close, color: Colors.white, size: 20),
             onPressed: () => Navigator.of(ctx).pop(),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -3079,8 +3150,7 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildDateDialogLegend(
-      List<(DateTime, String)> entries) {
+  Widget _buildDateDialogLegend(List<(DateTime, String)> entries) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
@@ -3090,24 +3160,21 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
         runSpacing: 6,
         children: _legendTypes.map((type) {
           final color = LeaveColors.getColor(type);
-          final count =
-              entries.where((e) => e.$2 == type).length;
+          final count = entries.where((e) => e.$2 == type).length;
           return Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: LeaveColors.getBgColor(type),
               borderRadius: BorderRadius.circular(5),
-              border:
-                  Border.all(color: color.withOpacity(0.25)),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
             ),
             child: Text(
               '${LocalizationHelper.localizeLeaveType(type)}: $count ${count == 1 ? 'day'.tr() : 'days'.tr()}',
               style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  ),
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           );
         }).toList(),
@@ -3116,12 +3183,13 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
   }
 
   Widget _buildDateDialogList(
-      List<(DateTime, String)> entries, String localeName) {
+    List<(DateTime, String)> entries,
+    String localeName,
+  ) {
     if (entries.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              vertical: 40, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -3130,10 +3198,14 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 width: 64,
                 height: 64,
                 decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.event_busy_rounded,
-                    size: 32, color: Color(0xFF94A3B8)),
+                  color: Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.event_busy_rounded,
+                  size: 32,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
               const SizedBox(height: 14),
               Text(
@@ -3152,15 +3224,13 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
 
     return ListView.separated(
       shrinkWrap: true,
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: entries.length,
-      separatorBuilder: (_, __) => const Divider(
-          height: 1, color: Color(0xFFEEEEEE)),
+      separatorBuilder: (_, _) =>
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
       itemBuilder: (_, index) {
         final (date, type) = entries[index];
-        final dayDisplayType =
-            LocalizationHelper.localizeLeaveType(type);
+        final dayDisplayType = LocalizationHelper.localizeLeaveType(type);
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -3206,7 +3276,9 @@ class AssignTimeOffScreenState extends ConsumerState<AssignTimeOffScreen> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: LeaveColors.getBgColor(type),
                     borderRadius: BorderRadius.circular(4),

@@ -50,13 +50,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   String _searchQuery = '';
   List<Map<String, dynamic>> _workers = [];
   bool _isLoading = false;
-  StreamSubscription? _workersSub;
   Map<String, dynamic>? _editingWorker;
   bool _editingShimmer = false;
   Timer? _editingShimmerTimer;
 
   late final AuthService _authService;
-  late final FirestoreService _firestore;
 
   bool _initialized = false;
 
@@ -69,28 +67,21 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     _initialized = true;
 
     _authService = ref.read(authServiceProvider);
-    _firestore = ref.read(firestoreServiceProvider);
 
     if (_isGuest) {
       _workers = List<Map<String, dynamic>>.from(DummyData.workers);
     } else {
       _isLoading = true;
-      _workersSub = _firestore.workersStream.listen(
-        (snapshot) {
+      ref.listenAsync(
+        workersProvider,
+        (records) {
           if (!mounted) return;
           setState(() {
-            _workers = snapshot.docs
-                .map(
-                  (doc) => {
-                    ...doc.data() as Map<String, dynamic>,
-                    'id': doc.id,
-                  },
-                )
-                .toList();
+            _workers = records;
             _isLoading = false;
           });
         },
-        onError: (_) {
+        onError: (error, stackTrace) {
           if (mounted) setState(() => _isLoading = false);
         },
       );
@@ -99,7 +90,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   @override
   void dispose() {
-    _workersSub?.cancel();
     _editingShimmerTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -374,7 +364,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             border: Border.all(color: const Color(0xFFEEEEEE)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF000000).withOpacity(0.04),
+                color: const Color(0xFF000000).withValues(alpha: 0.04),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -422,10 +412,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0247C4).withOpacity(0.08),
+                  color: const Color(0xFF0247C4).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF0247C4).withOpacity(0.2),
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -712,19 +702,20 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       final file = result.files.first;
 
       if (file.size > UploadService.maxFileBytes) {
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
             isError: true,
           );
+        }
         return;
       }
 
       final bytes = await file.readAsBytes();
 
       if (bytes.isEmpty) {
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'upload_failed'.tr(
@@ -732,16 +723,18 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             ),
             isError: true,
           );
+        }
         return;
       }
 
       if (bytes.length > UploadService.maxFileBytes) {
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
             isError: true,
           );
+        }
         return;
       }
 
@@ -761,7 +754,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
 
       await _uploadAndSave(field);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'upload_failed'.tr(
@@ -769,6 +762,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ),
           isError: true,
         );
+      }
     }
   }
 
@@ -788,8 +782,9 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           url.trim().isNotEmpty) {
         if (url.startsWith('data:')) {
           final commaIdx = url.indexOf(',');
-          if (commaIdx != -1)
+          if (commaIdx != -1) {
             fileBytes = base64Decode(url.substring(commaIdx + 1));
+          }
         } else {
           try {
             final downloaded = await UploadService.downloadRemoteFile(
@@ -817,28 +812,31 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
         );
         if (result != null && result.trim().isNotEmpty) {
           await io.File(result).writeAsBytes(fileBytes, flush: true);
-          if (mounted)
+          if (mounted) {
             FlashySnackBar.show(
               context,
               message: 'file_downloaded_successfully'.tr(),
             );
+          }
           await FileOpener.open(result);
         }
       } else {
-        if (mounted)
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'could_not_download_file'.tr(),
             isError: true,
           );
+        }
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'could_not_download_file'.tr(),
           isError: true,
         );
+      }
     } finally {
       if (mounted) setState(() => _downloadingField = null);
     }
@@ -872,7 +870,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     }
 
     if (!_isGuest && _workerId.isEmpty) {
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'upload_failed'.tr(
@@ -880,6 +878,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ),
           isError: true,
         );
+      }
       return;
     }
 
@@ -981,7 +980,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ErrorReporter.report(e, s, context: 'documentsRollbackNewFile');
         }
       }
-      if (mounted)
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'upload_failed'.tr(
@@ -989,12 +988,14 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           ),
           isError: true,
         );
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isUploading = false;
           _uploadingField = null;
         });
+      }
     }
   }
 
@@ -1042,13 +1043,15 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
     if (url == null || url.isEmpty) return;
 
     final lower = url.toLowerCase();
-    if (!isPdf && !isDoc)
+    if (!isPdf && !isDoc) {
       isPdf =
           lower.endsWith('.pdf') ||
           lower.contains('application/pdf') ||
           lower.contains('/pdf/');
-    if (!isPdf && !isDoc)
+    }
+    if (!isPdf && !isDoc) {
       isDoc = lower.endsWith('.doc') || lower.endsWith('.docx');
+    }
 
     showGeneralDialog(
       context: context,
@@ -1082,7 +1085,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                 child: FadeTransition(
                   opacity: fade,
                   child: Container(
-                    color: const Color(0xFF000000).withOpacity(0.35),
+                    color: const Color(0xFF000000).withValues(alpha: 0.35),
                   ),
                 ),
               ),
@@ -1134,7 +1137,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                 child: FadeTransition(
                   opacity: fade,
                   child: Container(
-                    color: const Color(0xFF000000).withOpacity(0.35),
+                    color: const Color(0xFF000000).withValues(alpha: 0.35),
                   ),
                 ),
               ),
@@ -1305,7 +1308,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF000000).withOpacity(0.25),
+                color: const Color(0xFF000000).withValues(alpha: 0.25),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -1497,7 +1500,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: hasFile
-                ? const Color(0xFF0B50C3).withOpacity(0.5)
+                ? const Color(0xFF0B50C3).withValues(alpha: 0.5)
                 : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
@@ -1538,7 +1541,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black.withOpacity(0.54),
+                      color: Colors.black.withValues(alpha: 0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1578,7 +1581,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: const Color(0xFF0B50C3).withOpacity(0.5),
+              color: const Color(0xFF0B50C3).withValues(alpha: 0.5),
               width: 2,
             ),
           ),
@@ -1718,7 +1721,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.92),
+                  color: Colors.white.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -1859,7 +1862,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 6,
                         offset: const Offset(0, 3),
                       ),
@@ -1936,8 +1939,9 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
             bytes = downloaded.bytes;
           }
         } else if (source.startsWith('data:application/pdf')) {
-          if (!source.contains(','))
+          if (!source.contains(',')) {
             throw FormatException('invalid_pdf_data'.tr());
+          }
           bytes = base64Decode(source.split(',').last);
         } else {
           throw StateError('failed_to_load_pdf'.tr());
@@ -1945,8 +1949,9 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       }
 
       if (bytes.isEmpty) throw StateError('failed_to_load_pdf'.tr());
-      if (bytes.length > UploadService.maxFileBytes)
+      if (bytes.length > UploadService.maxFileBytes) {
         throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
+      }
 
       final document = await PdfDocument.openData(bytes);
       if (!mounted) {
@@ -1959,11 +1964,12 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
         _isLoading = false;
       });
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = error.toString();
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -2086,11 +2092,12 @@ class _LazyPdfPageState extends State<_LazyPdfPage> {
         _loading = false;
       });
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = error.toString();
           _loading = false;
         });
+      }
     } finally {
       await page?.close();
     }
@@ -2253,7 +2260,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF000000).withOpacity(0.25),
+              color: const Color(0xFF000000).withValues(alpha: 0.25),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -2287,7 +2294,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A1A).withOpacity(0.06),
+                        color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

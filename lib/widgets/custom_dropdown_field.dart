@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 class CustomDropdownField extends StatefulWidget {
   final String label;
@@ -47,7 +48,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
         Text(
           widget.label,
           style: const TextStyle(
-            color: Color(0xFF000000),
+            color: AppColors.black,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -68,7 +69,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             borderRadius: BorderRadius.circular(6),
             side: BorderSide(color: Colors.grey.shade200, width: 1),
           ),
-          color: const Color(0xFFFFFFFF),
+          color: AppColors.white,
           elevation: 4,
           itemBuilder: (context) {
             return widget.items.map((String item) {
@@ -88,7 +89,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF),
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -103,7 +104,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                     fontSize: 14,
                     color: _currentValue.isEmpty
                         ? Colors.grey.shade400
-                        : const Color(0xFF000000),
+                        : AppColors.black,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -131,14 +132,14 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             shape: BoxShape.circle,
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF0247C4)
+                  ? AppColors.primaryBlue
                   : Colors.grey.shade300,
               width: 2,
             ),
-            color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
+            color: isSelected ? AppColors.primaryBlue : Colors.transparent,
           ),
           child: isSelected
-              ? const Icon(Icons.check, size: 12, color: Color(0xFFFFFFFF))
+              ? const Icon(Icons.check, size: 12, color: AppColors.white)
               : null,
         ),
         const SizedBox(width: 12),
@@ -149,8 +150,8 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               color: isSelected
-                  ? const Color(0xFF0247C4)
-                  : const Color(0xFF000000),
+                  ? AppColors.primaryBlue
+                  : AppColors.black,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

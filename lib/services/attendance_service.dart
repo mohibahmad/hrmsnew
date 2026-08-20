@@ -65,17 +65,9 @@ class AttendanceService {
     };
   }
 
-  static DateTime? _getRevisionDate(Map<String, dynamic> record) {
-    for (final key in ['updatedAt', 'createdAt']) {
-      final date = AppDateUtils.dateFromValue(record[key]);
-      if (date != null) return date;
-    }
-    return null;
-  }
-
   static bool _isNewer(Map<String, dynamic> existing, Map<String, dynamic> candidate) {
-    final existingDate = _getRevisionDate(existing);
-    final candidateDate = _getRevisionDate(candidate);
+    final existingDate = AppDateUtils.recordRevisionDate(existing);
+    final candidateDate = AppDateUtils.recordRevisionDate(candidate);
 
     if (candidateDate != null && existingDate == null) return true;
     if (candidateDate == null && existingDate != null) return false;

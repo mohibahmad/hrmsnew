@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../screens/general/pricing_screen.dart';
+import '../utils/app_colors.dart';
 
 class SidebarWidget extends StatefulWidget {
   final int selectedIndex;
@@ -63,7 +64,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   Widget build(BuildContext context) {
     return Container(
       width: 270,
-      color: const Color(0xFF0247C4),
+      color: AppColors.primaryBlue,
       child: Column(
         children: [
           if (!widget.isGuest && !widget.isPremium)
@@ -72,7 +73,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  barrierColor: const Color(0xFF0247C4).withOpacity(0.5),
+                  barrierColor: AppColors.primaryBlue.withValues(alpha: 0.5),
                   builder: (context) => const SubscriptionDialog(),
                 );
               },
@@ -87,14 +88,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFFFFF), width: 1.2),
+                  border: Border.all(color: AppColors.white, width: 1.2),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
                     fit: BoxFit.cover,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFFFFF).withOpacity(0.4),
+                      color: AppColors.white.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -117,7 +118,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           Text(
                             'upgrade_pro'.tr(),
                             style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
+                              color: AppColors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                             ),
@@ -142,7 +143,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                             color: const Color(0xFF000000),
                             borderRadius: BorderRadius.circular(25),
                             border: Border.all(
-                              color: const Color(0xFFFFFFFF),
+                              color: AppColors.white,
                               width: 1.2,
                             ),
                           ),
@@ -154,7 +155,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                 'get_to_pro'.tr(),
                                 maxLines: 1,
                                 style: const TextStyle(
-                                  color: Color(0xFFFFFFFF),
+                                  color: AppColors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   height: 1.1,
@@ -165,7 +166,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                 'subscribe_now'.tr(),
                                 maxLines: 1,
                                 style: const TextStyle(
-                                  color: Color(0xFFFFFFFF),
+                                  color: AppColors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   height: 1.1,
@@ -182,7 +183,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                             width: 52,
                             height: 52,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFFFFFFF),
+                              color: AppColors.white,
                               shape: BoxShape.circle,
                             ),
                             alignment: Alignment.center,
@@ -230,10 +231,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               height: 42,
               margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF).withOpacity(0.2),
+                color: AppColors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: const Color(0xFFFFFFFF).withOpacity(0.3),
+                  color: AppColors.white.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -245,7 +246,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     children: [
                       const Icon(
                         Icons.arrow_back,
-                        color: Color(0xFFFFFFFF),
+                        color: AppColors.white,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -256,7 +257,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           child: Text(
                             'back_to_login_sidebar'.tr(),
                             style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
+                              color: AppColors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -281,7 +282,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF).withOpacity(0.36),
+              color: AppColors.white.withValues(alpha: 0.36),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -317,7 +318,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               width: 8,
               height: isSelected ? 32 : 0,
               decoration: const BoxDecoration(
-                color: Color(0xFFFFFFFF),
+                color: AppColors.white,
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(4),
                   bottomRight: Radius.circular(4),
@@ -355,14 +356,17 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/workforce_icon_sldiebar.svg',
               height: 22,
               width: 22,
-              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                AppColors.white,
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'sidebar_workforce'.tr(),
                 style: const TextStyle(
-                  color: Color(0xFFFFFFFF),
+                  color: AppColors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -370,7 +374,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             ),
             const Icon(
               Icons.keyboard_arrow_down,
-              color: Color(0xFFFFFFFF),
+              color: AppColors.white,
               size: 20,
             ),
           ],
@@ -393,7 +397,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFFFFFFFF).withOpacity(0.36)
+              ? AppColors.white.withValues(alpha: 0.36)
               : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -401,26 +405,29 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             iconSource is IconData
-                ? Icon(iconSource, size: 24, color: const Color(0xFFFFFFFF))
+                ? Icon(iconSource, size: 24, color: AppColors.white)
                 : iconSource.toString().endsWith('.png')
                 ? Image.asset(
                     iconSource.toString(),
                     height: 24,
                     width: 24,
-                    color: const Color(0xFFFFFFFF),
+                    color: AppColors.white,
                   )
                 : SvgPicture.asset(
                     iconSource.toString(),
                     height: 20,
                     width: 20,
-                    colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(
+                      AppColors.white,
+                      BlendMode.srcIn,
+                    ),
                   ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  color: const Color(0xFFFFFFFF),
+                  color: AppColors.white,
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
                 ),
@@ -445,13 +452,16 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/tick_icon.svg',
               width: 14,
               height: 10,
-              colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                AppColors.white,
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 8),
             Text(
               text,
               style: const TextStyle(
-                color: Color(0xFFFFFFFF),
+                color: AppColors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
@@ -481,7 +491,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFFFFFFF).withOpacity(0.36)
+                  ? AppColors.white.withValues(alpha: 0.36)
                   : const Color(0x00FFFFFF),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -493,20 +503,23 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         iconAsset,
                         height: 22,
                         width: 22,
-                        color: const Color(0xFFFFFFFF),
+                        color: AppColors.white,
                       )
                     : SvgPicture.asset(
                         iconAsset,
                         height: 22,
                         width: 22,
-                        colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+                        colorFilter: const ColorFilter.mode(
+                          AppColors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
                     style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
+                      color: AppColors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -517,7 +530,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 if (hasDropdown)
                   const Icon(
                     Icons.keyboard_arrow_down,
-                    color: Color(0xFFFFFFFF),
+                    color: AppColors.white,
                     size: 20,
                   ),
               ],
@@ -533,7 +546,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 width: 8,
                 height: isSelected ? 32 : 0,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: AppColors.white,
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(4),
                     bottomRight: Radius.circular(4),

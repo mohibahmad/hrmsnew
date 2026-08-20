@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -51,8 +50,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   late AuthService _authService;
   late FirestoreService _firestoreService;
   late final TapGestureRecognizer _signUpRecognizer;
-
-  StreamSubscription? _googleSub;
 
   void _openHome() {
     if (!mounted) return;
@@ -126,26 +123,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _authService = ref.read(authServiceProvider);
     _firestoreService = ref.read(firestoreServiceProvider);
 
-    _googleSub = AuthService.googleEnabledStream().listen(
+    ref.listenAsync(
+      googleSignInEnabledProvider,
       (enabled) {
-        if (!mounted) return;
-        if (_googleEnabled != enabled) {
-          setState(() => _googleEnabled = enabled);
-        }
+        if (!mounted || _googleEnabled == enabled) return;
+        setState(() => _googleEnabled = enabled);
       },
-      onError: (Object error, StackTrace stackTrace) {
-        ErrorReporter.report(
-          error,
-          stackTrace,
-          context: 'loginGoogleConfig',
-        );
-      },
+      onError: (error, stackTrace) =>
+          ErrorReporter.report(error, stackTrace, context: 'loginGoogleConfig'),
     );
   }
 
   @override
   void dispose() {
-    _googleSub?.cancel();
     _signUpRecognizer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -617,7 +607,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             foregroundColor: const Color(0xFFFFFFFF),
             disabledBackgroundColor: const Color(
               0xFF0044C9,
-            ).withOpacity(0.6),
+            ).withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -654,10 +644,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'or'.tr(),
-              style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             ),
           ),
           Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -696,7 +683,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withOpacity(0.4),
+          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
           width: 1.2,
         ),
       ),
@@ -831,8 +818,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         spreadRadius: 3,
                                       ),
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(
-                                          0.3,
+                                        color: Colors.black.withValues(
+                                          alpha: 0.3,
                                         ),
                                         blurRadius: 30,
                                         offset: const Offset(10, 9),
@@ -895,7 +882,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
