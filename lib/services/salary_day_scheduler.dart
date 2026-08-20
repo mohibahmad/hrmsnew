@@ -304,19 +304,25 @@ void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
     final replyPort = message['replyPort'] as SendPort?;
     if (replyPort == null) return;
     try {
-      final workerArgs = Map<String, Object?>.from(message['args'] as Map);
-      final file = await _generatePayrollInvoiceFile(<String, Object?>{
-        ...sharedAssets,
-        ...workerArgs,
-        'invoiceIsolateReady': true,
-      });
-      final pdfBytes = file['bytes']! as Uint8List;
-      replyPort.send(<String, Object?>{
-        'file': <String, Object>{
+      final rawArgs = message['args'];
+      if (message['type'] != 'generateBatch' || rawArgs is! List) {
+        throw StateError('Invalid payroll PDF batch request');
+      }
+      final files = <Map<String, Object>>[];
+      for (final rawWorkerArgs in rawArgs) {
+        final workerArgs = Map<String, Object?>.from(rawWorkerArgs as Map);
+        final file = await _generatePayrollInvoiceFile(<String, Object?>{
+          ...sharedAssets,
+          ...workerArgs,
+          'invoiceIsolateReady': true,
+        });
+        final pdfBytes = file['bytes']! as Uint8List;
+        files.add(<String, Object>{
           ...file,
           'bytes': TransferableTypedData.fromList(<Uint8List>[pdfBytes]),
-        },
-      });
+        });
+      }
+      replyPort.send(<String, Object?>{'files': files});
     } catch (error) {
       replyPort.send(<String, Object?>{'error': error.toString()});
     }
@@ -349,31 +355,37 @@ class _PayrollInvoiceIsolateWorker {
     }
   }
 
-  Future<Map<String, Object>?> generate(Map<String, Object?> workerArgs) async {
-    if (_closed) return null;
+  Future<List<Map<String, Object>>> generateBatch(
+    List<Map<String, Object?>> workerArgs,
+  ) async {
+    if (_closed || workerArgs.isEmpty) return const <Map<String, Object>>[];
     final responsePort = ReceivePort();
     _pendingResponses.add(responsePort);
     try {
       _commandPort.send(<String, Object?>{
-        'type': 'generate',
+        'type': 'generateBatch',
         'replyPort': responsePort.sendPort,
         'args': workerArgs,
       });
       final rawResponse = await responsePort.first;
-      if (rawResponse is! Map) return null;
+      if (rawResponse is! Map) return const <Map<String, Object>>[];
       final response = Map<String, Object?>.from(rawResponse);
-      final rawFile = response['file'];
-      if (rawFile is Map) {
-        final file = Map<String, Object>.from(rawFile);
-        final transferredBytes = file['bytes'];
-        if (transferredBytes is TransferableTypedData) {
-          file['bytes'] = transferredBytes.materialize().asUint8List();
+      final rawFiles = response['files'];
+      if (rawFiles is List) {
+        final files = <Map<String, Object>>[];
+        for (final rawFile in rawFiles) {
+          final file = Map<String, Object>.from(rawFile as Map);
+          final transferredBytes = file['bytes'];
+          if (transferredBytes is TransferableTypedData) {
+            file['bytes'] = transferredBytes.materialize().asUint8List();
+          }
+          files.add(file);
         }
-        return file;
+        return files;
       }
       final error = (response['error'] ?? '').toString();
       if (error.isNotEmpty) throw StateError(error);
-      return null;
+      return const <Map<String, Object>>[];
     } finally {
       _pendingResponses.remove(responsePort);
       responsePort.close();
@@ -2289,18 +2301,11 @@ class PayrollRunner {
       }
       final spawnMs = DateTime.now().difference(spawnStartedAt).inMilliseconds;
 
-      var nextPdfIndex = 0;
       var pdfDone = 0;
-      var stopRequested = false;
       Object? firstPdfError;
       StackTrace? firstPdfStack;
-      final progressBatchSize = pool.length.clamp(4, 8).toInt();
 
       void reportPdfProgress() {
-        if (pdfDone != successful.length &&
-            pdfDone % progressBatchSize != 0) {
-          return;
-        }
         controller.update(
           progress: 0.60 + (0.28 * pdfDone / successful.length),
           label: 'generating_invoices_progress'.tr(
@@ -2310,31 +2315,35 @@ class PayrollRunner {
         );
       }
 
-      Future<void> drainQueue(_PayrollInvoiceIsolateWorker worker) async {
-        while (!stopRequested) {
-          final index = nextPdfIndex++;
-          if (index >= workerArgs.length) return;
-          try {
-            final file = await worker.generate(workerArgs[index]);
-            if (file != null) invoiceFiles.add(file);
-          } catch (error, stackTrace) {
-            firstPdfError ??= error;
-            firstPdfStack ??= stackTrace;
-          } finally {
-            pdfDone++;
-            reportPdfProgress();
-          }
+      final workerBatches = List.generate(
+        pool.length,
+        (_) => <Map<String, Object?>>[],
+      );
+      for (var index = 0; index < workerArgs.length; index++) {
+        workerBatches[index % pool.length].add(workerArgs[index]);
+      }
+
+      Future<void> generateBatch(int workerIndex) async {
+        final batch = workerBatches[workerIndex];
+        try {
+          final files = await pool[workerIndex].generateBatch(batch);
+          invoiceFiles.addAll(files);
+        } catch (error, stackTrace) {
+          firstPdfError ??= error;
+          firstPdfStack ??= stackTrace;
+        } finally {
+          pdfDone += batch.length;
+          reportPdfProgress();
         }
       }
 
       var timedOut = false;
       try {
         await Future.wait(
-          pool.map(drainQueue),
+          List.generate(pool.length, generateBatch),
         ).timeout(deadline.difference(DateTime.now()));
       } on TimeoutException {
         timedOut = true;
-        stopRequested = true;
       } finally {
         for (final worker in pool) {
           worker.close();
