@@ -952,7 +952,6 @@ class PayrollRunner {
           remoteSource: remoteCompanyStamp,
           isStamp: true,
         ),
-        PdfHelpers.loadFontBytes(),
         _loadLocaleTranslations(locale),
       ]);
 
@@ -989,13 +988,14 @@ class PayrollRunner {
       return {
         'logoBytes': logoBytes,
         'stampBytes': stampBytes,
-        'fontBytes': results[2],
-        'translations': results[3],
+        'fontBytes': null,
+        'translations': results[2],
         'resolvedProfile': resolved,
       };
     } catch (_) {
       return null;
     }
+
   }
 
   Future<List<Map<String, dynamic>>> _loadWorkers(
@@ -2188,7 +2188,6 @@ class PayrollRunner {
             remoteSource: companyStampUrl,
             isStamp: true,
           ),
-          PdfHelpers.loadFontBytes(),
           _loadLocaleTranslations(locale),
         ]);
         Uint8List? rawLogo = allAssets[0] as Uint8List?;
@@ -2223,9 +2222,10 @@ class PayrollRunner {
                 force: true,
               )
             : null;
-        fontBytes = allAssets[2] as Uint8List?;
-        translations = allAssets[3] as Map<String, dynamic>;
+        fontBytes = null;
+        translations = allAssets[2] as Map<String, dynamic>;
       }
+
 
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         resolvedProfile['companyName'] ??
