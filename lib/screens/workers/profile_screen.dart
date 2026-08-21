@@ -19,8 +19,8 @@ import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/services/core/upload_service.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
 
 const int _maxProfileImageBytes = 10 * 1024 * 1024;
 const int _maxCompanyStampBytes = 5 * 1024 * 1024;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/custom_dropdown_field.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/custom_dropdown_field.dart';
 
 Widget buildInputField(
   String label,
@@ -21,7 +21,6 @@ Widget buildInputField(
   TextAlign textAlign = TextAlign.start,
   FocusNode? focusNode,
 }) {
-  final isEmailField = isEmail;
   final isNumeric = isAmount || isLeaves || isContact || isNationalId;
 
   return Column(
@@ -54,45 +53,15 @@ Widget buildInputField(
                     ? const TextInputType.numberWithOptions(decimal: true)
                     : TextInputType.number)
               : null,
-          inputFormatters: isNumeric
-              ? [
-                  FilteringTextInputFormatter.allow(
-                    isAmount
-                        ? RegExp(r'[\d,.]')
-                        : (isNationalId
-                              ? RegExp(r'^[A-Za-z0-9\-]*')
-                              : isContact
-                              ? RegExp(r'[0-9+\-\s()]')
-                              : RegExp(r'^\d*')),
-                  ),
-                  if (isAmount) ...[
-                    LengthLimitingTextInputFormatter(18),
-                    const ThousandsSeparatorInputFormatter(),
-                  ],
-                  if (isContact) LengthLimitingTextInputFormatter(20),
-                  if (isNationalId) LengthLimitingTextInputFormatter(20),
-                  if (isLeaves) ...[
-                    LengthLimitingTextInputFormatter(3),
-                    TextInputFormatter.withFunction((oldValue, newValue) {
-                      if (newValue.text.isEmpty) return newValue;
-                      final value = int.tryParse(newValue.text);
-                      if (value == null || value > 366) {
-                        return oldValue;
-                      }
-                      return newValue;
-                    }),
-                  ],
-                ]
-              : () {
-                  final list = <TextInputFormatter>[];
-                  if (isEmailField) {
-                    list.add(LengthLimitingTextInputFormatter(100));
-                  }
-                  if (isReligion) {
-                    list.add(LengthLimitingTextInputFormatter(30));
-                  }
-                  return list.isEmpty ? null : list;
-                }(),
+          inputFormatters: _buildInputFormatters(
+            isNumeric: isNumeric,
+            isAmount: isAmount,
+            isLeaves: isLeaves,
+            isContact: isContact,
+            isNationalId: isNationalId,
+            isEmail: isEmail,
+            isReligion: isReligion,
+          ),
           style: const TextStyle(fontSize: 14, color: Color(0xFF000000)),
           decoration: InputDecoration(
             hintText: hint,
@@ -124,6 +93,60 @@ Widget buildInputField(
       ),
     ],
   );
+}
+
+List<TextInputFormatter>? _buildInputFormatters({
+  required bool isNumeric,
+  required bool isAmount,
+  required bool isLeaves,
+  required bool isContact,
+  required bool isNationalId,
+  required bool isEmail,
+  required bool isReligion,
+}) {
+  if (isNumeric) {
+    RegExp filterRegex;
+    if (isAmount) {
+      filterRegex = RegExp(r'[\d,.]');
+    } else if (isNationalId) {
+      filterRegex = RegExp(r'^[A-Za-z0-9\-]*');
+    } else if (isContact) {
+      filterRegex = RegExp(r'[0-9+\-\s()]');
+    } else {
+      filterRegex = RegExp(r'^\d*');
+    }
+
+    return [
+      FilteringTextInputFormatter.allow(filterRegex),
+      if (isAmount) ...[
+        LengthLimitingTextInputFormatter(18),
+        const ThousandsSeparatorInputFormatter(),
+      ],
+      if (isContact) LengthLimitingTextInputFormatter(20),
+      if (isNationalId) LengthLimitingTextInputFormatter(20),
+      if (isLeaves) ...[
+        LengthLimitingTextInputFormatter(3),
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          if (newValue.text.isEmpty) return newValue;
+          final value = int.tryParse(newValue.text);
+          if (value == null || value > 366) {
+            return oldValue;
+          }
+          return newValue;
+        }),
+      ],
+    ];
+  }
+
+  final formatters = <TextInputFormatter>[];
+  if (isEmail) {
+    formatters.add(LengthLimitingTextInputFormatter(100));
+  }
+  if (isReligion) {
+    formatters.add(LengthLimitingTextInputFormatter(30));
+  }
+
+  return formatters.isEmpty ? null : formatters;
 }
 
 Widget buildCustomRadio({

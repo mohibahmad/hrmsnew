@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +8,8 @@ import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/core/utils/utils.dart';
 
-export 'package:hrms/core/utils/firestore_record_utils.dart' show FirestoreRecords;
+export 'package:hrms/core/utils/firestore_record_utils.dart'
+    show FirestoreRecords;
 
 extension AsyncProviderListener on WidgetRef {
   void listenAsync<T>(
@@ -21,9 +21,7 @@ extension AsyncProviderListener on WidgetRef {
     listenManual(
       provider,
       (previous, next) => next.when(
-        data: (value) {
-          onData(value);
-        },
+        data: (value) => onData(value),
         error: (error, stackTrace) => onError?.call(error, stackTrace),
         loading: () {},
       ),
@@ -149,6 +147,7 @@ final timeOffForWorkerProvider = StreamProvider.autoDispose
 final profilePicNotifierProvider = Provider<ValueNotifier<String?>>(
   (ref) => AuthService.profilePicNotifier,
 );
+
 final companyStampNotifierProvider = Provider<ValueNotifier<String?>>(
   (ref) => AuthService.companyStampNotifier,
 );
@@ -195,6 +194,4 @@ final sessionTimeoutSettingsProvider =
     StateNotifierProvider<
       SessionTimeoutSettingsNotifier,
       SessionTimeoutSettings
-    >((ref) {
-      return SessionTimeoutSettingsNotifier();
-    });
+    >((ref) => SessionTimeoutSettingsNotifier());

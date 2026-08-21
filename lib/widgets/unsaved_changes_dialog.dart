@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 class UnsavedChangesDialog {
   static Future<bool> show(BuildContext context) async {
     bool popped = false;
+
     final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -17,6 +18,7 @@ class UnsavedChangesDialog {
           parent: animation,
           curve: Curves.easeOutBack,
         );
+
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -63,7 +65,7 @@ class UnsavedChangesDialog {
                           width: 64,
                           height: 64,
                           decoration: const BoxDecoration(
-                             color: Color(0xFFFEE2E2),
+                            color: Color(0xFFFEE2E2),
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
@@ -108,24 +110,16 @@ class UnsavedChangesDialog {
                                     Navigator.pop(context, false);
                                   }
                                 },
-                                style: ButtonStyle(
-                                  elevation: WidgetStateProperty.all(0),
-                                  backgroundColor: WidgetStateProperty.all(
-                                    const Color(0xFFF1F5F9),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: const Color(0xFFF1F5F9),
+                                  foregroundColor: const Color(0xFF0F172A),
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
                                   ),
-                                  foregroundColor: WidgetStateProperty.all(
-                                    const Color(0xFF0F172A),
-                                  ),
-                                  padding: WidgetStateProperty.all(
-                                    const EdgeInsets.symmetric(vertical: 18),
-                                  ),
-                                  shape: WidgetStateProperty.all(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                  shadowColor: WidgetStateProperty.all(
-                                    Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
                                 child: Text(
@@ -148,24 +142,16 @@ class UnsavedChangesDialog {
                                     Navigator.pop(context, true);
                                   }
                                 },
-                                style: ButtonStyle(
-                                  elevation: WidgetStateProperty.all(0),
-                                  backgroundColor: WidgetStateProperty.all(
-                                    const Color(0xFFEF4444),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: const Color(0xFFEF4444),
+                                  foregroundColor: Colors.white,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
                                   ),
-                                  foregroundColor: WidgetStateProperty.all(
-                                    Colors.white,
-                                  ),
-                                  padding: WidgetStateProperty.all(
-                                    const EdgeInsets.symmetric(vertical: 18),
-                                  ),
-                                  shape: WidgetStateProperty.all(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                  shadowColor: WidgetStateProperty.all(
-                                    Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
                                 child: Text(
@@ -189,6 +175,7 @@ class UnsavedChangesDialog {
         );
       },
     );
+
     return result ?? false;
   }
 }

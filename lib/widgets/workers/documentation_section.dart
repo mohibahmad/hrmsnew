@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:hrms/widgets/workers/document_preview.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -52,289 +52,213 @@ class DocumentationSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'personal_documentation'.tr(),
-              style: const TextStyle(
-                color: Color(0xFF000000),
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (onPrevStep != null)
-              GestureDetector(
-                onTap: onPrevStep,
-                child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9F9FD),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFFE0E0E0),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.arrow_back,
-                        size: 18,
-                        color: Color(0xFF000000),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'previous_step'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
+        _buildHeader(),
         const SizedBox(height: 24),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 36,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'id_card_label'.tr(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final h = (constraints.maxWidth * 1.8).clamp(
-                        360.0,
-                        700.0,
-                      );
-                      return Container(
-                        height: h,
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap:
-                                      (frontIdBytes != null ||
-                                          (existingFrontIdUrl != null &&
-                                              existingFrontIdUrl!.isNotEmpty))
-                                      ? null
-                                      : onUploadFrontTap,
-                                  child: Text(
-                                    'upload_front_side'.tr(),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: Color(0xFF000000),
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (frontIdBytes != null ||
-                                    (existingFrontIdUrl != null &&
-                                        existingFrontIdUrl!.isNotEmpty))
-                                  GestureDetector(
-                                    onTap: onUploadFrontTap,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF000000),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'edit'.tr(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          SvgPicture.asset(
-                                            'assets/edit_icon.svg',
-                                            height: 14,
-                                            width: 14,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_front_id_hint'.tr(),
-                              bytes: frontIdBytes,
-                              fileName: frontIdName,
-                              existingUrl: existingFrontIdUrl,
-                              onTap: onUploadFrontTap,
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: onUploadBackTap,
-                                  child: Text(
-                                    'upload_back_side'.tr(),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (backIdBytes != null ||
-                                    (existingBackIdUrl != null &&
-                                        existingBackIdUrl!.isNotEmpty))
-                                  GestureDetector(
-                                    onTap: onUploadBackTap,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF000000),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'edit'.tr(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          SvgPicture.asset(
-                                            'assets/edit_icon.svg',
-                                            height: 14,
-                                            width: 14,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_back_id_hint'.tr(),
-                              bytes: backIdBytes,
-                              fileName: backIdName,
-                              existingUrl: existingBackIdUrl,
-                              onTap: onUploadBackTap,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
+            Expanded(flex: 1, child: _buildIdCardSection()),
             const SizedBox(width: 16),
-
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 36,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'upload_cv_label'.tr(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (isCvUploaded) ...[
-                          GestureDetector(
-                            onTap: onUploadCvTap,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF000000),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'edit'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  SvgPicture.asset(
-                                    'assets/edit_icon.svg',
-                                    height: 14,
-                                    width: 14,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  isCvUploaded ? _buildCvPreview(context) : _buildCvUpload(),
-                ],
-              ),
-            ),
+            Expanded(flex: 1, child: _buildCvSection(context)),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'personal_documentation'.tr(),
+          style: const TextStyle(
+            color: Color(0xFF000000),
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        if (onPrevStep != null)
+          GestureDetector(
+            onTap: onPrevStep,
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F9FD),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.arrow_back,
+                    size: 18,
+                    color: Color(0xFF000000),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'previous_step'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFF000000),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIdCardSection() {
+    final hasFrontId =
+        frontIdBytes != null ||
+        (existingFrontIdUrl != null && existingFrontIdUrl!.isNotEmpty);
+    final hasBackId =
+        backIdBytes != null ||
+        (existingBackIdUrl != null && existingBackIdUrl!.isNotEmpty);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 36,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'id_card_label'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final h = (constraints.maxWidth * 1.8).clamp(360.0, 700.0);
+            return Container(
+              height: h,
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F3F6),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: hasFrontId ? null : onUploadFrontTap,
+                        child: Text(
+                          'upload_front_side'.tr(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Color(0xFF000000),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (hasFrontId) _buildEditButton(onTap: onUploadFrontTap),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildIdUploadBox(
+                    label: 'upload_front_id_hint'.tr(),
+                    bytes: frontIdBytes,
+                    fileName: frontIdName,
+                    existingUrl: existingFrontIdUrl,
+                    onTap: onUploadFrontTap,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: onUploadBackTap,
+                        child: Text(
+                          'upload_back_side'.tr(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (hasBackId) _buildEditButton(onTap: onUploadBackTap),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildIdUploadBox(
+                    label: 'upload_back_id_hint'.tr(),
+                    bytes: backIdBytes,
+                    fileName: backIdName,
+                    existingUrl: existingBackIdUrl,
+                    onTap: onUploadBackTap,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCvSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 36,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'upload_cv_label'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              if (isCvUploaded) _buildEditButton(onTap: onUploadCvTap),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        isCvUploaded ? _buildCvPreview(context) : _buildCvUpload(),
+      ],
+    );
+  }
+
+  Widget _buildEditButton({required VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF000000),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'edit'.tr(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 6),
+            SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+          ],
+        ),
+      ),
     );
   }
 
@@ -355,9 +279,9 @@ class DocumentationSection extends StatelessWidget {
       } catch (_) {
         sourceName = existingUrl.split('?').first.split('/').last;
       }
-
       sourceName = sourceName.replaceFirst(RegExp(r'^\d+_\d+_'), '');
     }
+
     final lowerSourceName = sourceName.toLowerCase();
     final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
     final bool isPdf =

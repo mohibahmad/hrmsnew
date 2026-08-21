@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:hrms/core/utils/utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:window_manager/window_manager.dart';
+
+import 'package:hrms/core/utils/utils.dart';
 import 'package:hrms/riverpod_providers.dart';
 import 'package:hrms/firebase_options.dart';
 import 'package:hrms/screens/auth/splash_screen.dart';
@@ -28,46 +29,8 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
       _setupErrorHandling();
       try {
-        await EasyLocalization.ensureInitialized();
-        await initializeDateFormatting();
-        await PreferencesService.initFromPrefs();
-        if (PreferencesService.cachedIsGuest) {
-          final cachedUrl = PreferencesService.cachedProfilePicUrl;
-          if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
-            AuthService.profilePicNotifier.value = cachedUrl;
-          }
-          final cachedStamp = PreferencesService.cachedCompanyStampUrl;
-          if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
-            AuthService.companyStampNotifier.value = cachedStamp;
-          }
-        }
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-        FirebaseFirestore.instance.settings = const Settings(
-          persistenceEnabled: true,
-          cacheSizeBytes: 100 * 1024 * 1024,
-        );
-        await DummyData.loadFromPrefs();
-        await _initializeMacOSWindow();
-        // Warm the company logo/stamp caches so payroll invoice runs never
-        // re-download or re-read them from disk.
-        unawaited(preloadPersistedCompanyImages());
-        runApp(
-          EasyLocalization(
-            supportedLocales: const [
-              Locale('en'),
-              Locale('es'),
-              Locale('fr'),
-              Locale('pt'),
-              Locale('ru'),
-            ],
-            path: 'assets/translations',
-            fallbackLocale: const Locale('en'),
-            saveLocale: true,
-            child: const ProviderScope(child: HRMSApp()),
-          ),
-        );
+        await _initializeApp();
+        runApp(_buildAppWithLocalization());
       } catch (error, stackTrace) {
         ErrorReporter.report(
           error,
@@ -81,6 +44,51 @@ Future<void> main() async {
     (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'Zone', fatal: true);
     },
+  );
+}
+
+Future<void> _initializeApp() async {
+  await EasyLocalization.ensureInitialized();
+  await initializeDateFormatting();
+  await PreferencesService.initFromPrefs();
+  _loadCachedGuestImages();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: 100 * 1024 * 1024,
+  );
+  await DummyData.loadFromPrefs();
+  await _initializeMacOSWindow();
+  unawaited(preloadPersistedCompanyImages());
+}
+
+void _loadCachedGuestImages() {
+  if (!PreferencesService.cachedIsGuest) return;
+
+  final cachedUrl = PreferencesService.cachedProfilePicUrl;
+  if (cachedUrl != null && cachedUrl.trim().isNotEmpty) {
+    AuthService.profilePicNotifier.value = cachedUrl;
+  }
+
+  final cachedStamp = PreferencesService.cachedCompanyStampUrl;
+  if (cachedStamp != null && cachedStamp.trim().isNotEmpty) {
+    AuthService.companyStampNotifier.value = cachedStamp;
+  }
+}
+
+Widget _buildAppWithLocalization() {
+  return EasyLocalization(
+    supportedLocales: const [
+      Locale('en'),
+      Locale('es'),
+      Locale('fr'),
+      Locale('pt'),
+      Locale('ru'),
+    ],
+    path: 'assets/translations',
+    fallbackLocale: const Locale('en'),
+    saveLocale: true,
+    child: const ProviderScope(child: HRMSApp()),
   );
 }
 
@@ -124,10 +132,8 @@ Future<void> _initializeMacOSWindow() async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
     return;
   }
-
   try {
     await windowManager.ensureInitialized();
-
     const windowOptions = WindowOptions(
       size: Size(1440, 850),
       minimumSize: Size(1360, 800),
@@ -135,7 +141,6 @@ Future<void> _initializeMacOSWindow() async {
       title: 'HRMS',
       titleBarStyle: TitleBarStyle.normal,
     );
-
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
@@ -173,52 +178,54 @@ class HRMSApp extends ConsumerWidget {
         return SessionTimeoutGate(
           enabled: sessionSettings.enabled,
           timeout: Duration(minutes: sessionSettings.durationMinutes),
-          isSessionActive: () {
-            final user =
-                ref.read(authStateProvider).asData?.value ??
-                ref.read(authServiceProvider).currentUser;
-            return user != null && !user.isAnonymous;
-          },
+          isSessionActive: () => _isUserLoggedIn(ref),
           isBiometricAvailable: BiometricService.isAvailable,
           loadBiometricName: BiometricService.getBiometricName,
-          authenticate: () async {
-            final biometricName = await BiometricService.getBiometricName();
-            return BiometricService.authenticate(
-              reason: 'session_unlock_reason'.tr(
-                namedArgs: {
-                  'biometric': LocalizationHelper.localizeBiometricName(
-                    biometricName,
-                  ),
-                },
-              ),
-            );
-          },
-          onSignInAgain: () async {
-            final authService = ref.read(authServiceProvider);
-            try {
-              await authService.signOut(preserveBiometricLogin: true);
-            } catch (error, stackTrace) {
-              ErrorReporter.report(
-                error,
-                stackTrace,
-                context: 'sessionTimeoutSignOut',
-              );
-            }
-            rootNavigatorKey.currentState?.pushAndRemoveUntil(
-              noTransitionRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
-            );
-          },
+          authenticate: () => _authenticateWithBiometric(),
+          onSignInAgain: () => _handleSignInAgain(ref),
           child: child ?? const SizedBox.shrink(),
         );
       },
+    );
+  }
+
+  bool _isUserLoggedIn(WidgetRef ref) {
+    final user =
+        ref.read(authStateProvider).asData?.value ??
+        ref.read(authServiceProvider).currentUser;
+    return user != null && !user.isAnonymous;
+  }
+
+  Future<BiometricAuthResult> _authenticateWithBiometric() async {
+    final biometricName = await BiometricService.getBiometricName();
+    return BiometricService.authenticate(
+      reason: 'session_unlock_reason'.tr(
+        namedArgs: {
+          'biometric': LocalizationHelper.localizeBiometricName(biometricName),
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleSignInAgain(WidgetRef ref) async {
+    final authService = ref.read(authServiceProvider);
+    try {
+      await authService.signOut(preserveBiometricLogin: true);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'sessionTimeoutSignOut');
+    }
+    rootNavigatorKey.currentState?.pushAndRemoveUntil(
+      noTransitionRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
   }
 }
 
 class StartupErrorApp extends StatelessWidget {
   const StartupErrorApp({super.key, required this.error});
+
   final Object error;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

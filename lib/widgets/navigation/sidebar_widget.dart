@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:hrms/screens/general/pricing_screen.dart';
+import 'package:hrms/screens/pricing/pricing_screen.dart';
 import 'package:hrms/core/theme/app_colors.dart';
 
 class SidebarWidget extends StatefulWidget {

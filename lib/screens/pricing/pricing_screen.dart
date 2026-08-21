@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:hrms/services/core/preferences_service.dart';

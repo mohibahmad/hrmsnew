@@ -13,7 +13,7 @@ import 'package:hrms/services/core/auth_service.dart';
 import 'package:hrms/services/core/error_reporter.dart';
 import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/screens/general/home_screen.dart';
+import 'package:hrms/screens/home/home_screen.dart';
 import 'package:hrms/screens/auth/login_screen.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {

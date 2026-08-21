@@ -37,8 +37,8 @@ class WorkerAttendanceSnapshot {
 
   int get totalWorkingDays =>
       (expectedWorkingDays != null && expectedWorkingDays! > 0)
-          ? expectedWorkingDays!
-          : records.length;
+      ? expectedWorkingDays!
+      : records.length;
 
   int get presents =>
       records.where((d) => normalizedAttendanceStatus(d) == 'present').length;
@@ -56,7 +56,10 @@ class WorkerAttendanceSnapshot {
 class AttendanceReportService {
   AttendanceReportService._();
 
-  static AttendanceDateRange rangeForPeriod(String period, {DateTime? referenceDate}) {
+  static AttendanceDateRange rangeForPeriod(
+    String period, {
+    DateTime? referenceDate,
+  }) {
     final now = referenceDate ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -89,10 +92,9 @@ class AttendanceReportService {
       _ => today,
     };
 
-
-
-
-    final end = rawEnd.isAfter(today) ? today : DateTime(rawEnd.year, rawEnd.month, rawEnd.day);
+    final end = rawEnd.isAfter(today)
+        ? today
+        : DateTime(rawEnd.year, rawEnd.month, rawEnd.day);
 
     return AttendanceDateRange(start: start, end: end);
   }
@@ -110,11 +112,27 @@ class AttendanceReportService {
   static String csvTextDate(DateTime? date) {
     if (date == null) return '';
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '\t${date.day.toString().padLeft(2, '0')}-${months[date.month - 1]}-${date.year}';
   }
 
-  static bool _isNewer(Map<String, dynamic> existing, Map<String, dynamic> candidate) {
+  static bool _isNewer(
+    Map<String, dynamic> existing,
+    Map<String, dynamic> candidate,
+  ) {
     final existingDate = AppDateUtils.recordRevisionDate(existing);
     final candidateDate = AppDateUtils.recordRevisionDate(candidate);
 
@@ -140,9 +158,10 @@ class AttendanceReportService {
       attendanceRecords: attendanceRecords,
     );
 
-    final leaveDates = TimeOffService.allLeaveDatesForWorker(worker, timeOffRecords)
-        .where((date) => !date.isAfter(today))
-        .toSet();
+    final leaveDates = TimeOffService.allLeaveDatesForWorker(
+      worker,
+      timeOffRecords,
+    ).where((date) => !date.isAfter(today)).toSet();
 
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
@@ -152,8 +171,6 @@ class AttendanceReportService {
       }
 
       final key = _dateKey(date);
-
-
       final existing = recordsByDay[key];
       if (existing == null || _isNewer(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);
@@ -174,7 +191,11 @@ class AttendanceReportService {
     for (final leaveDate in leaveDates) {
       if (!range.contains(leaveDate)) continue;
 
-      final normalizedDate = DateTime(leaveDate.year, leaveDate.month, leaveDate.day);
+      final normalizedDate = DateTime(
+        leaveDate.year,
+        leaveDate.month,
+        leaveDate.day,
+      );
       final key = _dateKey(normalizedDate);
       final existing = recordsByDay[key] ?? const <String, dynamic>{};
       final leave = leaveIndex[key];
@@ -186,12 +207,22 @@ class AttendanceReportService {
         'name': worker['name'] ?? existing['name'] ?? 'Worker',
         'email': worker['email'] ?? existing['email'] ?? '',
         'role': worker['position'] ?? worker['role'] ?? existing['role'] ?? '',
-        'workType': worker['workType'] ?? worker['type1'] ?? existing['workType'] ?? 'Full Time',
-        'attendanceType': worker['attendanceType'] ?? worker['type2'] ?? existing['attendanceType'] ?? 'On-Site',
+        'workType':
+            worker['workType'] ??
+            worker['type1'] ??
+            existing['workType'] ??
+            'Full Time',
+        'attendanceType':
+            worker['attendanceType'] ??
+            worker['type2'] ??
+            existing['attendanceType'] ??
+            'On-Site',
         'attendanceDate': normalizedDate,
         'createdAt': normalizedDate,
         'status': 'Leave',
-        'reason': leaveReason.trim().isNotEmpty ? leaveReason : (existing['reason'] ?? existing['desc'] ?? '-'),
+        'reason': leaveReason.trim().isNotEmpty
+            ? leaveReason
+            : (existing['reason'] ?? existing['desc'] ?? '-'),
       };
     }
 
@@ -208,8 +239,13 @@ class AttendanceReportService {
     return records;
   }
 
-  static bool _belongsLeaveToWorker(Map<String, dynamic> leave, Map<String, dynamic> worker) {
-    final workerId = (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
+  static bool _belongsLeaveToWorker(
+    Map<String, dynamic> leave,
+    Map<String, dynamic> worker,
+  ) {
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+        .toString()
+        .trim();
     final leaveWorkerId = (leave['workerId'] ?? '').toString().trim();
     if (workerId.isNotEmpty && leaveWorkerId.isNotEmpty) {
       return workerId == leaveWorkerId;
@@ -222,9 +258,13 @@ class AttendanceReportService {
     }
 
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    final leaveName = (leave['name'] ?? leave['workerName'] ?? '').toString().trim().toLowerCase();
+    final leaveName = (leave['name'] ?? leave['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     return workerName.isNotEmpty && workerName == leaveName;
   }
+
   static WorkerAttendanceSnapshot snapshotForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -240,6 +280,7 @@ class AttendanceReportService {
       ),
     );
   }
+
   static String _dateKey(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'

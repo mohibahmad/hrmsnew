@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 
 void showDeleteCvConfirmationDialog(
   BuildContext context, {

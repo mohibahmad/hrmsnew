@@ -25,7 +25,7 @@ import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/services/core/dummy_data.dart';
 import 'package:hrms/services/payroll/invoice_service.dart';
 import 'package:hrms/services/core/error_reporter.dart';
-import 'package:hrms/widgets/common/amount_text.dart';
+import 'package:hrms/widgets/components/amount_text.dart';
 import 'package:hrms/main.dart';
 
 Uint8List _encodePayrollInvoiceZip(List<Map<String, Object>> files) {

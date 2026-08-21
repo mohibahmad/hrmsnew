@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:hrms/widgets/common/custom_timeframe_dropdown.dart';
+import 'package:hrms/widgets/components/custom_timeframe_dropdown.dart';
 import 'package:hrms/core/utils/ui_helpers.dart';
 import 'package:hrms/core/theme/app_colors.dart';
 import 'package:hrms/core/utils/helpers.dart';

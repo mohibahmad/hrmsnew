@@ -20,10 +20,10 @@ import 'package:hrms/services/core/error_reporter.dart';
 import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/time_off/time_off_service.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/custom_timeframe_dropdown.dart';
-import 'package:hrms/widgets/common/notification_bell.dart';
-import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/custom_timeframe_dropdown.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
+import 'package:hrms/widgets/components/screen_table_shimmer.dart';
 import 'package:hrms/screens/attendance/workers_attendance_screen.dart';
 
 const Color _kPrimaryBlue = AppColors.buttonBlue;

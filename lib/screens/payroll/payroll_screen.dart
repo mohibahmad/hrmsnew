@@ -21,10 +21,10 @@ import 'package:hrms/services/payroll/payroll_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/services/payroll/salary_day_scheduler.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/amount_text.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/notification_bell.dart';
-import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:hrms/widgets/components/amount_text.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
+import 'package:hrms/widgets/components/screen_table_shimmer.dart';
 import 'package:hrms/screens/payroll/add_payroll_screen.dart';
 
 String _generateCsvString(List<List<dynamic>> rows) {
@@ -815,14 +815,42 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     if (!_periodHasAnyPaidRecord(current)) return;
 
-    final next = _nextCycleAfter(current, _salaryPayDay);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final normalizedEnd = DateTime(
+      _payPeriodEnd.year,
+      _payPeriodEnd.month,
+      _payPeriodEnd.day,
+    );
+
+    PayrollPeriod next;
+    if (today.isBefore(normalizedEnd) && _salaryPayDay != null) {
+      final lastDayOfNextMonth = DateTime(today.year, today.month + 2, 0).day;
+      final endDay = today.day.clamp(1, lastDayOfNextMonth);
+      next = PayrollPeriod(
+        start: today,
+        end: DateTime(today.year, today.month + 1, endDay),
+      );
+    } else {
+      next = _nextCycleAfter(current, _salaryPayDay);
+    }
 
     if (PayrollService.payrollPeriodsEqual(next, current)) return;
+
+    // Sync the effective pay day to the new cycle anchor so the whole app
+    // (pay-all window, reminders, pay-day button) stays consistent.
+    final isDayAnchoredNext =
+        next.start.day == next.end.day &&
+        next.start.day >= 1 &&
+        next.start.day <= 28;
+    final effectivePayDay = isDayAnchoredNext ? next.start.day : null;
 
     try {
       await _firestore.updateUserProfile({
         'payrollCycleStart': next.start.toIso8601String(),
         'payrollCycleEnd': next.end.toIso8601String(),
+        if (effectivePayDay != null && effectivePayDay != _salaryPayDay)
+          'salaryPayDay': effectivePayDay,
       });
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'advancePayrollCycle');
@@ -833,6 +861,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payPeriodStart = next.start;
       _payPeriodEnd = next.end;
       _payrollMonth = DateTime(next.end.year, next.end.month, 1);
+      if (effectivePayDay != null && effectivePayDay != _salaryPayDay) {
+        _salaryPayDay = effectivePayDay;
+      }
       _selectedFilter = 'All';
       _combinePayroll();
     });
@@ -857,9 +888,21 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   PayrollPeriod _nextCycleAfter(PayrollPeriod current, int? payDay) {
+    final end = current.end;
+    final lastDayOfEndMonth = DateTime(end.year, end.month + 1, 0).day;
+    final isCalendarMonth =
+        current.start.day == 1 && end.day == lastDayOfEndMonth;
+
+    // If the current cycle is anchored to a specific day (not a full calendar
+    // month), continue anchoring to its own end-of-cycle day.
+    if (!isCalendarMonth && end.day >= 1 && end.day <= 28) {
+      return PayrollService.nextPayDayPeriod(current, end.day);
+    }
+
     if (payDay != null && payDay >= 1 && payDay <= 28) {
       return PayrollService.nextPayDayPeriod(current, payDay.clamp(1, 28));
     }
+
     final nextStart = DateTime(current.end.year, current.end.month + 1, 1);
     final nextEnd = PayrollService.payPeriodEnd(nextStart);
     return PayrollPeriod(start: nextStart, end: nextEnd);
@@ -1060,7 +1103,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
 
     if (!force) {
-      if (_snoozedThisVisit && offset <= 0) {
+      // "Remind me later" only suppresses the pre-due reminder for the rest of
+      // this session. Once the due day arrives (offset >= 0) the reminder must
+      // keep appearing until the payroll is actually settled.
+      if (_snoozedThisVisit && offset < 0) {
         return;
       }
       if (offset <= 0) {
@@ -1191,10 +1237,20 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           });
         }
       case _PayrollReminderAction.ignore:
+        final dueDay = _payPeriodEnd.day;
+        final anchorDay = (dueDay >= 1 && dueDay <= 28)
+            ? dueDay
+            : (_salaryPayDay ?? _payPeriodEnd.day);
         final nextPeriod = PayrollService.nextPayDayPeriod(
           PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
-          _salaryPayDay ?? window.dueDate.day,
+          anchorDay,
         );
+        final effectivePayDay =
+            (nextPeriod.start.day == nextPeriod.end.day &&
+                nextPeriod.start.day >= 1 &&
+                nextPeriod.start.day <= 28)
+            ? nextPeriod.start.day
+            : null;
         final confirmed = await DeleteDialog.show(
           context: context,
           title: 'confirm_ignore_payroll'.tr(),
@@ -1221,6 +1277,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           await _firestore.updateUserProfile({
             'payrollCycleStart': nextPeriod.start.toIso8601String(),
             'payrollCycleEnd': nextPeriod.end.toIso8601String(),
+            if (effectivePayDay != null && effectivePayDay != _salaryPayDay)
+              'salaryPayDay': effectivePayDay,
           });
         }
         if (!mounted) break;
@@ -1230,6 +1288,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           );
           _payPeriodStart = nextPeriod.start;
           _payPeriodEnd = nextPeriod.end;
+          if (effectivePayDay != null && effectivePayDay != _salaryPayDay) {
+            _salaryPayDay = effectivePayDay;
+          }
           _payrollMonth = DateTime(
             nextPeriod.end.year,
             nextPeriod.end.month,
@@ -1669,7 +1730,9 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               if (!mounted) return;
               setState(() {
                 _rawPayrollDocs = snap.docs
-                    .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                    .map(
+                      (d) => {...d.data() as Map<String, dynamic>, 'id': d.id},
+                    )
                     .toList();
                 _combinePayroll();
               });
@@ -1776,10 +1839,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payPeriodEnd.month,
       _payPeriodEnd.day,
     );
-    final isWithinPayWindow = !today.isBefore(normalizedStart) &&
-        !today.isAfter(normalizedEnd);
+    final isWithinPayWindow =
+        !today.isBefore(normalizedStart) && !today.isAfter(normalizedEnd);
     final payAllEnabled =
-        !_isRunningPayroll && hasCurrentPayable && isCurrent && isWithinPayWindow;
+        !_isRunningPayroll &&
+        hasCurrentPayable &&
+        isCurrent &&
+        isWithinPayWindow;
 
     return Row(
       children: [
@@ -1879,9 +1945,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(
-                  0xFF0247C4,
-                ),
+                color: const Color(0xFF0247C4),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1890,17 +1954,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                   Icon(
                     Icons.calendar_month_rounded,
                     size: 18,
-                    color: const Color(
-                      0xFFFFFFFF,
-                    ),
+                    color: const Color(0xFFFFFFFF),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     _payDayButtonLabel(),
                     style: TextStyle(
-                      color: const Color(
-                        0xFFFFFFFF,
-                      ),
+                      color: const Color(0xFFFFFFFF),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -3132,7 +3192,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         workerId: (data['workerId'] ?? data['id'] ?? '').toString(),
         employeeImageBytes: employeeImageBytes,
       );
-
 
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),

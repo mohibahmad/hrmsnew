@@ -4,7 +4,7 @@ import 'package:hrms/core/utils/utils.dart';
 
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,10 +19,10 @@ import 'package:hrms/widgets/navigation/sidebar_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hrms/riverpod_providers.dart';
 import 'package:hrms/core/utils/utils.dart' as app_date_utils;
-import 'package:hrms/widgets/common/notification_bell.dart';
-import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
+import 'package:hrms/widgets/components/screen_table_shimmer.dart';
 import 'package:hrms/screens/auth/login_screen.dart';
-import 'package:hrms/screens/general/home_screen.dart';
+import 'package:hrms/screens/home/home_screen.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);

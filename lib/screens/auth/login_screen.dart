@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -16,7 +16,7 @@ import 'package:hrms/core/utils/utils.dart';
 import 'package:hrms/core/utils/auth_widgets.dart';
 
 import 'package:hrms/screens/auth/forgot_password_screen.dart';
-import 'package:hrms/screens/general/home_screen.dart';
+import 'package:hrms/screens/home/home_screen.dart';
 import 'package:hrms/screens/auth/signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

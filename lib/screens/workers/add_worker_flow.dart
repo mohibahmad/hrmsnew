@@ -17,7 +17,7 @@ import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/services/time_off/time_off_service.dart';
 import 'package:hrms/services/core/upload_service.dart';
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:hrms/widgets/dialogs/unsaved_changes_dialog.dart';
 import 'package:hrms/widgets/workers/delete_cv_dialog.dart';
 import 'package:hrms/widgets/workers/documentation_section.dart';

@@ -49,49 +49,11 @@ class _DocPreviewState extends State<DocPreview> {
     });
 
     final isDocx = (widget.docName ?? '').toLowerCase().endsWith('.docx');
-    var bytes = widget.docBytes;
+    Uint8List? bytes = widget.docBytes;
 
     if (bytes == null && widget.docUrl != null && widget.docUrl!.isNotEmpty) {
       try {
-        final url = widget.docUrl!;
-        if (url.startsWith('data:')) {
-          if (url.contains(',')) {
-            bytes = base64Decode(url.split(',').last);
-          }
-        } else if (isHttpUrl(url)) {
-          final client = io.HttpClient()
-            ..connectionTimeout = const Duration(seconds: 15);
-          try {
-            final request = await client
-                .getUrl(Uri.parse(url))
-                .timeout(const Duration(seconds: 15));
-            final response = await request.close().timeout(
-              const Duration(seconds: 20),
-            );
-            if (response.statusCode < 200 || response.statusCode >= 300) {
-              throw io.HttpException(
-                'HTTP ${response.statusCode}',
-                uri: Uri.parse(url),
-              );
-            }
-            const maxPreviewBytes = 20 * 1024 * 1024;
-            if (response.contentLength > maxPreviewBytes) {
-              throw const FormatException('DOC preview file is too large.');
-            }
-            final bytesBuilder = BytesBuilder();
-            var receivedBytes = 0;
-            await for (final chunk in response) {
-              receivedBytes += chunk.length;
-              if (receivedBytes > maxPreviewBytes) {
-                throw const FormatException('DOC preview file is too large.');
-              }
-              bytesBuilder.add(chunk);
-            }
-            bytes = bytesBuilder.takeBytes();
-          } finally {
-            client.close();
-          }
-        }
+        bytes = await _fetchBytesFromUrl(widget.docUrl!);
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -116,35 +78,16 @@ class _DocPreviewState extends State<DocPreview> {
     try {
       String text = '';
       if (isDocx) {
-        try {
-          final archive = ZipDecoder().decodeBytes(bytes);
-          final docFile = archive.files.firstWhere(
-            (file) => file.name == 'word/document.xml',
-            orElse: () => throw StateError('no_document_xml'.tr()),
-          );
-          final xmlString = utf8.decode(docFile.content as List<int>);
-
-          final textRegex = RegExp(r'<w:t[^>]*>([^<]*)</w:t>');
-          final paragraphs = xmlString.split('</w:p>');
-          final lines = <String>[];
-          for (final paragraph in paragraphs) {
-            final matches = textRegex
-                .allMatches(paragraph)
-                .map((m) => m.group(1) ?? '')
-                .join();
-            if (matches.trim().isNotEmpty) lines.add(matches);
-          }
-          text = lines.join('\n');
-        } catch (e) {
-          rethrow;
-        }
+        text = _parseDocxXml(bytes);
       }
 
       if (text.trim().isEmpty) {
-        setState(() {
-          _isLoading = false;
-          _content = '';
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _content = '';
+          });
+        }
         return;
       }
 
@@ -162,6 +105,76 @@ class _DocPreviewState extends State<DocPreview> {
         });
       }
     }
+  }
+
+  Future<Uint8List?> _fetchBytesFromUrl(String url) async {
+    if (url.startsWith('data:')) {
+      if (url.contains(',')) {
+        return base64Decode(url.split(',').last);
+      }
+      return null;
+    }
+
+    if (!isHttpUrl(url)) return null;
+
+    final client = io.HttpClient()
+      ..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final request = await client
+          .getUrl(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
+      final response = await request.close().timeout(
+        const Duration(seconds: 20),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw io.HttpException(
+          'HTTP ${response.statusCode}',
+          uri: Uri.parse(url),
+        );
+      }
+
+      const maxPreviewBytes = 20 * 1024 * 1024;
+      if (response.contentLength > maxPreviewBytes) {
+        throw const FormatException('DOC preview file is too large.');
+      }
+
+      final bytesBuilder = BytesBuilder();
+      var receivedBytes = 0;
+      await for (final chunk in response) {
+        receivedBytes += chunk.length;
+        if (receivedBytes > maxPreviewBytes) {
+          throw const FormatException('DOC preview file is too large.');
+        }
+        bytesBuilder.add(chunk);
+      }
+      return bytesBuilder.takeBytes();
+    } finally {
+      client.close();
+    }
+  }
+
+  String _parseDocxXml(Uint8List bytes) {
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final docFile = archive.files.firstWhere(
+      (file) => file.name == 'word/document.xml',
+      orElse: () => throw StateError('no_document_xml'.tr()),
+    );
+    final xmlString = utf8.decode(docFile.content as List<int>);
+
+    final textRegex = RegExp(r'<w:t[^>]*>([^<]*)</w:t>');
+    final paragraphs = xmlString.split('</w:p>');
+    final lines = <String>[];
+
+    for (final paragraph in paragraphs) {
+      final matches = textRegex
+          .allMatches(paragraph)
+          .map((m) => m.group(1) ?? '')
+          .join();
+      if (matches.trim().isNotEmpty) lines.add(matches);
+    }
+
+    return lines.join('\n');
   }
 
   @override
@@ -270,6 +283,61 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     }
   }
 
+  Future<Uint8List?> _resolvePdfBytes() async {
+    if (widget.cvBytes != null) {
+      return widget.cvBytes;
+    }
+
+    final url = widget.existingCvUrl;
+    if (url == null || url.isEmpty) return null;
+
+    if (url.startsWith('data:application/pdf')) {
+      final base64Content = url.split(',').last;
+      return base64Decode(base64Content);
+    }
+
+    if (url.startsWith('http')) {
+      final client = io.HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15);
+      try {
+        final request = await client
+            .getUrl(Uri.parse(url))
+            .timeout(const Duration(seconds: 15));
+        final response = await request.close().timeout(
+          const Duration(seconds: 20),
+        );
+
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw io.HttpException(
+            'HTTP ${response.statusCode}',
+            uri: Uri.parse(url),
+          );
+        }
+
+        const maxPreviewBytes = 20 * 1024 * 1024;
+        if (response.contentLength > maxPreviewBytes) {
+          throw const FormatException('PDF preview file is too large.');
+        }
+
+        final bytesBuilder = BytesBuilder();
+        var receivedBytes = 0;
+        await for (final chunk in response) {
+          receivedBytes += chunk.length;
+          if (receivedBytes > maxPreviewBytes) {
+            throw const FormatException('PDF preview file is too large.');
+          }
+          bytesBuilder.add(chunk);
+        }
+
+        return bytesBuilder.takeBytes();
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _renderPdfPages() async {
     if (!mounted) return;
 
@@ -280,50 +348,11 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     });
 
     PdfDocument? document;
-    io.HttpClient? client;
 
     try {
-      if (widget.cvBytes != null) {
-        document = await PdfDocument.openData(widget.cvBytes!);
-      } else if (widget.existingCvUrl != null &&
-          widget.existingCvUrl!.isNotEmpty) {
-        if (widget.existingCvUrl!.startsWith('http')) {
-          client = io.HttpClient()
-            ..connectionTimeout = const Duration(seconds: 15);
-          final request = await client
-              .getUrl(Uri.parse(widget.existingCvUrl!))
-              .timeout(const Duration(seconds: 15));
-          final response = await request.close().timeout(
-            const Duration(seconds: 20),
-          );
-
-          if (response.statusCode < 200 || response.statusCode >= 300) {
-            throw io.HttpException(
-              'HTTP ${response.statusCode}',
-              uri: Uri.parse(widget.existingCvUrl!),
-            );
-          }
-
-          const maxPreviewBytes = 20 * 1024 * 1024;
-          if (response.contentLength > maxPreviewBytes) {
-            throw const FormatException('PDF preview file is too large.');
-          }
-
-          final bytesBuilder = BytesBuilder();
-          var receivedBytes = 0;
-          await for (final chunk in response) {
-            receivedBytes += chunk.length;
-            if (receivedBytes > maxPreviewBytes) {
-              throw const FormatException('PDF preview file is too large.');
-            }
-            bytesBuilder.add(chunk);
-          }
-
-          document = await PdfDocument.openData(bytesBuilder.takeBytes());
-        } else if (widget.existingCvUrl!.startsWith('data:application/pdf')) {
-          final base64Content = widget.existingCvUrl!.split(',').last;
-          document = await PdfDocument.openData(base64Decode(base64Content));
-        }
+      final bytes = await _resolvePdfBytes();
+      if (bytes != null) {
+        document = await PdfDocument.openData(bytes);
       }
 
       if (document == null) {
@@ -372,7 +401,6 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
           await document.close();
         } catch (_) {}
       }
-      client?.close(force: true);
     }
   }
 
@@ -397,9 +425,11 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
         ),
       );
     }
+
     if (_error != null) {
       return const SizedBox.shrink();
     }
+
     if (_pageImages.isNotEmpty) {
       return ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(
@@ -434,6 +464,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
         ),
       );
     }
+
     return const SizedBox.shrink();
   }
 }

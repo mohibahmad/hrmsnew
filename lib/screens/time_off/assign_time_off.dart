@@ -15,8 +15,8 @@ import 'package:hrms/services/core/error_reporter.dart';
 import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/services/time_off/time_off_service.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
 
 class AssignTimeOffScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;

@@ -12,7 +12,10 @@ class AttendanceService {
   };
 
   static bool isEligibleForAttendance(Map<String, dynamic> worker) {
-    final status = (worker['status'] ?? 'Active').toString().trim().toLowerCase();
+    final status = (worker['status'] ?? 'Active')
+        .toString()
+        .trim()
+        .toLowerCase();
     return !_ineligibleStatuses.contains(status);
   }
 
@@ -22,7 +25,11 @@ class AttendanceService {
     );
     if (employmentStart == null) return true;
 
-    final startDay = DateTime(employmentStart.year, employmentStart.month, employmentStart.day);
+    final startDay = DateTime(
+      employmentStart.year,
+      employmentStart.month,
+      employmentStart.day,
+    );
     final targetDay = DateTime(date.year, date.month, date.day);
     return !targetDay.isBefore(startDay);
   }
@@ -36,7 +43,10 @@ class AttendanceService {
     return workerExistedOnDate(worker, recordDate);
   }
 
-  static bool isRecordForDate(Map<String, dynamic> record, DateTime requestedDate) {
+  static bool isRecordForDate(
+    Map<String, dynamic> record,
+    DateTime requestedDate,
+  ) {
     final recordDate = AppDateUtils.attendanceRecordDate(record);
     if (recordDate == null) return false;
     return recordDate.year == requestedDate.year &&
@@ -52,7 +62,9 @@ class AttendanceService {
     final leaveType = TimeOffService.normalizeLeaveType(
       (timeOffRecord['action'] ?? timeOffRecord['type'] ?? 'Leave').toString(),
     );
-    final timeOffId = (timeOffRecord['id'] ?? timeOffRecord['timeOffId'] ?? '').toString().trim();
+    final timeOffId = (timeOffRecord['id'] ?? timeOffRecord['timeOffId'] ?? '')
+        .toString()
+        .trim();
 
     return {
       ...attendanceRecord,
@@ -64,7 +76,10 @@ class AttendanceService {
     };
   }
 
-  static bool _isNewer(Map<String, dynamic> existing, Map<String, dynamic> candidate) {
+  static bool _isNewer(
+    Map<String, dynamic> existing,
+    Map<String, dynamic> candidate,
+  ) {
     final existingDate = AppDateUtils.recordRevisionDate(existing);
     final candidateDate = AppDateUtils.recordRevisionDate(candidate);
 
@@ -78,7 +93,8 @@ class AttendanceService {
 
     return (candidate['id'] ?? '').toString().compareTo(
           (existing['id'] ?? '').toString(),
-        ) > 0;
+        ) >
+        0;
   }
 
   static String _dateKey(DateTime date) {
@@ -95,10 +111,15 @@ class AttendanceService {
     final recordsByDay = <String, Map<String, dynamic>>{};
 
     for (final record in attendanceRecords) {
-      if (!WorkerIdentity.recordsMatch(record, worker, allowName: allowNameFallback)) {
+      if (!WorkerIdentity.recordsMatch(
+        record,
+        worker,
+        allowName: allowNameFallback,
+      )) {
         continue;
       }
-      if (!workerExistedOnRecordDate(worker: worker, attendanceRecord: record)) continue;
+      if (!workerExistedOnRecordDate(worker: worker, attendanceRecord: record))
+        continue;
 
       final date = AppDateUtils.attendanceRecordDate(record);
       final key = date == null
@@ -131,7 +152,10 @@ class AttendanceService {
     return records;
   }
 
-  static bool _isNameUnique(Map<String, dynamic> worker, List<Map<String, dynamic>> workersList) {
+  static bool _isNameUnique(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> workersList,
+  ) {
     final targetName = WorkerIdentity.normalizeName(worker['name']);
     if (targetName.isEmpty) return false;
 
@@ -178,12 +202,20 @@ class AttendanceService {
       if (matched != null) {
         combined.add({
           ...matched,
-          'workerId': workerId.isNotEmpty ? workerId : _asString(matched['workerId']),
+          'workerId': workerId.isNotEmpty
+              ? workerId
+              : _asString(matched['workerId']),
           'name': _pick(worker['name'], matched['name']),
           'email': _pick(worker['email'], matched['email']),
           'role': _pick(worker['position'] ?? worker['role'], matched['role']),
-          'profileImage': _pick(worker['profileImage'], matched['profileImage']),
-          'phone': _pick(worker['phone'] ?? worker['contact'], matched['phone'] ?? matched['contact']),
+          'profileImage': _pick(
+            worker['profileImage'],
+            matched['profileImage'],
+          ),
+          'phone': _pick(
+            worker['phone'] ?? worker['contact'],
+            matched['phone'] ?? matched['contact'],
+          ),
         });
       } else {
         final id = workerId.isNotEmpty
@@ -199,7 +231,8 @@ class AttendanceService {
           'name': _pick(worker['name'], 'Worker'),
           'email': worker['email'] ?? '',
           'role': worker['position'] ?? worker['role'] ?? '',
-          'attendanceType': worker['attendanceType'] ?? worker['type2'] ?? 'On-Site',
+          'attendanceType':
+              worker['attendanceType'] ?? worker['type2'] ?? 'On-Site',
           'workType': worker['workType'] ?? worker['type1'] ?? 'Full Time',
           'profileImage': worker['profileImage'],
           'phone': worker['phone'] ?? worker['contact'] ?? '',
@@ -214,7 +247,9 @@ class AttendanceService {
       final bDate = AppDateUtils.attendanceRecordDate(b);
 
       if (aDate == null && bDate == null) {
-        return _asString(a['name']).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
+        return _asString(
+          a['name'],
+        ).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
       }
       if (aDate == null) return 1;
       if (bDate == null) return -1;
@@ -222,7 +257,9 @@ class AttendanceService {
       final dateCompare = bDate.compareTo(aDate);
       if (dateCompare != 0) return dateCompare;
 
-      return _asString(a['name']).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
+      return _asString(
+        a['name'],
+      ).toLowerCase().compareTo(_asString(b['name']).toLowerCase());
     });
 
     return combined;
@@ -240,7 +277,9 @@ class AttendanceService {
     for (final record in records) {
       final workerId = (record['workerId'] ?? '').toString().trim();
       final email = WorkerIdentity.normalizeEmail(record['email']);
-      final name = WorkerIdentity.normalizeName(record['name'] ?? record['workerName']);
+      final name = WorkerIdentity.normalizeName(
+        record['name'] ?? record['workerName'],
+      );
       final recordId = (record['id'] ?? '').toString().trim();
 
       final workerKey = workerId.isNotEmpty
@@ -255,12 +294,15 @@ class AttendanceService {
       if (recordDate != null) {
         final day = DateTime(recordDate.year, recordDate.month, recordDate.day);
         if (day.isAfter(today)) continue;
-        if (period != null && !AppDateUtils.isDateWithinEffectivePeriod(day, period, now: now)) {
+        if (period != null &&
+            !AppDateUtils.isDateWithinEffectivePeriod(day, period, now: now)) {
           continue;
         }
       }
 
-      final dayKey = recordDate == null ? 'undated:$recordId' : _dateKey(recordDate);
+      final dayKey = recordDate == null
+          ? 'undated:$recordId'
+          : _dateKey(recordDate);
       final key = '$workerKey|$dayKey';
 
       final existing = latestByKey[key];
@@ -275,14 +317,30 @@ class AttendanceService {
 
     for (final record in latestByKey.values) {
       final recordDate = AppDateUtils.attendanceRecordDate(record);
-      final withinPeriod = recordDate == null ||
-          (period == null || AppDateUtils.isDateWithinEffectivePeriod(recordDate, period, now: now));
+      final withinPeriod =
+          recordDate == null ||
+          (period == null ||
+              AppDateUtils.isDateWithinEffectivePeriod(
+                recordDate,
+                period,
+                now: now,
+              ));
       if (!withinPeriod) continue;
 
-      final isOnLeave = recordDate != null &&
+      final isOnLeave =
+          recordDate != null &&
           !recordDate.isAfter(today) &&
-          TimeOffService.isWorkerOnLeave(record, timeOffRecords, onDate: recordDate) &&
-          (period == null || AppDateUtils.isDateWithinEffectivePeriod(recordDate, period, now: now));
+          TimeOffService.isWorkerOnLeave(
+            record,
+            timeOffRecords,
+            onDate: recordDate,
+          ) &&
+          (period == null ||
+              AppDateUtils.isDateWithinEffectivePeriod(
+                recordDate,
+                period,
+                now: now,
+              ));
 
       final status = normalizedAttendanceStatus(record);
 

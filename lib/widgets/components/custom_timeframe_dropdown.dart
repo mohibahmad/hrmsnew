@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:hrms/core/theme/app_colors.dart';
 
 class CustomTimeframeDropdown extends StatefulWidget {

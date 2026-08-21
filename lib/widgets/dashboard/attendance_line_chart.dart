@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import 'package:hrms/core/utils/utils.dart';
-import 'package:hrms/widgets/common/custom_timeframe_dropdown.dart';
+import 'package:hrms/widgets/components/custom_timeframe_dropdown.dart';
 
 const _presentColor = Color(0xFF16B887);
 const _absentColor = Color(0xFFF13E5B);

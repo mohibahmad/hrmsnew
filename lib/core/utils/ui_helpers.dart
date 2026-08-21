@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:hrms/main.dart' show rootNavigatorKey;
 import 'package:hrms/riverpod_providers.dart';
 import 'package:hrms/screens/auth/login_screen.dart';
-import 'package:hrms/screens/general/pricing_screen.dart';
+import 'package:hrms/screens/pricing/pricing_screen.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 
 Widget _blurDialogTransition(Animation<double> animation, Widget child) {

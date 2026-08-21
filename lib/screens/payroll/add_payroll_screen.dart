@@ -17,8 +17,8 @@ import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/payroll/invoice_service.dart';
 import 'package:hrms/services/payroll/payroll_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
-import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
-import 'package:hrms/widgets/common/notification_bell.dart';
+import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
+import 'package:hrms/widgets/components/notification_bell.dart';
 import 'package:hrms/widgets/navigation/notification_sidebar.dart';
 
 Future<Uint8List> _generatePayrollInvoice(Map<String, dynamic> args) {
