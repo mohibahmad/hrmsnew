@@ -10,7 +10,6 @@ import 'package:image/image.dart' as img;
 import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
 import 'package:hrms/core/utils/utils.dart';
 
 const int _maxCacheBytes = 50 * 1024 * 1024;
@@ -447,21 +446,18 @@ class FileOpener {
     final file = File(filePath);
     if (!await file.exists()) return;
 
-    // macOS sandbox blocks Process.run and open_file for arbitrary paths.
-    // Use share_plus which triggers the system share/save sheet and lets
-    // the user choose where to place the file (e.g. Downloads).
     if (!kIsWeb && Platform.isMacOS) {
+      // The entitlement com.apple.security.files.downloads.read-write is
+      // granted, so 'open -R <path>' reveals the file in Finder reliably.
       try {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(filePath)],
-            subject: file.uri.pathSegments.last,
-          ),
-        );
+        await Process.run('open', ['-R', filePath]);
         return;
-      } catch (_) {
-        // fall through to open_file below
-      }
+      } catch (_) {}
+      // Fallback: open the containing folder
+      try {
+        await Process.run('open', [file.parent.path]);
+        return;
+      } catch (_) {}
     }
 
     try {

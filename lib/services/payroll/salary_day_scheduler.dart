@@ -2255,10 +2255,11 @@ class PayrollRunner {
       if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
 
-      final maxParallel = Platform.numberOfProcessors.clamp(4, 8);
+      final maxParallel = Platform.numberOfProcessors.clamp(4, 16);
       final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
+
 
       // Shared assets are the same for every worker, but dart isolate calls are
       // self-contained, so they are carried in each worker arg map directly.

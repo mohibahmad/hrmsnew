@@ -416,9 +416,6 @@ class InvoiceService {
 
     if (!hasOvertime) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
     if (!hasAbsentDeduction) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
-    if (!hasLeaveDeduction) rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
-
-    rows.add(_emptyTableRow(PdfColorPalette.textColor, PdfColorPalette.lineColor));
 
     return pw.Column(children: rows);
   }

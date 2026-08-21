@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:hrms/main.dart' show rootNavigatorKey;
 import 'package:hrms/riverpod_providers.dart';
 import 'package:hrms/screens/auth/login_screen.dart';
 import 'package:hrms/screens/general/pricing_screen.dart';
@@ -722,6 +723,16 @@ class FlashySnackBar {
   }) {
     if (!context.mounted) return;
 
+    // Resolve a live OverlayState. Stale contexts (e.g. after async gaps) may
+    // have lost their Overlay ancestor. Fall back to the root navigator's
+    // overlay so the snackbar always appears.
+    OverlayState? overlayState;
+    try {
+      overlayState = Overlay.of(context, rootOverlay: true);
+    } catch (_) {}
+    overlayState ??= rootNavigatorKey.currentState?.overlay;
+    if (overlayState == null) return;
+
     final routeName = ModalRoute.of(context)?.settings.name;
     final messageKey = '$isError:$isLoading:$title:$message:${routeName ?? ''}';
     final now = DateTime.now();
@@ -740,7 +751,7 @@ class FlashySnackBar {
     }
     _currentEntry = null;
 
-    final overlay = Overlay.of(context);
+    final overlay = overlayState;
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => _FlashySnackBarBody(
