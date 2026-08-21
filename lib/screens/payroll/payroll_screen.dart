@@ -3043,10 +3043,25 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             )
           : _payPeriodLabelFor(_payrollMonth);
 
-      Map<String, dynamic> companyProfile = const {};
-      try {
-        companyProfile = await _firestore.getUserProfile() ?? const {};
-      } catch (_) {}
+      final companyProfile =
+          await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
+      final companyLogoUrl =
+          (companyProfile['profilePicUrl'] ??
+                  companyProfile['profilePic'] ??
+                  '')
+              .toString();
+      final companyStampUrl =
+          (companyProfile['companyStampUrl'] ??
+                  companyProfile['stampUrl'] ??
+                  '')
+              .toString();
+
+      final results = await Future.wait([
+        InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
+        InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+      ]);
+      final companyLogoBytes = results[0];
+      final companyStampBytes = results[1];
 
       Uint8List? employeeImageBytes;
 
@@ -3075,27 +3090,30 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
         netSalary: '$prefix${PayrollService.formatFullNumber(netSalary)}',
         currency: _companyCurrency,
-        companyName:
-            (companyProfile['businessName'] ??
-                    companyProfile['companyName'] ??
-                    'HRMS')
-                .toString(),
+        companyName: CompanyProfileHelper.companyNameOrFallback(
+          companyProfile['companyName'] ?? companyProfile['businessName'],
+        ),
         companyAddress: (companyProfile['address'] ?? '').toString(),
         companyEmail: (companyProfile['email'] ?? '').toString(),
         companyPhone:
-            (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
+            (companyProfile['phone'] ??
+                    companyProfile['contact1'] ??
+                    companyProfile['contact'] ??
+                    '')
                 .toString(),
         companyId:
             (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
                 .toString(),
-        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
-            .toString(),
-        companyLogoUrl: (companyProfile['profilePic'] ?? '').toString(),
+        companyStampImageUrl: companyStampUrl,
+        companyStampBytes: companyStampBytes,
+        companyLogoUrl: companyLogoUrl,
+        companyLogoBytes: companyLogoBytes,
         invoiceNo: (data['invoiceNo'] ?? data['invoiceNumber'] ?? '')
             .toString(),
         workerId: (data['workerId'] ?? data['id'] ?? '').toString(),
         employeeImageBytes: employeeImageBytes,
       );
+
 
       final safeName = (data['name'] ?? 'worker').toString().replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),

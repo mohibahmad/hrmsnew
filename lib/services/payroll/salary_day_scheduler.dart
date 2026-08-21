@@ -374,7 +374,8 @@ class _PayrollInvoiceIsolateWorker {
       );
       final received = await readyPort.first.timeout(
         const Duration(seconds: 4),
-        onTimeout: () => throw TimeoutException('Payroll PDF isolate startup timed out'),
+        onTimeout: () =>
+            throw TimeoutException('Payroll PDF isolate startup timed out'),
       );
       if (received is! SendPort) {
         isolate.kill(priority: Isolate.immediate);
@@ -995,7 +996,6 @@ class PayrollRunner {
     } catch (_) {
       return null;
     }
-
   }
 
   Future<List<Map<String, dynamic>>> _loadWorkers(
@@ -1701,7 +1701,6 @@ class PayrollRunner {
         controller.dismiss();
       }
 
-
       unawaited(
         _sendNotificationsInBackground(
           committedSummary,
@@ -2226,7 +2225,6 @@ class PayrollRunner {
         translations = allAssets[2] as Map<String, dynamic>;
       }
 
-
       final companyName = CompanyProfileHelper.companyNameOrFallback(
         resolvedProfile['companyName'] ??
             companyProfile['businessName'] ??
@@ -2259,7 +2257,6 @@ class PayrollRunner {
       final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
-
 
       // Shared assets are the same for every worker, but dart isolate calls are
       // self-contained, so they are carried in each worker arg map directly.
@@ -2486,9 +2483,7 @@ class PayrollRunner {
       // Overlay ancestor. Use the Navigator's internal overlay context instead,
       // which is always valid while the app is running.
       final overlayCtx = rootNavigatorKey.currentState?.overlay?.context;
-      final targetContext =
-          overlayCtx ??
-          (context.mounted ? context : null);
+      final targetContext = overlayCtx ?? (context.mounted ? context : null);
       if (targetContext != null) {
         FlashySnackBar.show(
           targetContext,

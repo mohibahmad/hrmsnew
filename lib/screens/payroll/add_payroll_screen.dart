@@ -895,9 +895,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final companyProfile =
         await CompanyProfileHelper.getCompanyProfileWithFirestore(_firestore);
     final companyLogoUrl = (companyProfile['profilePicUrl'] ?? '').toString();
-    final companyLogoBytes = await InvoiceService.resolveCompanyLogoBytes(
-      companyLogoUrl,
-    );
+    final companyStampUrl = (companyProfile['companyStampUrl'] ?? '').toString();
+    final results = await Future.wait([
+      InvoiceService.resolveCompanyLogoBytes(companyLogoUrl),
+      InvoiceService.resolveCompanyStampBytes(companyStampUrl),
+    ]);
+    final companyLogoBytes = results[0];
+    final companyStampBytes = results[1];
 
     final bytes = await _generatePayrollInvoice({
       'employeeName': _name,
@@ -926,12 +930,13 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       'companyEmail': (companyProfile['email'] ?? '').toString(),
       'companyPhone': (companyProfile['phone'] ?? '').toString(),
       'companyId': (companyProfile['companyId'] ?? '').toString(),
-      'companyStampImageUrl': (companyProfile['companyStampUrl'] ?? '')
-          .toString(),
+      'companyStampImageUrl': companyStampUrl,
+      'companyStampBytes': companyStampBytes,
       'companyLogoUrl': companyLogoUrl,
       'companyLogoBytes': companyLogoBytes,
       'workerId': _workerId,
     });
+
 
     if (mounted) await _showInvoicePreviewDialog(bytes, fileName);
   }
