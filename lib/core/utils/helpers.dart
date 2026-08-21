@@ -447,18 +447,17 @@ class FileOpener {
     if (!await file.exists()) return;
 
     if (!kIsWeb && Platform.isMacOS) {
-      // The entitlement com.apple.security.files.downloads.read-write is
-      // granted, so 'open -R <path>' reveals the file in Finder reliably.
       try {
+        // Reveal the generated zip file in Finder so the user sees it immediately
         await Process.run('open', ['-R', filePath]);
-        return;
-      } catch (_) {}
-      // Fallback: open the containing folder
-      try {
-        await Process.run('open', [file.parent.path]);
-        return;
-      } catch (_) {}
+      } catch (_) {
+        try {
+          await Process.run('open', [file.parent.path]);
+        } catch (_) {}
+      }
+      return;
     }
+
 
     try {
       final result = await OpenFile.open(filePath);
