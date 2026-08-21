@@ -1681,26 +1681,26 @@ class PayrollRunner {
         controller: controller,
       );
 
-      // 2. Run PDF generation & ZIP download asynchronously in background
+      // 2. Generate PDFs & ZIP — awaited so the share sheet opens before
+      // the caller shows "Payroll run complete" and the context may go stale.
       if (paidResults.isNotEmpty) {
         final preloadedAssets = preloadedAssetsFuture == null
             ? null
             : await preloadedAssetsFuture;
-        unawaited(
-          _generateAndSaveZipSafe(
-            context,
-            paidResults,
-            committedSummary.periodLabel,
-            companyProfile,
-            controller,
-            periodStart: periodStart,
-            periodEnd: periodEnd,
-            preloadedAssets: preloadedAssets,
-          ),
+        await _generateAndSaveZipSafe(
+          context,
+          paidResults,
+          committedSummary.periodLabel,
+          companyProfile,
+          controller,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          preloadedAssets: preloadedAssets,
         );
       } else {
         controller.dismiss();
       }
+
 
       unawaited(
         _sendNotificationsInBackground(

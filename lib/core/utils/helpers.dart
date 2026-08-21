@@ -10,6 +10,7 @@ import 'package:image/image.dart' as img;
 import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:hrms/core/utils/utils.dart';
 
 const int _maxCacheBytes = 50 * 1024 * 1024;
@@ -443,29 +444,52 @@ String cleanUploadedDocumentFileName(
 
 class FileOpener {
   static Future<void> open(String filePath) async {
-    try {
-      final file = File(filePath);
-      if (!await file.exists()) return;
-      final result = await OpenFile.open(filePath);
+    final file = File(filePath);
+    if (!await file.exists()) return;
 
+    // macOS sandbox blocks Process.run and open_file for arbitrary paths.
+    // Use share_plus which triggers the system share/save sheet and lets
+    // the user choose where to place the file (e.g. Downloads).
+    if (!kIsWeb && Platform.isMacOS) {
+      try {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath)],
+            subject: file.uri.pathSegments.last,
+          ),
+        );
+        return;
+      } catch (_) {
+        // fall through to open_file below
+      }
+    }
+
+    try {
+      final result = await OpenFile.open(filePath);
       if (result.type == ResultType.error ||
           result.type == ResultType.fileNotFound) {
         await _revealInFileManager(file);
       }
     } catch (_) {
       try {
-        await _revealInFileManager(File(filePath));
+        await _revealInFileManager(file);
       } catch (_) {}
     }
   }
 
   static Future<void> _revealInFileManager(File file) async {
     if (Platform.isMacOS) {
-      await Process.run('open', ['-R', file.path]);
+      try {
+        await Process.run('open', ['-R', file.path]);
+      } catch (_) {}
     } else if (Platform.isWindows) {
-      await Process.run('explorer', ['/select,', file.path]);
+      try {
+        await Process.run('explorer', ['/select,', file.path]);
+      } catch (_) {}
     } else if (Platform.isLinux) {
-      await Process.run('xdg-open', [file.parent.path]);
+      try {
+        await Process.run('xdg-open', [file.parent.path]);
+      } catch (_) {}
     }
   }
 }
