@@ -16,6 +16,7 @@ import 'package:hrms/services/core/dummy_data.dart';
 import 'package:hrms/services/core/firestore_service.dart';
 import 'package:hrms/services/payroll/invoice_service.dart';
 import 'package:hrms/services/payroll/payroll_service.dart';
+import 'package:hrms/services/payroll/payroll_cycle_service.dart';
 import 'package:hrms/services/core/preferences_service.dart';
 import 'package:hrms/widgets/components/clickable_gesture_detector.dart';
 import 'package:hrms/widgets/components/notification_bell.dart';
@@ -62,6 +63,7 @@ class AddPayrollScreen extends ConsumerStatefulWidget {
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
+  final int? salaryPayDay;
   final bool readOnly;
 
   const AddPayrollScreen({
@@ -70,6 +72,7 @@ class AddPayrollScreen extends ConsumerStatefulWidget {
     required this.payrollMonth,
     this.payPeriodStart,
     this.payPeriodEnd,
+    this.salaryPayDay,
     this.onNotificationTap,
     this.onProfileTap,
     this.onBack,
@@ -583,18 +586,25 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       return;
     }
 
-    if (!_isPaidRecord && widget.payPeriodStart != null) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final normalizedPayDay = DateTime(
-        widget.payPeriodStart!.year,
-        widget.payPeriodStart!.month,
-        widget.payPeriodStart!.day,
+// Shared Pay Day validation -- the exact same [PayrollCycleService]
+    // gate used by Pay All (#2, #3, #8). HR cannot bypass the Pay Day
+    // restriction by opening Add Payroll manually.
+    if (!_isPaidRecord) {
+      final (cycleStart, cycleEnd) = _currentPayPeriod;
+      final gate = PayrollCycleService.canProcessPayment(
+        cycle: PayrollPeriod(start: cycleStart, end: cycleEnd),
       );
-      if (today.isBefore(normalizedPayDay)) {
+      if (!gate.allowed) {
         FlashySnackBar.show(
           context,
-          message: 'pay_day_not_arrived_yet'.tr(),
+          message: 'payroll_not_pay_day_yet'.tr(
+            namedArgs: {
+              'date': AppDateUtils.fromValueLocalized(
+                gate.dueDate,
+                locale: context.locale.toString(),
+              ),
+            },
+          ),
           isError: true,
         );
         return;
@@ -647,18 +657,12 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final payrollIdentity = _workerId.trim().isNotEmpty
         ? _workerId.trim()
         : _email.trim().toLowerCase();
-    final (rawStart, rawEnd) = _currentPayPeriod;
 
-    final today = DateTime(now.year, now.month, now.day);
-    final normalizedStart = DateTime(rawStart.year, rawStart.month, rawStart.day);
-    DateTime periodStart = rawStart;
-    DateTime periodEnd = rawEnd;
-    if (!_isPaidRecord && today.isBefore(normalizedStart)) {
-      final lastDayOfNextMonth = DateTime(today.year, today.month + 2, 0).day;
-      final endDay = today.day.clamp(1, lastDayOfNextMonth);
-      periodStart = today;
-      periodEnd = DateTime(today.year, today.month + 1, endDay);
-    }
+    // The record is always saved against the exact active cycle dates.
+    // No period mutation: a Pay Day anchored cycle can never be silently
+    // rewritten to a `today -> next month` cycle (#8, #12).
+    final (periodStart, periodEnd) = _currentPayPeriod;
+
     final payrollKey = PayrollService.payrollKeyForPeriod(
       payrollIdentity,
       periodStart,
@@ -719,15 +723,6 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }
 
       if (!mounted) return;
-
-      if (!_isGuest && periodStart != rawStart) {
-        try {
-          await _firestore.updateUserProfile({
-            'payrollCycleStart': periodStart.toIso8601String(),
-            'payrollCycleEnd': periodEnd.toIso8601String(),
-          });
-        } catch (_) {}
-      }
 
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
     } catch (_) {
