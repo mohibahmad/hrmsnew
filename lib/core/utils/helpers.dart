@@ -448,15 +448,17 @@ class FileOpener {
 
     if (!kIsWeb && Platform.isMacOS) {
       try {
-        // Reveal the generated zip file in Finder so the user sees it immediately
+        // 1. Open the file directly with default application (Preview for PDF)
+        await Process.run('open', [filePath]);
+        return;
+      } catch (_) {}
+      try {
+        // Fallback: reveal in Finder
         await Process.run('open', ['-R', filePath]);
-      } catch (_) {
-        try {
-          await Process.run('open', [file.parent.path]);
-        } catch (_) {}
-      }
-      return;
+        return;
+      } catch (_) {}
     }
+
 
 
     try {
