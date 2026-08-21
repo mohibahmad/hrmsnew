@@ -1384,6 +1384,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
                 isEmpty ? 'no_workers_found'.tr() : hintText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
               ),
               isExpanded: true,
@@ -1397,11 +1399,32 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
               ),
+              selectedItemBuilder: (BuildContext context) {
+                return items.map((String val) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      val,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList();
+              },
               items: items.map((val) {
                 return DropdownMenuItem<String>(
                   value: val,
                   child: Text(
                     val,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 );

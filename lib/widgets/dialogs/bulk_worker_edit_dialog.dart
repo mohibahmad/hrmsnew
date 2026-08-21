@@ -18,6 +18,8 @@ String fieldHint(String fieldKey) {
     'address': 'hint_enter_address',
     'relationshipStatus': 'hint_enter_relationship',
     'position': 'hint_enter_position',
+    'workType': 'hint_enter_type1',
+    'attendanceType': 'hint_enter_type2',
     'type1': 'hint_enter_type1',
     'type2': 'hint_enter_type2',
     'experienceLevel': 'hint_enter_experience',
@@ -502,7 +504,9 @@ List<TextInputFormatter>? inputFormattersForField(String fieldKey) {
   if (fieldKey == 'position') {
     return [LengthLimitingTextInputFormatter(60)];
   }
-  if (fieldKey == 'type1' ||
+  if (fieldKey == 'workType' ||
+      fieldKey == 'attendanceType' ||
+      fieldKey == 'type1' ||
       fieldKey == 'type2' ||
       fieldKey == 'experienceLevel' ||
       fieldKey == 'education') {

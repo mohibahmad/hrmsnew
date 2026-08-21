@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:hrms/core/utils/utils.dart';
 
@@ -25,7 +24,13 @@ import 'package:hrms/services/core/upload_service.dart';
 import 'package:hrms/widgets/common/clickable_gesture_detector.dart';
 import 'package:hrms/widgets/common/notification_bell.dart';
 import 'package:hrms/widgets/common/screen_table_shimmer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hrms/screens/workers/add_worker_flow.dart' show DocPreview, PdfPagePreview;
+
+@pragma('vm:entry-point')
+Uint8List _compressDocumentImageTask(Uint8List rawBytes) {
+  return compressImageBytes(rawBytes, maxWidth: 1600, quality: 82);
+}
 
 class DocumentsScreen extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
@@ -888,9 +893,21 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       String? url;
 
       if (bytes != null) {
+        Uint8List bytesToUpload = bytes;
+        if ((field == 'frontId' || field == 'backId') && bytes.length > 350 * 1024) {
+          try {
+            final compressed = await compute(_compressDocumentImageTask, bytes);
+            if (compressed.isNotEmpty) {
+              bytesToUpload = compressed;
+            }
+          } catch (e, s) {
+            ErrorReporter.report(e, s, context: 'compressDocumentImage');
+          }
+        }
+
         if (_isGuest) {
           url =
-              'data:${mimeTypeForExtension(fileName ?? 'file')};base64,${base64Encode(bytes)}';
+              'data:${mimeTypeForExtension(fileName ?? 'file')};base64,${base64Encode(bytesToUpload)}';
         } else {
           final folder = field == 'frontId'
               ? 'front_ids'
@@ -902,7 +919,7 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
               UploadFile(
                 folder: folder,
                 fileName: fileName ?? 'file',
-                bytes: bytes,
+                bytes: bytesToUpload,
                 mimeType: mimeTypeForExtension(fileName ?? 'file'),
               ),
             ],
@@ -956,11 +973,11 @@ class _EditDocumentsPageState extends ConsumerState<_EditDocumentsPage> {
       }
 
       if (existingUrl != null && existingUrl.isNotEmpty && existingUrl != url) {
-        try {
-          await UploadService.deleteByUrl(existingUrl);
-        } catch (e, s) {
-          ErrorReporter.report(e, s, context: 'documentsCleanupOldFile');
-        }
+        unawaited(
+          UploadService.deleteByUrl(existingUrl).catchError((e, s) {
+            ErrorReporter.report(e, s, context: 'documentsCleanupOldFile');
+          }),
+        );
       }
 
       updates.forEach((key, value) => widget.worker[key] = value);

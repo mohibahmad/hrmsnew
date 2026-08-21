@@ -300,9 +300,9 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
         'gender': '',
         'address': '',
         'relationshipStatus': '',
-        'type1': '',
+        'workType': '',
         'position': '',
-        'type2': '',
+        'attendanceType': '',
         'experienceLevel': '',
         'education': '',
         'salaryAmount': '',
@@ -1561,8 +1561,8 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             130,
             fieldKey: 'relationshipStatus',
           ),
-          _headerCell('employee_type'.tr(), 130, fieldKey: 'type1'),
-          _headerCell('work_model'.tr(), 130, fieldKey: 'type2'),
+          _headerCell('employee_type'.tr(), 130, fieldKey: 'workType'),
+          _headerCell('work_model'.tr(), 130, fieldKey: 'attendanceType'),
           _headerCell(
             'experience_level_title'.tr(),
             130,
@@ -1700,16 +1700,16 @@ class AddBulkWorkerScreenState extends ConsumerState<AddBulkWorkerScreen> {
             worker: worker,
           ),
           _dataCell(
-            cellValue('type1'),
+            cellValue('workType'),
             130,
-            fieldKey: 'type1',
+            fieldKey: 'workType',
             workerIndex: index,
             worker: worker,
           ),
           _dataCell(
-            cellValue('type2'),
+            cellValue('attendanceType'),
             130,
-            fieldKey: 'type2',
+            fieldKey: 'attendanceType',
             workerIndex: index,
             worker: worker,
           ),
@@ -2295,10 +2295,12 @@ class _EditCellDialogState extends State<_EditCellDialog> {
         return _validateExperienceLevel(val);
       case 'education':
         return _validateEducation(val);
+      case 'workType':
       case 'type1':
-        return _validateType1(val);
+        return _validateWorkType(val);
+      case 'attendanceType':
       case 'type2':
-        return _validateType2(val);
+        return _validateAttendanceType(val);
       case 'salaryAmount':
         return _validateSalaryAmount(val);
       case 'annualLeaves':
@@ -2435,7 +2437,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
     return normalized;
   }
 
-  String? _validateType1(String val) {
+  String? _validateWorkType(String val) {
     final normalized = val.toLowerCase();
     const valid = {
       'full-time',
@@ -2462,7 +2464,7 @@ class _EditCellDialogState extends State<_EditCellDialog> {
     };
   }
 
-  String? _validateType2(String val) {
+  String? _validateAttendanceType(String val) {
     final normalized = val.toLowerCase();
     const valid = {'on-site', 'on site', 'onsite', 'remote', 'hybrid'};
 

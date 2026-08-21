@@ -247,8 +247,8 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
         w['profileImage'] = entry.key.isEven
             ? 'assets/boy.png'
             : 'assets/imageplaceholder.png';
-        w['type1'] = w['workType'] ?? '';
-        w['type2'] = w['attendanceType'] ?? '';
+        w['workType'] = w['workType'] ?? w['type1'] ?? '';
+        w['attendanceType'] = w['attendanceType'] ?? w['type2'] ?? '';
         return w;
       }).toList();
 
@@ -894,14 +894,14 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
   Widget _buildListItem(Map<String, dynamic> worker) {
     final name = (worker['name'] ?? '').toString();
     final email = (worker['email'] ?? '').toString();
-    final type1 = (worker['type1'] ?? worker['workType'] ?? '').toString();
+    final workType = (worker['workType'] ?? worker['type1'] ?? '').toString();
     final position = (worker['position'] ?? worker['role'] ?? '').toString();
-    final type2 = (worker['type2'] ?? worker['attendanceType'] ?? '')
+    final attendanceType = (worker['attendanceType'] ?? worker['type2'] ?? '')
         .toString();
     final profileImage = _safeOptionalString(worker['profileImage']);
 
-    final localizedType1 = LocalizationHelper.localizeType1(type1);
-    final localizedType2 = LocalizationHelper.localizeType2(type2);
+    final localizedWorkType = LocalizationHelper.localizeWorkType(workType);
+    final localizedAttendanceType = LocalizationHelper.localizeAttendanceType(attendanceType);
 
     void handleMenuAction(String value) {
       if (_isGuest) {
@@ -976,7 +976,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
             child: Padding(
               padding: const EdgeInsets.only(right: 24),
               child: Text(
-                localizedType1,
+                localizedWorkType,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: _kCellTextStyle,
@@ -1000,7 +1000,7 @@ class _DashboardWorkerListState extends ConsumerState<DashboardWorkerList> {
           Expanded(
             flex: 2,
             child: Text(
-              localizedType2,
+              localizedAttendanceType,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: _kCellTextStyle,
@@ -1198,12 +1198,12 @@ class _WorkerProfilePreviewDialogState
   bool _isSharing = false;
 
   String _workerField(String key) {
-    if (key == 'type1') {
-      final val = widget.worker['type1'] ?? widget.worker['workType'];
+    if (key == 'workType' || key == 'type1') {
+      final val = widget.worker['workType'] ?? widget.worker['type1'];
       return (val ?? '').toString();
     }
-    if (key == 'type2') {
-      final val = widget.worker['type2'] ?? widget.worker['attendanceType'];
+    if (key == 'attendanceType' || key == 'type2') {
+      final val = widget.worker['attendanceType'] ?? widget.worker['type2'];
       return (val ?? '').toString();
     }
     return (widget.worker[key] ?? '').toString();
@@ -1232,6 +1232,12 @@ class _WorkerProfilePreviewDialogState
 
   Future<void> _handlePdfExport({required bool isShare}) async {
     if (_isSharing) return;
+    final isGuest =
+        ref.read(authServiceProvider).currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
     setState(() => _isSharing = true);
 
     try {
@@ -1279,8 +1285,8 @@ class _WorkerProfilePreviewDialogState
         fatherHusbandName: _orNA(_workerField('fatherName')),
         position: _capitalizeWords(_workerField('position')),
         nationalId: _orNA(_workerField('nationalId')),
-        attendanceType: LocalizationHelper.localizeType2(_workerField('type2')),
-        workType: LocalizationHelper.localizeType1(_workerField('type1')),
+        attendanceType: LocalizationHelper.localizeAttendanceType(_workerField('attendanceType')),
+        workType: LocalizationHelper.localizeWorkType(_workerField('workType')),
         experienceLevel: _orNA(
           LocalizationHelper.localizeExperience(
             _workerField('experienceLevel'),
@@ -1590,8 +1596,8 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.location_on,
                           'attendance_type'.tr(),
-                          LocalizationHelper.localizeType2(
-                            _workerField('type2'),
+                          LocalizationHelper.localizeAttendanceType(
+                            _workerField('attendanceType'),
                           ),
                         ),
                       ),
@@ -1599,8 +1605,8 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.schedule,
                           'work_type'.tr(),
-                          LocalizationHelper.localizeType1(
-                            _workerField('type1'),
+                          LocalizationHelper.localizeWorkType(
+                            _workerField('workType'),
                           ),
                           assetImage: 'assets/worktype.png',
                         ),

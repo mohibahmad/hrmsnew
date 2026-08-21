@@ -178,51 +178,91 @@ Widget buildSocialButton({
   Color? textColor,
   BorderSide? border,
 }) {
+  final effectiveTextColor = textColor ?? const Color(0xFF000000);
+  final effectiveBgColor = backgroundColor ?? Colors.white;
+
   return SizedBox(
     width: double.infinity,
     height: 44,
     child: OutlinedButton(
       onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: backgroundColor ?? Colors.white,
-        foregroundColor: textColor ?? const Color(0xFF000000),
-        disabledForegroundColor: (textColor ?? const Color(0xFF000000))
-            .withValues(alpha: 0.6),
-        disabledBackgroundColor: backgroundColor ?? Colors.white,
-        side: border ?? BorderSide(color: Colors.grey.shade200),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return effectiveBgColor.withValues(alpha: 0.85);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return effectiveTextColor == const Color(0xFF000000)
+                ? const Color(0xFFF8F9FA)
+                : effectiveTextColor.withValues(alpha: 0.04);
+          }
+          return effectiveBgColor;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return effectiveTextColor.withValues(alpha: 0.6);
+          }
+          return effectiveTextColor;
+        }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return effectiveTextColor.withValues(alpha: 0.12);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return effectiveTextColor.withValues(alpha: 0.06);
+          }
+          if (states.contains(WidgetState.focused)) {
+            return effectiveTextColor.withValues(alpha: 0.08);
+          }
+          return null;
+        }),
+        side: WidgetStateProperty.resolveWith((states) {
+          final baseBorder = border ?? BorderSide(color: Colors.grey.shade200);
+          if (states.contains(WidgetState.hovered) || states.contains(WidgetState.pressed)) {
+            return baseBorder.copyWith(
+              color: baseBorder.color.withValues(
+                alpha: (baseBorder.color.a * 1.4).clamp(0.0, 1.0),
+              ),
+            );
+          }
+          return baseBorder;
+        }),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        ),
+        elevation: const WidgetStatePropertyAll(0),
+        splashFactory: InkRipple.splashFactory,
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 16),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (isLoading)
             Padding(
-              padding: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.only(right: 10),
               child: SizedBox(
-                width: 36,
-                height: 36,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    textColor ?? const Color(0xFF000000),
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(effectiveTextColor),
                 ),
               ),
             )
-          else
+          else ...[
             icon,
-          const SizedBox(width: 12),
+            const SizedBox(width: 10),
+          ],
           Text(
             text,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: isLoading
-                  ? (textColor ?? const Color(0xFF000000)).withValues(
-                      alpha: 0.6,
-                    )
-                  : null,
+                  ? effectiveTextColor.withValues(alpha: 0.6)
+                  : effectiveTextColor,
             ),
           ),
         ],

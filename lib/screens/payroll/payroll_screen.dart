@@ -1982,6 +1982,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   }
 
   Future<void> _handleExportPayroll() async {
+    if (_isGuest) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
+
     final allRecords = _payrollDocs;
     if (allRecords.isEmpty) {
       FlashySnackBar.show(context, message: 'No payroll data to export yet.');

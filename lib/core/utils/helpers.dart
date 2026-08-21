@@ -627,7 +627,7 @@ class LocalizationHelper {
     }
   }
 
-  static String localizeType1(String value) {
+  static String localizeWorkType(String value) {
     switch (value) {
       case 'Full-Time':
       case 'full_time':
@@ -644,15 +644,21 @@ class LocalizationHelper {
       case 'Freelance':
       case 'freelance':
         return 'freelance'.tr();
+      case 'Intern':
+      case 'intern':
+        return 'intern'.tr();
       default:
         return value;
     }
   }
 
-  static String localizeType2(String value) {
+  static String localizeType1(String value) => localizeWorkType(value);
+
+  static String localizeAttendanceType(String value) {
     switch (value) {
       case 'On-Site':
       case 'on_site':
+      case 'on-site':
         return 'on_site'.tr();
       case 'Remote':
       case 'remote':
@@ -664,6 +670,8 @@ class LocalizationHelper {
         return value;
     }
   }
+
+  static String localizeType2(String value) => localizeAttendanceType(value);
 
   static String localizeExperience(String value) {
     switch (value) {

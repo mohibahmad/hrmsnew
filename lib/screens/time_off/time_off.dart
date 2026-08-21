@@ -679,9 +679,20 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         balanceRecords,
       );
 
+      final phone = _firstNonEmpty([
+        worker['contact'],
+        worker['phone'],
+        worker['contactNo'],
+        worker['phoneNumber'],
+        worker['phoneNo'],
+        worker['mobile'],
+      ]);
+
       if (matching.isEmpty) {
         combined.add({
           ...worker,
+          'phone': phone,
+          'contact': phone,
           'action': '',
           'startDate': '',
           'endDate': '',
@@ -689,6 +700,7 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
           'annualLeaves': worker['annualLeaves'],
           'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
+          'canAssignTimeOff': _canAssignTimeOff(worker),
         });
         continue;
       }
@@ -704,20 +716,40 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
         });
 
       final rec = sorted.first;
+      final recPhone = _firstNonEmpty([
+        worker['contact'],
+        worker['phone'],
+        worker['contactNo'],
+        worker['phoneNumber'],
+        worker['phoneNo'],
+        worker['mobile'],
+        rec['contact'],
+        rec['phone'],
+      ]);
+
       combined.add({
         ...worker,
         ...rec,
-        'workerId': worker['id'],
+        'workerId': (worker['id'] ?? worker['workerId'] ?? rec['workerId'] ?? '').toString(),
         'action': TimeOffService.leaveType(rec),
         'type': TimeOffService.leaveType(rec),
-        'name': worker['name'] ?? rec['name'],
-        'email': worker['email'] ?? rec['email'],
-        'profileImage': worker['profileImage'] ?? rec['profileImage'],
-        'phone': worker['phone'] ?? rec['phone'] ?? '',
-        'contact': worker['phone'] ?? rec['contact'] ?? '',
+        'name': _firstNonEmpty([
+          worker['name'],
+          rec['name'],
+          rec['workerName'],
+        ]),
+        'email': _firstNonEmpty([worker['email'], rec['email']]),
+        'profileImage': _firstNonEmpty([
+          worker['profileImage'],
+          rec['profileImage'],
+          rec['workerAvatar'],
+        ]),
+        'phone': recPhone,
+        'contact': recPhone,
         'annualLeaves': worker['annualLeaves'],
         'availableAnnualLeaves': worker['availableAnnualLeaves'],
         'remainingLeaves': remaining.toString(),
+        'canAssignTimeOff': _canAssignTimeOff(worker),
       });
     }
 
@@ -1082,7 +1114,15 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
     final name = (doc['name'] ?? '').toString();
     final email = (doc['email'] ?? '').toString();
     final position = (doc['position'] ?? '').toString();
-    final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
+    final contact = _firstNonEmpty([
+      doc['contact'],
+      doc['phone'],
+      doc['contactNo'],
+      doc['phoneNumber'],
+      doc['phoneNo'],
+      doc['mobile'],
+      doc['cell'],
+    ]);
     final limitReached = TimeOffService.isWorkerLimitReached(
       doc,
       _rawTimeoffDocs,
@@ -2553,6 +2593,11 @@ class _TimeOffScreenState extends ConsumerState<TimeOffScreen> {
 
   Future<void> _handleExportCsv() async {
     if (_isExportingCsv) return;
+
+    if (_isGuestMode) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
 
     final records = _filteredTimeOffRecords;
     if (records.isEmpty) {

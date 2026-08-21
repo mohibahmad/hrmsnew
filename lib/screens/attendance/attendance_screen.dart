@@ -1044,10 +1044,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final email = (worker['email'] ?? '').toString();
     final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
     final position = (worker['position'] ?? worker['role'] ?? '').toString();
-    final workType = (worker['type1'] ?? worker['workType'] ?? 'Full Time')
+    final workType = (worker['workType'] ?? worker['type1'] ?? 'Full Time')
         .toString();
     final attendanceType =
-        (worker['type2'] ?? worker['attendanceType'] ?? 'On-Site').toString();
+        (worker['attendanceType'] ?? worker['type2'] ?? 'On-Site').toString();
 
     rows.add(['${'report_worker'.tr()}: $name']);
     rows.add(['${'report_email'.tr()}: $email']);
@@ -2129,7 +2129,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 }
 
-class WorkerAttendancePreviewCard extends StatefulWidget {
+class WorkerAttendancePreviewCard extends ConsumerStatefulWidget {
   final AttendanceRecord record;
   final int totalWorkingDays;
   final int presents;
@@ -2152,12 +2152,12 @@ class WorkerAttendancePreviewCard extends StatefulWidget {
   });
 
   @override
-  State<WorkerAttendancePreviewCard> createState() =>
+  ConsumerState<WorkerAttendancePreviewCard> createState() =>
       _WorkerAttendancePreviewCardState();
 }
 
 class _WorkerAttendancePreviewCardState
-    extends State<WorkerAttendancePreviewCard> {
+    extends ConsumerState<WorkerAttendancePreviewCard> {
   bool _isExporting = false;
 
   static const Color _primaryBlue = Color(0xFF0A51D0);
@@ -2592,6 +2592,10 @@ class _WorkerAttendancePreviewCardState
 
   Future<void> _exportCsv(BuildContext context) async {
     if (_isExporting) return;
+    if (ref.read(authServiceProvider).currentUser?.isAnonymous ?? false) {
+      showGuestRestrictionDialog(context);
+      return;
+    }
     setState(() => _isExporting = true);
     try {
       await _exportCsvFile(context);

@@ -11,6 +11,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -167,15 +168,15 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
           .toString();
 
       _type1Controller.text =
-          (widget.workerToEdit!['type1'] ??
-                  widget.workerToEdit!['workType'] ??
+          (widget.workerToEdit!['workType'] ??
+                  widget.workerToEdit!['type1'] ??
                   'Full-Time')
               .toString();
       if (_type1Controller.text.isEmpty) _type1Controller.text = 'Full-Time';
 
       _type2Controller.text =
-          (widget.workerToEdit!['type2'] ??
-                  widget.workerToEdit!['attendanceType'] ??
+          (widget.workerToEdit!['attendanceType'] ??
+                  widget.workerToEdit!['type2'] ??
                   'On-Site')
               .toString();
       if (_type2Controller.text.isEmpty) _type2Controller.text = 'On-Site';
@@ -443,7 +444,7 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
     return 'failed_to_pick_file'.tr();
   }
 
-  Future<List<UploadFile>> _prepareUploadFilesBatched({
+  static Future<List<UploadFile>> _prepareUploadFilesBatched({
     required List<
       ({
         String folder,
@@ -457,8 +458,24 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
   }) async {
     if (specs.isEmpty) return const [];
 
+    final compressedList = await Future.wait(
+      specs.map((spec) async {
+        Uint8List bytesToUpload = spec.bytes;
+        if (spec.compressImages && bytesToUpload.length > 350 * 1024) {
+          try {
+            final compressed = await compute(compressImageBytes, bytesToUpload);
+            if (compressed.isNotEmpty) {
+              bytesToUpload = compressed;
+            }
+          } catch (_) {}
+        }
+        return bytesToUpload;
+      }),
+    );
+
     final files = <UploadFile>[];
-    for (final spec in specs) {
+    for (var i = 0; i < specs.length; i++) {
+      final spec = specs[i];
       final fileName = spec.fileName?.trim().isNotEmpty == true
           ? spec.fileName!.trim()
           : spec.fallbackFileName;
@@ -467,20 +484,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         fallback: 'application/octet-stream',
       );
 
-      Uint8List bytesToUpload = spec.bytes;
-      if (spec.compressImages && bytesToUpload.length > 350 * 1024) {
-        bytesToUpload = compressImageBytes(
-          bytesToUpload,
-          maxWidth: 1200,
-          quality: 80,
-        );
-      }
-
       files.add(
         UploadFile(
           folder: spec.folder,
           fileName: fileName,
-          bytes: bytesToUpload,
+          bytes: compressedList[i],
           mimeType: mimeType,
         ),
       );
@@ -904,11 +912,11 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
       return true;
     }
     if (_type1Controller.text.trim() !=
-        (edit['type1'] ?? 'Full-Time').toString().trim()) {
+        (edit['workType'] ?? edit['type1'] ?? 'Full-Time').toString().trim()) {
       return true;
     }
     if (_type2Controller.text.trim() !=
-        (edit['type2'] ?? 'On-Site').toString().trim()) {
+        (edit['attendanceType'] ?? edit['type2'] ?? 'On-Site').toString().trim()) {
       return true;
     }
     if (_experienceLevelController.text.trim() !=
@@ -1433,16 +1441,10 @@ class _AddNewWorkerFlowState extends ConsumerState<AddNewWorkerFlow> {
         'gender': _genderController.text.trim(),
         'address': _addressController.text.trim(),
         'relationshipStatus': _relationshipStatus,
-        'type1': _type1Controller.text.isNotEmpty
-            ? _type1Controller.text
-            : 'Full-Time',
         'workType': _type1Controller.text.isNotEmpty
             ? _type1Controller.text
             : 'Full-Time',
         'position': position.isNotEmpty ? position : 'Employee',
-        'type2': _type2Controller.text.isNotEmpty
-            ? _type2Controller.text
-            : 'On-Site',
         'attendanceType': _type2Controller.text.isNotEmpty
             ? _type2Controller.text
             : 'On-Site',

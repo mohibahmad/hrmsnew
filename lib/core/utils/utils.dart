@@ -134,8 +134,8 @@ const List<String> kRequiredFields = [
   'address',
   'relationshipStatus',
   'position',
-  'type1',
-  'type2',
+  'workType',
+  'attendanceType',
   'experienceLevel',
   'education',
   'salaryAmount',
@@ -158,6 +158,8 @@ const Map<String, String> kFieldKeys = {
   'address': 'field_address',
   'relationshipStatus': 'field_relationship_status',
   'position': 'field_job_position',
+  'workType': 'field_employee_type',
+  'attendanceType': 'field_work_model',
   'type1': 'field_employee_type',
   'type2': 'field_work_model',
   'experienceLevel': 'field_experience_level',
@@ -197,8 +199,17 @@ const Map<String, String> kHeaderMap = {
   'address': 'address',
   'relationship status': 'relationshipStatus',
   'job position': 'position',
-  'employee type': 'type1',
-  'work model': 'type2',
+  'employee type': 'workType',
+  'employment type': 'workType',
+  'work type': 'workType',
+  'contract type': 'workType',
+  'type1': 'workType',
+  'type 1': 'workType',
+  'work model': 'attendanceType',
+  'attendance type': 'attendanceType',
+  'work location': 'attendanceType',
+  'type2': 'attendanceType',
+  'type 2': 'attendanceType',
   'experience level': 'experienceLevel',
   'education': 'education',
   'monthly salary amount': 'salaryAmount',
@@ -398,7 +409,8 @@ Map<String, String> validateWorkerData(
     }
   }
 
-  final employeeType = workerData['type1']?.toString().trim() ?? '';
+  final employeeType = (workerData['workType'] ?? workerData['type1'])?.toString().trim() ?? '';
+  workerData.remove('type1');
   if (employeeType.isNotEmpty) {
     final normalized = employeeType.toLowerCase();
     const valid = {
@@ -411,32 +423,33 @@ Map<String, String> validateWorkerData(
       'intern',
     };
     if (!valid.contains(normalized)) {
-      fieldErrors['type1'] = 'validation_invalid_employee_type'.tr();
+      fieldErrors['workType'] = 'validation_invalid_employee_type'.tr();
     } else if (normalized == 'full-time' || normalized == 'full time') {
-      workerData['type1'] = 'Full-Time';
+      workerData['workType'] = 'Full-Time';
     } else if (normalized == 'part-time' || normalized == 'part time') {
-      workerData['type1'] = 'Part-Time';
+      workerData['workType'] = 'Part-Time';
     } else if (normalized == 'contract') {
-      workerData['type1'] = 'Contract';
+      workerData['workType'] = 'Contract';
     } else if (normalized == 'freelance') {
-      workerData['type1'] = 'Freelance';
+      workerData['workType'] = 'Freelance';
     } else {
-      workerData['type1'] = 'Intern';
+      workerData['workType'] = 'Intern';
     }
   }
 
-  final workModel = workerData['type2']?.toString().trim() ?? '';
+  final workModel = (workerData['attendanceType'] ?? workerData['type2'])?.toString().trim() ?? '';
+  workerData.remove('type2');
   if (workModel.isNotEmpty) {
     final normalized = workModel.toLowerCase();
     const valid = {'on-site', 'on site', 'onsite', 'remote', 'hybrid'};
     if (!valid.contains(normalized)) {
-      fieldErrors['type2'] = 'validation_invalid_work_model'.tr();
+      fieldErrors['attendanceType'] = 'validation_invalid_work_model'.tr();
     } else if (normalized == 'remote') {
-      workerData['type2'] = 'Remote';
+      workerData['attendanceType'] = 'Remote';
     } else if (normalized == 'hybrid') {
-      workerData['type2'] = 'Hybrid';
+      workerData['attendanceType'] = 'Hybrid';
     } else {
-      workerData['type2'] = 'On-Site';
+      workerData['attendanceType'] = 'On-Site';
     }
   }
 

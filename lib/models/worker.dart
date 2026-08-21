@@ -220,9 +220,9 @@ class Worker {
       gender: SafeParser.asStringOrNull(data['gender']),
       address: SafeParser.asStringOrNull(data['address']),
       relationshipStatus: SafeParser.asStringOrNull(data['relationshipStatus']),
-      workType: SafeParser.asStringOrNull(data['type1'] ?? data['workType']),
+      workType: SafeParser.asStringOrNull(data['workType'] ?? data['type1']),
       position: SafeParser.asStringOrNull(data['position'] ?? data['role']),
-      attendanceType: SafeParser.asStringOrNull(data['type2'] ?? data['attendanceType']),
+      attendanceType: SafeParser.asStringOrNull(data['attendanceType'] ?? data['type2']),
       experienceLevel: SafeParser.asStringOrNull(data['experienceLevel']),
       education: SafeParser.asStringOrNull(data['education']),
       salaryType: SafeParser.asStringOrNull(data['salaryType']),
@@ -272,10 +272,8 @@ class Worker {
       'gender': gender?.trim() ?? '',
       'address': address?.trim() ?? '',
       'relationshipStatus': relationshipStatus?.trim() ?? '',
-      'type1': (workType?.trim().isNotEmpty == true) ? workType!.trim() : 'Full-Time',
       'workType': (workType?.trim().isNotEmpty == true) ? workType!.trim() : 'Full-Time',
       'position': (position?.trim().isNotEmpty == true) ? position!.trim() : 'Employee',
-      'type2': (attendanceType?.trim().isNotEmpty == true) ? attendanceType!.trim() : 'On-Site',
       'attendanceType': (attendanceType?.trim().isNotEmpty == true) ? attendanceType!.trim() : 'On-Site',
       'experienceLevel': experienceLevel?.trim() ?? '',
       'education': education?.trim() ?? '',
@@ -347,10 +345,8 @@ class Worker {
     map.addField('gender', gender, forUpdate);
     map.addField('address', address, forUpdate);
     map.addField('relationshipStatus', relationshipStatus, forUpdate);
-    map.addField('type1', workType, forUpdate);
     map.addField('workType', workType, forUpdate);
     map.addField('position', position, forUpdate);
-    map.addField('type2', attendanceType, forUpdate);
     map.addField('attendanceType', attendanceType, forUpdate);
     map.addField('experienceLevel', experienceLevel, forUpdate);
     map.addField('education', education, forUpdate);

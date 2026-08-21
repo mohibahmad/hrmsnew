@@ -239,7 +239,13 @@ class UploadService {
       }
 
       try {
-        uploadTask = ref.putData(file.bytes, SettableMetadata(contentType: mimeType));
+        uploadTask = ref.putData(
+          file.bytes,
+          SettableMetadata(
+            contentType: mimeType,
+            cacheControl: 'public, max-age=31536000',
+          ),
+        );
 
         if (cancelToken != null) {
           unawaited(
@@ -435,7 +441,11 @@ class UploadService {
     final pattern = ascii.encode(value);
     if (pattern.isEmpty || bytes.length < pattern.length) return false;
 
-    for (var start = 0; start <= bytes.length - pattern.length; start++) {
+    final maxSearchBytes = bytes.length < 65536 ? bytes.length : 65536;
+    final maxStart = maxSearchBytes - pattern.length;
+    if (maxStart < 0) return false;
+
+    for (var start = 0; start <= maxStart; start++) {
       var matches = true;
       for (var offset = 0; offset < pattern.length; offset++) {
         if (bytes[start + offset] != pattern[offset]) {

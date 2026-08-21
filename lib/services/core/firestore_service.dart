@@ -97,19 +97,19 @@ class FirestoreService {
       normalized['currency'] = CurrencyUtils.normalize(normalized['currency']);
     }
     if (normalized.containsKey('type1') || normalized.containsKey('workType')) {
-      final val = normalized['type1'] ?? normalized['workType'];
+      final val = normalized['workType'] ?? normalized['type1'];
       if (val != null) {
-        normalized['type1'] = val;
         normalized['workType'] = val;
       }
+      normalized.remove('type1');
     }
     if (normalized.containsKey('type2') ||
         normalized.containsKey('attendanceType')) {
-      final val = normalized['type2'] ?? normalized['attendanceType'];
+      final val = normalized['attendanceType'] ?? normalized['type2'];
       if (val != null) {
-        normalized['type2'] = val;
         normalized['attendanceType'] = val;
       }
+      normalized.remove('type2');
     }
     final sanitized = _sanitizeFirestoreValue(normalized, isNewDoc: isNewDoc);
     return sanitized is Map<String, dynamic>

@@ -1653,8 +1653,8 @@ class _WorkersAttendanceScreenState
           'email': email,
           'role': workerData['role'] ?? workerData['position'] ?? '',
           'status': status,
-          'attendanceType': workerData['type2'] ?? 'Remote',
-          'workType': workerData['type1'] ?? 'Full Time',
+          'attendanceType': workerData['attendanceType'] ?? workerData['type2'] ?? 'On-Site',
+          'workType': workerData['workType'] ?? workerData['type1'] ?? 'Full Time',
           'profileImage': workerData['profileImage'],
           'desc': FieldValue.delete(),
         };
@@ -2630,9 +2630,11 @@ class _WorkersAttendanceScreenState
                                                         '',
                                                     'status': selectedStatus,
                                                     'attendanceType':
+                                                        workerData['attendanceType'] ??
                                                         workerData['type2'] ??
-                                                        'Remote',
+                                                        'On-Site',
                                                     'workType':
+                                                        workerData['workType'] ??
                                                         workerData['type1'] ??
                                                         'Full Time',
                                                     'profileImage':

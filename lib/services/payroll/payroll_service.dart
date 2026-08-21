@@ -512,7 +512,7 @@ class PayrollService {
   }
 
   static String workerEmploymentType(Map<String, dynamic> worker) {
-    for (final key in ['type1', 'employmentType', 'employment_type', 'workType', 'workerType', 'contractType']) {
+    for (final key in ['workType', 'type1', 'employmentType', 'employment_type', 'workerType', 'contractType']) {
       final value = (worker[key] ?? '').toString().trim();
       if (value.isNotEmpty) return value;
     }

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
   static const _dataVersionKey = 'dummy_data_version';
-  static const _currentDataVersion = 6;
+  static const _currentDataVersion = 7;
   static Map<String, dynamic>? _sourceDefaults;
 
   static dynamic _clone(dynamic value) {
@@ -142,9 +142,21 @@ class DummyData {
   static Future<void> loadFromPrefs() async {
     _captureSourceDefaults();
     final prefs = await SharedPreferences.getInstance();
+    final version = prefs.getInt(_dataVersionKey) ?? 0;
+    if (version < _currentDataVersion) {
+      await resetToDefaults();
+      return;
+    }
 
     final loadedWorkers = _decodeListSafely(prefs.getString('workers'));
     if (loadedWorkers != null) {
+      for (final w in loadedWorkers) {
+        final phone = (w['contact'] ?? w['phone'] ?? '').toString().trim();
+        if (phone.isNotEmpty) {
+          w['contact'] ??= phone;
+          w['phone'] ??= phone;
+        }
+      }
       workers
         ..clear()
         ..addAll(loadedWorkers);
