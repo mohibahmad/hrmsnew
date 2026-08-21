@@ -2082,9 +2082,11 @@ class PayrollRunner {
       );
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'PayrollInvoiceZip');
-      if (context.mounted) {
+      final overlayCtx = rootNavigatorKey.currentState?.overlay?.context;
+      final errCtx = overlayCtx ?? (context.mounted ? context : null);
+      if (errCtx != null) {
         FlashySnackBar.show(
-          context,
+          errCtx,
           message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$error'}),
           isError: true,
         );
@@ -2479,14 +2481,20 @@ class PayrollRunner {
       await Future.delayed(const Duration(milliseconds: 350));
       controller?.dismiss();
 
-      final targetContext = rootNavigatorKey.currentContext ?? (context.mounted ? context : null);
-      if (targetContext != null && targetContext.mounted) {
+      // rootNavigatorKey.currentContext is the Navigator itself, which has no
+      // Overlay ancestor. Use the Navigator's internal overlay context instead,
+      // which is always valid while the app is running.
+      final overlayCtx = rootNavigatorKey.currentState?.overlay?.context;
+      final targetContext =
+          overlayCtx ??
+          (context.mounted ? context : null);
+      if (targetContext != null) {
         FlashySnackBar.show(
           targetContext,
           message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
         );
       }
-      unawaited(FileOpener.open(zipFile.path));
+      await FileOpener.open(zipFile.path);
     } catch (e) {
       controller?.dismiss();
       rethrow;
