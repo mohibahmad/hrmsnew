@@ -1500,6 +1500,8 @@
   "overdue_payroll": "Overdue Payroll",
   "payroll_overdue_one_day": "Payroll is 1 day overdue",
   "payroll_overdue_days": "Payroll is {days} days overdue",
+  "pay_day_not_arrived_yet": "Pay day has not arrived yet. You cannot process payroll.",
+  "pay_period_not_started_yet": "Pay period has not started yet. You cannot process payroll.",
   "late_joiners_excluded": "Not included: {names} (joined after the pay period ended)",
   "ignore": "Ignore",
   "confirm_ignore_payroll": "Skip Overdue Payroll?",

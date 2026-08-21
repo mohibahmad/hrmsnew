@@ -583,6 +583,24 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       return;
     }
 
+    if (!_isPaidRecord && widget.payPeriodStart != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final normalizedPayDay = DateTime(
+        widget.payPeriodStart!.year,
+        widget.payPeriodStart!.month,
+        widget.payPeriodStart!.day,
+      );
+      if (today.isBefore(normalizedPayDay)) {
+        FlashySnackBar.show(
+          context,
+          message: 'pay_day_not_arrived_yet'.tr(),
+          isError: true,
+        );
+        return;
+      }
+    }
+
     final workDaysText = _workDaysCtrl.text.trim();
     final absentsText = _absentsCtrl.text.trim();
     final leavesText = _leavesCtrl.text.trim();
@@ -629,7 +647,18 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
     final payrollIdentity = _workerId.trim().isNotEmpty
         ? _workerId.trim()
         : _email.trim().toLowerCase();
-    final (periodStart, periodEnd) = _currentPayPeriod;
+    final (rawStart, rawEnd) = _currentPayPeriod;
+
+    final today = DateTime(now.year, now.month, now.day);
+    final normalizedStart = DateTime(rawStart.year, rawStart.month, rawStart.day);
+    DateTime periodStart = rawStart;
+    DateTime periodEnd = rawEnd;
+    if (!_isPaidRecord && today.isBefore(normalizedStart)) {
+      final lastDayOfNextMonth = DateTime(today.year, today.month + 2, 0).day;
+      final endDay = today.day.clamp(1, lastDayOfNextMonth);
+      periodStart = today;
+      periodEnd = DateTime(today.year, today.month + 1, endDay);
+    }
     final payrollKey = PayrollService.payrollKeyForPeriod(
       payrollIdentity,
       periodStart,
@@ -690,6 +719,16 @@ class _AddPayrollScreenState extends ConsumerState<AddPayrollScreen> {
       }
 
       if (!mounted) return;
+
+      if (!_isGuest && periodStart != rawStart) {
+        try {
+          await _firestore.updateUserProfile({
+            'payrollCycleStart': periodStart.toIso8601String(),
+            'payrollCycleEnd': periodEnd.toIso8601String(),
+          });
+        } catch (_) {}
+      }
+
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
     } catch (_) {
       if (mounted) {

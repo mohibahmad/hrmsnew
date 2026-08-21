@@ -1493,6 +1493,8 @@
   "overdue_payroll": "Nómina Vencida",
   "payroll_overdue_one_day": "La nómina tiene 1 día de retraso",
   "payroll_overdue_days": "La nómina tiene {days} días de retraso",
+  "pay_day_not_arrived_yet": "El día de pago aún no ha llegado. No puede procesar la nómina.",
+  "pay_period_not_started_yet": "El período de pago aún no ha comenzado. No puede procesar la nómina.",
   "late_joiners_excluded": "No incluidos: {names} (se unieron después de que terminó el período de pago)",
   "ignore": "Ignorar",
   "confirm_ignore_payroll": "¿Omitir nómina vencida?",

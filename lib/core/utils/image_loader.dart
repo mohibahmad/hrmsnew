@@ -10,6 +10,41 @@ import 'package:image/image.dart' as img;
 class ImageLoader {
   const ImageLoader._();
 
+  /// In-memory cache of resolved image bytes keyed by the original source
+  /// string (URL, file path, or base64). Keeps images from being re-read from
+  /// disk or re-downloaded across repeated operations (e.g. payroll runs).
+  static final Map<String, Uint8List> _memoryCache = {};
+
+  /// Caches up to this many resolved bytes to bound memory usage.
+  static const int _memoryCacheLimit = 8;
+  static final List<String> _memoryCacheKeys = [];
+
+  static void _remember(String source, Uint8List bytes) {
+    if (source.isEmpty) return;
+    while (_memoryCache.length >= _memoryCacheLimit && _memoryCacheKeys.isNotEmpty) {
+      _memoryCache.remove(_memoryCacheKeys.removeAt(0));
+    }
+    if (!_memoryCache.containsKey(source)) {
+      _memoryCacheKeys.add(source);
+    }
+    _memoryCache[source] = bytes;
+  }
+
+  /// Clears the in-memory cache (used when company images change).
+  static void clearMemoryCache() {
+    _memoryCache.clear();
+    _memoryCacheKeys.clear();
+  }
+
+  static Uint8List? memoryCached(String source) => _memoryCache[source];
+
+  /// Stores resolved image bytes in the in-memory cache so they are reused
+  /// without re-reading from disk or re-downloading.
+  static void cacheBytes(String source, Uint8List bytes) {
+    if (bytes.isEmpty) return;
+    _remember(source, bytes);
+  }
+
       static Future<Uint8List?> load({
     required String? source,
     int maxSizeBytes = 5 * 1024 * 1024,
@@ -18,6 +53,9 @@ class ImageLoader {
   }) async {
     final value = source?.trim() ?? '';
     if (value.isEmpty) return null;
+
+    final cached = _memoryCache[value];
+    if (cached != null) return cached;
 
     try {
       Uint8List? bytes;
@@ -42,7 +80,9 @@ class ImageLoader {
 
       if (convertToPng) {
         bytes = _tryConvertToPng(bytes);
+        if (bytes == null) return null;
       }
+      _remember(value, bytes);
       return bytes;
     } catch (_) {
       return null;

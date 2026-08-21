@@ -33,7 +33,7 @@ class PayrollService {
   static DateTime payPeriodStart(DateTime month) => DateTime(month.year, month.month, 1);
   static DateTime payPeriodEnd(DateTime month) => DateTime(month.year, month.month + 1, 0);
 
-  static DateTime _payDayInMonth(DateTime month, int payDay) {
+  static DateTime payDayInMonth(DateTime month, int payDay) {
     final lastDay = DateTime(month.year, month.month + 1, 0).day;
     final clampedPayDay = payDay.clamp(1, lastDay);
     return DateTime(month.year, month.month, clampedPayDay);
@@ -41,32 +41,32 @@ class PayrollService {
 
   static PayrollPeriod payDayPeriodContaining(DateTime date, int payDay) {
     final month = DateTime(date.year, date.month, 1);
-    final payDayThisMonth = _payDayInMonth(month, payDay);
+    final payDayThisMonth = payDayInMonth(month, payDay);
     final today = DateTime(date.year, date.month, date.day);
 
-    return today.isAfter(payDayThisMonth)
+    return !today.isBefore(payDayThisMonth)
         ? PayrollPeriod(
             start: payDayThisMonth,
-            end: _payDayInMonth(DateTime(month.year, month.month + 1, 1), payDay),
+            end: payDayInMonth(DateTime(month.year, month.month + 1, 1), payDay),
           )
         : PayrollPeriod(
-            start: _payDayInMonth(DateTime(month.year, month.month - 1, 1), payDay),
+            start: payDayInMonth(DateTime(month.year, month.month - 1, 1), payDay),
             end: payDayThisMonth,
           );
   }
 
   static PayrollPeriod payDayPeriod(DateTime dueMonth, int payDay) {
-    final prevMonthPayDay = _payDayInMonth(DateTime(dueMonth.year, dueMonth.month - 1, 1), payDay);
+    final prevMonthPayDay = payDayInMonth(DateTime(dueMonth.year, dueMonth.month - 1, 1), payDay);
     return PayrollPeriod(
       start: prevMonthPayDay,
-      end: _payDayInMonth(dueMonth, payDay),
+      end: payDayInMonth(dueMonth, payDay),
     );
   }
 
   static PayrollPeriod nextPayDayPeriod(PayrollPeriod current, int payDay) {
     final currentEndMonth = DateTime(current.end.year, current.end.month, 1);
-    final currentEndPayDay = _payDayInMonth(currentEndMonth, payDay);
-    final nextEnd = _payDayInMonth(DateTime(currentEndMonth.year, currentEndMonth.month + 1, 1), payDay);
+    final currentEndPayDay = payDayInMonth(currentEndMonth, payDay);
+    final nextEnd = payDayInMonth(DateTime(currentEndMonth.year, currentEndMonth.month + 1, 1), payDay);
     return PayrollPeriod(
       start: currentEndPayDay,
       end: nextEnd,
@@ -327,12 +327,12 @@ class PayrollService {
       }
     }
 
-    final currentMonthPayday = _payDayInMonth(
+    final currentMonthPayday = payDayInMonth(
       DateTime(today.year, today.month, 1), normalizedPayDay);
 
     if (normalizedPayDay > 0 && anchor == null && !today.isBefore(currentMonthPayday)) {
       final prevCycleEnd = base.start;
-      final prevCycleStart = _payDayInMonth(
+      final prevCycleStart = payDayInMonth(
         DateTime(prevCycleEnd.year, prevCycleEnd.month - 1, 1),
         normalizedPayDay,
       );

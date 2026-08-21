@@ -1493,6 +1493,8 @@
   "overdue_payroll": "Folha de Pagamento Atrasada",
   "payroll_overdue_one_day": "A folha de pagamento está 1 dia atrasada",
   "payroll_overdue_days": "A folha de pagamento está {days} dias atrasada",
+  "pay_day_not_arrived_yet": "O dia de pagamento ainda não chegou. Você não pode processar a folha de pagamento.",
+  "pay_period_not_started_yet": "O período de pagamento ainda não começou. Você não pode processar a folha de pagamento.",
   "late_joiners_excluded": "Não incluídos: {names} (entraram após o fim do período de pagamento)",
   "ignore": "Ignorar",
   "confirm_ignore_payroll": "Pular folha de pagamento atrasada?",

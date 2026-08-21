@@ -17,6 +17,7 @@ import 'package:hrms/services/core/biometric_service.dart';
 import 'package:hrms/services/core/dummy_data.dart';
 import 'package:hrms/services/core/error_reporter.dart';
 import 'package:hrms/services/core/preferences_service.dart';
+import 'package:hrms/services/payroll/salary_day_scheduler.dart';
 import 'package:hrms/widgets/navigation/session_timeout_gate.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -49,6 +50,9 @@ Future<void> main() async {
         );
         await DummyData.loadFromPrefs();
         await _initializeMacOSWindow();
+        // Warm the company logo/stamp caches so payroll invoice runs never
+        // re-download or re-read them from disk.
+        unawaited(preloadPersistedCompanyImages());
         runApp(
           EasyLocalization(
             supportedLocales: const [

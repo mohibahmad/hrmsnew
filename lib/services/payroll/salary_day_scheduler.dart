@@ -155,6 +155,57 @@ Duration _pdfBatchTimeout(int workerCount) {
   return const Duration(seconds: 30) + Duration(milliseconds: extraMs);
 }
 
+/// Persistent pool of invoice PDF worker isolates, reused across payroll runs
+/// so spawning (and the ~1.7s startup cost) only happens once.
+List<_PayrollInvoiceIsolateWorker>? _persistentPool;
+
+/// Returns up to [size] live workers, reusing the persistent pool and spawning
+/// only the missing ones. The returned workers are cached in [_persistentPool].
+Future<List<_PayrollInvoiceIsolateWorker>> _obtainInvoicePool(
+  int size,
+  Map<String, Object?> sharedAssets,
+) async {
+  final result = <_PayrollInvoiceIsolateWorker>[];
+  final existing = _persistentPool ?? const <_PayrollInvoiceIsolateWorker>[];
+  for (final worker in existing) {
+    if (result.length >= size) break;
+    if (!worker.isClosed) result.add(worker);
+  }
+  var spawnedNumber = existing.length + 1;
+  while (result.length < size) {
+    try {
+      final worker = await _PayrollInvoiceIsolateWorker.spawn(
+        sharedAssets,
+        spawnedNumber,
+      );
+      result.add(worker);
+      spawnedNumber++;
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'PayrollInvoiceWorkerSpawn',
+      );
+      break;
+    }
+  }
+  _persistentPool = result;
+  return result;
+}
+
+/// Closes and clears the persistent worker pool (e.g. after a failed run where
+/// isolate state may be unreliable, so the next run respawns fresh workers).
+void _disposePersistentPool() {
+  final workers = _persistentPool;
+  _persistentPool = null;
+  if (workers == null) return;
+  for (final worker in workers) {
+    try {
+      worker.close();
+    } catch (_) {}
+  }
+}
+
 Future<Uint8List?> _loadCompanyImageDeviceFirst({
   required Iterable<String?> localCandidates,
   required String remoteSource,
@@ -164,6 +215,10 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
   for (final candidate in localCandidates) {
     final source = (candidate ?? '').trim();
     if (source.isEmpty || !visited.add(source)) continue;
+
+    // 0. In-memory cache first (never re-download / re-read disk in-session)
+    final memCached = ImageLoader.memoryCached(source);
+    if (memCached != null && memCached.isNotEmpty) return memCached;
 
     // 1. Check if it's base64
     if (source.startsWith('data:image/')) {
@@ -188,7 +243,10 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
         final fileInfo = await cacheManager.getFileFromCache(source);
         if (fileInfo != null) {
           final bytes = await fileInfo.file.readAsBytes();
-          if (bytes.isNotEmpty) return bytes;
+          if (bytes.isNotEmpty) {
+            ImageLoader.cacheBytes(source, bytes);
+            return bytes;
+          }
         }
       } catch (_) {}
     } else {
@@ -200,7 +258,10 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
         final file = File(cleanedPath);
         if (file.existsSync()) {
           final bytes = file.readAsBytesSync();
-          if (bytes.isNotEmpty) return bytes;
+          if (bytes.isNotEmpty) {
+            ImageLoader.cacheBytes(source, bytes);
+            return bytes;
+          }
         }
       } catch (_) {}
     }
@@ -209,6 +270,8 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
   // 4. Try remoteSource in cache or local
   final rSource = remoteSource.trim();
   if (rSource.isNotEmpty) {
+    final memCached = ImageLoader.memoryCached(rSource);
+    if (memCached != null && memCached.isNotEmpty) return memCached;
     final uri = Uri.tryParse(rSource);
     final isRemote =
         uri != null &&
@@ -242,6 +305,7 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
                 : InvoiceService.resolveCompanyLogoBytes(remoteSource))
             .timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
     if (bytes != null && bytes.isNotEmpty && rSource.isNotEmpty) {
+      ImageLoader.cacheBytes(rSource, bytes);
       final uri = Uri.tryParse(rSource);
       if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
         unawaited(
@@ -256,6 +320,34 @@ Future<Uint8List?> _loadCompanyImageDeviceFirst({
   } catch (_) {
     return null;
   }
+}
+
+/// Resolves and caches the persisted company logo/stamp at app startup so that
+/// later payroll runs never re-download or re-read them from disk. Fire-and-forget.
+Future<void> preloadPersistedCompanyImages() async {
+  try {
+    final sources = await Future.wait<String?>([
+      PreferencesService.getProfilePicLocalPath(),
+      PreferencesService.getProfilePicUrl(),
+      PreferencesService.getCompanyStampUrl(),
+    ]);
+    final candidates = <String>[];
+    for (final s in sources) {
+      final v = (s ?? '').trim();
+      if (v.isNotEmpty && !candidates.contains(v)) candidates.add(v);
+    }
+    for (final source in candidates) {
+      if (ImageLoader.memoryCached(source) != null) continue;
+      final bytes = await _loadCompanyImageDeviceFirst(
+        localCandidates: [source],
+        remoteSource: '',
+        isStamp: false,
+      );
+      if (bytes != null && bytes.isNotEmpty) {
+        ImageLoader.cacheBytes(source, bytes);
+      }
+    }
+  } catch (_) {}
 }
 
 Future<Map<String, dynamic>> _loadLocaleTranslations(
@@ -305,7 +397,7 @@ void _configurePayrollInvoiceIsolate(Map<String, Object?> sharedAssets) {
 void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
   final readyPort = bootstrap[0] as SendPort;
   try {
-    final sharedAssets = Map<String, Object?>.from(bootstrap[1] as Map);
+    var sharedAssets = Map<String, Object?>.from(bootstrap[1] as Map);
     _configurePayrollInvoiceIsolate(sharedAssets);
 
     final commandPort = ReceivePort();
@@ -321,8 +413,21 @@ void _payrollInvoiceIsolateMain(List<Object?> bootstrap) {
       final replyPort = message['replyPort'] as SendPort?;
       if (replyPort == null) return;
       try {
+        if (message['type'] == 'configure') {
+          // A reused worker is being pointed at new company assets; reset PDF
+          // caches so the new logo/stamp/theme are picked up, then re-warm.
+          InvoiceService.resetCaches();
+          sharedAssets =
+              Map<String, Object?>.from(message['assets'] as Map);
+          _configurePayrollInvoiceIsolate(sharedAssets);
+          replyPort.send(const <String, Object?>{'ok': true});
+          return;
+        }
+        if (message['type'] != 'generateBatch') {
+          throw StateError('Invalid payroll PDF batch request');
+        }
         final rawArgs = message['args'];
-        if (message['type'] != 'generateBatch' || rawArgs is! List) {
+        if (rawArgs is! List) {
           throw StateError('Invalid payroll PDF batch request');
         }
         final files = <Map<String, Object>>[];
@@ -360,6 +465,35 @@ class _PayrollInvoiceIsolateWorker {
   bool _closed = false;
 
   _PayrollInvoiceIsolateWorker(this._isolate, this._commandPort);
+
+  bool get isClosed => _closed;
+
+  /// Re-points a reused worker at new company assets. Resets PDF caches and
+  /// re-warms the font/logo/stamp so the next batch uses the correct images.
+  Future<void> configure(Map<String, Object?> sharedAssets) async {
+    if (_closed) return;
+    final responsePort = ReceivePort();
+    _pendingResponses.add(responsePort);
+    try {
+      _commandPort.send(<String, Object?>{
+        'type': 'configure',
+        'replyPort': responsePort.sendPort,
+        'assets': sharedAssets,
+      });
+      final rawResponse = await responsePort.first
+          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+      if (rawResponse is! Map) {
+        throw StateError('Payroll PDF worker configure timed out');
+      }
+      final ok = rawResponse['ok'];
+      if (ok == true) return;
+      final error = (rawResponse['error'] ?? '').toString();
+      if (error.isNotEmpty) throw StateError(error);
+    } finally {
+      _pendingResponses.remove(responsePort);
+      responsePort.close();
+    }
+  }
 
   static Future<_PayrollInvoiceIsolateWorker> spawn(
     Map<String, Object?> sharedAssets,
@@ -2144,7 +2278,6 @@ class PayrollRunner {
 
       final Uint8List? companyLogoBytes;
       final Uint8List? companyStampBytes;
-      final Uint8List? fontBytes;
       final Map<String, dynamic> translations;
 
       final companyLogoUrl =
@@ -2169,7 +2302,6 @@ class PayrollRunner {
           preloadedAssets['translations'] is Map<String, dynamic>) {
         companyLogoBytes = preloadedAssets['logoBytes'] as Uint8List?;
         companyStampBytes = preloadedAssets['stampBytes'] as Uint8List?;
-        fontBytes = null;
         translations = preloadedAssets['translations'] as Map<String, dynamic>;
       } else {
 
@@ -2228,7 +2360,6 @@ class PayrollRunner {
                 force: true,
               )
             : null;
-        fontBytes = null;
         translations = allAssets[2] as Map<String, dynamic>;
       }
 
@@ -2260,7 +2391,7 @@ class PayrollRunner {
       if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
 
-      final maxParallel = Platform.numberOfProcessors.clamp(4, 8);
+      final maxParallel = Platform.numberOfProcessors.clamp(4, 16);
       final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
@@ -2269,7 +2400,7 @@ class PayrollRunner {
       // Shared assets are the same for every worker, but dart isolate calls are
       // self-contained, so they are carried in each worker arg map directly.
       final sharedAssets = <String, Object?>{
-        'fontBytes': fontBytes,
+        'fontBytes': null,
         'companyLogoBytes': companyLogoBytes,
         'companyStampBytes': companyStampBytes,
         'companyName': companyName,
@@ -2320,26 +2451,28 @@ class PayrollRunner {
       final t0 = DateTime.now();
       final spawnStartedAt = DateTime.now();
 
-      Future<_PayrollInvoiceIsolateWorker?> spawnWorker(int index) async {
+      // Reuse a persistent worker pool across runs (spawn once, keep alive) so
+      // repeat payroll runs skip the isolate-spawn cost. Missing workers are
+      // spawned on demand up to poolSize.
+      var pool = await _obtainInvoicePool(poolSize, sharedAssets);
+      final spawnMs = DateTime.now().difference(spawnStartedAt).inMilliseconds;
+
+      // Re-point reused workers at this run's shared assets (newly spawned
+      // workers already carry them via bootstrap).
+      for (final worker in pool) {
         try {
-          return await _PayrollInvoiceIsolateWorker.spawn(
-            sharedAssets,
-            index + 1,
-          );
+          await worker.configure(sharedAssets);
         } catch (error, stackTrace) {
           ErrorReporter.report(
             error,
             stackTrace,
-            context: 'PayrollInvoiceWorkerSpawn',
+            context: 'PayrollInvoiceWorkerConfigure',
           );
-          return null;
+          _disposePersistentPool();
+          pool = const <_PayrollInvoiceIsolateWorker>[];
+          break;
         }
       }
-
-      final pool = (await Future.wait(
-        List.generate(poolSize, spawnWorker),
-      )).whereType<_PayrollInvoiceIsolateWorker>().toList();
-      final spawnMs = DateTime.now().difference(spawnStartedAt).inMilliseconds;
 
       var pdfDone = 0;
       Object? firstPdfError;
@@ -2412,10 +2545,6 @@ class PayrollRunner {
           ).timeout(deadline.difference(DateTime.now()));
         } on TimeoutException {
           timedOut = true;
-        } finally {
-          for (final worker in pool) {
-            worker.close();
-          }
         }
       }
 
@@ -2427,6 +2556,9 @@ class PayrollRunner {
             context: 'PayrollInvoiceGeneration',
           );
         }
+        // On failure/timeout the pooled isolates may be in an unknown state;
+        // dispose them so the next run respawns fresh workers.
+        _disposePersistentPool();
         throw TimeoutException(
           timedOut
               ? 'Invoice generation timed out at ${invoiceFiles.length}/${successful.length}'

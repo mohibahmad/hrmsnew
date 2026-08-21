@@ -233,10 +233,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return lastPaid == null;
   }
 
-  bool get _isPayDayLocked {
-    return _rawPayrollDocs.any((doc) => doc['status'] == 'Paid');
-  }
-
   PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
     final startStr = profile?['payrollCycleStart']?.toString();
     final endStr = profile?['payrollCycleEnd']?.toString();
@@ -1053,7 +1049,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
     final offset = today.difference(normalizedEnd).inDays;
 
-    if (offset < -3 || offset > 7) {
+    if (offset < -3) {
       return;
     }
 
@@ -1064,19 +1060,21 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     );
 
     if (!force) {
-      if (_snoozedThisVisit) {
+      if (_snoozedThisVisit && offset <= 0) {
         return;
       }
-      final ignored = await PreferencesService.isPayrollReminderIgnored(
-        window.suppressionKey,
-      );
-      if (ignored) return;
-      final snoozed = await PreferencesService.isPayrollReminderSnoozed(
-        window.suppressionKey,
-        now: now,
-      );
-      if (snoozed) {
-        await PreferencesService.clearPayrollSnooze(window.suppressionKey);
+      if (offset <= 0) {
+        final ignored = await PreferencesService.isPayrollReminderIgnored(
+          window.suppressionKey,
+        );
+        if (ignored) return;
+        final snoozed = await PreferencesService.isPayrollReminderSnoozed(
+          window.suppressionKey,
+          now: now,
+        );
+        if (snoozed) {
+          await PreferencesService.clearPayrollSnooze(window.suppressionKey);
+        }
       }
     }
 
@@ -1543,15 +1541,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     if (day == null || !mounted) return;
     if (day == 0) {
-      if (_isPayDayLocked) {
-        FlashySnackBar.show(
-          context,
-          message:
-              'Payroll has already been processed. Cancel/reset the processed payroll before clearing the Pay Day.',
-          isError: true,
-        );
-        return;
-      }
       try {
         await _firestore.updateUserProfile({
           'salaryPayDay': null,
@@ -1588,33 +1577,36 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return;
     }
 
-    if (_isPayDayLocked) {
-      FlashySnackBar.show(
-        context,
-        message:
-            'Payroll has already been processed. Cancel/reset the processed payroll before changing the Pay Day.',
-        isError: true,
-      );
-      return;
-    }
-
     if (day == _salaryPayDay) return;
 
     try {
       final payDay = day.clamp(1, 28);
-      final lastPaid = PayrollService.latestSettledPayrollCycle(
-        _workersList,
-        _rawPayrollDocs,
-        companyCurrency: _companyCurrency,
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      var period = PayrollService.payDayPeriodContaining(today, payDay);
+
+      final prevCycleStart = PayrollService.payDayInMonth(
+        DateTime(today.year, today.month - 1, 1),
+        payDay,
       );
-      final currentStart = lastPaid != null
-          ? lastPaid.end
-          : PayrollService.payPeriodStart(DateTime.now());
-      final period = PayrollService.transitionPayDayPeriod(
-        currentStart: currentStart,
-        payDay: payDay,
-        isFirstCycle: lastPaid == null,
+      final prevCycleEnd = PayrollService.payDayInMonth(
+        DateTime(today.year, today.month, 1),
+        payDay,
       );
+      final prevCycle = PayrollPeriod(start: prevCycleStart, end: prevCycleEnd);
+      final prevHasPaid = _rawPayrollDocs.any((r) {
+        if (!PayrollService.isPayrollRecordPaid(r)) return false;
+        final s = AppDateUtils.dateFromValue(r['payPeriodStart']);
+        final e = AppDateUtils.dateFromValue(r['payPeriodEnd']);
+        if (s == null || e == null) return false;
+        return PayrollService.payrollPeriodsEqual(
+          PayrollPeriod(start: s, end: e),
+          prevCycle,
+        );
+      });
+      if (!prevHasPaid) {
+        period = prevCycle;
+      }
 
       await _firestore.updateUserProfile({
         'salaryPayDay': day,
@@ -1665,11 +1657,29 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         readOnly: _isViewOnly,
         onNotificationTap: widget.onNotificationTap,
         onProfileTap: widget.onProfileTap,
-        onBack: () => setState(() {
-          _isAddingPayroll = false;
-          _workerForPayroll = null;
-          _isViewOnly = false;
-        }),
+        onBack: () async {
+          setState(() {
+            _isAddingPayroll = false;
+            _workerForPayroll = null;
+            _isViewOnly = false;
+          });
+          if (!_isGuest) {
+            try {
+              final snap = await _firestore.getPayrollOnce();
+              if (!mounted) return;
+              setState(() {
+                _rawPayrollDocs = snap.docs
+                    .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                    .toList();
+                _combinePayroll();
+              });
+              _scheduleAttendanceFetch();
+              _isUserSelectedCycle = false;
+              await _advanceCycleIfAllPaid();
+              _reconcilePayrollPeriod();
+            } catch (_) {}
+          }
+        },
       );
     }
 
@@ -1754,7 +1764,22 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     final periodText = _payPeriodLabelFor(_payrollMonth);
     final isCurrent = _isViewingCurrentCycle;
     final hasCurrentPayable = _currentPayablePayrollWorkers.isNotEmpty;
-    final payAllEnabled = !_isRunningPayroll && hasCurrentPayable && isCurrent;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final normalizedStart = DateTime(
+      _payPeriodStart.year,
+      _payPeriodStart.month,
+      _payPeriodStart.day,
+    );
+    final normalizedEnd = DateTime(
+      _payPeriodEnd.year,
+      _payPeriodEnd.month,
+      _payPeriodEnd.day,
+    );
+    final isWithinPayWindow = !today.isBefore(normalizedStart) &&
+        !today.isAfter(normalizedEnd);
+    final payAllEnabled =
+        !_isRunningPayroll && hasCurrentPayable && isCurrent && isWithinPayWindow;
 
     return Row(
       children: [
@@ -1786,76 +1811,69 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           ),
         ),
         const Spacer(),
-        MouseRegion(
-          cursor: payAllEnabled
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          child: GestureDetector(
-            onTap: payAllEnabled
-                ? () {
-                    if (_isGuest) {
-                      showGuestRestrictionDialog(context);
-                      return;
+        if (isWithinPayWindow)
+          MouseRegion(
+            cursor: payAllEnabled
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: GestureDetector(
+              onTap: payAllEnabled
+                  ? () {
+                      if (_isGuest) {
+                        showGuestRestrictionDialog(context);
+                        return;
+                      }
+                      _handlePayAll();
                     }
-                    _handlePayAll();
-                  }
-                : null,
-            child: Container(
-              height: 43,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(
-                  0xFF27AE60,
-                ).withValues(alpha: payAllEnabled ? 1.0 : 0.4),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _isRunningPayroll
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: Color(0xFFFFFFFF),
+                  : null,
+              child: Container(
+                height: 43,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF27AE60),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _isRunningPayroll
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFFFFFFFF),
+                            ),
+                          )
+                        : SvgPicture.asset(
+                            'assets/payroll_icon.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
                           ),
-                        )
-                      : SvgPicture.asset(
-                          'assets/payroll_icon.svg',
-                          width: 18,
-                          height: 18,
-                          colorFilter: ColorFilter.mode(
-                            const Color(
-                              0xFFFFFFFF,
-                            ).withValues(alpha: payAllEnabled ? 1.0 : 0.6),
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'pay_all'.tr(),
-                    style: TextStyle(
-                      color: const Color(
-                        0xFFFFFFFF,
-                      ).withValues(alpha: payAllEnabled ? 1.0 : 0.6),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(width: 8),
+                    Text(
+                      'pay_all'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         const SizedBox(width: 12),
         MouseRegion(
-          cursor: isCurrent
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
+          cursor: SystemMouseCursors.click,
           child: GestureDetector(
-            onTap: isCurrent ? _showSetPayDayDialog : null,
+            onTap: _showSetPayDayDialog,
             child: Container(
               height: 43,
               alignment: Alignment.center,
@@ -1863,7 +1881,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
               decoration: BoxDecoration(
                 color: const Color(
                   0xFF0247C4,
-                ).withValues(alpha: isCurrent ? 1.0 : 0.4),
+                ),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -1874,7 +1892,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     size: 18,
                     color: const Color(
                       0xFFFFFFFF,
-                    ).withValues(alpha: isCurrent ? 1.0 : 0.6),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1882,7 +1900,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     style: TextStyle(
                       color: const Color(
                         0xFFFFFFFF,
-                      ).withValues(alpha: isCurrent ? 1.0 : 0.6),
+                      ),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -2141,7 +2159,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final options = map.values.toList()
       ..sort((a, b) => b.period.end.compareTo(a.period.end));
-    return options.map((o) {
+    final limited = options.length > 2 ? options.sublist(0, 2) : options;
+    return limited.map((o) {
       final key = PayrollService.periodKeyPair(o.period.start, o.period.end);
       return (
         period: o.period,

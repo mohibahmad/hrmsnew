@@ -191,6 +191,15 @@ class InvoiceService {
   static pw.MemoryImage? _cachedLogoImage;
   static pw.MemoryImage? _cachedStampImage;
 
+  /// Resets per-isolate PDF caches. Called when a reused pool worker is
+  /// reconfigured with new company logo/stamp assets.
+  static void resetCaches() {
+    _cachedParsedFont = null;
+    _cachedTheme = null;
+    _cachedLogoImage = null;
+    _cachedStampImage = null;
+  }
+
   static void warmupCache({
     Uint8List? fontBytes,
     Uint8List? logoBytes,

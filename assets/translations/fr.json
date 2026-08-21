@@ -1493,6 +1493,8 @@
   "overdue_payroll": "Paie en retard",
   "payroll_overdue_one_day": "La paie a 1 jour de retard",
   "payroll_overdue_days": "La paie a {days} jours de retard",
+  "pay_day_not_arrived_yet": "Le jour de paie n'est pas encore arrivé. Vous ne pouvez pas traiter la paie.",
+  "pay_period_not_started_yet": "La période de paie n'a pas encore commencé. Vous ne pouvez pas traiter la paie.",
   "late_joiners_excluded": "Non inclus : {names} (embauchés après la fin de la période de paie)",
   "ignore": "Ignorer",
   "confirm_ignore_payroll": "Ignorer la paie en retard ?",
