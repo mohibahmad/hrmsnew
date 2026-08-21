@@ -73,6 +73,32 @@ class InvoiceService {
     final hasDeductions = _parseValue(totalDeductions) > 0;
     final isNegativeNet = _parseValue(netSalary) < 0;
 
+    final sanitizedPayPeriod = cleanText(payPeriod);
+    final sanitizedCompanyName = cleanText(companyName);
+    final sanitizedCompanyAddress = cleanText(companyAddress);
+    final sanitizedCompanyEmail = cleanText(companyEmail);
+    final sanitizedCompanyPhone = cleanText(companyPhone);
+    final sanitizedCompanyId = cleanText(companyId);
+    final sanitizedEmployeeName = cleanText(employeeName);
+    final sanitizedPosition = cleanText(position);
+    final sanitizedEmail = cleanText(email);
+    final sanitizedInvoiceNumber = cleanText(invoiceNumber);
+    final sanitizedDetectedCurrency = cleanText(detectedCurrency);
+    final sanitizedDailyRate = cleanText(dailyRate);
+    final sanitizedTotalWorkDays = cleanText(totalWorkDays);
+    final sanitizedGrossPay = cleanText(grossPay);
+    final sanitizedOvertimeAmount = cleanText(overtimeAmount);
+    final sanitizedOvertimePay = cleanText(overtimePay);
+    final sanitizedAbsentDeduction = cleanText(absentDeduction);
+    final sanitizedAbsents = cleanText(absents);
+    final sanitizedLeaveDeduction = cleanText(leaveDeduction);
+    final sanitizedDeductibleLeaveDays = cleanText(deductibleLeaveDays);
+    final sanitizedTotalDeductions = cleanText(totalDeductions);
+    final sanitizedNetSalary = cleanText(netSalary);
+    final sanitizedSalary = cleanText(salary);
+    final sanitizedInvoiceLeaves = cleanText(invoiceLeaves);
+    final sanitizedPaymentMethod = cleanText(paymentMethod);
+
     pdf.addPage(
       pw.Page(
         theme: theme,
@@ -85,37 +111,37 @@ class InvoiceService {
               logoImage: logoImage,
               stampImage: stampImage,
               employeeImage: employeeImage,
-              companyName: companyName,
-              companyAddress: companyAddress,
-              companyEmail: companyEmail,
-              companyPhone: companyPhone,
-              companyId: companyId,
-              employeeName: employeeName,
-              position: position,
-              email: email,
-              payPeriod: payPeriod,
-              invoiceNumber: invoiceNumber,
+              companyName: sanitizedCompanyName,
+              companyAddress: sanitizedCompanyAddress,
+              companyEmail: sanitizedCompanyEmail,
+              companyPhone: sanitizedCompanyPhone,
+              companyId: sanitizedCompanyId,
+              employeeName: sanitizedEmployeeName,
+              position: sanitizedPosition,
+              email: sanitizedEmail,
+              payPeriod: sanitizedPayPeriod,
+              invoiceNumber: sanitizedInvoiceNumber,
               now: now,
-              detectedCurrency: detectedCurrency,
-              dailyRate: dailyRate,
-              totalWorkDays: totalWorkDays,
-              grossPay: grossPay,
+              detectedCurrency: sanitizedDetectedCurrency,
+              dailyRate: sanitizedDailyRate,
+              totalWorkDays: sanitizedTotalWorkDays,
+              grossPay: sanitizedGrossPay,
               hasOvertime: hasOvertime,
-              overtimeAmount: overtimeAmount,
-              overtimePay: overtimePay,
+              overtimeAmount: sanitizedOvertimeAmount,
+              overtimePay: sanitizedOvertimePay,
               hasAbsentDeduction: hasAbsentDeduction,
-              absentDeduction: absentDeduction,
-              absents: absents,
+              absentDeduction: sanitizedAbsentDeduction,
+              absents: sanitizedAbsents,
               hasLeaveDeduction: hasLeaveDeduction,
-              leaveDeduction: leaveDeduction,
-              deductibleLeaveDays: deductibleLeaveDays,
+              leaveDeduction: sanitizedLeaveDeduction,
+              deductibleLeaveDays: sanitizedDeductibleLeaveDays,
               hasDeductions: hasDeductions,
-              totalDeductions: totalDeductions,
-              netSalary: netSalary,
+              totalDeductions: sanitizedTotalDeductions,
+              netSalary: sanitizedNetSalary,
               isNegativeNet: isNegativeNet,
-              salary: salary,
-              invoiceLeaves: invoiceLeaves,
-              paymentMethod: paymentMethod,
+              salary: sanitizedSalary,
+              invoiceLeaves: sanitizedInvoiceLeaves,
+              paymentMethod: sanitizedPaymentMethod,
             ),
             pw.Spacer(),
             _buildFooter(),
@@ -126,6 +152,26 @@ class InvoiceService {
 
     return pdf.save();
   }
+
+  static String cleanText(String input) {
+    if (input.isEmpty) return input;
+    return input
+        .replaceAll('–', '-') // en-dash U+2013 -> ASCII hyphen
+        .replaceAll('—', '-') // em-dash U+2014 -> ASCII hyphen
+        .replaceAll('‘', "'")
+        .replaceAll('’', "'")
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('…', '...')
+        .replaceAll('•', '-')
+        .replaceAll('×', 'x')
+        .replaceAll('→', '->')
+        .replaceAll('₹', 'Rs ')
+        .replaceAll('\u00A0', ' ')
+        .replaceAll('\u202F', ' ')
+        .replaceAll('\u200B', '');
+  }
+
 
   static Future<pw.MemoryImage?> _loadEmployeeImage(Uint8List? bytes) async {
     if (bytes == null || bytes.isEmpty) return null;

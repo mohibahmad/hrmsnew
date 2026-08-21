@@ -387,9 +387,10 @@ class PayrollService {
     final startLabel = '${_monthLabel(start, locale)} ${start.day}';
     final endLabel = '${_monthLabel(end, locale)} ${end.day}';
     return start.year == end.year
-        ? '$startLabel – $endLabel, ${end.year}'
-        : '$startLabel, ${start.year} – $endLabel, ${end.year}';
+        ? '$startLabel - $endLabel, ${end.year}'
+        : '$startLabel, ${start.year} - $endLabel, ${end.year}';
   }
+
 
   static String _monthLabel(DateTime date, String? locale) {
     try {
