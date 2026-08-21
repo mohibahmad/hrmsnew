@@ -975,16 +975,20 @@ class PayrollRunner {
       }
 
       final logoBytes = rawLogo != null && rawLogo.isNotEmpty
-          ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75, force: true)
+          ? (rawLogo.lengthInBytes > 100 * 1024
+              ? compressImageBytes(rawLogo, maxWidth: 256, quality: 75)
+              : rawLogo)
           : null;
       final stampBytes = rawStamp != null && rawStamp.isNotEmpty
-          ? compressImageBytes(
-              rawStamp,
-              maxWidth: 256,
-              quality: 75,
-              force: true,
-            )
+          ? (rawStamp.lengthInBytes > 100 * 1024
+              ? compressImageBytes(
+                  rawStamp,
+                  maxWidth: 256,
+                  quality: 75,
+                )
+              : rawStamp)
           : null;
+
 
       return {
         'logoBytes': logoBytes,
@@ -1671,8 +1675,11 @@ class PayrollRunner {
           ? committedSummary.results.where((r) => r.success).toList()
           : const <AutoPayrollResult>[];
 
-      // 1. Commit database records snappy (~0.8s)
-      await _commitPayrollRun(
+      final preloadedAssets = preloadedAssetsFuture == null
+          ? null
+          : await preloadedAssetsFuture;
+
+      final commitFuture = _commitPayrollRun(
         committedSummary,
         isGuest,
         context,
@@ -1681,12 +1688,9 @@ class PayrollRunner {
         controller: controller,
       );
 
-      // 2. Generate PDFs & ZIP — awaited so the share sheet opens before
-      // the caller shows "Payroll run complete" and the context may go stale.
+      // 2. Generate PDFs & ZIP concurrently while database records are being saved.
+      // The ZIP file will only be persisted once the commitFuture succeeds.
       if (paidResults.isNotEmpty) {
-        final preloadedAssets = preloadedAssetsFuture == null
-            ? null
-            : await preloadedAssetsFuture;
         await _generateAndSaveZipSafe(
           context,
           paidResults,
@@ -1696,10 +1700,13 @@ class PayrollRunner {
           periodStart: periodStart,
           periodEnd: periodEnd,
           preloadedAssets: preloadedAssets,
+          savePermission: commitFuture.then((count) => count > 0).catchError((_) => false),
         );
       } else {
+        await commitFuture;
         controller.dismiss();
       }
+
 
       unawaited(
         _sendNotificationsInBackground(
@@ -2159,13 +2166,13 @@ class PayrollRunner {
               .trim();
 
       if (preloadedAssets != null &&
-          preloadedAssets['fontBytes'] is Uint8List &&
           preloadedAssets['translations'] is Map<String, dynamic>) {
         companyLogoBytes = preloadedAssets['logoBytes'] as Uint8List?;
         companyStampBytes = preloadedAssets['stampBytes'] as Uint8List?;
-        fontBytes = preloadedAssets['fontBytes'] as Uint8List?;
+        fontBytes = null;
         translations = preloadedAssets['translations'] as Map<String, dynamic>;
       } else {
+
         controller?.update(
           progress: 0.10,
           label: 'generating_invoices'.tr(),
@@ -2253,10 +2260,11 @@ class PayrollRunner {
       if (successful.isEmpty) return;
       final invoiceFiles = <Map<String, Object>>[];
 
-      final maxParallel = Platform.numberOfProcessors.clamp(4, 16);
+      final maxParallel = Platform.numberOfProcessors.clamp(4, 8);
       final poolSize = successful.length < maxParallel
           ? successful.length
           : maxParallel;
+
 
       // Shared assets are the same for every worker, but dart isolate calls are
       // self-contained, so they are carried in each worker arg map directly.
