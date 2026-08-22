@@ -737,30 +737,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       return;
     }
 
-    // Shared Pay Day validation — the exact same gate used by the
-    // Process Payroll button (#2, #3, #8). Payment is blocked until the
-    // cycle's due date (Pay Day) arrives.
-    final gate = PayrollCycleService.canProcessPayment(
-      cycle: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
-    );
-    if (!gate.allowed) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'payroll_not_pay_day_yet'.tr(
-            namedArgs: {
-              'date': AppDateUtils.fromValueLocalized(
-                gate.dueDate,
-                locale: context.locale.toString(),
-              ),
-            },
-          ),
-          isError: true,
-        );
-      }
-      return;
-    }
-
     setState(() => _isRunningPayroll = true);
 
     FlashySnackBar.dismiss();
@@ -856,9 +832,15 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     if (!_periodHasAnyPaidRecord(current)) return false;
 
-    // The next cycle continues the configured anchoring (23 Aug -> 23 Sep for
-    // Pay Day 23). HR's chosen Pay Day is never silently rewritten here (#8).
-    final next = _nextCycleAfter(current, _salaryPayDay);
+    // The next cycle starts from the actual payment date (today), not the
+    // original pay day anchor.  E.g. pay day 23, cycle Jul 23 – Aug 23,
+    // payment on Aug 21 -> next cycle Aug 21 – Sep 21 (pay day becomes 21).
+    final paymentDate = DateTime.now();
+    final newPayDay = paymentDate.day;
+    final next = PayrollCycleService.nextCycleFromPaymentDate(
+      paymentDate,
+      _salaryPayDay,
+    );
 
     if (PayrollService.payrollPeriodsEqual(next, current)) return false;
 
@@ -866,6 +848,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       await _firestore.updateUserProfile({
         'payrollCycleStart': next.start.toIso8601String(),
         'payrollCycleEnd': next.end.toIso8601String(),
+        'salaryPayDay': newPayDay,
       });
     } catch (error, stackTrace) {
       ErrorReporter.report(error, stackTrace, context: 'advancePayrollCycle');
@@ -876,6 +859,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       _payPeriodStart = next.start;
       _payPeriodEnd = next.end;
       _payrollMonth = DateTime(next.end.year, next.end.month, 1);
+      _salaryPayDay = newPayDay;
       _selectedFilter = 'All';
       _combinePayroll();
     });
@@ -1335,6 +1319,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
             _combinePayroll();
           });
           _scheduleAttendanceFetch();
+
+          // If 4+ payable workers, open Pay All review dialog directly.
+          // Otherwise just show the filtered payable list.
+          if (payableWorkers.length >= 4) {
+            _handlePayAll();
+          }
         }
       case null:
         if (mounted) setState(() => _selectedFilter = 'All');
@@ -1634,10 +1624,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     if (day == null || !mounted) return;
     if (day == 0) {
       try {
+        // Clear Pay Day but preserve existing cycle dates so payroll records
+        // are not disturbed.  resolveActiveCycle with salaryPayDay == null
+        // returns calendar-month mode automatically.
         await _firestore.updateUserProfile({
           'salaryPayDay': null,
-          'payrollCycleStart': null,
-          'payrollCycleEnd': null,
         });
 
         if (!mounted) return;
@@ -1680,11 +1671,12 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       // Changing the Pay Day immediately recalculates the custom cycle around
       // the selected day (#7, #8). A custom Pay Day is always an anchored
       // `D -> D` cycle that contains today, e.g. while working in August:
-      //   20 -> 20 Aug - 20 Sep,  10 -> 10 Aug - 10 Sep,  21 -> 21 Aug - 21 Sep
-      // Historical payroll records are never touched (#12).
-      final period = PayrollCycleService.payDayCycleContaining(
-        DateTime.now(),
-        payDay,
+      //   20 -> 20 Jul - 20 Aug,  10 -> 10 Jul - 10 Aug,  21 -> 21 Aug - 21 Sep
+      // If no cycle has been processed yet and today is past the pay day, the
+      // previous cycle is returned so HR can process it first (#12).
+      final period = PayrollCycleService.resolveActiveCycle(
+        salaryPayDay: payDay,
+        now: DateTime.now(),
       );
 
       await _firestore.updateUserProfile({
@@ -1848,10 +1840,23 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     final periodText = _payPeriodLabelFor(_payrollMonth);
     final isCurrent = _isViewingCurrentCycle;
     final hasCurrentPayable = _currentPayablePayrollWorkers.isNotEmpty;
-    // Pay All stays visible for the current cycle; tapping it before the due
-    // date is blocked by the shared Pay Day validation with a clear message
-    // instead of silently hiding the button (#2).
-    final payAllEnabled = !_isRunningPayroll && hasCurrentPayable && isCurrent;
+    // Pay All shows after the cycle starts; clicking is gated by the due-date
+    // check in [_handlePayAllForMonth] until the Pay Day arrives.
+    final today = DateTime.now();
+    final normalizedToday = DateTime(today.year, today.month, today.day);
+    final periodStart = DateTime(
+      _payPeriodStart.year,
+      _payPeriodStart.month,
+      _payPeriodStart.day,
+    );
+    final periodEnd = DateTime(
+      _payPeriodEnd.year,
+      _payPeriodEnd.month,
+      _payPeriodEnd.day,
+    );
+    final hasStarted = !normalizedToday.isBefore(periodStart);
+    final payAllEnabled =
+        !_isRunningPayroll && hasCurrentPayable && isCurrent && hasStarted;
 
     return Row(
       children: [
@@ -1883,7 +1888,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           ),
         ),
         const Spacer(),
-        if (hasCurrentPayable && isCurrent)
+        if (hasCurrentPayable && isCurrent && hasStarted)
           MouseRegion(
             cursor: payAllEnabled
                 ? SystemMouseCursors.click

@@ -95,6 +95,27 @@ void main() {
       expect(next.end, d(2026, 9, 23));
     });
 
+    test('nextCycleFromPaymentDate — payment on Aug 21, pay day 23', () {
+      // Pay day 23, cycle Jul 23 – Aug 23, payment on Aug 21
+      // -> next cycle Aug 21 – Sep 21 (pay day becomes 21)
+      final next = PayrollCycleService.nextCycleFromPaymentDate(
+        d(2026, 8, 21),
+        23,
+      );
+      expect(next.start, d(2026, 8, 21));
+      expect(next.end, d(2026, 9, 21));
+    });
+
+    test('nextCycleFromPaymentDate — payment on Aug 23 (exact pay day)', () {
+      // Pay day 23, payment on Aug 23 -> next cycle Aug 23 – Sep 23
+      final next = PayrollCycleService.nextCycleFromPaymentDate(
+        d(2026, 8, 23),
+        23,
+      );
+      expect(next.start, d(2026, 8, 23));
+      expect(next.end, d(2026, 9, 23));
+    });
+
     test('Test 4 — reminder starts exactly 3 days before due date', () {
       final due = d(2026, 9, 23);
       expect(
@@ -259,6 +280,43 @@ void main() {
       );
       expect(cycle.start, d(2027, 1, 23));
       expect(cycle.end, d(2027, 2, 23));
+    });
+
+    test('No persisted cycle — returns previous cycle when past pay day', () {
+      // Aug 21, pay day 17, no persisted cycle → should return Jul 17 – Aug 17
+      // (not Aug 17 – Sep 17) because no cycle has been processed yet.
+      final active = PayrollCycleService.resolveActiveCycle(
+        salaryPayDay: 17,
+        now: d(2026, 8, 21),
+      );
+      expect(active.start, d(2026, 7, 17));
+      expect(active.end, d(2026, 8, 17));
+
+      // Same for pay day 20 on Aug 21 → Jul 20 – Aug 20
+      final p20 = PayrollCycleService.resolveActiveCycle(
+        salaryPayDay: 20,
+        now: d(2026, 8, 21),
+      );
+      expect(p20.start, d(2026, 7, 20));
+      expect(p20.end, d(2026, 8, 20));
+
+      // Pay day 10 on Aug 21 → Jul 10 – Aug 10 (already past, previous cycle)
+      final p10 = PayrollCycleService.resolveActiveCycle(
+        salaryPayDay: 10,
+        now: d(2026, 8, 21),
+      );
+      expect(p10.start, d(2026, 7, 10));
+      expect(p10.end, d(2026, 8, 10));
+    });
+
+    test('No persisted cycle — returns containing cycle before pay day', () {
+      // Aug 15, pay day 23, no persisted cycle → Jul 23 – Aug 23 (correct, same as before)
+      final active = PayrollCycleService.resolveActiveCycle(
+        salaryPayDay: 23,
+        now: d(2026, 8, 15),
+      );
+      expect(active.start, d(2026, 7, 23));
+      expect(active.end, d(2026, 8, 23));
     });
 
     test('stateOf transitions', () {

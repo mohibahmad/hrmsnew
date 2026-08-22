@@ -114,6 +114,31 @@ class PayrollCycleService {
     );
   }
 
+  /// Next cycle anchored to the actual [paymentDate] instead of the original
+  /// pay day.  E.g. pay day 23, cycle Jul 23 – Aug 23, payment on Aug 21
+  /// -> next cycle Aug 21 – Sep 21 (pay day effectively becomes 21).
+  static PayrollPeriod nextCycleFromPaymentDate(
+    DateTime paymentDate,
+    int? originalPayDay,
+  ) {
+    final pd = normalize(paymentDate);
+    final lastOfPDMonth = daysInMonth(pd.year, pd.month);
+
+    // Calendar month mode or pay day not set → month from payment date.
+    if (originalPayDay == null || originalPayDay <= 0) {
+      return PayrollPeriod(
+        start: DateTime(pd.year, pd.month, 1),
+        end: DateTime(pd.year, pd.month + 1, 0),
+      );
+    }
+
+    // Anchored cycle starting from the payment date.
+    return PayrollPeriod(
+      start: pd,
+      end: anchorInMonth(DateTime(pd.year, pd.month + 1, 1), pd.day),
+    );
+  }
+
   static bool cyclesEqual(PayrollPeriod a, PayrollPeriod b) =>
       PayrollService.payrollPeriodsEqual(a, b);
 
@@ -198,6 +223,17 @@ class PayrollCycleService {
           return persisted;
         }
       }
+    }
+
+    // No persisted cycle yet: if today is on/after the pay day in the current
+    // month the "containing" cycle starts this month (e.g. Aug 17 – Sep 17 for
+    // Pay Day 17 on Aug 21).  That cycle should NOT be active until the
+    // previous one has been processed, so return the previous cycle instead.
+    // Before the pay day the containing cycle already IS the previous one
+    // (e.g. Jul 17 – Aug 17 on Aug 15), so no change needed there.
+    final anchorThisMonth = anchorInMonth(today, salaryPayDay);
+    if (!today.isBefore(anchorThisMonth)) {
+      return previousAnchoredCycle(containing, salaryPayDay);
     }
 
     return containing;
@@ -288,7 +324,7 @@ class PayrollCycleService {
       final s = normalize(start);
       final e = normalize(end);
       if (!s.isBefore(e)) return;
-      if (!e.isBefore(activeStart)) return;
+      if (e.isAfter(activeStart)) return;
       periods[PayrollService.periodKeyPair(s, e)] = PayrollPeriod(
         start: s,
         end: e,
