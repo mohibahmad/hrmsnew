@@ -877,6 +877,11 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
     if (!mounted) return false;
 
+    // Clear the pay-day-change guard so the Firestore listener can pick up
+    // the new cycle we just saved (advanceCycle is not a user-initiated
+    // pay-day change).
+    _payDayJustChanged = false;
+
     setState(() {
       _payPeriodStart = next.start;
       _payPeriodEnd = next.end;
@@ -1690,16 +1695,28 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     try {
       final payDay = day.clamp(1, 28);
 
-      // Changing the Pay Day immediately recalculates the custom cycle around
-      // the selected day (#7, #8). A custom Pay Day is always an anchored
-      // `D -> D` cycle that contains today, e.g. while working in August:
-      //   20 -> 20 Jul - 20 Aug,  10 -> 10 Jul - 10 Aug,  21 -> 21 Aug - 21 Sep
-      // If no cycle has been processed yet and today is past the pay day, the
-      // previous cycle is returned so HR can process it first (#12).
-      final period = PayrollCycleService.resolveActiveCycle(
-        salaryPayDay: payDay,
-        now: DateTime.now(),
+      // Re-anchor the current cycle to the new pay day instead of calling
+      // resolveActiveCycle from scratch.  This keeps the cycle in the same
+      // month range the user is already working in.
+      //   Aug 22 – Sep 22, change to 24 → Aug 24 – Sep 24
+      //   Aug 22 – Sep 22, change to 10 → Aug 10 – Sep 10
+      var newStart = PayrollCycleService.anchorInMonth(
+        _payPeriodStart,
+        payDay,
       );
+      var newEnd = PayrollCycleService.anchorInMonth(
+        DateTime(_payPeriodEnd.year, _payPeriodEnd.month, 1),
+        payDay,
+      );
+      var period = PayrollPeriod(start: newStart, end: newEnd);
+
+      // If the re-anchored cycle is in the past (e.g. viewing a paid historical
+      // cycle like Jul 9 – Aug 9, change to 5 → Jul 5 – Aug 5, but today is
+      // Aug 22), advance forward until today falls inside the cycle.
+      final today = DateTime.now();
+      while (today.isAfter(period.end)) {
+        period = PayrollCycleService.nextCycleAfter(period, payDay);
+      }
 
       await _firestore.updateUserProfile({
         'salaryPayDay': day,
@@ -2208,9 +2225,19 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     }
   }
 
-  List<({PayrollPeriod period, String label, int paidCount, bool isCurrent})>
+  List<({
+    PayrollPeriod period,
+    String label,
+    int paidCount,
+    bool isCurrent,
+    DateTime? latestPaidAt,
+  })>
   _payPeriodOptions() {
-    final map = <String, ({PayrollPeriod period, int paidCount})>{};
+    final map = <String, ({
+      PayrollPeriod period,
+      int paidCount,
+      DateTime? latestPaidAt,
+    })>{};
 
     for (final worker in _allPaidWorkers()) {
       final start = AppDateUtils.dateFromValue(worker['payPeriodStart']);
@@ -2219,36 +2246,39 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       final period = PayrollPeriod(start: start, end: end);
       final key = PayrollService.periodKeyPair(start, end);
 
+      final paidAt = PayrollService.payrollPaymentDate(worker);
       final existing = map[key];
-      map[key] = (period: period, paidCount: (existing?.paidCount ?? 0) + 1);
+      final existingPaidAt = existing?.latestPaidAt;
+      final newerPaidAt = paidAt != null &&
+              (existingPaidAt == null || paidAt.isAfter(existingPaidAt))
+          ? paidAt
+          : existingPaidAt;
+      map[key] = (
+        period: period,
+        paidCount: (existing?.paidCount ?? 0) + 1,
+        latestPaidAt: newerPaidAt,
+      );
     }
 
     for (final period in _ignoredPeriods) {
       final key = PayrollService.periodKeyPair(period.start, period.end);
       if (!map.containsKey(key)) {
-        map[key] = (period: period, paidCount: 0);
+        map[key] = (period: period, paidCount: 0, latestPaidAt: null);
       }
     }
 
-    final currentCycle = _trueCurrentPayrollCycle();
+    // The "current" cycle in the dropdown is whatever the screen is showing
+    // right now — not a recalculated value from resolveActiveCycle.
     final currentKey = PayrollService.periodKeyPair(
-      currentCycle.start,
-      currentCycle.end,
+      _payPeriodStart,
+      _payPeriodEnd,
     );
     if (!map.containsKey(currentKey)) {
-      map[currentKey] = (period: currentCycle, paidCount: 0);
-    }
-
-    final selectedCycle = PayrollPeriod(
-      start: _payPeriodStart,
-      end: _payPeriodEnd,
-    );
-    final selectedKey = PayrollService.periodKeyPair(
-      selectedCycle.start,
-      selectedCycle.end,
-    );
-    if (!map.containsKey(selectedKey)) {
-      map[selectedKey] = (period: selectedCycle, paidCount: 0);
+      map[currentKey] = (
+        period: PayrollPeriod(start: _payPeriodStart, end: _payPeriodEnd),
+        paidCount: 0,
+        latestPaidAt: null,
+      );
     }
 
     final options = map.values.toList()
@@ -2264,6 +2294,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
         ),
         paidCount: o.paidCount,
         isCurrent: key == currentKey,
+        latestPaidAt: o.latestPaidAt,
       );
     }).toList();
   }
@@ -2293,7 +2324,13 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
     final selected =
         await showMenu<
-          ({PayrollPeriod period, String label, int paidCount, bool isCurrent})
+          ({
+            PayrollPeriod period,
+            String label,
+            int paidCount,
+            bool isCurrent,
+            DateTime? latestPaidAt,
+          })
         >(
           context: context,
 
@@ -2345,24 +2382,37 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
                     ),
                     if (option.paidCount > 0) ...[
                       const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${option.paidCount}',
-                          style: const TextStyle(
-                            color: Color(0xFF004FDE),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                      Builder(builder: (context) {
+                        final dueDate = option.period.end;
+                        final paidAt = option.latestPaidAt;
+                        final isLate = paidAt != null &&
+                            paidAt.isAfter(dueDate);
+                        final label = isLate
+                            ? 'Paid late on ${DateFormat('d MMM').format(paidAt)}'
+                            : 'Paid';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                        ),
-                      ),
+                          decoration: BoxDecoration(
+                            color: isLate
+                                ? const Color(0xFFFEE2E2)
+                                : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                             label,
+                             style: TextStyle(
+                               color: isLate
+                                   ? const Color(0xFFDC2626)
+                                   : const Color(0xFF004FDE),
+                               fontSize: 11,
+                               fontWeight: FontWeight.w600,
+                             ),
+                           ),
+                         );
+                      }),
                     ],
                   ],
                 ),
