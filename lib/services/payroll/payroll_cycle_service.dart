@@ -225,17 +225,15 @@ class PayrollCycleService {
       }
     }
 
-    // No persisted cycle yet: if today is on/after the pay day in the current
-    // month the "containing" cycle starts this month (e.g. Aug 17 – Sep 17 for
-    // Pay Day 17 on Aug 21).  That cycle should NOT be active until the
-    // previous one has been processed, so return the previous cycle instead.
-    // Before the pay day the containing cycle already IS the previous one
-    // (e.g. Jul 17 – Aug 17 on Aug 15), so no change needed there.
+    // No persisted cycle: return the pay-day-anchored cycle that hasn't ended
+    // yet.  If today is before the pay day the containing cycle IS the right
+    // one (e.g. Aug 5, pay day 9 → Jul 9 – Aug 9).  If today is on/after
+    // the pay day the containing cycle jumps forward (Aug 9 – Sep 9) but the
+    // previous one (Jul 9 – Aug 9) is still the one awaiting processing.
     final anchorThisMonth = anchorInMonth(today, salaryPayDay);
     if (!today.isBefore(anchorThisMonth)) {
       return previousAnchoredCycle(containing, salaryPayDay);
     }
-
     return containing;
   }
 

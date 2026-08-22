@@ -97,6 +97,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
   DateTime _payPeriodStart = PayrollService.payPeriodStart(DateTime.now());
   DateTime _payPeriodEnd = PayrollService.payPeriodEnd(DateTime.now());
   bool _isUserSelectedCycle = false;
+  bool _payDayJustChanged = false;
   List<PayrollPeriod> _ignoredPeriods = [];
 
   Map<String, dynamic>? _workerForPayroll;
@@ -249,7 +250,10 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     return day != null && day >= 1 && day <= 28 ? day : null;
   }
 
-  PayrollPeriod _periodFromProfile(Map<String, dynamic>? profile, int payDay) {
+  PayrollPeriod _periodFromProfile(
+    Map<String, dynamic>? profile,
+    int payDay,
+  ) {
     final startStr = profile?['payrollCycleStart']?.toString();
     final endStr = profile?['payrollCycleEnd']?.toString();
     PayrollPeriod? persisted;
@@ -299,7 +303,6 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
     int? salaryPayDay,
   ) async {
     if (salaryPayDay == null) {
-      // Calendar-month mode: 1st -> real last day of the current month (#9).
       return PayrollCycleService.calendarMonthCycle(DateTime.now());
     }
     return _periodFromProfile(profile, salaryPayDay);
@@ -381,7 +384,24 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
       try {
         final currency = CurrencyUtils.normalize(profile['currency']);
         final salaryPayDay = _payDayFromProfile(profile);
-        final period = await _periodForProfile(profile, salaryPayDay);
+    final period = await _periodForProfile(profile, salaryPayDay);
+
+        // Don't overwrite a period the user manually selected from the
+        // dropdown — only update when the cycle actually changed in Firestore
+        // (e.g. after Pay All advanced it).
+        if (_isUserSelectedCycle &&
+            currency == _companyCurrency &&
+            salaryPayDay == _salaryPayDay) {
+          return;
+        }
+
+        // Pay day was just saved by _changeSalaryPayDay — the local state
+        // already has the correct cycle.  Skip to avoid overwriting with a
+        // stale persisted cycle from Firestore.
+        if (_payDayJustChanged) {
+          _payDayJustChanged = false;
+          return;
+        }
 
         if (currency == _companyCurrency &&
             salaryPayDay == _salaryPayDay &&
@@ -398,6 +418,8 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
           salaryPayDay: salaryPayDay,
           period: period,
         );
+        // Reset the flag once Firestore delivers the real current cycle.
+        _isUserSelectedCycle = false;
       } catch (error, stackTrace) {
         ErrorReporter.report(
           error,
@@ -1687,6 +1709,7 @@ class PayrollScreenState extends ConsumerState<PayrollScreen> {
 
       if (!mounted) return;
       _isUserSelectedCycle = false;
+      _payDayJustChanged = true;
       setState(() {
         _salaryPayDay = day;
         _payPeriodStart = period.start;

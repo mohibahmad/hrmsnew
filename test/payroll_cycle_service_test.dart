@@ -282,9 +282,8 @@ void main() {
       expect(cycle.end, d(2027, 2, 23));
     });
 
-    test('No persisted cycle — returns previous cycle when past pay day', () {
-      // Aug 21, pay day 17, no persisted cycle → should return Jul 17 – Aug 17
-      // (not Aug 17 – Sep 17) because no cycle has been processed yet.
+    test('No persisted cycle — pay day anchored containing cycle', () {
+      // Aug 21, pay day 17, no persisted cycle → Jul 17 – Aug 17
       final active = PayrollCycleService.resolveActiveCycle(
         salaryPayDay: 17,
         now: d(2026, 8, 21),
@@ -292,7 +291,7 @@ void main() {
       expect(active.start, d(2026, 7, 17));
       expect(active.end, d(2026, 8, 17));
 
-      // Same for pay day 20 on Aug 21 → Jul 20 – Aug 20
+      // Aug 21, pay day 20 → Jul 20 – Aug 20
       final p20 = PayrollCycleService.resolveActiveCycle(
         salaryPayDay: 20,
         now: d(2026, 8, 21),
@@ -300,7 +299,7 @@ void main() {
       expect(p20.start, d(2026, 7, 20));
       expect(p20.end, d(2026, 8, 20));
 
-      // Pay day 10 on Aug 21 → Jul 10 – Aug 10 (already past, previous cycle)
+      // Aug 21, pay day 10 → Jul 10 – Aug 10
       final p10 = PayrollCycleService.resolveActiveCycle(
         salaryPayDay: 10,
         now: d(2026, 8, 21),
@@ -309,8 +308,8 @@ void main() {
       expect(p10.end, d(2026, 8, 10));
     });
 
-    test('No persisted cycle — returns containing cycle before pay day', () {
-      // Aug 15, pay day 23, no persisted cycle → Jul 23 – Aug 23 (correct, same as before)
+    test('No persisted cycle — before pay day also pay-day anchored', () {
+      // Aug 15, pay day 23, no persisted cycle → Jul 23 – Aug 23
       final active = PayrollCycleService.resolveActiveCycle(
         salaryPayDay: 23,
         now: d(2026, 8, 15),
